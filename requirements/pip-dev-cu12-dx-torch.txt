@@ -1,0 +1,7 @@
+-r pip/dev-tools.txt
+-r pip/docs.txt
+-r pip/tests.txt
+-r pip/nvmath-python.txt
+-r pip/nvmath-python-cu12.txt
+-r pip/nvmath-python-dx.txt
+-r pip/torch-cu12.txt

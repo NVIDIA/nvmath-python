@@ -1,0 +1,26 @@
+.vscode
+*.c
+*.cpp
+*.egg-info/
+*.pyc
+__pycache__
+*.so
+*.pyd
+docs/_build
+docs/sphinx/*/generated
+docs/sphinx/generated
+dist
+build
+wheelhouse
+
+#Pytest
+.pytest_cache
+
+#Pipenv
+.env*
+Pipfile*
+.venv*
+.pipenv-cache
+
+#Test outputs
+*.pickle

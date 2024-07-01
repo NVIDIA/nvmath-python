@@ -1,0 +1,8 @@
+breathe
+enum-tools
+grip
+myst-parser
+sphinx
+sphinx-rtd-theme
+sphinx-toolbox
+sphinxcontrib-programoutput

@@ -1,0 +1,23 @@
+.wy-nav-content {
+max-width: 1240px !important;
+}
+
+.wy-menu-vertical a {
+	font-size: 92%;
+}
+
+.wy-menu-vertical li code, .wy-menu-vertical li .rst-content tt, .rst-content .wy-menu-vertical li tt {
+    font-size: 100%;
+}
+
+code.code span.pre, code.cpp span.pre, code.docutils span.pre{
+    color: darkgreen;
+}
+
+/* Remove empty lines after line blocks in a table.
+   Inspired by https://stackoverflow.com/a/70531350/2344149 but it did not work out of box.
+   Fine-tuned after some trial and error. */
+.wy-table-responsive table tr td div, .wy-table-responsive table tr td ul, .wy-table-responsive table tr td ol {
+    margin-bottom: 0 !important;
+    white-space: normal !important;
+}

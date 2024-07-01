@@ -1,0 +1,2 @@
+torch<2.1; platform_system!="Windows"
+

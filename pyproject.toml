@@ -1,0 +1,65 @@
+# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[build-system]
+requires = [
+    "Cython>=0.29.22,<3", "setuptools>=61.0.0", "wheel",
+    # whatever version works here, see builder/utils.py for detail
+    "nvidia-cuda-runtime-cu12",
+    "nvidia-cuda-nvcc-cu12",
+]
+build-backend = "pep517"
+backend-path = ["builder"]
+
+
+[project]
+name = "nvmath-python"
+dynamic = [
+    "version",
+    "readme",
+    "dependencies",
+    "optional-dependencies"
+]
+requires-python = '>=3.9'
+description = "NVIDIA Math Python libraries"
+authors = [
+    { name = "NVIDIA Corporation" }
+]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Environment :: GPU :: NVIDIA CUDA :: 11",
+    "Environment :: GPU :: NVIDIA CUDA :: 12",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "nvmath._version.__version__" }
+readme = { file = ["DESCRIPTION.rst"], content-type = "text/x-rst" }
+dependencies = {file = ["requirements/pip/nvmath-python.txt"] }
+
+[tool.setuptools.dynamic.optional-dependencies]
+cu11 = { file = ["requirements/pip/nvmath-python-cu11.txt"] }
+cu12 = { file = ["requirements/pip/nvmath-python-cu12.txt"] }
+dx = { file = ["requirements/pip/nvmath-python-dx.txt"] }
+sysctk11 = { file = ["requirements/pip/nvmath-python-sysctk11.txt"] }
+sysctk12 = { file = ["requirements/pip/nvmath-python-sysctk12.txt"] }
+
