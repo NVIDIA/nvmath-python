@@ -4,7 +4,7 @@
 
 Welcome to the nvmath-python repository!
 
-Please refer to the [official documentation](https://docs.nvidia.com/cuda/nvmath-python/latest/index.html) to get started (**coming soon!**).
+Please refer to the [official documentation](https://docs.nvidia.com/cuda/nvmath-python/latest/index.html) to get started.
 
 To report issues or file feature requests, please use the [issue tracker](https://github.com/NVIDIA/nvmath-python/issues).
 
