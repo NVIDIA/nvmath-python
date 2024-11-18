@@ -5,12 +5,13 @@
 """
 Example showing the fallback path for an unsupported layout error using the function-form FFT APIs.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 256, 256, 512
-axes  = 0, 2
+axes = 0, 2
 
 a = cp.ones(shape, dtype=cp.complex128)
 

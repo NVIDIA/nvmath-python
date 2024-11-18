@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libcpp.vector cimport vector
 
@@ -988,8 +988,8 @@ cpdef zpotrs(intptr_t handle, int uplo, int n, int nrhs, intptr_t a, int lda, in
 
 cpdef spotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t info_array, int batch_size):
     """See `cusolverDnSpotrfBatched`."""
-    cdef nullable_unique_ptr[ vector[float*] ] _aarray_ = \
-        get_resource_ptrs[float](aarray, <float*>NULL)
+    cdef nullable_unique_ptr[ vector[float*] ] _aarray_
+    get_resource_ptrs[float](_aarray_, aarray, <float*>NULL)
     with nogil:
         status = cusolverDnSpotrfBatched(<Handle>handle, <cublasFillMode_t>uplo, n, <float**>(_aarray_.data()), lda, <int*>info_array, batch_size)
     check_status(status)
@@ -997,8 +997,8 @@ cpdef spotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t
 
 cpdef dpotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t info_array, int batch_size):
     """See `cusolverDnDpotrfBatched`."""
-    cdef nullable_unique_ptr[ vector[double*] ] _aarray_ = \
-        get_resource_ptrs[double](aarray, <double*>NULL)
+    cdef nullable_unique_ptr[ vector[double*] ] _aarray_
+    get_resource_ptrs[double](_aarray_, aarray, <double*>NULL)
     with nogil:
         status = cusolverDnDpotrfBatched(<Handle>handle, <cublasFillMode_t>uplo, n, <double**>(_aarray_.data()), lda, <int*>info_array, batch_size)
     check_status(status)
@@ -1006,8 +1006,8 @@ cpdef dpotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t
 
 cpdef cpotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t info_array, int batch_size):
     """See `cusolverDnCpotrfBatched`."""
-    cdef nullable_unique_ptr[ vector[cuComplex*] ] _aarray_ = \
-        get_resource_ptrs[cuComplex](aarray, <cuComplex*>NULL)
+    cdef nullable_unique_ptr[ vector[cuComplex*] ] _aarray_
+    get_resource_ptrs[cuComplex](_aarray_, aarray, <cuComplex*>NULL)
     with nogil:
         status = cusolverDnCpotrfBatched(<Handle>handle, <cublasFillMode_t>uplo, n, <cuComplex**>(_aarray_.data()), lda, <int*>info_array, batch_size)
     check_status(status)
@@ -1015,8 +1015,8 @@ cpdef cpotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t
 
 cpdef zpotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t info_array, int batch_size):
     """See `cusolverDnZpotrfBatched`."""
-    cdef nullable_unique_ptr[ vector[cuDoubleComplex*] ] _aarray_ = \
-        get_resource_ptrs[cuDoubleComplex](aarray, <cuDoubleComplex*>NULL)
+    cdef nullable_unique_ptr[ vector[cuDoubleComplex*] ] _aarray_
+    get_resource_ptrs[cuDoubleComplex](_aarray_, aarray, <cuDoubleComplex*>NULL)
     with nogil:
         status = cusolverDnZpotrfBatched(<Handle>handle, <cublasFillMode_t>uplo, n, <cuDoubleComplex**>(_aarray_.data()), lda, <int*>info_array, batch_size)
     check_status(status)
@@ -1024,10 +1024,10 @@ cpdef zpotrf_batched(intptr_t handle, int uplo, int n, aarray, int lda, intptr_t
 
 cpdef spotrs_batched(intptr_t handle, int uplo, int n, int nrhs, a, int lda, b, int ldb, intptr_t d_info, int batch_size):
     """See `cusolverDnSpotrsBatched`."""
-    cdef nullable_unique_ptr[ vector[float*] ] _a_ = \
-        get_resource_ptrs[float](a, <float*>NULL)
-    cdef nullable_unique_ptr[ vector[float*] ] _b_ = \
-        get_resource_ptrs[float](b, <float*>NULL)
+    cdef nullable_unique_ptr[ vector[float*] ] _a_
+    get_resource_ptrs[float](_a_, a, <float*>NULL)
+    cdef nullable_unique_ptr[ vector[float*] ] _b_
+    get_resource_ptrs[float](_b_, b, <float*>NULL)
     with nogil:
         status = cusolverDnSpotrsBatched(<Handle>handle, <cublasFillMode_t>uplo, n, nrhs, <float**>(_a_.data()), lda, <float**>(_b_.data()), ldb, <int*>d_info, batch_size)
     check_status(status)
@@ -1035,10 +1035,10 @@ cpdef spotrs_batched(intptr_t handle, int uplo, int n, int nrhs, a, int lda, b, 
 
 cpdef dpotrs_batched(intptr_t handle, int uplo, int n, int nrhs, a, int lda, b, int ldb, intptr_t d_info, int batch_size):
     """See `cusolverDnDpotrsBatched`."""
-    cdef nullable_unique_ptr[ vector[double*] ] _a_ = \
-        get_resource_ptrs[double](a, <double*>NULL)
-    cdef nullable_unique_ptr[ vector[double*] ] _b_ = \
-        get_resource_ptrs[double](b, <double*>NULL)
+    cdef nullable_unique_ptr[ vector[double*] ] _a_
+    get_resource_ptrs[double](_a_, a, <double*>NULL)
+    cdef nullable_unique_ptr[ vector[double*] ] _b_
+    get_resource_ptrs[double](_b_, b, <double*>NULL)
     with nogil:
         status = cusolverDnDpotrsBatched(<Handle>handle, <cublasFillMode_t>uplo, n, nrhs, <double**>(_a_.data()), lda, <double**>(_b_.data()), ldb, <int*>d_info, batch_size)
     check_status(status)
@@ -1046,10 +1046,10 @@ cpdef dpotrs_batched(intptr_t handle, int uplo, int n, int nrhs, a, int lda, b, 
 
 cpdef cpotrs_batched(intptr_t handle, int uplo, int n, int nrhs, a, int lda, b, int ldb, intptr_t d_info, int batch_size):
     """See `cusolverDnCpotrsBatched`."""
-    cdef nullable_unique_ptr[ vector[cuComplex*] ] _a_ = \
-        get_resource_ptrs[cuComplex](a, <cuComplex*>NULL)
-    cdef nullable_unique_ptr[ vector[cuComplex*] ] _b_ = \
-        get_resource_ptrs[cuComplex](b, <cuComplex*>NULL)
+    cdef nullable_unique_ptr[ vector[cuComplex*] ] _a_
+    get_resource_ptrs[cuComplex](_a_, a, <cuComplex*>NULL)
+    cdef nullable_unique_ptr[ vector[cuComplex*] ] _b_
+    get_resource_ptrs[cuComplex](_b_, b, <cuComplex*>NULL)
     with nogil:
         status = cusolverDnCpotrsBatched(<Handle>handle, <cublasFillMode_t>uplo, n, nrhs, <cuComplex**>(_a_.data()), lda, <cuComplex**>(_b_.data()), ldb, <int*>d_info, batch_size)
     check_status(status)
@@ -1057,10 +1057,10 @@ cpdef cpotrs_batched(intptr_t handle, int uplo, int n, int nrhs, a, int lda, b, 
 
 cpdef zpotrs_batched(intptr_t handle, int uplo, int n, int nrhs, a, int lda, b, int ldb, intptr_t d_info, int batch_size):
     """See `cusolverDnZpotrsBatched`."""
-    cdef nullable_unique_ptr[ vector[cuDoubleComplex*] ] _a_ = \
-        get_resource_ptrs[cuDoubleComplex](a, <cuDoubleComplex*>NULL)
-    cdef nullable_unique_ptr[ vector[cuDoubleComplex*] ] _b_ = \
-        get_resource_ptrs[cuDoubleComplex](b, <cuDoubleComplex*>NULL)
+    cdef nullable_unique_ptr[ vector[cuDoubleComplex*] ] _a_
+    get_resource_ptrs[cuDoubleComplex](_a_, a, <cuDoubleComplex*>NULL)
+    cdef nullable_unique_ptr[ vector[cuDoubleComplex*] ] _b_
+    get_resource_ptrs[cuDoubleComplex](_b_, b, <cuDoubleComplex*>NULL)
     with nogil:
         status = cusolverDnZpotrsBatched(<Handle>handle, <cublasFillMode_t>uplo, n, nrhs, <cuDoubleComplex**>(_a_.data()), lda, <cuDoubleComplex**>(_b_.data()), ldb, <int*>d_info, batch_size)
     check_status(status)

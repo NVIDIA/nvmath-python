@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -134,6 +134,7 @@ class SpMMAlg(_IntEnum):
     CSR_ALG2 = CUSPARSE_SPMM_CSR_ALG2
     CSR_ALG3 = CUSPARSE_SPMM_CSR_ALG3
     BLOCKED_ELL_ALG1 = CUSPARSE_SPMM_BLOCKED_ELL_ALG1
+    BSR_ALG1 = CUSPARSE_SPMM_BSR_ALG1
     MM_ALG_DEFAULT = CUSPARSE_MM_ALG_DEFAULT
     COOMM_ALG1 = CUSPARSE_COOMM_ALG1
     COOMM_ALG2 = CUSPARSE_COOMM_ALG2
@@ -2342,4 +2343,11 @@ cpdef sp_sv_update_matrix(intptr_t handle, intptr_t spsv_descr, intptr_t new_val
     """See `cusparseSpSV_updateMatrix`."""
     with nogil:
         status = cusparseSpSV_updateMatrix(<Handle>handle, <SpSVDescr>spsv_descr, <void*>new_values, <_SpSVUpdate>update_part)
+    check_status(status)
+
+
+cpdef sp_mv_preprocess(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg, intptr_t external_buffer):
+    """See `cusparseSpMV_preprocess`."""
+    with nogil:
+        status = cusparseSpMV_preprocess(<Handle>handle, <_Operation>op_a, <const void*>alpha, <ConstSpMatDescr>mat_a, <ConstDnVecDescr>vec_x, <const void*>beta, <DnVecDescr>vec_y, <DataType>compute_type, <_SpMVAlg>alg, <void*>external_buffer)
     check_status(status)

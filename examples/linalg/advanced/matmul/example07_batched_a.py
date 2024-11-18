@@ -11,6 +11,7 @@ is not, it will be broadcasted to match the batch size.
 
 In this example we will multiply each of our `a` matrices with the same `b` matrix.
 """
+
 import cupy as cp
 
 import nvmath

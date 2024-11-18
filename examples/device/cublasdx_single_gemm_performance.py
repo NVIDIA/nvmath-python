@@ -12,34 +12,41 @@ from nvmath.device import matmul
 from common import random_complex, mm_perf_GFlops, fp16x2_to_complex64, complex64_to_fp16x2
 from common_numba import time_numba, load_to_shared_1d_float16x2, store_from_shared_1d_float16x2
 
-def main():
 
+def main():
     m, n, k = 32, 32, 64
     repeat = 4000
     block_size = 256
-    alpha, beta = 1+0j, 0+0j
+    alpha, beta = 1 + 0j, 0 + 0j
     ncycles = 1
-    data_type = 'complex'
+    data_type = "complex"
     precision = np.float16
 
-    MM = matmul(size=(m, n, k), precision=precision, data_type=data_type, transpose_mode=('non_transposed', 'transposed'),
-                execution='Block', block_size=block_size, compiler='numba', leading_dimension='suggested')
+    MM = matmul(
+        size=(m, n, k),
+        precision=precision,
+        data_type=data_type,
+        transpose_mode=("non_transposed", "transposed"),
+        execution="Block",
+        block_size=block_size,
+        compiler="numba",
+        leading_dimension="suggested",
+    )
 
-    a_size              = MM.a_size
-    b_size              = MM.b_size
-    c_size              = MM.c_size
-    a_dim               = MM.a_dim
-    b_dim               = MM.b_dim
-    c_dim               = MM.c_dim
-    ld                  = MM.leading_dimension
-    lda, ldb, ldc       = ld.a, ld.b, ld.c
-    block_dim           = MM.block_dim
-    grid_dim            = 1
-    value_type          = MM.value_type
+    a_size = MM.a_size
+    b_size = MM.b_size
+    c_size = MM.c_size
+    a_dim = MM.a_dim
+    b_dim = MM.b_dim
+    c_dim = MM.c_dim
+    ld = MM.leading_dimension
+    lda, ldb, ldc = ld.a, ld.b, ld.c
+    block_dim = MM.block_dim
+    grid_dim = 1
+    value_type = MM.value_type
 
     @cuda.jit(link=MM.files)
     def f(a, b, c, alpha, beta, output, repeat):
-
         smem_a = cuda.shared.array(shape=(a_size,), dtype=value_type)
         smem_b = cuda.shared.array(shape=(b_size,), dtype=value_type)
         smem_c = cuda.shared.array(shape=(c_size,), dtype=value_type)
@@ -88,6 +95,7 @@ def main():
     data_ref = alpha * (a @ b.T) + beta * c
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-2
+
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,7 @@ Linear Algebra
 Overview
 ========
 
-The Linear Algebra module :mod:`nvmath.linalg` in nvmath-python leverages various NVIDIA math libraries to support multiple linear algebra computations. 
+The Linear Algebra module :mod:`nvmath.linalg` in nvmath-python leverages various NVIDIA math libraries to support multiple linear algebra computations.
 As of the initial Beta release, we offer the specialized matrix multiplication API based on the cuBLASLt library.
 
 .. _linalg-api-reference:
@@ -39,8 +39,8 @@ Specialized Linear Algebra APIs (:mod:`nvmath.linalg.advanced`)
    MatmulInnerShape
    MatmulNumericalImplFlags
    MatmulReductionScheme
-   
-   :template: dataclass.rst   
+
+   :template: dataclass.rst
 
    MatmulOptions
    MatmulPlanPreferences

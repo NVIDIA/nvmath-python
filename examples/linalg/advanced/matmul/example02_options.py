@@ -7,6 +7,7 @@ This example illustrates how to specify options to a matrix multiplication opera
 
 In this example, we will use NumPy ndarrays as input, and we will look at two equivalent ways to specify the compute type.
 """
+
 import numpy as np
 
 import nvmath
@@ -26,7 +27,7 @@ options = nvmath.linalg.advanced.MatmulOptions(compute_type=compute_type)
 result = nvmath.linalg.advanced.matmul(a, b, options=options)
 
 # Alternative #2 for specifying options, using dict. The two alternatives are entirely equivalent.
-result = nvmath.linalg.advanced.matmul(a, b, options={'compute_type': compute_type})
+result = nvmath.linalg.advanced.matmul(a, b, options={"compute_type": compute_type})
 
 # No synchronization is needed for CPU tensors, since the execution always blocks.
 

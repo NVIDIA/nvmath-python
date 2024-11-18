@@ -2,16 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-""" Interface for pluggable memory handlers.
-"""
+"""Interface for pluggable memory handlers."""
 
-__all__ = ['BaseCUDAMemoryManager', 'MemoryPointer']
+__all__ = ["BaseCUDAMemoryManager", "MemoryPointer"]
 
 from abc import abstractmethod
 from typing import Protocol, runtime_checkable
 import weakref
 
-import cupy as cp
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 from nvmath._internal import utils
 
@@ -33,12 +35,14 @@ class MemoryPointer:
         self.size = size
         if finalizer is not None:
             self._finalizer = weakref.finalize(self, finalizer)
+        else:
+            self._finalizer = None
 
     def free(self):
         """
         "Frees" the memory buffer by calling the finalizer.
         """
-        if finalizer is None:
+        if self._finalizer is None:
             return
 
         if not self._finalizer.alive:
@@ -94,14 +98,17 @@ class _RawCUDAMemoryManager(BaseCUDAMemoryManager):
         with utils.device_ctx(self.device_id):
             device_ptr = cp.cuda.runtime.malloc(size)
 
-        self.logger.debug(f"_RawCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
-                          f"device = {self.device_id}, stream={cp.cuda.get_current_stream()}")
+        self.logger.debug(
+            f"_RawCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
+            f"device = {self.device_id}, stream={cp.cuda.get_current_stream()}"
+        )
 
         def create_finalizer():
             def finalizer():
                 # Note: With UVA there is no need to switch context to the device the memory belongs to before calling free().
                 cp.cuda.runtime.free(device_ptr)
                 self.logger.debug(f"_RawCUDAMemoryManager (release memory): ptr = {device_ptr}")
+
             return finalizer
 
         return MemoryPointer(device_ptr, size, finalizer=create_finalizer())
@@ -128,8 +135,10 @@ class _CupyCUDAMemoryManager(BaseCUDAMemoryManager):
             cp_mem_ptr = cp.cuda.alloc(size)
             device_ptr = cp_mem_ptr.ptr
 
-        self.logger.debug(f"_CupyCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
-                          f"device = {self.device_id}, stream={cp.cuda.get_current_stream()}")
+        self.logger.debug(
+            f"_CupyCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
+            f"device = {self.device_id}, stream={cp.cuda.get_current_stream()}"
+        )
 
         return cp_mem_ptr
 
@@ -155,16 +164,19 @@ class _TorchCUDAMemoryManager(BaseCUDAMemoryManager):
 
         device_ptr = caching_allocator_alloc(size, device=self.device_id)
 
-        self.logger.debug(f"_TorchCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
-                          f"device_id = {self.device_id}, stream={current_stream()}")
+        self.logger.debug(
+            f"_TorchCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
+            f"device_id = {self.device_id}, stream={current_stream()}"
+        )
 
         def create_finalizer():
             def finalizer():
                 caching_allocator_delete(device_ptr)
                 self.logger.debug(f"_TorchCUDAMemoryManager (release memory): ptr = {device_ptr}")
+
             return finalizer
 
         return MemoryPointer(device_ptr, size, finalizer=create_finalizer())
 
 
-_MEMORY_MANAGER = {'_raw' : _RawCUDAMemoryManager, 'cupy' : _CupyCUDAMemoryManager, 'torch' : _TorchCUDAMemoryManager}
+_MEMORY_MANAGER = {"_raw": _RawCUDAMemoryManager, "cupy": _CupyCUDAMemoryManager, "torch": _TorchCUDAMemoryManager}

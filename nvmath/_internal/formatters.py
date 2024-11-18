@@ -8,12 +8,13 @@ Formatters for printing data.
 
 import numpy as np
 
-class MemoryStr(object):
+
+class MemoryStr:
     """
     A simple type to pretty-print memory-like values.
     """
 
-    def __init__(self, memory, base_unit='B'):
+    def __init__(self, memory, base_unit="B"):
         self.memory = memory
         self.base_unit = base_unit
         self.base = 1024
@@ -28,16 +29,16 @@ class MemoryStr(object):
         if memory < base:
             value, unit = memory, base_unit
         elif memory < base**2:
-            value, unit = memory/base, f'Ki{base_unit}'
+            value, unit = memory / base, f"Ki{base_unit}"
         elif memory < base**3:
-            value, unit = memory/base**2, f'Mi{base_unit}'
+            value, unit = memory / base**2, f"Mi{base_unit}"
         else:
-            value, unit = memory/base**3, f'Gi{base_unit}'
+            value, unit = memory / base**3, f"Gi{base_unit}"
 
         return f"{value:0.2f} {unit}"
 
 
-class FLOPSStr(object):
+class FLOPSStr:
     """
     A simple type to pretty-print FLOP count and FLOP/s-like values.
     """
@@ -57,15 +58,15 @@ class FLOPSStr(object):
         if flops < base:
             value, unit = flops, base_unit
         elif flops < base**2:
-            value, unit = flops/base, f'K{base_unit}'
+            value, unit = flops / base, f"K{base_unit}"
         elif flops < base**3:
-            value, unit = flops/base**2, f'M{base_unit}'
+            value, unit = flops / base**2, f"M{base_unit}"
         elif flops < base**4:
-            value, unit = flops/base**3, f'G{base_unit}'
+            value, unit = flops / base**3, f"G{base_unit}"
         elif flops < base**5:
-            value, unit = flops/base**4, f'T{base_unit}'
+            value, unit = flops / base**4, f"T{base_unit}"
         else:
-            value, unit = flops/base**5, f'P{base_unit}'
+            value, unit = flops / base**5, f"P{base_unit}"
 
         return f"{value:0.3f} {unit}"
 
@@ -79,6 +80,7 @@ def array2string(array_like):
 
     return np.array2string(
         np.asanyarray(array_like, dtype=object),
-        separator=', ',
+        separator=", ",
         # NumPy hates empty strings so we print 'None' instead.
-        formatter={'object': lambda s: s if s != '' else 'None'})
+        formatter={"object": lambda s: s if s != "" else "None"},
+    )

@@ -12,32 +12,37 @@ import functools
 from common_cupy import time_cupy
 from common_numba import time_numba
 
-def main():
 
+def main():
     fft_size = 512
-    batch_size = (2 ** 30) // fft_size // np.complex64(1.0).itemsize
+    batch_size = (2**30) // fft_size // np.complex64(1.0).itemsize
     ncycles = 10
 
-    FFT_base = functools.partial(fft, fft_type='c2c', size=fft_size, precision=np.float32,
-                                 ffts_per_block='suggested',
-                                 execution='Block', compiler='numba')
-    FFT = FFT_base(direction='forward')
-    IFFT = FFT_base(direction='inverse')
+    FFT_base = functools.partial(
+        fft,
+        fft_type="c2c",
+        size=fft_size,
+        precision=np.float32,
+        ffts_per_block="suggested",
+        execution="Block",
+        compiler="numba",
+    )
+    FFT = FFT_base(direction="forward")
+    IFFT = FFT_base(direction="inverse")
 
-    size                = FFT.size
-    value_type          = FFT.value_type
-    storage_size        = FFT.storage_size
-    shared_memory_size  = FFT.shared_memory_size
-    stride              = FFT.stride
-    block_dim           = FFT.block_dim
-    ffts_per_block      = FFT.ffts_per_block
+    size = FFT.size
+    value_type = FFT.value_type
+    storage_size = FFT.storage_size
+    shared_memory_size = FFT.shared_memory_size
+    stride = FFT.stride
+    block_dim = FFT.block_dim
+    ffts_per_block = FFT.ffts_per_block
     elements_per_thread = FFT.elements_per_thread
 
     grid_dim = (batch_size + ffts_per_block - 1) // ffts_per_block
 
     @cuda.jit(link=FFT.files + IFFT.files)
     def f(input, output):
-
         thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
         shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
 
@@ -82,6 +87,7 @@ def main():
     assert error < 1e-5
 
     print(f"Time per convolution:\ncupy {cupy_ms} ms\nNumba {numba_ms} ms")
+
 
 if __name__ == "__main__":
     main()

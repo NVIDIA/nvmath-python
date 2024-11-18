@@ -11,10 +11,12 @@ import cupy as cp
 import nvmath
 from nvmath.memory import BaseCUDAMemoryManager, MemoryPointer
 
+
 class RawCUDAMemoryManager(BaseCUDAMemoryManager):
     """
     A simple allocator using cudaMalloc and cudaFree, instead of CuPy's memory pool.
     """
+
     def __init__(self, device_id):
         self.device_id = device_id
 
@@ -27,17 +29,19 @@ class RawCUDAMemoryManager(BaseCUDAMemoryManager):
             def finalizer():
                 cp.cuda.runtime.free(device_ptr)
                 print(f"Free'd allocated memory using {type(self).__name__}.")
+
             return finalizer
 
         return MemoryPointer(device_ptr, size, finalizer=create_finalizer())
 
+
 shape = 512, 256, 512
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
 # Forward FFT along (0,1), batched along axis=2 with user-provided memory allocator.
-b = nvmath.fft.fft(a, axes=axes, options={'allocator': RawCUDAMemoryManager(a.device.id)})
+b = nvmath.fft.fft(a, axes=axes, options={"allocator": RawCUDAMemoryManager(a.device.id)})
 
 # Synchronize the default stream
 cp.cuda.get_current_stream().synchronize()

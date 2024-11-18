@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -54,8 +54,8 @@ ctypedef enum cublasAtomicsMode_t "cublasAtomicsMode_t":
     CUBLAS_ATOMICS_ALLOWED "CUBLAS_ATOMICS_ALLOWED" = 1
 
 ctypedef enum cublasGemmAlgo_t "cublasGemmAlgo_t":
-    CUBLAS_GEMM_DFALT "CUBLAS_GEMM_DFALT" = -1
-    CUBLAS_GEMM_DEFAULT "CUBLAS_GEMM_DEFAULT" = -1
+    CUBLAS_GEMM_DFALT "CUBLAS_GEMM_DFALT" = -(1)
+    CUBLAS_GEMM_DEFAULT "CUBLAS_GEMM_DEFAULT" = -(1)
     CUBLAS_GEMM_ALGO0 "CUBLAS_GEMM_ALGO0" = 0
     CUBLAS_GEMM_ALGO1 "CUBLAS_GEMM_ALGO1" = 1
     CUBLAS_GEMM_ALGO2 "CUBLAS_GEMM_ALGO2" = 2

@@ -5,6 +5,7 @@
 """
 This set of tests checks basic properties of separated planning.
 """
+
 import re
 import nvmath
 from nvmath.linalg.advanced import Matmul, MatmulPlanPreferences
@@ -28,16 +29,14 @@ from .utils import *
 @pytest.mark.parametrize("iterations", (1, 5))
 @pytest.mark.parametrize("prune", (1, 5, 9))
 @pytest.mark.parametrize("use_cuda", (True, False))
-def test_autotuning(
-    framework, dtype, n, m, k, max_waves_count, iterations, prune, use_cuda
-):
+def test_autotuning(framework, dtype, n, m, k, max_waves_count, iterations, prune, use_cuda):
     a = sample_matrix(framework, dtype, (n, k), use_cuda)
     b = sample_matrix(framework, dtype, (k, m), use_cuda)
     c = sample_matrix(framework, dtype, (n, m), use_cuda)
     mm = Matmul(a, b, beta=0.7, c=c)
     with allow_cublas_unsupported(
         allow_invalid_value=False,
-        message=f"Unsupported configuration: {framework}-{dtype}-{n}-{m}-{k}-{max_waves_count}-{iterations}-{prune}-{use_cuda}."
+        message=f"Unsupported configuration: {framework}-{dtype}-{n}-{m}-{k}-{max_waves_count}-{iterations}-{prune}-{use_cuda}.",
     ):
         mm.plan(preferences=MatmulPlanPreferences(limit=9, max_waves_count=max_waves_count))
     num_algorithms = len(mm.algorithms)
@@ -99,11 +98,7 @@ def test_reduction_scheme():
     a = cupy.zeros((1000, 1000))
     b = cupy.zeros((1000, 1000))
     mm = Matmul(a, b)
-    algos = mm.plan(
-        preferences=MatmulPlanPreferences(
-            reduction_scheme_mask=cublaslt.ReductionScheme.NONE, limit=64
-        )
-    )
+    algos = mm.plan(preferences=MatmulPlanPreferences(reduction_scheme_mask=cublaslt.ReductionScheme.NONE, limit=64))
     assert not any(a.reduction_scheme for a in algos)
 
 
@@ -122,6 +117,7 @@ def test_capabilities():
         result = mm.execute()
         assert_tensors_equal(result, a @ b)
 
+
 @pytest.mark.parametrize("framework", ("numpy/cupy", "torch"))
 @pytest.mark.parametrize("serialize", (True, False))
 @pytest.mark.parametrize("use_cuda", (True, False))
@@ -131,6 +127,7 @@ def test_algorithms(framework, serialize, use_cuda):
     algos = mm.plan(preferences=MatmulPlanPreferences(limit=10))
     if serialize:
         import pickle
+
         algos = pickle.loads(pickle.dumps(algos))
     c = d = sample_matrix(framework, "float32", (20, 20), use_cuda)
 

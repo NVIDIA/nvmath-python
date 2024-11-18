@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 cimport cython
 
@@ -325,3 +325,4 @@ cpdef intptr_t create_const_bsr(int64_t brows, int64_t bcols, int64_t bnnz, int6
 cpdef intptr_t create_sliced_ell(int64_t rows, int64_t cols, int64_t nnz, int64_t sell_values_size, int64_t slice_size, intptr_t sell_slice_offsets, intptr_t sell_col_ind, intptr_t sell_values, int sell_slice_offsets_type, int sell_col_ind_type, int idx_base, int value_type) except? 0
 cpdef intptr_t create_const_sliced_ell(int64_t rows, int64_t cols, int64_t nnz, int64_t sell_values_size, int64_t slice_size, intptr_t sell_slice_offsets, intptr_t sell_col_ind, intptr_t sell_values, int sell_slice_offsets_type, int sell_col_ind_type, int idx_base, int value_type) except? 0
 cpdef sp_sv_update_matrix(intptr_t handle, intptr_t spsv_descr, intptr_t new_values, int update_part)
+cpdef sp_mv_preprocess(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg, intptr_t external_buffer)

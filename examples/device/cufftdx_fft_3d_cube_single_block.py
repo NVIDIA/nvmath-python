@@ -11,11 +11,13 @@ from numba import cuda
 from nvmath.device import fft, Dim3
 from common import random_complex
 
-def main():
 
+def main():
     fft_size = 16
 
-    FFT = fft(fft_type='c2c', size=fft_size, direction='forward', precision=np.float32, execution='Thread', compiler='numba')
+    FFT = fft(
+        fft_type="c2c", size=fft_size, direction="forward", precision=np.float32, execution="Thread", compiler="numba"
+    )
 
     block_dim = Dim3(fft_size, fft_size, 1)
     grid_dim = Dim3(1, 1, 1)
@@ -29,7 +31,6 @@ def main():
 
     @cuda.jit(link=FFT.files)
     def f(input, output):
-
         thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
         shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
 
@@ -81,7 +82,7 @@ def main():
         #     fast_copy_2x(thread_data, i, shared_mem, index)
         #     index += 2
         cuda.syncthreads()
-        index = (cuda.threadIdx.x + cuda.threadIdx.y * fft_size)
+        index = cuda.threadIdx.x + cuda.threadIdx.y * fft_size
         for i in range(elements_per_thread):
             thread_data[i] = shared_mem[index]
             index += stride_x
@@ -96,18 +97,19 @@ def main():
     input_d = cuda.to_device(input)
     output_d = cuda.to_device(output)
 
-    print("input [:2,:2,:2]:", input[:2,:2,:2])
+    print("input [:2,:2,:2]:", input[:2, :2, :2])
 
     f[grid_dim, block_dim, 0, shared_memory_size](input_d, output_d)
     cuda.synchronize()
 
     output_test = output_d.copy_to_host()
 
-    print("output [:10,:10]:", output_test[:2,:2,:2])
+    print("output [:10,:10]:", output_test[:2, :2, :2])
 
     output_ref = np.fft.fftn(input)
     error = np.linalg.norm(output_ref - output_test) / np.linalg.norm(output_ref)
     assert error < 1e-5
+
 
 if __name__ == "__main__":
     main()

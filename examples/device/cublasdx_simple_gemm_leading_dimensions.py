@@ -12,8 +12,8 @@ from nvmath.device import matmul, Dim3
 from common import random_real
 from common_numba import load_to_shared, store_from_shared
 
-def main():
 
+def main():
     m, n, k = 30, 31, 33
 
     lda, ldb, ldc = 32, 33, 31
@@ -21,29 +21,33 @@ def main():
     block_dim = Dim3(16, 16, 1)
 
     kwargs = {
-        'size':(m, n, k), 'precision':np.float64, 'data_type':'real', 'transpose_mode':('non_transposed', 'transposed'),
-        'execution':'Block', 'block_dim':block_dim, 'compiler':'numba'
+        "size": (m, n, k),
+        "precision": np.float64,
+        "data_type": "real",
+        "transpose_mode": ("non_transposed", "transposed"),
+        "execution": "Block",
+        "block_dim": block_dim,
+        "compiler": "numba",
     }
 
     MM_static_ld = matmul(**kwargs, leading_dimension=(lda, ldb, ldc))
     MM_runtime_ld = matmul(**kwargs)
 
-    value_type          = MM_static_ld.value_type
-    a_size              = MM_static_ld.a_size
-    b_size              = MM_static_ld.b_size
-    a_dim               = MM_static_ld.a_dim
-    b_dim               = MM_static_ld.b_dim
-    c_dim               = MM_static_ld.c_dim
-    block_size          = MM_static_ld.block_size
-    shared_memory_size  = MM_static_ld.shared_memory_size
+    value_type = MM_static_ld.value_type
+    a_size = MM_static_ld.a_size
+    b_size = MM_static_ld.b_size
+    a_dim = MM_static_ld.a_dim
+    b_dim = MM_static_ld.b_dim
+    c_dim = MM_static_ld.c_dim
+    block_size = MM_static_ld.block_size
+    shared_memory_size = MM_static_ld.shared_memory_size
 
     @cuda.jit(link=MM_static_ld.files)
     def f_static_ld(alpha, a, b, beta, c, output):
-
         smem = cuda.shared.array(shape=(0,), dtype=value_type)
         smem_a = smem[0:]
         smem_b = smem[a_size:]
-        smem_c = smem[a_size+b_size:]
+        smem_c = smem[a_size + b_size :]
 
         load_to_shared(a, smem_a, a_dim, lda)
         load_to_shared(b, smem_b, b_dim, ldb)
@@ -59,11 +63,10 @@ def main():
 
     @cuda.jit(link=MM_runtime_ld.files)
     def f_runtime_ld(alpha, a, lda, b, ldb, beta, c, ldc, output):
-
         smem = cuda.shared.array(shape=(0,), dtype=value_type)
         smem_a = smem[0:]
         smem_b = smem[a_size:]
-        smem_c = smem[a_size+b_size:]
+        smem_c = smem[a_size + b_size :]
 
         load_to_shared(a, smem_a, a_dim, lda)
         load_to_shared(b, smem_b, b_dim, ldb)
@@ -103,6 +106,7 @@ def main():
         error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
         print(error)
         assert error < 1e-5
+
 
 if __name__ == "__main__":
     main()

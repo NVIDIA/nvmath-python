@@ -6,33 +6,44 @@
 Interface class to encapsulate low-level calls to get algorithm configuration information.
 """
 
-__all__ = ['AlgoConfigInterface']
+__all__ = ["AlgoConfigInterface"]
 
 from collections import namedtuple
 
 import numpy as np
 
 from nvmath.bindings import cublasLt as cublaslt
-from nvmath.linalg._internal.algo_utils import algorithm_dtype
-from .enum_to_tuples import CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE, MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE, MATMUL_TILE_TO_ENUM, ENUM_TO_MATMUL_TILE
+from .enum_to_tuples import (
+    CLUSTER_SHAPE_TO_ENUM,
+    ENUM_TO_CLUSTER_SHAPE,
+    MATMUL_STAGE_TO_ENUM,
+    ENUM_TO_MATMUL_STAGE,
+    MATMUL_TILE_TO_ENUM,
+    ENUM_TO_MATMUL_TILE,
+)
 
 ConfigEnum = cublaslt.MatmulAlgoConfigAttribute
 
+
 def scalar_attributes():
-   return [e.name for e in ConfigEnum]
+    return [e.name for e in ConfigEnum]
+
 
 CAP_ENUM_SCALAR_ATTR = scalar_attributes()
 
 # Special Handling.
-Maps = namedtuple("Maps", ['to_enumerator', 'to_value'])
-SPECIAL_ATTR = {'CLUSTER_SHAPE_ID': Maps(CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE), 'STAGES_ID': Maps(MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE), 'TILE_ID': Maps(MATMUL_TILE_TO_ENUM, ENUM_TO_MATMUL_TILE)}
+Maps = namedtuple("Maps", ["to_enumerator", "to_value"])
+SPECIAL_ATTR = {
+    "CLUSTER_SHAPE_ID": Maps(CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE),
+    "STAGES_ID": Maps(MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE),
+    "TILE_ID": Maps(MATMUL_TILE_TO_ENUM, ENUM_TO_MATMUL_TILE),
+}
+
 
 class AlgoConfigInterface:
-
     def __init__(self, algorithm):
-        """
-        """
-        assert algorithm.dtype == algorithm_dtype, "Internal error."
+        """ """
+        assert isinstance(algorithm, cublaslt.MatmulHeuristicResult), "Internal error."
         self.algorithm = algorithm
 
     def __getattr__(self, name):
@@ -43,7 +54,13 @@ class AlgoConfigInterface:
         get_dtype = cublaslt.get_matmul_algo_config_attribute_dtype
         attribute_buffer = np.zeros((1,), dtype=get_dtype(ConfigEnum[name]))
         size_written = np.zeros((1,), dtype=np.uint64)
-        cublaslt.matmul_algo_config_get_attribute(self.algorithm['algorithm'].ctypes.data, ConfigEnum[name].value, attribute_buffer.ctypes.data, attribute_buffer.itemsize, size_written.ctypes.data)
+        cublaslt.matmul_algo_config_get_attribute(
+            self.algorithm["algo"].ctypes.data,
+            ConfigEnum[name].value,
+            attribute_buffer.ctypes.data,
+            attribute_buffer.itemsize,
+            size_written.ctypes.data,
+        )
 
         if name not in SPECIAL_ATTR:
             return attribute_buffer[0]
@@ -62,4 +79,9 @@ class AlgoConfigInterface:
         get_dtype = cublaslt.get_matmul_algo_config_attribute_dtype
         attribute_buffer = np.zeros((1,), dtype=get_dtype(ConfigEnum[name]))
         attribute_buffer[0] = value
-        cublaslt.matmul_algo_config_set_attribute(self.algorithm['algorithm'].ctypes.data, ConfigEnum[name].value, attribute_buffer.ctypes.data, attribute_buffer.itemsize)
+        cublaslt.matmul_algo_config_set_attribute(
+            self.algorithm["algo"].ctypes.data,
+            ConfigEnum[name].value,
+            attribute_buffer.ctypes.data,
+            attribute_buffer.itemsize,
+        )

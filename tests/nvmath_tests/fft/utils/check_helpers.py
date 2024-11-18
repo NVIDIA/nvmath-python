@@ -2,23 +2,30 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union, Optional, List
 from itertools import accumulate
 import math
 import numpy as np
-import cupy as cp
+
+try:
+    import cupy as cp
+
+    CP_NDARRAY = cp.ndarray
+except ImportError:
+    cp = CP_NDARRAY = None
+
 try:
     import torch
-except:
+except ImportError:
     torch = None
 
 import nvmath
 
-from .common_axes import Framework, DType, ShapeKind
+from .common_axes import ExecBackend, MemBackend, Framework, DType, ShapeKind, OptFftType
 from .axes_utils import (
     TORCH_TENSOR,
     get_framework_dtype,
     get_fft_dtype,
+    get_ifft_dtype,
     is_complex,
     is_array,
     size_of,
@@ -30,8 +37,10 @@ from .axes_utils import (
 
 _cufft_version = None
 
+
 def _get_cufft_version():
-    from nvmath.bindings import cufft as _cufft
+    from nvmath.bindings import cufft as _cufft  # type: ignore
+
     return _cufft.get_version()
 
 
@@ -42,13 +51,16 @@ def get_cufft_version():
     return _cufft_version
 
 
+def r2c_shape(shape, axes=None):
+    out_shape = list(shape)
+    last_fft_axis = (len(shape) - 1) if axes is None else axes[-1]
+    out_shape[last_fft_axis] = shape[last_fft_axis] // 2 + 1
+    return tuple(out_shape)
+
+
 def slice_r2c(fft, axes=None):
-    ndim = fft.ndim
-    last_fft_axis = ndim - 1 if axes is None else axes[-1]
-    last_slice = slice(None, fft.shape[last_fft_axis] // 2 + 1)
-    slices = tuple(
-        slice(None) if i != last_fft_axis else last_slice for i in range(ndim)
-    )
+    out_shape = r2c_shape(fft.shape, axes=axes)
+    slices = tuple(slice(extent) for extent in out_shape)
     return fft[slices]
 
 
@@ -74,7 +86,7 @@ def get_numpy_fft_ref(
 
 
 def get_cupy_fft_ref(
-    sample: cp.ndarray,
+    sample: CP_NDARRAY,
     axes=None,
     norm=None,
 ):
@@ -95,6 +107,7 @@ def get_torch_fft_ref(
     assert get_framework_from_array(sample) == Framework.torch
 
     dtype = get_dtype_from_array(sample)
+    mem_backend = get_array_backend(sample)
     # torch does not implement half precision fft
     if dtype == DType.complex32:
         in_sample = sample.type(torch.complex64)
@@ -103,10 +116,22 @@ def get_torch_fft_ref(
     else:
         in_sample = sample
 
-    ref = torch.fft.fftn(in_sample, dim=axes, norm=norm)
-
-    if not is_complex(dtype):
-        ref = slice_r2c(ref, axes=axes)
+    # Workaround for bug in torch CPU fftn that leads to a crash
+    # for larger 3D ffts with interleaved batch
+    if (
+        mem_backend == MemBackend.cpu
+        and axes is not None
+        and len(axes) >= 3
+        and len(sample.shape) > 3
+        and max(axes) <= 2
+    ):
+        np_sample = np.array(in_sample)
+        np_ref = get_numpy_fft_ref(np_sample, axes=axes, norm=norm)
+        ref = torch.tensor(np_ref)
+    else:
+        ref = torch.fft.fftn(in_sample, dim=axes, norm=norm)
+        if not is_complex(dtype):
+            ref = slice_r2c(ref, axes=axes)
 
     if dtype in [DType.complex32, DType.float16]:
         assert_eq(ref.dtype, torch.complex64)
@@ -117,8 +142,8 @@ def get_torch_fft_ref(
 
 
 def get_fft_ref(
-    sample: Union[np.ndarray, cp.ndarray, TORCH_TENSOR],
-    axes: Optional[List] = None,
+    sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR,
+    axes: list | None = None,
     norm=None,
 ):
     if axes is not None:
@@ -134,22 +159,68 @@ def get_fft_ref(
         raise ValueError(f"Unknown framework {get_framework_from_array(sample)}")
 
 
-def get_scaled(sample: Union[np.ndarray, cp.ndarray, TORCH_TENSOR], scale):
+def get_ifft_ref(
+    sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR,
+    axes: list | None = None,
+    is_c2c=True,
+    last_axis_parity=None,
+    norm="forward",
+):
+    framework = get_framework_from_array(sample)
+    mem_backend = get_array_backend(sample)
+    dtype = get_dtype_from_array(sample)
+    out_dtype = get_ifft_dtype(dtype, fft_type=OptFftType.c2c if is_c2c else OptFftType.c2r)
+
+    if is_c2c:
+        out_shape, fft_out_shape = None, None
+    else:
+        assert last_axis_parity in ("odd", "even")
+        shape = tuple(sample.shape)
+        if axes is None:
+            last_axis = len(shape) - 1
+        else:
+            assert isinstance(axes, tuple | list)
+            assert len(axes)
+            last_axis = axes[-1]
+        out_last_axis_size = (2 * shape[last_axis] - 2) if last_axis_parity == "even" else (2 * shape[last_axis] - 1)
+        out_shape = tuple(e if a != last_axis else out_last_axis_size for a, e in enumerate(shape))
+        fft_out_shape = out_shape if axes is None else tuple(out_shape[a] for a in axes)
+
+    if get_framework_from_array(sample) == Framework.numpy:
+        fn = np.fft.ifftn if is_c2c else np.fft.irfftn
+        ret = fn(sample, s=fft_out_shape, axes=axes, norm=norm)
+        ret_dtype = get_dtype_from_array(ret)
+        if out_dtype != ret_dtype:
+            assert is_complex(ret_dtype) == is_complex(out_dtype), f"{ret_dtype} vs {out_dtype}"
+            assert size_of(ret_dtype) >= size_of(out_dtype)
+            ret = ret.astype(get_framework_dtype(Framework.numpy, out_dtype))
+    elif get_framework_from_array(sample) == Framework.cupy:
+        fn = cp.fft.ifftn if is_c2c else cp.fft.irfftn
+        ret = fn(sample, s=fft_out_shape, axes=axes, norm=norm)
+    elif get_framework_from_array(sample) == Framework.torch:
+        fn = torch.fft.ifftn if is_c2c else torch.fft.irfftn
+        ret = fn(sample, s=fft_out_shape, norm=norm, dim=axes)
+    else:
+        raise ValueError(f"Unknown framework {get_framework_from_array(sample)}")
+
+    assert_array_type(ret, framework, mem_backend, out_dtype)
+    return ret
+
+
+def get_scaled(sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR, scale):
     sample_scaled = sample * scale
     if sample_scaled.dtype != sample.dtype:
         sample_scaled = sample_scaled.astype(sample.dtype)
     return sample_scaled
 
 
-def get_transposed(
-    sample: Union[np.ndarray, cp.ndarray, TORCH_TENSOR], d1: int, d2: int
-):
+def get_transposed(sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR, d1: int, d2: int):
     framework = get_framework_from_array(sample)
     if framework == Framework.torch:
         return sample.transpose(d1, d2)
     else:
         swap = {d1: d2, d2: d1}
-        transpose_axes = [i if i not in swap else swap[i] for i in range(sample.ndim)]
+        transpose_axes = [swap.get(i, i) for i in range(sample.ndim)]
         return sample.transpose(transpose_axes)
 
 
@@ -162,13 +233,54 @@ def use_stream(stream):
         raise ValueError(f"Unknown stream type {type(stream)}")
 
 
-def get_array_device_id(array: Union[cp.ndarray, TORCH_TENSOR]) -> int:
-    if isinstance(array, cp.ndarray):
+def get_array_device_id(array) -> int:
+    if CP_NDARRAY is not None and isinstance(array, CP_NDARRAY):
         return array.device.id
-    elif isinstance(array, TORCH_TENSOR):
+    elif TORCH_TENSOR is not None and isinstance(array, TORCH_TENSOR):
         return array.device.index
     else:
         raise ValueError(f"Unknown device array type {array}")
+
+
+def get_raw_ptr(array) -> int:
+    framework = get_framework_from_array(array)
+    if framework == Framework.torch:
+        return array.data_ptr()
+    elif framework == Framework.numpy:
+        return array.ctypes.data
+    else:
+        assert framework == Framework.cupy
+        return array.data.ptr
+
+
+def to_gpu(array, device_id: int | None = None):
+    framework = get_framework_from_array(array)
+    if framework == Framework.torch:
+        device = "cuda" if device_id is None else f"cuda:{device_id}"
+        return array.to(device)
+    elif framework == Framework.numpy:
+        if device_id is None:
+            return cp.array(array)
+        else:
+            with cp.cuda.Device(device_id):
+                return cp.array(array)
+    else:
+        assert framework == Framework.cupy
+        assert device_id is None
+        return cp.asnumpy(array)
+
+
+def as_type(array, dtype: DType):
+    if get_dtype_from_array(array) == dtype:
+        return array
+    framework = get_framework_from_array(array)
+    if framework == Framework.torch:
+        ret = array.type(get_framework_dtype(framework, dtype))
+    else:
+        ret = array.astype(get_framework_dtype(framework, dtype))
+    ret_dtype = get_dtype_from_array(ret)
+    assert ret_dtype == dtype, f"{ret_dtype} vs {dtype}"
+    return ret
 
 
 def record_event(stream):
@@ -181,12 +293,12 @@ def record_event(stream):
 
 
 def assert_all_close(a, b, rtol, atol):
-    assert type(a) == type(b), f"{type(a)}!= {type(b)}"
+    assert type(a) is type(b), f"{type(a)}!= {type(b)}"
     if isinstance(a, np.ndarray):
         return np.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
-    elif isinstance(a, cp.ndarray):
+    elif CP_NDARRAY is not None and isinstance(a, CP_NDARRAY):
         return cp.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
-    elif isinstance(a, TORCH_TENSOR):
+    elif TORCH_TENSOR is not None and isinstance(a, TORCH_TENSOR):
         return torch.testing.assert_close(a, b, rtol=rtol, atol=atol)
     else:
         raise ValueError(f"Unknown array type {a}")
@@ -201,23 +313,27 @@ def get_ifft_c2r_options(out_type, last_axis_size):
     }
 
 
-def get_default_tolerance(dtype: DType, shape_kind : Optional[ShapeKind]):
+def get_default_tolerance(dtype: DType, shape_kind: ShapeKind | None, exec_backend: ExecBackend | None):
+    module = cp or np
     dtype_bytes_num = size_of(dtype)
     if is_complex(dtype):
         dtype_bytes_num //= 2
     if dtype_bytes_num == 2:
-        return 1e-2, cp.finfo(cp.float16).eps
+        return 1e-2, module.finfo(module.float16).eps
     elif dtype_bytes_num == 4:
-        return 1e-6, cp.finfo(cp.float32).eps
+        atol = module.finfo(module.float32).eps
+        if exec_backend == ExecBackend.fftw:
+            return 4e-6, atol
+        else:
+            return 1e-6, atol
     elif dtype_bytes_num == 8:
-        atol = cp.finfo(cp.float64).eps
+        atol = module.finfo(module.float64).eps
         if shape_kind is None or shape_kind in (ShapeKind.pow2, ShapeKind.pow2357):
             return 1e-14, atol
         # The differences between the cufft and the ref for double precision
         # tensors seem to be bigger if shape comprises larger primes,
         # especially in older CTKs
-        cufft_version = get_cufft_version()
-        if cufft_version >= 10702:  # shipped with CTK 11.7
+        if exec_backend == ExecBackend.cufft and get_cufft_version() >= 10702:  # shipped with CTK 11.7
             return 3e-14, atol
         else:
             return 1e-12, atol
@@ -225,11 +341,20 @@ def get_default_tolerance(dtype: DType, shape_kind : Optional[ShapeKind]):
         raise ValueError(f"Unexpected dtype {dtype}")
 
 
-def get_array_strides(a: Union[np.ndarray, cp.ndarray, TORCH_TENSOR]):
-    if isinstance(a, (np.ndarray, cp.ndarray)):
+def get_array_strides(a: np.ndarray | CP_NDARRAY | TORCH_TENSOR):
+    nd_types = tuple(t for t in (np.ndarray, CP_NDARRAY) if t is not None)
+    if isinstance(a, nd_types):
         return a.strides
     else:
         return a.stride()
+
+
+def get_array_element_strides(a: np.ndarray | CP_NDARRAY | TORCH_TENSOR):
+    strides = get_array_strides(a)
+    if get_framework_from_array(a) not in (Framework.numpy, Framework.cupy):
+        return tuple(strides)
+    assert all(s % a.itemsize == 0 for s in strides)
+    return tuple(s // a.itemsize for s in strides)
 
 
 def get_dense_strides(shape):
@@ -288,6 +413,32 @@ def array_all(a):
     return framework_module.all(a)
 
 
+def get_abs(a):
+    framework = get_framework_from_array(a)
+    framework_module = get_framework_module(framework)
+    return framework_module.abs(a)
+
+
+def get_decreasing_stride_order(shape, strides):
+    d = len(shape)
+    assert len(strides) == d
+    return tuple(i for _, _, i in sorted(zip(strides, shape, range(d), strict=True), reverse=True))
+
+
+def permute_copy_like(a, ref_shape, ref_strides):
+    assert a.shape == ref_shape, f"{a.shape} vs {ref_shape}"
+    axis_order = get_decreasing_stride_order(ref_shape, ref_strides)
+    b = get_permuted_copy(a, axis_order)
+    ret = get_permuted(b, get_rev_perm(axis_order))
+    ret_dtype = get_dtype_from_array(ret)
+    a_dtype = get_dtype_from_array(a)
+    assert ret_dtype == a_dtype, f"{ret.dtype} vs {a_dtype}"
+    assert ret.shape == ref_shape, f"{ret.shape} vs {ref_shape}"
+    ret_strides = get_array_element_strides(ret)
+    assert ret_strides == ref_strides, f"{ret_strides} vs {ref_strides}"
+    return ret
+
+
 def copy_array(a):
     if get_framework_from_array(a) != Framework.torch:
         return a.copy()
@@ -296,11 +447,9 @@ def copy_array(a):
             return a.contiguous()
         else:
             return a.clone()
-    
 
-def get_permuted(
-    sample: Union[np.ndarray, cp.ndarray, TORCH_TENSOR], permutation
-):
+
+def get_permuted(sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR, permutation):
     framework = get_framework_from_array(sample)
     if framework == Framework.torch:
         return torch.permute(sample, permutation)
@@ -308,9 +457,7 @@ def get_permuted(
         return sample.transpose(permutation)
 
 
-def get_permuted_copy(
-    sample: Union[np.ndarray, cp.ndarray, TORCH_TENSOR], permutation
-):
+def get_permuted_copy(sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR, permutation):
     framework = get_framework_from_array(sample)
     if framework == Framework.torch:
         return torch.permute_copy(sample, permutation)
@@ -328,15 +475,30 @@ def add_in_place(sample, addend):
 
 
 def free_cupy_pool():
-    import cupy
-    cupy.get_default_memory_pool().free_all_blocks()
+    if cp is not None:
+        cp.get_default_memory_pool().free_all_blocks()
+
+
+def free_torch_pool():
+    if torch is not None:
+        torch.cuda.empty_cache()
+
+
+def free_framework_pools(framework, mem_backend):
+    if mem_backend != MemBackend.cuda:
+        free_cupy_pool()
+        free_torch_pool()
+    elif framework != Framework.cupy:
+        free_cupy_pool()
+    elif framework != Framework.torch:
+        free_torch_pool()
 
 
 def get_rev_perm(permutation):
     return tuple(np.argsort(permutation))
 
 
-def unfold(array : Union[np.ndarray, cp.ndarray, TORCH_TENSOR], dim, window_size, step):
+def unfold(array: np.ndarray | CP_NDARRAY | TORCH_TENSOR, dim, window_size, step):
     framework = get_framework_from_array(array)
     if framework == Framework.torch:
         return array.unfold(dim, window_size, step)
@@ -357,7 +519,7 @@ def unfold(array : Union[np.ndarray, cp.ndarray, TORCH_TENSOR], dim, window_size
         return module.lib.stride_tricks.as_strided(array, new_shape, new_strides)
 
 
-def as_strided(array : Union[np.ndarray, cp.ndarray, TORCH_TENSOR], shape, strides):
+def as_strided(array: np.ndarray | CP_NDARRAY | TORCH_TENSOR, shape, strides):
     framework = get_framework_from_array(array)
     if framework == Framework.torch:
         return torch.as_strided(array, shape, strides)
@@ -381,7 +543,15 @@ def arg_max(a):
     return framework_module.argmax(a)
 
 
-def assert_norm_close(a, a_ref, rtol=None, atol=None, axes=None, shape_kind=None):
+def assert_norm_close(
+    a,
+    a_ref,
+    rtol=None,
+    atol=None,
+    axes=None,
+    shape_kind=None,
+    exec_backend=None,
+):
     assert a.shape == a_ref.shape, f"{a.shape} != {a_ref.shape}"
     assert get_framework_from_array(a) == get_framework_from_array(
         a_ref
@@ -390,7 +560,7 @@ def assert_norm_close(a, a_ref, rtol=None, atol=None, axes=None, shape_kind=None
     ref_dtype = get_dtype_from_array(a_ref)
     assert dtype == ref_dtype, f"{dtype} != {ref_dtype}"
     if rtol is None or atol is None:
-        rtol_default, atol_default = get_default_tolerance(dtype, shape_kind)
+        rtol_default, atol_default = get_default_tolerance(dtype, shape_kind, exec_backend)
         rtol = rtol if rtol is not None else rtol_default
         atol = atol if atol is not None else atol_default
     dist = get_norm(a - a_ref, axes=axes)
@@ -413,12 +583,21 @@ def assert_norm_close(a, a_ref, rtol=None, atol=None, axes=None, shape_kind=None
         )
 
 
-def assert_array_type(
-    a: Union[np.ndarray, cp.ndarray, TORCH_TENSOR], framework, backend, dtype
-):
+def assert_array_type(a: np.ndarray | CP_NDARRAY | TORCH_TENSOR, framework, mem_backend, dtype):
     assert_eq(get_framework_from_array(a), framework)
-    assert_eq(get_array_backend(a), backend)
+    assert_eq(get_array_backend(a), mem_backend)
     assert_eq(get_framework_dtype(framework, dtype), a.dtype)
+
+
+def assert_array_equal(a, ref):
+    framework = get_framework_from_array(a)
+    if framework == Framework.numpy:
+        np.testing.assert_array_equal(a, ref)
+    elif framework == Framework.cupy:
+        cp.testing.assert_array_equal(a, ref)
+    else:
+        assert framework == Framework.torch
+        assert torch.equal(a, ref), f"{a} != {ref}"
 
 
 def assert_eq(value, value_ref):
@@ -426,7 +605,7 @@ def assert_eq(value, value_ref):
 
 
 def intercept_xt_exec_device_id(monkeypatch):
-    from nvmath.bindings import cufft
+    from nvmath.bindings import cufft  # type: ignore
 
     ctx = {"current_device_xt_exec": None}
     actual_xt_exec = cufft.xt_exec
@@ -445,7 +624,6 @@ def intercept_device_id(monkeypatch, *calls):
     device_ids = {name: None for _, name in calls}
 
     def intercept(module, name):
-
         actual_method = getattr(module, name)
 
         def wrapper(*args, **kwargs):
@@ -484,9 +662,7 @@ def intercept_default_allocations(monkeypatch):
         (_CupyCUDAMemoryManager, "cupy"),
         (_TorchCUDAMemoryManager, "torch"),
     ):
-        monkeypatch.setattr(
-            manager, "memalloc", get_memalloc_wrapper(manager, alloc_key)
-        )
+        monkeypatch.setattr(manager, "memalloc", get_memalloc_wrapper(manager, alloc_key))
 
     return allocations
 
@@ -497,7 +673,7 @@ def check_layout_fallback(data, axes, cb):
     except nvmath.fft.UnsupportedLayoutError as e:
         # Note, there is a catch with repeated-strides tensors in torch:
         # using the `torch.permute` -> `copy`/`contiguous` is not enough,
-        # e.g. (64, 1) : (1, 1) --permute((1, 0))--> (1, 64) : (1, 1) 
+        # e.g. (64, 1) : (1, 1) --permute((1, 0))--> (1, 64) : (1, 1)
         # --clone/contiguous--> (1, 64) : (1, 1) <- the second stride remains 1!
         # User needs to call torch.permute_copy or
         # t = torch.permute(t, ) -> t.view(t.shape) -> t.copy/contiguous
@@ -506,13 +682,32 @@ def check_layout_fallback(data, axes, cb):
         res_transposed = cb(data_transposed, e.axes)
         return get_permuted_copy(res_transposed, get_rev_perm(e.permutation))
     else:
-        assert False, "The call was expected to raise unsupported layout error"
+        raise AssertionError("The call was expected to raise unsupported layout error")
 
 
-def should_skip_3d_unsupported(shape, axes=None):
+def should_skip_3d_unsupported(exec_backend, shape, axes=None):
+    assert isinstance(exec_backend, ExecBackend), f"{exec_backend}"
     return (
-        get_cufft_version() < 10502
+        exec_backend == ExecBackend.cufft
+        and get_cufft_version() < 10502
         and axes is not None
         and len(axes) == 3
         and math.prod(shape[a] for a in range(len(shape)) if a not in axes) > 1
+    )
+
+
+def extent_comprises_only_small_factors(extent):
+    # fast track for powers of 2 (and zero)
+    if extent & (extent - 1) == 0:
+        return True
+
+    for k in range(2, 128):
+        while extent % k == 0:
+            extent //= k
+    return extent == 1
+
+
+def has_only_small_factors(shape, axes=None):
+    return all(
+        extent_comprises_only_small_factors(extent) for a, extent in enumerate(shape) if axes is None or a in axes
     )

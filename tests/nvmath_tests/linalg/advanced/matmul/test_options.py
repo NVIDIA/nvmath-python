@@ -8,6 +8,13 @@ from nvmath.linalg.advanced import matmul, Matmul, MatmulOptions
 from .utils import *
 import pytest
 import logging
+import pytest
+
+try:
+    import cupy_backends.cuda
+except ModuleNotFoundError:
+    pytest.skip("cupy is required for matmul tests", allow_module_level=True)
+
 
 try:
     import torch
@@ -110,9 +117,7 @@ def test_memory_limit_parsing(memory_limit, expected_result):
 
     device = MockDevice(1000)
     if isinstance(expected_result, int):
-        assert expected_result == nvmath._internal.utils.get_memory_limit(
-            memory_limit, device
-        )
+        assert expected_result == nvmath._internal.utils.get_memory_limit(memory_limit, device)
     else:
         if isinstance(expected_result, tuple):
             exception, pattern = expected_result
@@ -143,9 +148,7 @@ def test_memory_limit_filtering():
 
     all_memory = get_memory_requirements(Matmul(a, b).plan())
 
-    filtered = get_memory_requirements(
-        Matmul(a, b, options=MatmulOptions(memory_limit="1 b")).plan()
-    )
+    filtered = get_memory_requirements(Matmul(a, b, options=MatmulOptions(memory_limit="1 b")).plan())
 
     assert max(filtered) < max(all_memory)
 
@@ -236,6 +239,7 @@ def test_uninstantiated_allocator():
     except TypeError:
         pass
 
+
 def test_device_id():
     """
     Tests if specifying a device id works as expected.
@@ -249,5 +253,5 @@ def test_invalid_device_id():
     Tests if specifying negative device id raises an error
     """
     options = MatmulOptions(device_id=-1)
-    with pytest.raises(RuntimeError):
+    with pytest.raises((RuntimeError, cupy_backends.cuda.api.runtime.CUDARuntimeError), match="device"):
         check_matmul_with_options(10, options)

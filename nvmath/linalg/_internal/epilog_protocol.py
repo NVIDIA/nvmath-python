@@ -2,10 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-""" Internal interface for epilog input handling.
-"""
+"""Internal interface for epilog input handling."""
 
-__all__ = ['EPILOG_INPUT_HANDLERS_MAP', 'EPILOG_OUTPUT_HANDLERS_MAP', 'BiasHandler', 'BgradHandler', 'ReluAuxHandler', 'DReluAuxHandler', 'GeluAuxHandler', 'DGeluAuxHandler', 'EpilogInputHandler', 'EpilogOutputHandler']
+__all__ = [
+    "EPILOG_INPUT_HANDLERS_MAP",
+    "EPILOG_OUTPUT_HANDLERS_MAP",
+    "BiasHandler",
+    "BgradHandler",
+    "ReluAuxHandler",
+    "DReluAuxHandler",
+    "GeluAuxHandler",
+    "DGeluAuxHandler",
+    "EpilogInputHandler",
+    "EpilogOutputHandler",
+]
 
 from abc import abstractmethod
 import math
@@ -16,6 +26,7 @@ from nvmath._internal import typemaps
 from nvmath.linalg._internal.utils import axis_order_in_memory, calculate_strides, check_batch_tileable
 
 Epilog = cublaslt.Epilogue
+
 
 @runtime_checkable
 class EpilogInputHandler(Protocol):
@@ -116,12 +127,17 @@ class EpilogOutputHandler(Protocol):
 
 
 class BiasHandler(EpilogInputHandler):
-
     def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
 
-        assert enumerator in [Epilog.BIAS, Epilog.RELU_BIAS, Epilog.RELU_AUX_BIAS, Epilog.GELU_BIAS, Epilog.GELU_AUX_BIAS], "Internal error."
+        assert enumerator in [
+            Epilog.BIAS,
+            Epilog.RELU_BIAS,
+            Epilog.RELU_AUX_BIAS,
+            Epilog.GELU_BIAS,
+            Epilog.GELU_AUX_BIAS,
+        ], "Internal error."
         self.enumerator = enumerator
 
         self.d_dtype_name = d_dtype_name
@@ -168,24 +184,32 @@ class BiasHandler(EpilogInputHandler):
 
         # Check if the bias_tensor batch shape and axis order match that of the MM, and it's tileable.
         if len(bias_batch_shape) > 0 and bias_batch_shape != mm_traits.batch_shape:
-            raise ValueError(f"The batch dimensions of the bias {bias_batch_shape} must match with that of the matrix multiplication definition {mm_traits.batch_shape}.")
+            raise ValueError(
+                f"The batch dimensions of the bias {bias_batch_shape} must match with that of the matrix multiplication definition {mm_traits.batch_shape}."
+            )
 
         if len(bias_batch_shape) > 0:
             if self.version < 11703:
-                raise ValueError(f"Batch dimensions are not supported for the bias tensor in cuBLASLt version < 11703 (you have version {self.version}).")
+                raise ValueError(
+                    f"Batch dimensions are not supported for the bias tensor in cuBLASLt version < 11703 (you have version {self.version})."
+                )
 
             bias_batch_axis_order = axis_order_in_memory(bias_batch_strides)
             if bias_batch_axis_order != mm_traits.batch_axis_order:
-                raise ValueError(f"The batch axis order of the bias {bias_batch_axis_order} must match with that of the other operands {mm_traits.batch_axis_order}.")
+                raise ValueError(
+                    f"The batch axis order of the bias {bias_batch_axis_order} must match with that of the other operands {mm_traits.batch_axis_order}."
+                )
 
             if not check_batch_tileable(bias_batch_shape, bias_batch_strides):
                 message = f"The batch layout for bias corresponding to shape = {bias_batch_shape} and strides = {bias_batch_strides} is currently not supported because it is not tileable."
                 raise ValueError(message)
 
         if bias_mm_strides[0] != 1:
-            raise ValueError(f"The stride of the bias {bias_strides} must be 1 along the dimension {len(bias_strides) - 2}, which corresponds to the M dimension.")
+            raise ValueError(
+                f"The stride of the bias {bias_strides} must be 1 along the dimension {len(bias_strides) - 2}, which corresponds to the M dimension."
+            )
 
-        self.batch_offset = min(bias_batch_strides) if bias_batch_strides else 0    # bias broadcast
+        self.batch_offset = min(bias_batch_strides) if bias_batch_strides else 0  # bias broadcast
 
     def update(self, mm_desc_ifc, bias_tensor):
         # Set the bias pointer.
@@ -195,20 +219,24 @@ class BiasHandler(EpilogInputHandler):
         # Set the bias data type.
         if bias_tensor.dtype != self.d_dtype_name:
             if self.version < 111103:
-                raise ValueError(f"The bias tensor dtype '{bias_tensor.dtype}' must be the same as the result dtype '{self.d_dtype_name}' in cuBLASLt version < 111103 (you have {self.version}).")
+                raise ValueError(
+                    f"The bias tensor dtype '{bias_tensor.dtype}' must be the same as the result dtype '{self.d_dtype_name}' in cuBLASLt version < 111103 (you have {self.version})."
+                )
             mm_desc_ifc.bias_data_type = typemaps.NAME_TO_DATA_TYPE[bias_tensor.dtype]
 
 
 def round_up(m, base):
-    return m + (base - m ) % base
+    return m + (base - m) % base
+
 
 def relu_aux_mm_shape(m, n):
     """
-    Return the RELU auxiliary bitmask matrix shape when stored as int8 and M is padded to 128-bit/16-byte multiples.
+    Return the RELU auxiliary bitmask matrix shape when stored as uint8 and M is padded to 128-bit/16-byte multiples.
     """
     # Store bitflag mask using int8 dtype, padded to (128//8 ==) 16 bytes.
     m = round_up(math.ceil(m / 8), base=16)
     return m, n
+
 
 def gelu_aux_mm_shape(m, n):
     """
@@ -217,8 +245,8 @@ def gelu_aux_mm_shape(m, n):
     m = round_up(m, base=8)
     return m, n
 
-class ReluAuxHandler(EpilogOutputHandler):
 
+class ReluAuxHandler(EpilogOutputHandler):
     def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
@@ -231,13 +259,13 @@ class ReluAuxHandler(EpilogOutputHandler):
         m, n = relu_aux_mm_shape(mm_traits.M, mm_traits.N)
         batch_len = len(mm_traits.batch_axis_order)
 
-        self.aux_shape      =  mm_traits.batch_shape + [m, n]
-        aux_axis_order      = [batch_len, batch_len+1] + list(mm_traits.batch_axis_order)    # Column order for the bitmask.
-        self.aux_strides    = calculate_strides(self.aux_shape, aux_axis_order)
-        self.aux_dtype_name = "int8"
+        self.aux_shape = mm_traits.batch_shape + [m, n]
+        aux_axis_order = [batch_len, batch_len + 1] + list(mm_traits.batch_axis_order)  # Column order for the bitmask.
+        self.aux_strides = calculate_strides(self.aux_shape, aux_axis_order)
+        self.aux_dtype_name = "uint8"
 
         # We store bitmask using int8 dtype but the values below are in number of elements.
-        self.aux_ld = m * 8    # should be consistent with order (currently COL).
+        self.aux_ld = m * 8  # should be consistent with order (currently COL).
         self.aux_batch_offset = m * 8 * n
 
     @property
@@ -264,7 +292,6 @@ class ReluAuxHandler(EpilogOutputHandler):
 
 
 class GeluAuxHandler(EpilogOutputHandler):
-
     def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
@@ -279,12 +306,14 @@ class GeluAuxHandler(EpilogOutputHandler):
         m, n = gelu_aux_mm_shape(mm_traits.M, mm_traits.N)
         batch_len = len(mm_traits.batch_axis_order)
 
-        self.aux_shape      =  mm_traits.batch_shape + [m, n]
-        aux_axis_order      = [batch_len, batch_len+1] + list(mm_traits.batch_axis_order)    # Column order for the GELU inputs.
-        self.aux_strides    = calculate_strides(self.aux_shape, aux_axis_order)
+        self.aux_shape = mm_traits.batch_shape + [m, n]
+        aux_axis_order = [batch_len, batch_len + 1] + list(
+            mm_traits.batch_axis_order
+        )  # Column order for the GELU inputs.
+        self.aux_strides = calculate_strides(self.aux_shape, aux_axis_order)
         self.aux_dtype_name = d_dtype_name
 
-        self.aux_ld = m    # should be consistent with order (currently COL).
+        self.aux_ld = m  # should be consistent with order (currently COL).
         self.aux_batch_offset = m * n
 
     @property
@@ -312,7 +341,6 @@ class GeluAuxHandler(EpilogOutputHandler):
 
 
 class BgradHandler(EpilogOutputHandler):
-
     def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
@@ -322,7 +350,9 @@ class BgradHandler(EpilogOutputHandler):
 
         version = cublaslt.get_version()
         if mm_traits.K == 1 and enumerator in [Epilog.BGRADA, Epilog.BGRADB] and version < 120304:
-            raise ValueError(f"Epilog {enumerator.name} is not supported for K=1 in cuBLASLt version < 120304 (you have version {version}).")
+            raise ValueError(
+                f"K=1 is not supported for {enumerator.name} epilog in cuBLASLt version < 120304 (you have version {version})."
+            )
 
         self._name = enumerator.name.lower()
 
@@ -332,13 +362,15 @@ class BgradHandler(EpilogOutputHandler):
         self.bgrad_shape = shape = [m]
         if mm_traits.batch_shape:
             shape = shape + [1]
-            self.bgrad_shape      =  mm_traits.batch_shape + self.bgrad_shape + [1]
+            self.bgrad_shape = mm_traits.batch_shape + self.bgrad_shape + [1]
 
-        bgrad_axis_order      = [batch_len + a for a in range(len(shape))] + list(mm_traits.batch_axis_order)    # Column order.
-        self.bgrad_strides    = calculate_strides(self.bgrad_shape, bgrad_axis_order)
+        bgrad_axis_order = [batch_len + a for a in range(len(shape))] + list(
+            mm_traits.batch_axis_order
+        )  # Column order.
+        self.bgrad_strides = calculate_strides(self.bgrad_shape, bgrad_axis_order)
 
-        self.d_dtype_name       = d_dtype_name
-        self.bgrad_dtype_name   = d_dtype_name
+        self.d_dtype_name = d_dtype_name
+        self.bgrad_dtype_name = d_dtype_name
         self.bgrad_batch_offset = m
 
     @property
@@ -368,8 +400,8 @@ class BgradHandler(EpilogOutputHandler):
         # Set the bgrad pointer.
         mm_desc_ifc.bias_pointer = ptr
 
-class DReluAuxHandler(EpilogInputHandler):
 
+class DReluAuxHandler(EpilogInputHandler):
     def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
@@ -385,7 +417,11 @@ class DReluAuxHandler(EpilogInputHandler):
         self.mm_m, self.mm_n = relu_aux_mm_shape(mm_traits.M, mm_traits.N)
 
         # We store bitmask using int8 dtype but the values below are in number of elements.
-        self.aux_ld = self.mm_m * 8    # should be consistent with order (currently COL).
+        self.aux_ld = self.mm_m * 8  # should be consistent with order (currently COL).
+
+        # K=1 is not supported by cuBLAS
+        if mm_traits.K == 1:
+            raise ValueError("K=1 is not supported for DRELU epilogs")
 
     @property
     def name(self):
@@ -396,16 +432,17 @@ class DReluAuxHandler(EpilogInputHandler):
         return cublaslt.Order.COL
 
     def validate(self, relu_aux_tensor):
-
         batch_rank = len(self.mm_traits.batch_shape)
 
         # The relu_aux_tensor must be of rank 2 or its batched version of the latter (..., M, N).
         relu_aux_shape = list(relu_aux_tensor.shape)
         relu_aux_strides = list(relu_aux_tensor.strides)
 
-        # The dtype must be int8.
-        if relu_aux_tensor.dtype != "int8":
-            raise ValueError(f"The dtype of the RELU auxiliary input for epilog {self.enumerator.name} must be 'int8'. The epilog input's dtype is '{relu_aux_tensor.dtype}'.")
+        # The dtype must be uint8.
+        if relu_aux_tensor.dtype != "uint8":
+            raise ValueError(
+                f"The dtype of the RELU auxiliary input for epilog {self.enumerator.name} must be 'uint8'. The epilog input's dtype is '{relu_aux_tensor.dtype}'."
+            )
 
         mm_traits = self.mm_traits
 
@@ -416,16 +453,22 @@ class DReluAuxHandler(EpilogInputHandler):
         # The MM shape must match, the MM must be in col order, and the batch order must match.
         Ma, Na = relu_aux_mm_shape
         if Ma != self.mm_m or Na != self.mm_n:
-            raise ValueError(f"The auxiliary epilog input for epilog {self.enumerator.name} must have the MM shape (..., {self.mm_m}, {self.mm_n}). The epilog input's MM shape is (..., {Ma}, {Na}).")
+            raise ValueError(
+                f"The auxiliary epilog input for epilog {self.enumerator.name} must have the MM shape (..., {self.mm_m}, {self.mm_n}). The epilog input's MM shape is (..., {Ma}, {Na})."
+            )
 
         # Check if the relu_aux_tensor batch shape and axis order match that of the MM, and it's tileable.
         if len(relu_aux_batch_shape) > 0 and relu_aux_batch_shape != mm_traits.batch_shape:
-            raise ValueError(f"The batch dimensions of the RELU auxiliary input {relu_aux_batch_shape} must match with that of the matrix multiplication definition {mm_traits.batch_shape}.")
+            raise ValueError(
+                f"The batch dimensions of the RELU auxiliary input {relu_aux_batch_shape} must match with that of the matrix multiplication definition {mm_traits.batch_shape}."
+            )
 
         if len(relu_aux_batch_shape) > 0:
             relu_aux_batch_axis_order = axis_order_in_memory(relu_aux_batch_strides)
             if relu_aux_batch_axis_order != mm_traits.batch_axis_order:
-                raise ValueError(f"The batch axis order of the RELU auxiliary input {relu_aux_batch_axis_order} must match with that of the other operands {mm_traits.batch_axis_order}.")
+                raise ValueError(
+                    f"The batch axis order of the RELU auxiliary input {relu_aux_batch_axis_order} must match with that of the other operands {mm_traits.batch_axis_order}."
+                )
 
         if len(relu_aux_batch_shape) > 0:
             if not check_batch_tileable(relu_aux_batch_shape, relu_aux_batch_strides):
@@ -433,13 +476,17 @@ class DReluAuxHandler(EpilogInputHandler):
                 raise ValueError(message)
 
         if relu_aux_mm_strides[0] != 1:
-            raise ValueError(f"The stride of the RELU auxiliary input {relu_aux_strides} must be 1 along the dimension {len(relu_aux_strides) - 2}, which corresponds to the M dimension.")
+            raise ValueError(
+                f"The stride of the RELU auxiliary input {relu_aux_strides} must be 1 along the dimension {len(relu_aux_strides) - 2}, which corresponds to the M dimension."
+            )
 
         # Convert from bits to elements.
-        self.batch_offset = min(relu_aux_batch_strides) * 8 if relu_aux_batch_strides else 0    # relu_aux broadcast
+        self.batch_offset = min(relu_aux_batch_strides) * 8 if relu_aux_batch_strides else 0  # relu_aux broadcast
 
         if self.batch_offset > 0:
-            assert self.batch_offset > 0 and self.batch_offset >= self.mm_m * 8 * self.mm_n, "Tensor data must not overlap."
+            assert (
+                self.batch_offset > 0 and self.batch_offset >= self.mm_m * 8 * self.mm_n
+            ), "Tensor data must not overlap."
 
     def update(self, mm_desc_ifc, relu_aux_tensor):
         # Set the epilog aux pointer.
@@ -450,8 +497,8 @@ class DReluAuxHandler(EpilogInputHandler):
         mm_desc_ifc.epilogue_aux_ld = self.aux_ld
         # The relu aux data type is bitmask, don't set.
 
-class DGeluAuxHandler(EpilogInputHandler):
 
+class DGeluAuxHandler(EpilogInputHandler):
     def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
@@ -468,7 +515,11 @@ class DGeluAuxHandler(EpilogInputHandler):
         # The GELU aux matrix shape, including padding.
         self.mm_m, self.mm_n = gelu_aux_mm_shape(mm_traits.M, mm_traits.N)
 
-        self.aux_ld = self.mm_m    # should be consistent with order (currently COL).
+        self.aux_ld = self.mm_m  # should be consistent with order (currently COL).
+
+        # K=1 is not supported by cuBLAS
+        if mm_traits.K == 1:
+            raise ValueError("K=1 is not supported for DGELU epilogs")
 
     @property
     def name(self):
@@ -487,7 +538,9 @@ class DGeluAuxHandler(EpilogInputHandler):
 
         # The dtype must be the same as that of D.
         if gelu_aux_tensor.dtype != self.d_dtype_name:
-            raise ValueError(f"The dtype of the GELU auxiliary input for epilog {self.enumerator.name} must be '{self.d_dtype_name}'. The epilog input's dtype is '{gelu_aux_tensor.dtype}'.")
+            raise ValueError(
+                f"The dtype of the GELU auxiliary input for epilog {self.enumerator.name} must be '{self.d_dtype_name}'. The epilog input's dtype is '{gelu_aux_tensor.dtype}'."
+            )
 
         mm_traits = self.mm_traits
 
@@ -498,16 +551,22 @@ class DGeluAuxHandler(EpilogInputHandler):
         # The MM shape must match, the MM must be in col order, and the batch order must match.
         Ma, Na = gelu_aux_mm_shape
         if Ma != self.mm_m or Na != self.mm_n:
-            raise ValueError(f"The auxiliary epilog input for epilog {self.enumerator.name} must have the MM shape (..., {self.mm_m}, {self.mm_n}). The epilog input's MM shape is (..., {Ma}, {Na}).")
+            raise ValueError(
+                f"The auxiliary epilog input for epilog {self.enumerator.name} must have the MM shape (..., {self.mm_m}, {self.mm_n}). The epilog input's MM shape is (..., {Ma}, {Na})."
+            )
 
         # Check if the gelu_aux_tensor batch shape and axis order match that of the MM, and it's tileable.
         if len(gelu_aux_batch_shape) > 0 and gelu_aux_batch_shape != mm_traits.batch_shape:
-            raise ValueError(f"The batch dimensions of the GELU auxiliary input {gelu_aux_batch_shape} must match with that of the matrix multiplication definition {mm_traits.batch_shape}.")
+            raise ValueError(
+                f"The batch dimensions of the GELU auxiliary input {gelu_aux_batch_shape} must match with that of the matrix multiplication definition {mm_traits.batch_shape}."
+            )
 
         if len(gelu_aux_batch_shape) > 0:
             gelu_aux_batch_axis_order = axis_order_in_memory(gelu_aux_batch_strides)
             if gelu_aux_batch_axis_order != mm_traits.batch_axis_order:
-                raise ValueError(f"The batch axis order of the GELU auxiliary input {gelu_aux_batch_axis_order} must match with that of the other operands {mm_traits.batch_axis_order}.")
+                raise ValueError(
+                    f"The batch axis order of the GELU auxiliary input {gelu_aux_batch_axis_order} must match with that of the other operands {mm_traits.batch_axis_order}."
+                )
 
         if len(gelu_aux_batch_shape) > 0:
             if not check_batch_tileable(gelu_aux_batch_shape, gelu_aux_batch_strides):
@@ -515,9 +574,11 @@ class DGeluAuxHandler(EpilogInputHandler):
                 raise ValueError(message)
 
         if gelu_aux_mm_strides[0] != 1:
-            raise ValueError(f"The stride of the GELU auxiliary input {gelu_aux_strides} must be 1 along the dimension {len(gelu_aux_strides) - 2}, which corresponds to the M dimension.")
+            raise ValueError(
+                f"The stride of the GELU auxiliary input {gelu_aux_strides} must be 1 along the dimension {len(gelu_aux_strides) - 2}, which corresponds to the M dimension."
+            )
 
-        self.batch_offset = min(gelu_aux_batch_strides) if gelu_aux_batch_strides else 0    # gelu_aux broadcast
+        self.batch_offset = min(gelu_aux_batch_strides) if gelu_aux_batch_strides else 0  # gelu_aux broadcast
 
         if self.batch_offset > 0:
             assert self.batch_offset > 0 and self.batch_offset >= self.mm_m * self.mm_n, "Tensor data must not overlap."
@@ -532,41 +593,80 @@ class DGeluAuxHandler(EpilogInputHandler):
         # Set the gelu aux data type.
         if gelu_aux_tensor.dtype != self.d_dtype_name:
             if self.version < 111103:
-                raise ValueError(f"The GELU auxiliary tensor dtype '{gelu_aux_tensor.dtype}' must be the same as the result dtype '{self.d_dtype_name}' in cuBLASLt version < 111103 (you have {self.version}).")
+                raise ValueError(
+                    f"The GELU auxiliary tensor dtype '{gelu_aux_tensor.dtype}' must be the same as the result dtype '{self.d_dtype_name}' in cuBLASLt version < 111103 (you have {self.version})."
+                )
             mm_desc_ifc.epilogue_aux_data_type = typemaps.NAME_TO_DATA_TYPE[gelu_aux_tensor.dtype]
 
-EPILOG_INPUT_HANDLERS_MAP  = {
-    Epilog.RELU          : [],
-    Epilog.RELU_AUX      : [],
-    Epilog.GELU          : [],
-    Epilog.GELU_AUX      : [],
-    Epilog.BIAS          : [BiasHandler],
-    Epilog.RELU_BIAS     : [BiasHandler],
-    Epilog.RELU_AUX_BIAS : [BiasHandler],
-    Epilog.GELU_BIAS     : [BiasHandler],
-    Epilog.GELU_AUX_BIAS : [BiasHandler],
-    Epilog.DRELU         : [DReluAuxHandler],
-    Epilog.DRELU_BGRAD   : [DReluAuxHandler],
-    Epilog.DGELU         : [DGeluAuxHandler],
-    Epilog.DGELU_BGRAD   : [DGeluAuxHandler],
-    Epilog.BGRADA        : [],
-    Epilog.BGRADB        : []
+
+EPILOG_INPUT_HANDLERS_MAP = {
+    Epilog.RELU: [],
+    Epilog.RELU_AUX: [],
+    Epilog.GELU: [],
+    Epilog.GELU_AUX: [],
+    Epilog.BIAS: [BiasHandler],
+    Epilog.RELU_BIAS: [BiasHandler],
+    Epilog.RELU_AUX_BIAS: [BiasHandler],
+    Epilog.GELU_BIAS: [BiasHandler],
+    Epilog.GELU_AUX_BIAS: [BiasHandler],
+    Epilog.DRELU: [DReluAuxHandler],
+    Epilog.DRELU_BGRAD: [DReluAuxHandler],
+    Epilog.DGELU: [DGeluAuxHandler],
+    Epilog.DGELU_BGRAD: [DGeluAuxHandler],
+    Epilog.BGRADA: [],
+    Epilog.BGRADB: [],
 }
 
 EPILOG_OUTPUT_HANDLERS_MAP = {
-    Epilog.RELU          : [],
-    Epilog.RELU_AUX      : [ReluAuxHandler],
-    Epilog.GELU          : [],
-    Epilog.GELU_AUX      : [GeluAuxHandler],
-    Epilog.BIAS          : [],
-    Epilog.RELU_BIAS     : [],
-    Epilog.RELU_AUX_BIAS : [ReluAuxHandler],
-    Epilog.GELU_BIAS     : [],
-    Epilog.GELU_AUX_BIAS : [GeluAuxHandler],
-    Epilog.DRELU         : [],
-    Epilog.DRELU_BGRAD   : [BgradHandler],
-    Epilog.DGELU         : [],
-    Epilog.DGELU_BGRAD   : [BgradHandler],
-    Epilog.BGRADA        : [BgradHandler],
-    Epilog.BGRADB        : [BgradHandler]
+    Epilog.RELU: [],
+    Epilog.RELU_AUX: [ReluAuxHandler],
+    Epilog.GELU: [],
+    Epilog.GELU_AUX: [GeluAuxHandler],
+    Epilog.BIAS: [],
+    Epilog.RELU_BIAS: [],
+    Epilog.RELU_AUX_BIAS: [ReluAuxHandler],
+    Epilog.GELU_BIAS: [],
+    Epilog.GELU_AUX_BIAS: [GeluAuxHandler],
+    Epilog.DRELU: [],
+    Epilog.DRELU_BGRAD: [BgradHandler],
+    Epilog.DGELU: [],
+    Epilog.DGELU_BGRAD: [BgradHandler],
+    Epilog.BGRADA: [BgradHandler],
+    Epilog.BGRADB: [BgradHandler],
+}
+
+EPILOG_MINIMUM_VERSIONS_MAP = {
+    None: {"cublaslt": 00000, "ctk": ""},
+    # RELU was the first implemented epilog
+    Epilog.RELU: {"cublaslt": 11000, "ctk": "11.0.1"},
+    # 11301, 11.2.0 supports ^
+    # 11401, 11.2.2 supports ^
+    # 11402, 11.3.0 supports ^
+    # Even though some *BIAS epilogs appear in earlier headers, because CUBLASLT_MATMUL_DESC_BIAS_BATCH_STRIDE is not
+    # defined we cannot use them.
+    Epilog.GELU: {"cublaslt": 11501, "ctk": "11.3.1"},
+    Epilog.BIAS: {"cublaslt": 11501, "ctk": "11.3.1"},
+    Epilog.RELU_AUX: {"cublaslt": 11501, "ctk": "11.3.1"},
+    Epilog.GELU_AUX: {"cublaslt": 11501, "ctk": "11.3.1"},
+    Epilog.RELU_BIAS: {"cublaslt": 11501, "ctk": "11.3.1"},
+    Epilog.RELU_AUX_BIAS: {"cublaslt": 11501, "ctk": "11.3.1"},
+    Epilog.GELU_BIAS: {"cublaslt": 11501, "ctk": "11.3.1"},
+    Epilog.GELU_AUX_BIAS: {"cublaslt": 11501, "ctk": "11.3.1"},
+    # 11501, 11.3.1 supports ^
+    # 11504, 11.4.1 supports ^
+    # 11601, 11.4.2 supports ^
+    # 11703, 11.5.0 supports ^
+    # 11704, 11.5.1 supports ^
+    # 11801, 11.6.0 supports ^
+    # 11801, 11.6.1 supports ^
+    # 110902, 11.6.2 supports ^
+    # Even though BGRAD[A,B] and D[R,G]ELU appear in earlier headers, our unit tests mark them as unsupported before
+    # 111103 for in order to avoid API changes.
+    Epilog.DRELU: {"cublaslt": 111103, "ctk": "11.8.0"},
+    Epilog.DGELU: {"cublaslt": 111103, "ctk": "11.8.0"},
+    Epilog.BGRADA: {"cublaslt": 111103, "ctk": "11.8.0"},
+    Epilog.BGRADB: {"cublaslt": 111103, "ctk": "11.8.0"},
+    Epilog.DRELU_BGRAD: {"cublaslt": 111103, "ctk": "11.8.0"},
+    Epilog.DGELU_BGRAD: {"cublaslt": 111103, "ctk": "11.8.0"},
+    # 111103, 11.8.0 supports ^
 }

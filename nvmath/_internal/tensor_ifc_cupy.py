@@ -6,21 +6,30 @@
 Interface to seamlessly use Cupy ndarray objects.
 """
 
-__all__ = ['CupyTensor']
+__all__ = ["CupyTensor"]
 
-import cupy
+import numpy as np
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 
 from . import utils
 from .package_ifc import StreamHolder
 from .tensor_ifc import Tensor
 
+
 class CupyTensor(Tensor):
     """
     Tensor wrapper for cupy ndarrays.
     """
-    name = 'cupy'
+
+    name = "cupy"
     module = cupy
-    name_to_dtype = Tensor.create_name_dtype_map(conversion_function=lambda name: cupy.dtype(name), exception_type=TypeError)
+    name_to_dtype = Tensor.create_name_dtype_map(
+        conversion_function=lambda name: np.dtype(name), exception_type=TypeError
+    )
 
     def __init__(self, tensor):
         super().__init__(tensor)
@@ -31,7 +40,7 @@ class CupyTensor(Tensor):
 
     @property
     def device(self):
-        return 'cuda'
+        return "cuda"
 
     @property
     def device_id(self):
@@ -60,21 +69,24 @@ class CupyTensor(Tensor):
         return out
 
     @classmethod
-    def empty(cls, shape, **context):
+    def empty(cls, shape, *, dtype="float32", device_id=None, strides=None):
         """
         Create an empty tensor of the specified shape and data type.
         """
-        name = context.get('dtype', 'float32')
-        dtype = CupyTensor.name_to_dtype[name]
-        device = context.get('device', None)
-        strides = context.get('strides', None)
+        dtype = CupyTensor.name_to_dtype[dtype]
 
-        if isinstance(device, cupy.cuda.Device):
-           device_id = device.id
-        elif isinstance(device, int):
-           device_id = device
-        else:
-            raise ValueError(f"The device must be specified as an integer or cupy.cuda.Device instance, not '{device}'.")
+        # When using the strides, we need an explicit allocation (see below).
+        # If the strides are simple enough, we can still avoid this overhead.
+        order = "C"
+        if strides is not None:
+            if len(strides) == 1 and strides[0] == 1:
+                strides = None
+            elif len(strides) == 2:
+                if strides[0] == 1 and strides[1] == shape[0]:
+                    strides = None
+                    order = "F"
+                elif strides[0] == shape[1] and strides[1] == 1:
+                    strides = None
 
         with utils.device_ctx(device_id):
             if strides:
@@ -87,16 +99,16 @@ class CupyTensor(Tensor):
                 strides = tuple(s * dtype.itemsize for s in strides)
                 tensor = cupy.ndarray(shape, dtype=dtype, strides=strides, memptr=ptr)
             else:
-                tensor = cupy.ndarray(shape, dtype=dtype)
+                tensor = cupy.ndarray(shape, dtype=dtype, order=order)
 
-        return tensor
+        return cls(tensor)
 
-    def to(self, device='cpu', stream_holder=StreamHolder()):
+    def to(self, device="cpu", stream_holder=StreamHolder()):
         """
         Create a copy of the tensor on the specified device (integer or
           'cpu'). Copy to  Numpy ndarray if CPU, otherwise return Cupy type.
         """
-        if device == 'cpu':
+        if device == "cpu":
             return self.numpy(stream_holder=stream_holder)
 
         if not isinstance(device, int):
@@ -107,12 +119,44 @@ class CupyTensor(Tensor):
 
         return tensor_device
 
+    def c2c_copy_(self, src, stream_holder):
+        """
+        Inplace copy of src (copy the data from src into self).
+        The src must by cupy ndarray
+        """
+        with stream_holder.ctx:
+            cupy.copyto(self.tensor, src)
+
+    def n2c_copy_(self, src, stream_holder):
+        """
+        Inplace copy of src (copy the data from src into self).
+        The src must by numpy ndarray
+        """
+        try:
+            stream = stream_holder.obj
+            self.tensor.set(src, stream=stream)
+            if stream is not None:
+                stream.synchronize()
+        except RuntimeError as e:
+            # If self is a strided tensor (neither c nor f layout)
+            # cupy refuses to copy from numpy array
+            if "set to non-contiguous array" not in str(e):
+                raise
+            else:
+                src_gpu = cupy.asarray(src)
+                self.c2c_copy_(src_gpu, stream_holder)
+
     def copy_(self, src, stream_holder=StreamHolder()):
         """
         Inplace copy of src (copy the data from src into self).
         """
-        with stream_holder.ctx:
-            cupy.copyto(self.tensor, src)
+        package = utils.infer_object_package(src)
+        if package == "cupy":
+            self.c2c_copy_(src, stream_holder)
+        elif package == "numpy":
+            self.n2c_copy_(src, stream_holder)
+        else:
+            raise NotImplementedError
 
         return self.tensor
 
@@ -121,4 +165,3 @@ class CupyTensor(Tensor):
         Check if the object is ndarray-like.
         """
         return isinstance(self.tensor, cupy.ndarray)
-

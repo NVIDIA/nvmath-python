@@ -3,9 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """N-D FFT as a composition of the 1D, 2D or 3D batched FFTs with the number of copies minimized."""
-__all__ = ['fftn']
+
+__all__ = ["fftn"]
 
 import nvmath
+
 
 def upto_three_contiguous_axes(ordered_axes, ordered_all_axes):
     """
@@ -23,13 +25,21 @@ def upto_three_contiguous_axes(ordered_axes, ordered_all_axes):
             right, e, f = right + 1, e - 1, f - 1
 
     d = max(left, right)
-    if d == 0 or (d < 3 and min(left, right) == 0 and len(ordered_axes) > d) or (d < 3 and d + 1 < len(ordered_axes) - d):
+    if (
+        d == 0
+        or (d < 3 and min(left, right) == 0 and len(ordered_axes) > d)
+        or (d < 3 and d + 1 < len(ordered_axes) - d)
+    ):
         return True, slice(None, -4, -1), slice(-4, None, -1)
 
     if left > right:
         return False, slice(None, d), slice(d, None)
 
-    return False, slice(-1, -d - 1, -1), slice(-d - 1, None, -1),
+    return (
+        False,
+        slice(-1, -d - 1, -1),
+        slice(-d - 1, None, -1),
+    )
 
 
 def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None, stream=None, engine=nvmath.fft.fft):
@@ -51,8 +61,10 @@ def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None
 
     composition = list(range(rank))
     while axes:
-        _, ordered_all_axes = zip(*sorted(zip((a.strides[axis] for axis in range(rank)), range(rank)), reverse=True))
-        _, axes = zip(*sorted(zip((a.strides[axis] for axis in axes), axes), reverse=True))
+        _, ordered_all_axes = zip(
+            *sorted(zip((a.strides[axis] for axis in range(rank)), range(rank), strict=True), reverse=True), strict=True
+        )
+        _, axes = zip(*sorted(zip((a.strides[axis] for axis in axes), axes, strict=True), reverse=True), strict=True)
         axes = list(axes)
         copy, c, r = upto_three_contiguous_axes(axes, ordered_all_axes)
         chunk, axes = axes[c], axes[r]
@@ -60,7 +72,7 @@ def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None
         last = chunk
         if copy:
             permutation = axes + list(d for d in range(rank) if d not in axes + chunk) + chunk
-            ipermutation = {v : p for p, v in enumerate(permutation)}
+            ipermutation = {v: p for p, v in enumerate(permutation)}
 
             a = a.transpose(*permutation).copy()
 
@@ -73,6 +85,6 @@ def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None
 
         a = engine(a, axes=last, direction=direction, options=options, prolog=prolog, epilog=epilog, stream=stream)
 
-    icomposition = {v : c for c, v in enumerate(composition)}
+    icomposition = {v: c for c, v in enumerate(composition)}
     a = a.transpose(tuple(icomposition[c] for c in range(rank)))
     return a

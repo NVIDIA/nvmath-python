@@ -4,8 +4,8 @@
 
 import cupy
 
-def time_cupy(fun, ncycles, *args):
 
+def time_cupy(fun, ncycles, *args):
     start, stop = cupy.cuda.Event(), cupy.cuda.Event()
     out = fun(*args)
 

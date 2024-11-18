@@ -7,11 +7,18 @@ try:
 except:
     torch = None
 
-import cupy
-import numpy as np
 import pytest
+
+try:
+    import cupy
+except ModuleNotFoundError:
+    pytest.skip("cupy is required for matmul tests", allow_module_level=True)
+
+import numpy as np
+
 import nvmath
 import re
+
 
 def sample_matrix(framework, dtype, shape, use_cuda):
     """
@@ -62,13 +69,15 @@ def to_numpy(tensor):
     elif isinstance(tensor, np.ndarray):
         return tensor
     else:
-        assert False
+        raise AssertionError()
+
 
 def get_tolerance(value):
     eps = np.finfo(to_numpy(value).dtype).eps
     if torch is not None and value.dtype == torch.bfloat16:
         eps = 2**-6
     return eps**0.5
+
 
 def compare_tensors(result, reference):
     return np.allclose(to_numpy(result), to_numpy(reference), atol=get_tolerance(result))
@@ -84,8 +93,10 @@ def assert_tensors_equal(result, reference):
         print("Reference:\n", reference)
     assert ok
 
+
 def is_torch_available():
     return torch is not None
+
 
 def random_torch_complex(shape, use_cuda, transposed=False):
     if transposed:
@@ -95,18 +106,20 @@ def random_torch_complex(shape, use_cuda, transposed=False):
     result = real + 1j * imag
     return result.T if transposed else result
 
+
 def skip_if_cublas_before(version, message="Unsupported cublas version."):
     if not version or nvmath.bindings.cublasLt.get_version() < version:
         pytest.skip(message)
         return True
     return False
 
+
 class allow_cublas_unsupported:
     def __init__(self, *, allow_invalid_value=True, unsupported_before=None, message="Unsupported cublas version."):
         if allow_invalid_value:
-            self.regex = r"\(CUBLAS_STATUS_(NOT_SUPPORTED|INVALID_VALUE)\)$"
+            self.regex = r"\(CUBLAS_STATUS_(NOT_SUPPORTED|INVALID_VALUE)\)"
         else:
-            self.regex = r"\(CUBLAS_STATUS_NOT_SUPPORTED\)$"
+            self.regex = r"\(CUBLAS_STATUS_NOT_SUPPORTED\)"
         self.unsupported_before = unsupported_before
         self.message = message
 

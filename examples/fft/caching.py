@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ['fft']
+__all__ = ["fft"]
 
 import logging
 
 import nvmath
+
 
 # A simple class to allow caching and resource management
 class FFTCache(dict):
@@ -21,8 +22,19 @@ class FFTCache(dict):
     def __exit__(self, *args, **kwargs):
         self.free()
 
+
 # A simple illustration of creating and using a cached FFT operation.
-def fft(a, axes=None, direction=None, options=None, prolog=None, epilog=None, stream=None, cache={}):
+def fft(
+    a,
+    axes=None,
+    direction=None,
+    options=None,
+    execution=None,
+    prolog=None,
+    epilog=None,
+    stream=None,
+    cache: dict | None = None,
+):
     """
     A cached version of FFT, taking a cache argument in addition the the regular arguments for fft(). The stateful
     objects are cached in the provided cache, and reused.
@@ -40,12 +52,14 @@ def fft(a, axes=None, direction=None, options=None, prolog=None, epilog=None, st
         Alternatively, users may use the `FFTCache` class above.
         Resources can be cleaned by a call the the `free` method or will be automatically released if used in a context manager.
     """
+    if cache is None:
+        cache = {}
     logger = logging.getLogger()
 
-    package = stream.__class__.__module__.split('.')[0]
-    stream_ptr = stream.ptr if package == 'cupy' else stream.cuda_stream if package == 'torch' else stream
+    package = stream.__class__.__module__.split(".")[0]
+    stream_ptr = stream.ptr if package == "cupy" else stream.cuda_stream if package == "torch" else stream
 
-    key = nvmath.fft.FFT.create_key(a, axes=axes, options=options, prolog=prolog, epilog=epilog)
+    key = nvmath.fft.FFT.create_key(a, axes=axes, options=options, execution=execution, prolog=prolog, epilog=epilog)
 
     # Get object from cache if it already exists, or create a new one and add it to the cache.
     if (key, stream_ptr) in cache:
@@ -56,7 +70,7 @@ def fft(a, axes=None, direction=None, options=None, prolog=None, epilog=None, st
         f.reset_operand(a, stream=stream)
     else:
         # Create a new stateful object, plan the operation, and cache the  object.
-        f = cache[key, stream_ptr] = nvmath.fft.FFT(a, axes=axes, options=options, stream=stream)
+        f = cache[key, stream_ptr] = nvmath.fft.FFT(a, axes=axes, options=options, execution=execution, stream=stream)
         f.plan(prolog=prolog, epilog=epilog, stream=stream)
         logger.info("Cache MISS: creating and caching a planned FFT object.")
 

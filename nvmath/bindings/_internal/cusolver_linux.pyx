@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -87,7 +87,7 @@ cdef int _check_or_init_cusolver() except -1 nogil:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cusolverGetProperty = dlsym(handle, 'cusolverGetProperty')
-    
+
     global __cusolverGetVersion
     __cusolverGetVersion = dlsym(RTLD_DEFAULT, 'cusolverGetVersion')
     if __cusolverGetVersion == NULL:
@@ -112,7 +112,7 @@ cpdef dict _inspect_function_pointers():
 
     global __cusolverGetProperty
     data["__cusolverGetProperty"] = <intptr_t>__cusolverGetProperty
-    
+
     global __cusolverGetVersion
     data["__cusolverGetVersion"] = <intptr_t>__cusolverGetVersion
 

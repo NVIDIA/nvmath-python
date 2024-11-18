@@ -1,5 +1,0 @@
-build
-flake8
-invoke
-pipdeptree
-pyproject-validate

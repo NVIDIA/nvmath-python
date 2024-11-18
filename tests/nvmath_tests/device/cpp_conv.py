@@ -5,17 +5,15 @@
 import numpy as np
 import cupy
 from cuda import cuda
-from .helpers import CHECK_CUDA, _TOLERANCE, l2error, \
-    free_array, convert_to_cuda_array, copy_to_cupy
+from .helpers import CHECK_CUDA, _TOLERANCE, l2error, free_array, convert_to_cuda_array, copy_to_cupy
 from .helpers_cpp import run_and_time, compile_cpp_kernel
 
+
 class FFTConvCpp:
-
     def __init__(self, size, precision, fft_type, sm, ffts_per_block, elements_per_thread):
-
         assert size >= 1
         assert precision in [np.float32, np.float64]
-        assert fft_type == 'c2c'
+        assert fft_type == "c2c"
         assert sm[0] >= 7
         assert sm[1] >= 0
         assert ffts_per_block >= 1
@@ -116,7 +114,6 @@ class FFTConvCpp:
         assert self._block_dim[0] * self._block_dim[1] <= 1024
 
     def run(self, input, filter, reference, ncycles):
-
         (batch, ssize) = input.shape
         assert input.shape == filter.shape
         assert input.shape == reference.shape
@@ -125,7 +122,9 @@ class FFTConvCpp:
         assert batch % self._ffts_per_block == 0
 
         num_blocks = batch // self._ffts_per_block
-        print(f"FFTConvCpp Batch {batch}, ffts_per_block {self._ffts_per_block}, num_blocks {num_blocks}, ncycles {ncycles}")
+        print(
+            f"FFTConvCpp Batch {batch}, ffts_per_block {self._ffts_per_block}, num_blocks {num_blocks}, ncycles {ncycles}"
+        )
         assert num_blocks * self._ffts_per_block == batch
 
         # Create input
@@ -136,7 +135,9 @@ class FFTConvCpp:
 
         # Run and time
         grid_dim = (num_blocks, 1, 1)
-        time_ms = run_and_time(self._kernel, grid_dim, self._block_dim, self._shared_memory_size, ncycles, dInput, dOutput, dFilter)
+        time_ms = run_and_time(
+            self._kernel, grid_dim, self._block_dim, self._shared_memory_size, ncycles, dInput, dOutput, dFilter
+        )
 
         copy_to_cupy(dOutput, output)
         free_array(dInput)
@@ -148,8 +149,8 @@ class FFTConvCpp:
         print(f"FFTConvCpp CUDA C++ Time per kernel = {time_ms}")
         assert error < _TOLERANCE[self._precision]
 
-        return {'time_ms': time_ms}
+        return {"time_ms": time_ms}
 
     def __del__(self):
-        err, = cuda.cuModuleUnload(self._module)
+        (err,) = cuda.cuModuleUnload(self._module)
         CHECK_CUDA(err)

@@ -20,7 +20,7 @@ cdef extern from * nogil:
             if (own_data)
                 manager_.reset(data);
             else
-                raw_data_ = data;       
+                raw_data_ = data;
         }
 
         nullable_unique_ptr(const nullable_unique_ptr&) = delete;
@@ -35,7 +35,7 @@ cdef extern from * nogil:
             {
                 manager_ = std::move(other.manager_);
                 raw_data_ = nullptr;  // just in case
-            }   
+            }
             else
             {
                 manager_.reset(nullptr);  // just in case
@@ -51,7 +51,7 @@ cdef extern from * nogil:
             {
                 manager_ = std::move(other.manager_);
                 raw_data_ = nullptr;  // just in case
-            }   
+            }
             else
             {
                 manager_.reset(nullptr);  // just in case
@@ -161,9 +161,11 @@ cdef cppclass nested_resource[T]:
     nullable_unique_ptr[ vector[intptr_t] ] ptrs
     nullable_unique_ptr[ vector[vector[T]] ] nested_resource_ptr
 
-cdef nullable_unique_ptr[ vector[ResT] ] get_resource_ptr(object obj, ResT* __unused)
-cdef nullable_unique_ptr[ vector[PtrT*] ] get_resource_ptrs(object obj, PtrT* __unused)
-cdef nested_resource[ResT] get_nested_resource_ptr(object obj, ResT* __unused)
+
+# accepts the output pointer as input to use the return value for exception propagation
+cdef int get_resource_ptr(nullable_unique_ptr[vector[ResT]] &in_out_ptr, object obj, ResT* __unused) except 1
+cdef int get_resource_ptrs(nullable_unique_ptr[ vector[PtrT*] ] &in_out_ptr, object obj, PtrT* __unused) except 1
+cdef int get_nested_resource_ptr(nested_resource[ResT] &in_out_ptr, object obj, ResT* __unused) except 1
 
 cdef bint is_nested_sequence(data)
 cdef void* get_buffer_pointer(buf, Py_ssize_t size, readonly=*) except*

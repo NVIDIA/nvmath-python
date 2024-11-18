@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 ###############################################################################
@@ -84,6 +84,7 @@ ctypedef enum cufftXtCallbackType "cufftXtCallbackType":
 
 ctypedef enum cufftProperty "cufftProperty":
     NVFFT_PLAN_PROPERTY_INT64_PATIENT_JIT "NVFFT_PLAN_PROPERTY_INT64_PATIENT_JIT" = 0x1
+    NVFFT_PLAN_PROPERTY_INT64_MAX_NUM_HOST_THREADS "NVFFT_PLAN_PROPERTY_INT64_MAX_NUM_HOST_THREADS" = 0x2
 
 
 # types
@@ -181,6 +182,58 @@ ctypedef void (*cufftCallbackStoreR 'cufftCallbackStoreR')(
 ctypedef void (*cufftCallbackStoreD 'cufftCallbackStoreD')(
     void* dataOut,
     size_t offset,
+    cufftDoubleReal element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef cufftComplex (*cufftJITCallbackLoadC 'cufftJITCallbackLoadC')(
+    void* dataIn,
+    unsigned long long offset,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef cufftDoubleComplex (*cufftJITCallbackLoadZ 'cufftJITCallbackLoadZ')(
+    void* dataIn,
+    unsigned long long offset,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef cufftReal (*cufftJITCallbackLoadR 'cufftJITCallbackLoadR')(
+    void* dataIn,
+    unsigned long long offset,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef cufftDoubleReal (*cufftJITCallbackLoadD 'cufftJITCallbackLoadD')(
+    void* dataIn,
+    unsigned long long offset,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftJITCallbackStoreC 'cufftJITCallbackStoreC')(
+    void* dataOut,
+    unsigned long long offset,
+    cufftComplex element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftJITCallbackStoreZ 'cufftJITCallbackStoreZ')(
+    void* dataOut,
+    unsigned long long offset,
+    cufftDoubleComplex element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftJITCallbackStoreR 'cufftJITCallbackStoreR')(
+    void* dataOut,
+    unsigned long long offset,
+    cufftReal element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftJITCallbackStoreD 'cufftJITCallbackStoreD')(
+    void* dataOut,
+    unsigned long long offset,
     cufftDoubleReal element,
     void* callerInfo,
     void* sharedPointer

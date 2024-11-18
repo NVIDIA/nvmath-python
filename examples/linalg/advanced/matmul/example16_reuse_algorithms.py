@@ -8,6 +8,7 @@ This example show how to save algorithms from a planned and possibly autotuned m
 The saved algorithms can be provided later for another compatible matrix multiplication operation, thereby avoiding
 the cost of planning and autotuning.
 """
+
 import os
 import pickle
 
@@ -16,8 +17,8 @@ import cupy as cp
 import nvmath
 
 # Tip: turn logging on to get information on performance improvement from autotuning.
-#import logging
-#logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
+# import logging
+# logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Prepare sample input data
 m, n, k = 2048, 4096, 1024
@@ -59,12 +60,12 @@ with nvmath.linalg.advanced.Matmul(a, b) as mm:
 
     # Provide the optimized algorithms directly to plan.
     mm.plan(algorithms=algorithms, epilog=epilog, epilog_inputs={"bias": bias})
-    print(f"Provided optimized algorithms to plan(), bypassing planning cost.")
-    print(f"No autotuning is needed, since the loaded algorithms sequence is in optimal order.")
+    print("Provided optimized algorithms to plan(), bypassing planning cost.")
+    print("No autotuning is needed, since the loaded algorithms sequence is in optimal order.")
 
     # Execute the multiplication
     result = mm.execute()
-    print(f"Executed the matrix multiplication using the provided algorithms.")
+    print("Executed the matrix multiplication using the provided algorithms.")
 
     # Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
     cp.cuda.get_current_stream().synchronize()

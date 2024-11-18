@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-class Workspace:
 
+class Workspace:
     def __init__(self, handle, workspace):
         self._handle = handle
         self._workspace = workspace

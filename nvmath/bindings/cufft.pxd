@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -22,6 +22,14 @@ ctypedef cufftCallbackStoreC CallbackStoreC
 ctypedef cufftCallbackStoreZ CallbackStoreZ
 ctypedef cufftCallbackStoreR CallbackStoreR
 ctypedef cufftCallbackStoreD CallbackStoreD
+ctypedef cufftJITCallbackLoadC JITCallbackLoadC
+ctypedef cufftJITCallbackLoadZ JITCallbackLoadZ
+ctypedef cufftJITCallbackLoadR JITCallbackLoadR
+ctypedef cufftJITCallbackLoadD JITCallbackLoadD
+ctypedef cufftJITCallbackStoreC JITCallbackStoreC
+ctypedef cufftJITCallbackStoreZ JITCallbackStoreZ
+ctypedef cufftJITCallbackStoreR JITCallbackStoreR
+ctypedef cufftJITCallbackStoreD JITCallbackStoreD
 
 ctypedef cudaStream_t Stream
 ctypedef cudaDataType DataType

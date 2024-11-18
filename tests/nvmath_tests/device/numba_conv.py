@@ -12,33 +12,38 @@ import time
 import functools
 from .helpers_numba import run_and_time
 
+
 class FFTConvNumba:
-
     def __init__(self, size, precision, fft_type, ffts_per_block, elements_per_thread, use_vectorized_load_store):
-
         self._use_vectorized_load_store = use_vectorized_load_store
         assert precision in [np.float32, np.float64]
-        assert fft_type == 'c2c'
+        assert fft_type == "c2c"
 
-        make_fft = functools.partial(fft, fft_type='c2c', size=size, precision=precision, \
-                                     execution='Block', compiler='numba', \
-                                     ffts_per_block=ffts_per_block, \
-                                     elements_per_thread=elements_per_thread)
+        make_fft = functools.partial(
+            fft,
+            fft_type="c2c",
+            size=size,
+            precision=precision,
+            execution="Block",
+            compiler="numba",
+            ffts_per_block=ffts_per_block,
+            elements_per_thread=elements_per_thread,
+        )
 
         start = time.time()
-        FWD = make_fft(direction='forward')
-        INV = make_fft(direction='inverse')
+        FWD = make_fft(direction="forward")
+        INV = make_fft(direction="inverse")
         end = time.time()
 
         self.t_numba_jit_s = end - start
 
-        complex_type        = FWD.value_type
-        storage_size        = FWD.storage_size
-        shared_memory_size  = FWD.shared_memory_size
-        ffts_per_block      = FWD.ffts_per_block
-        stride              = FWD.stride
+        complex_type = FWD.value_type
+        storage_size = FWD.storage_size
+        shared_memory_size = FWD.shared_memory_size
+        ffts_per_block = FWD.ffts_per_block
+        stride = FWD.stride
         elements_per_thread = FWD.elements_per_thread
-        block_dim           = FWD.block_dim
+        block_dim = FWD.block_dim
 
         assert FWD.value_type == INV.value_type
         assert FWD.storage_size == INV.storage_size
@@ -58,13 +63,12 @@ class FFTConvNumba:
             assert complex_type == float32x2_type
         else:
             assert complex_type == float64x2_type
-        assert all([code.endswith('.ltoir') for code in FWD.files + INV.files])
+        assert all([code.endswith(".ltoir") for code in FWD.files + INV.files])
         assert not FWD.requires_workspace
         assert not INV.requires_workspace
 
         @cuda.jit(link=FWD.files + INV.files)
         def f(input, output, filter):
-
             if use_vectorized_load_store:
                 input_fp32x2 = input.view(complex_type)
                 output_fp32x2 = output.view(complex_type)
@@ -84,7 +88,6 @@ class FFTConvNumba:
                         thread_data[i] = input_fp32x2[global_fft_id * size + idx]
                     else:
                         thread_data[i] = input[global_fft_id, idx]
-
 
             # Execute FFT
             FWD(thread_data, shared_mem)
@@ -117,7 +120,6 @@ class FFTConvNumba:
         self._shared_memory_size = shared_memory_size
 
     def run(self, input, filter, reference, ncycles):
-
         (batch, ssize) = input.shape
         assert ssize == self._size
         assert batch % self._ffts_per_block == 0
@@ -132,13 +134,7 @@ class FFTConvNumba:
         else:
             args = (input_d, output_numba_d, filter_d)
 
-        time_ms = run_and_time(self._kernel,
-                               grid_dim,
-                               self._block_dim,
-                               self._shared_memory_size,
-                               ncycles,
-                               *args
-                               )
+        time_ms = run_and_time(self._kernel, grid_dim, self._block_dim, self._shared_memory_size, ncycles, *args)
 
         error = l2error(test=cupy.array(output_numba_d), ref=reference, module=cupy)
 
@@ -147,4 +143,4 @@ class FFTConvNumba:
         print(f"FFTConvNumba Numba Time per kernel = {time_ms}")
         assert error < _TOLERANCE[np.float32]
 
-        return {'time_ms': time_ms, 'jit_ms': self.t_numba_jit_s}
+        return {"time_ms": time_ms, "jit_ms": self.t_numba_jit_s}

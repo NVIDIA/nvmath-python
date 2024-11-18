@@ -2,161 +2,198 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ['FFT', 'fft', 'ifft', 'rfft', 'irfft', 'UnsupportedLayoutError']
+__all__ = ["FFT", "fft", "ifft", "rfft", "irfft", "UnsupportedLayoutError"]
 
-from dataclasses import dataclass
+from dataclasses import dataclass, astuple as data_cls_astuple
 import enum
 import functools
 import logging
+import math
 import operator
-from typing import Sequence
+from collections.abc import Sequence
 
-import cupy as cp
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
-from nvmath.bindings import cufft
-from nvmath.fft import configuration
+from nvmath.bindings import cufft  # type: ignore
+
+try:
+    from nvmath.bindings.nvpl import fft as fftw  # type: ignore
+except ImportError:
+    fftw = None
+from nvmath.bindings._internal import utils as _bindings_utils  # type: ignore
+from nvmath.fft._exec_utils import _cross_setup_execution_and_options
+from nvmath.fft import _configuration
 from nvmath import memory
 
 from nvmath._internal import formatters
 from nvmath._internal import tensor_wrapper
-from nvmath._internal.typemaps import NAME_TO_DATA_TYPE
+from nvmath._internal.typemaps import (
+    NAME_TO_DATA_TYPE,
+    DATA_TYPE_TO_NAME,
+    FFTW_SUPPORTED_SINGLE,
+    FFTW_SUPPORTED_DOUBLE,
+    FFTW_SUPPORTED_TYPES,
+    FFTW_SUPPORTED_FLOAT,
+    FFTW_SUPPORTED_COMPLEX,
+)
 from nvmath._internal import utils
 
+
 class UnsupportedLayoutError(Exception):
-   """
-   Error type for layouts not supported by the library.
+    """
+    Error type for layouts not supported by the library.
 
-   Args:
-       message: The error message.
-       permutation: The permutation needed to convert the input layout to a supported layout to the FFT operation. The same
-           permutation needs to be applied to the result to obtain the axis sequence corresponding to the non-permuted input.
-       axes: The dimensions along which the FFT is performed corresponding to the permuted operand layout.
-   """
-   def __init__(self, message, permutation, axes):
-       self.message = message
-       self.permutation = permutation
-       self.axes = axes
+    Args:
+        message: The error message.
+        permutation: The permutation needed to convert the input layout to a supported layout to the FFT operation. The same
+            permutation needs to be applied to the result to obtain the axis sequence corresponding to the non-permuted input.
+        axes: The dimensions along which the FFT is performed corresponding to the permuted operand layout.
+    """
 
-   def __str__(self):
-       return self.message
+    def __init__(self, message, permutation, axes):
+        self.message = message
+        self.permutation = permutation
+        self.axes = axes
+
+    def __str__(self):
+        return self.message
+
 
 @dataclass
 class TensorLayout:
-    """An internal data class for capturing the tensor layout.
-    """
-    shape : Sequence[int] = None
-    strides : Sequence[int] = None
+    """An internal data class for capturing the tensor layout."""
+
+    shape: Sequence[int]
+    strides: Sequence[int]
+
 
 @dataclass
 class PlanTraits:
-    """An internal data class for capturing FFT plan traits.
-    """
-    result_shape : Sequence[int] = None
-    result_strides : Sequence[int] = None
-    ordered_axes : Sequence[int] = None
-    ordered_fft_in_shape : Sequence[int] = None
-    ordered_fft_in_embedding_shape : Sequence[int] = None
-    ordered_fft_out_shape : Sequence[int] = None
-    fft_batch_size : int = None
-    istride : int = None
-    idistance : int = None
-    ostride : int = None
-    odistance : int = None
+    """An internal data class for capturing FFT plan traits."""
+
+    result_shape: Sequence[int]
+    result_strides: Sequence[int]
+    ordered_axes: Sequence[int]
+    ordered_fft_in_shape: Sequence[int]
+    ordered_fft_in_embedding_shape: Sequence[int]
+    ordered_fft_out_shape: Sequence[int]
+    fft_batch_size: int
+    istride: int
+    idistance: int
+    ostride: int
+    odistance: int
+
 
 class CBLoadType(enum.IntEnum):
-    COMPLEX64  = 0x0,
-    COMPLEX128 = 0x1,
-    FLOAT32    = 0x2,
-    FLOAT64    = 0x3,
-    UNDEFINED  = 0x8
+    COMPLEX64 = (0x0,)
+    COMPLEX128 = (0x1,)
+    FLOAT32 = (0x2,)
+    FLOAT64 = (0x3,)
+    UNDEFINED = 0x8
+
 
 class CBStoreType(enum.IntEnum):
-    COMPLEX64  = 0x4,
-    COMPLEX128 = 0x5,
-    FLOAT32    = 0x6,
-    FLOAT64    = 0x7,
-    UNDEFINED  = 0x8
+    COMPLEX64 = (0x4,)
+    COMPLEX128 = (0x5,)
+    FLOAT32 = (0x6,)
+    FLOAT64 = (0x7,)
+    UNDEFINED = 0x8
+
 
 SHARED_FFT_DOCUMENTATION = utils.COMMON_SHARED_DOC_MAP.copy()
-SHARED_FFT_DOCUMENTATION.update({
-    'axes':
-        "The dimensions along which the FFT is performed. Currently, it is required that the axes are contiguous "
+SHARED_FFT_DOCUMENTATION.update(
+    {
+        "axes": "The dimensions along which the FFT is performed. ``axes[-1]`` is the 'last transformed' axis for rffts. Currently, it is required that the axes are contiguous "
         "and include the first or the last dimension. Only up to 3D FFTs are supported.",
-    'options':
-        "Specify options for the FFT as a :class:`FFTOptions` object. "
+        "options": "Specify options for the FFT as a :class:`FFTOptions` object. "
         "Alternatively, a `dict` containing the parameters for the ``FFTOptions`` constructor can also be provided. "
         "If not specified, the value will be set to the default-constructed ``FFTOptions`` object.",
-    'prolog':
-        "Provide device-callable function in LTO-IR format to use as load-callback as an object of type :class:`DeviceCallable`. "
-        "Alternatively, a `dict` containing the parameters for the ``DeviceCallable`` constructor can also be provided. The default is no prolog.",
-    'epilog':
-        "Provide device-callable function in LTO-IR format to use as store-callback as an object of type :class:`DeviceCallable`. "
-        "Alternatively, a `dict` containing the parameters for the ``DeviceCallable`` constructor can also be provided. The default is no epilog.",
-    'direction':
-        "Specify whether forward or inverse FFT is performed (`FFTDirection` object, or as a string from ['forward', 'inverse'], "
+        "execution": "Specify execution space options for the FFT as a :class:`ExecutionCUDA` or :class:`ExecutionCPU` object. "
+        "Alternatively, a string ('cuda' or 'cpu'), or a `dict` with the 'name' key set to 'cpu' or 'cuda' "
+        "and optional parameters relevant to the given execution space. "
+        "If not specified, the execution space will be selected to match operand's storage (in GPU or host memory), "
+        "and the corresponding :class:`ExecutionCUDA` or :class:`ExecutionCPU` object will be default-constructed.",
+        "prolog": "Provide device-callable function in LTO-IR format to use as load-callback as an object of type :class:`DeviceCallable`. "
+        "Alternatively, a `dict` containing the parameters for the ``DeviceCallable`` constructor can also be provided. The default is no prolog. "
+        "Currently, callbacks are supported only with CUDA execution.",
+        "epilog": "Provide device-callable function in LTO-IR format to use as store-callback as an object of type :class:`DeviceCallable`. "
+        "Alternatively, a `dict` containing the parameters for the ``DeviceCallable`` constructor can also be provided. The default is no epilog. "
+        "Currently, callbacks are supported only with CUDA execution.",
+        "direction": "Specify whether forward or inverse FFT is performed (:class:`FFTDirection` object, or as a string from ['forward', 'inverse'], "
         "or as an int from [-1, 1] denoting forward and inverse directions respectively).",
-    'fft_key': "A tuple as the key to represent the input FFT problem."
-})
+        "fft_key": "A tuple as the key to represent the input FFT problem.",
+    }
+)
+
 
 def complex_to_real_equivalent(name):
-    assert 'complex' in name, f"Internal Error ({name=})"
-    m = name.split('complex')
+    assert "complex" in name, f"Internal Error ({name=})"
+    m = name.split("complex")
     assert len(m) in (1, 2)
     size = int(m[-1]) // 2
     if len(m) == 1:
-        return f'float{size}'
+        return f"float{size}"
     else:
-        return f'{m[0]}float{size}'
+        return f"{m[0]}float{size}"
+
 
 def real_to_complex_equivalent(name):
-    assert 'float' in name, f"Internal Error ({name=})"
-    m = name.split('float')
+    assert "float" in name, f"Internal Error ({name=})"
+    m = name.split("float")
     assert len(m) in (1, 2)
     size = int(m[-1])
     if len(m) == 1:
-        return f'complex{size*2}'
+        return f"complex{size*2}"
     else:
-        return f'{m[0]}complex{size*2}'
+        return f"{m[0]}complex{size*2}"
+
 
 def _get_default_fft_abstract_type(dtype, fft_type):
     if fft_type is not None:
         return fft_type
 
     f, c = "float", "complex"
-    if dtype[:len(f)] == f:
-        fft_type = 'R2C'
-    elif  dtype[:len(c)] == c:
-        fft_type = 'C2C'
+    if dtype[: len(f)] == f:
+        fft_type = "R2C"
+    elif dtype[: len(c)] == c:
+        fft_type = "C2C"
     else:
         raise ValueError(f"Unsupported dtype '{dtype}' for FFT.")
     return fft_type
+
 
 def _get_fft_result_and_compute_types(dtype, fft_abstract_type):
     """
     Return result and compute data type given the input data type and the FFT type.
     """
-    if fft_abstract_type == 'C2C':
+    if fft_abstract_type == "C2C":
         return dtype, dtype
-    elif fft_abstract_type == 'C2R':
+    elif fft_abstract_type == "C2R":
         return complex_to_real_equivalent(dtype), dtype
-    elif fft_abstract_type == 'R2C':
+    elif fft_abstract_type == "R2C":
         return real_to_complex_equivalent(dtype), dtype
     else:
         raise ValueError(f"Unsupported FFT Type: '{fft_abstract_type}'")
+
 
 def _get_fft_default_direction(fft_abstract_type):
     """
     Return the default FFT direction (as object of type configuration.FFTDirection) based on the FFT type.
     """
-    if fft_abstract_type in ['C2C', 'R2C']:
-        return configuration.FFTDirection.FORWARD
-    elif fft_abstract_type == 'C2R':
-        return configuration.FFTDirection.INVERSE
+    if fft_abstract_type in ["C2C", "R2C"]:
+        return _configuration.FFTDirection.FORWARD
+    elif fft_abstract_type == "C2R":
+        return _configuration.FFTDirection.INVERSE
     else:
         raise ValueError(f"Unsupported FFT Type: '{fft_abstract_type}'")
 
+
 def _get_size(shape):
     return functools.reduce(operator.mul, shape, 1)
+
 
 def _get_last_axis_id_and_size(axes, operand_shape, fft_abstract_type, last_axis_size):
     """
@@ -169,39 +206,37 @@ def _get_last_axis_id_and_size(axes, operand_shape, fft_abstract_type, last_axis
     """
     last_axis_id = axes[-1]
 
-    if fft_abstract_type == 'C2C':
+    if fft_abstract_type == "C2C":
         return last_axis_id, operand_shape[last_axis_id]
 
-    if fft_abstract_type == 'C2R':
-        if last_axis_size == 'even':
+    if fft_abstract_type == "C2R":
+        if last_axis_size == "even":
             return last_axis_id, 2 * (operand_shape[last_axis_id] - 1)
-        elif last_axis_size == 'odd':
-            return last_axis_id, 2 * operand_shape[last_axis_id]  - 1
+        elif last_axis_size == "odd":
+            return last_axis_id, 2 * operand_shape[last_axis_id] - 1
         else:
-            assert False, "Unreachable."
+            raise AssertionError("Unreachable.")
 
-    if fft_abstract_type == 'R2C':
+    if fft_abstract_type == "R2C":
         return last_axis_id, operand_shape[last_axis_id] // 2 + 1
 
+
 def _contiguous_layout(sorted_shape, sorted_strides):
-    for s in range(1, len(sorted_strides)):
-        if sorted_shape[s-1] * sorted_strides[s-1] != sorted_strides[s]:
-            return False
-    return True
+    return all(sorted_shape[s - 1] * sorted_strides[s - 1] == sorted_strides[s] for s in range(1, len(sorted_strides)))
+
 
 def contiguous_in_memory(shape, strides):
     """
     Check if the provided (shape, strides) result in a contiguous memory layout.
     """
-    sorted_strides, sorted_shape =  zip(*sorted(zip(strides, shape)))
+    sorted_strides, sorted_shape = zip(*sorted(zip(strides, shape, strict=True)), strict=True)
     return _contiguous_layout(sorted_shape, sorted_strides)
 
+
 def overlapping_layout(shape, strides):
-    sorted_strides, sorted_shape =  zip(*sorted(zip(strides, shape)))
-    for s in range(1, len(sorted_strides)):
-        if sorted_shape[s-1] * sorted_strides[s-1] > sorted_strides[s]:
-            return True
-    return False
+    sorted_strides, sorted_shape = zip(*sorted(zip(strides, shape, strict=True)), strict=True)
+    return any(sorted_shape[s - 1] * sorted_strides[s - 1] > sorted_strides[s] for s in range(1, len(sorted_strides)))
+
 
 def check_embedding_possible(strides, presorted=False):
     """
@@ -210,9 +245,10 @@ def check_embedding_possible(strides, presorted=False):
     if not presorted:
         strides = sorted(strides)
     # with a broadcasted view, stride can be 0
-    if any(strides[i-1] == 0 for i in range(1, len(strides))):
+    if any(strides[i - 1] == 0 for i in range(1, len(strides))):
         return False
-    return all(strides[i] % strides[i-1] == 0 for i in range(1, len(strides)))
+    return all(strides[i] % strides[i - 1] == 0 for i in range(1, len(strides)))
+
 
 def check_batch_tileable(sorted_batch_shape, sorted_batch_strides):
     """
@@ -220,11 +256,13 @@ def check_batch_tileable(sorted_batch_shape, sorted_batch_strides):
     """
     return _contiguous_layout(sorted_batch_shape, sorted_batch_strides)
 
+
 def check_contiguous_layout(axes, strides, shape):
     if not axes:
         return True
-    sorted_batch_strides, sorted_batch_shape = zip(*sorted(((strides[a], shape[a]) for a in axes)))
+    sorted_batch_strides, sorted_batch_shape = zip(*sorted((strides[a], shape[a]) for a in axes), strict=True)
     return _contiguous_layout(sorted_batch_shape, sorted_batch_strides)
+
 
 def calculate_embedding_shape(shape, strides):
     """
@@ -232,9 +270,11 @@ def calculate_embedding_shape(shape, strides):
     """
     n = len(strides)
     # The shape is used to resolve cases like (1, 2, 1) : (2, 1, 1) in CuTe notation.
-    ordered_strides, _, order = zip(*sorted(zip(strides, shape, range(n))))
+    ordered_strides, _, order = zip(*sorted(zip(strides, shape, range(n), strict=True)), strict=True)
 
-    ordered_shape = [ordered_strides[i] // ordered_strides[i-1] for i in range(1, len(ordered_strides))] + [shape[order[-1]]]
+    ordered_shape = [ordered_strides[i] // ordered_strides[i - 1] for i in range(1, len(ordered_strides))] + [
+        shape[order[-1]]
+    ]
 
     embedding_shape = [0] * n
     for o in range(n):
@@ -242,14 +282,16 @@ def calculate_embedding_shape(shape, strides):
 
     return embedding_shape, order
 
+
 def axis_order_in_memory(shape, strides):
     """
     Compute the order in which the axes appear in memory.
     """
     # The shape is used to resolve cases like (1, 2, 1) : (2, 1, 1) in CuTe notation.
-    _, _, axis_order = zip(*sorted(zip(strides, shape, range(len(strides)))))
+    _, _, axis_order = zip(*sorted(zip(strides, shape, range(len(strides)), strict=True)), strict=True)
 
     return axis_order
+
 
 def calculate_strides(shape, axis_order):
     """
@@ -264,6 +306,7 @@ def calculate_strides(shape, axis_order):
 
     return strides
 
+
 def unsupported_layout_exception(operand_dim, axes, message, logger):
     logger.error(message)
 
@@ -276,6 +319,7 @@ def unsupported_layout_exception(operand_dim, axes, message, logger):
 
     raise UnsupportedLayoutError(message, permutation, axes)
 
+
 def get_null_logger(name):
     logger = logging.getLogger(name)
     logger.addHandler(logging.NullHandler())
@@ -283,23 +327,38 @@ def get_null_logger(name):
 
     return logger
 
-def get_fft_plan_traits(operand_shape, operand_strides, operand_dtype, axes, *, fft_abstract_type='C2C', last_axis_size='even', result_layout='optimized', logger=None):
+
+def get_fft_plan_traits(
+    operand_shape,
+    operand_strides,
+    operand_dtype,
+    axes,
+    execution,
+    *,
+    fft_abstract_type="C2C",
+    last_axis_size="even",
+    result_layout="optimized",
+    logger=None,
+):
     """
     Extract the FFT shape from the operand shape, compute the ordered axes so that the data is C-contiguous in memory, and compute the result shape and strides.
 
     operand_shape         = The operand shape
     operand_strides       = The operand strides
     axes                  = The axes over which the FFT is performed. For R2C and C2R transforms, the size of the last axis in `axes` will change.
+    execution             = The execution options, an instance of either ExecutionCUDA or ExecutionCPU class.
     fft_abstract_type     = The "abstract" type of the FFT ('C2C', 'C2R', 'R2C').
     last_axis_size        = For 'C2R' FFTs, specify whether the last axis size is even or odd.
 
     The data needed for creating a cuFFT plan is returned in the following order:
     (result_shape, result_strides), ordered_axes, ordered_fft_in_shape, ordered_fft_out_shape, (istride, idistance), (ostride, odistance)
     """
-    logger = logger if logger is not None else get_null_logger('get_fft_plan_traits_null')
+    logger = logger if logger is not None else get_null_logger("get_fft_plan_traits_null")
 
     if len(axes) > 3:
-        raise ValueError(f"Only upto 3D FFTs are currently supported. You can use the 'axes' option to specify upto three axes along which to perform the FFT. The current number of dimensions is {len(axes)} corresponding to the axes {axes}.")
+        raise ValueError(
+            f"Only up to 3D FFTs are currently supported. You can use the 'axes' option to specify up to three axes along which to perform the FFT. The current number of dimensions is {len(axes)} corresponding to the axes {axes}."
+        )
 
     # Check for duplicate axis IDs.
     if len(axes) != len(set(axes)):
@@ -320,29 +379,35 @@ def get_fft_plan_traits(operand_shape, operand_strides, operand_dtype, axes, *, 
     # The first or the last *ordered* axis must be present in the specified axes to be able to use the "advanced" layout.
     first, last = axis_order[-1], axis_order[0]
     if first not in axes and last not in axes:
-        raise ValueError(f"The first ({first}) or the last ({last}) tensor axis in stride order {axis_order} must be present in the specified FFT axes {axes}.")
+        raise ValueError(
+            f"The first ({first}) or the last ({last}) tensor axis in stride order {axis_order} must be present in the specified FFT axes {axes}."
+        )
 
     # Compute the embedding input shape for the FFT.
     fft_in_embedding_shape = [operand_embedding_shape[a] for a in axes]
 
     # Compute the input shape for the FFT.
-    fft_in_shape, fft_in_strides = zip(*[(operand_shape[a], operand_strides[a]) for a in axes])
+    fft_in_shape, fft_in_strides = zip(*[(operand_shape[a], operand_strides[a]) for a in axes], strict=True)
     if not contiguous_in_memory(fft_in_embedding_shape, fft_in_strides):
         message = f"The FFT axes {axes} cannot be reordered so that the data is contiguous in memory for operand shape = {operand_shape} and operand strides = {operand_strides}."
         unsupported_layout_exception(operand_dim, axes, message, logger)
 
     # Reorder the FFT axes and input shape so that they are contiguous or separated by constant stride in memory.
-    quadruple = sorted(zip(fft_in_strides, fft_in_shape, fft_in_embedding_shape, axes), key=lambda v: v[:2], reverse=True)
+    quadruple = sorted(
+        zip(fft_in_strides, fft_in_shape, fft_in_embedding_shape, axes, strict=True), key=lambda v: v[:2], reverse=True
+    )
 
-    ordered_in_strides, ordered_fft_in_shape, ordered_fft_in_embedding_shape, ordered_axes = zip(*quadruple)
+    ordered_in_strides, ordered_fft_in_shape, ordered_fft_in_embedding_shape, ordered_axes = zip(
+        *quadruple, strict=True
+    )
 
     # Check if R2C and C2R can be supported without copying.
-    if fft_abstract_type in ['R2C', 'C2R'] and ordered_axes[-1] != axes[-1]:
+    if fft_abstract_type in ["R2C", "C2R"] and ordered_axes[-1] != axes[-1]:
         message = f"The last FFT axis specified ({axes[-1]}) must have the smallest stride of all the FFT axes' strides {fft_in_strides} for FFT type '{fft_abstract_type}'."
         unsupported_layout_exception(operand_dim, axes, message, logger)
 
     # Input FFT size and batch size.
-    fft_in_size    = _get_size(fft_in_shape)
+    fft_in_size = _get_size(fft_in_shape)
     if fft_in_size == 0:
         raise ValueError("Invalid number of FFT data points (0) specified.")
     fft_batch_size = _get_size(operand_shape) // fft_in_size
@@ -350,24 +415,32 @@ def get_fft_plan_traits(operand_shape, operand_strides, operand_dtype, axes, *, 
     # Output FFT (ordered) shape and size.
     last_axis_id, last_axis_size = _get_last_axis_id_and_size(axes, operand_shape, fft_abstract_type, last_axis_size)
     if last_axis_size == 0:
-        raise ValueError(f"The size of the last FFT axis in the result for FFT type '{fft_abstract_type}' is 0 for operand shape = {operand_shape} and axes = {axes}. To fix this, provide 'last_axis_size' = 'odd' to the FFT options.")
-    ordered_fft_out_shape        = list(ordered_fft_in_shape)
+        raise ValueError(
+            f"The size of the last FFT axis in the result for FFT type '{fft_abstract_type}' is 0 for operand shape = {operand_shape} and axes = {axes}. To fix this, provide 'last_axis_size' = 'odd' to the FFT options."
+        )
+    ordered_fft_out_shape = list(ordered_fft_in_shape)
     index = ordered_axes.index(last_axis_id)
     ordered_fft_out_shape[index] = last_axis_size
-    fft_out_size                 = _get_size(ordered_fft_out_shape)
+    fft_out_size = _get_size(ordered_fft_out_shape)
 
     # Check that batch dimensions are tileable, as required by the "advanced" layout.
     sorted_batch_shape, sorted_batch_strides = list(), list()
     if batch_axes:
-        sorted_batch_strides, sorted_batch_shape = zip(*sorted(((operand_strides[a], operand_shape[a]) for a in batch_axes)))
+        sorted_batch_strides, sorted_batch_shape = zip(
+            *sorted((operand_strides[a], operand_shape[a]) for a in batch_axes), strict=True
+        )
         if not check_embedding_possible(sorted_batch_strides, presorted=True):
-            raise ValueError(f"The operand layout corresponding to shape = {operand_shape} and strides = {operand_strides} together with the specified axes = {axes} is currently not supported because it is not tileable.")
+            raise ValueError(
+                f"The operand layout corresponding to shape = {operand_shape} and strides = {operand_strides} together with the specified axes = {axes} is currently not supported because it is not tileable."
+            )
         logger.debug(f"The sorted batch shape is {sorted_batch_shape}.")
         logger.debug(f"The sorted batch strides are {sorted_batch_strides}.")
     if not check_batch_tileable(sorted_batch_shape, sorted_batch_strides):
         message = f"The operand layout corresponding to shape = {operand_shape} and strides = {operand_strides} together with the specified axes = {axes} is currently not supported because it is not tileable."
         unsupported_layout_exception(operand_dim, axes, message, logger)
-    logger.debug(f"The operand layout corresponding to shape = {operand_shape} and strides = {operand_strides} together with the specified axes = {axes} IS tileable.")
+    logger.debug(
+        f"The operand layout corresponding to shape = {operand_shape} and strides = {operand_strides} together with the specified axes = {axes} IS tileable."
+    )
 
     # The result tensor has updated shape for R2C and C2R transforms.
     result_shape = list(operand_shape)
@@ -379,9 +452,9 @@ def get_fft_plan_traits(operand_shape, operand_strides, operand_dtype, axes, *, 
     # without performance hit, if the samples do not interleave.
     # Otherwise, we try to keep it only when explicitly asked (result_layout=natural)
     is_sample_interleaved = sorted_batch_strides and sorted_batch_strides[0] <= ordered_in_strides[0]
-    logger.debug(f"Are the samples interleaved? {is_sample_interleaved }.")
+    logger.debug(f"Are the samples interleaved? {bool(is_sample_interleaved)}.")
 
-    if not is_sample_interleaved or result_layout == 'natural':    # Natural (== operand) layout.
+    if not is_sample_interleaved or result_layout == "natural":  # Natural (== operand) layout.
         axis_order = axis_order_in_memory(operand_shape, operand_strides)
         result_strides = calculate_strides(result_shape, axis_order)
         # If the resulting output operand is not tilable, keeping the original layout is not possible.
@@ -394,61 +467,137 @@ def get_fft_plan_traits(operand_shape, operand_strides, operand_dtype, axes, *, 
             if not check_contiguous_layout(axes, result_strides, result_shape):
                 message = f"The operand layout corresponding to shape = {operand_shape} and strides = {operand_strides} together with the specified axes = {axes} is currently not supported with result_layout='natural', because the output sample would be non-contiguous."
                 unsupported_layout_exception(operand_dim, axes, message, logger)
-    else:    # Optimized layout.
-        axis_order = tuple(list(reversed(ordered_axes)) + sorted((a for a in batch_axes), key=lambda v: (operand_strides[v], operand_shape[v])))
+    else:  # Optimized layout.
+        axis_order = tuple(
+            list(reversed(ordered_axes))
+            + sorted((a for a in batch_axes), key=lambda v: (operand_strides[v], operand_shape[v]))
+        )
         result_strides = calculate_strides(result_shape, axis_order)
     logger.debug(f"The result layout is '{result_layout}' with the result_strides {result_strides}.")
 
     # Compute the operand linear stride and distance needed for the cuFFT plan.
-    last_ordered_in_stride  = ordered_in_strides[-1]
-    min_in_stride           = min(operand_strides)
+    last_ordered_in_stride = ordered_in_strides[-1]
+    min_in_stride = min(operand_strides)
 
     if last_ordered_in_stride == min_in_stride:
-        istride, idistance = min_in_stride, _get_size(ordered_fft_in_embedding_shape) if not sorted_batch_strides else sorted_batch_strides[0]
+        istride, idistance = (
+            min_in_stride,
+            _get_size(ordered_fft_in_embedding_shape) if not sorted_batch_strides else sorted_batch_strides[0],
+        )
     else:
-        istride, idistance = last_ordered_in_stride, min_in_stride if not sorted_batch_strides else sorted_batch_strides[0]
-
-    # Compute the result linear stride and distance needed for the cuFFT plan.
-    ostride = result_strides[ordered_axes[-1]] #  minimal output fft stride
-    odistance = fft_out_size if not batch_axes else min(result_strides[axis] for axis in batch_axes)
-
-    if operand_dtype in ("float16", "complex32"):
-        if fft_abstract_type == "R2C" and istride != 1:
-            raise ValueError(
-                f"The {fft_abstract_type} FFT of half-precision tensor ({operand_dtype}) "
-                f"is currently not supported for strided inputs "
-                f"(got input stride {istride}).")
-        if fft_abstract_type == "C2R" and ostride != 1:
-            raise ValueError(
-                f"The {fft_abstract_type} FFT of half-precision tensor ({operand_dtype}) "
-                f"is currently not supported for strided outputs "
-                f"(got output stride {ostride}).")
-        if fft_out_size == 1:
-            if cufft.get_version() < 10702:  # 10702 is shipped with CTK 11.7
-                raise ValueError(
-                    f"The FFT of sample size 1 and half-precision type ({operand_dtype}) "
-                    f"of size 1 is not supported by the installed cuFFT version. ")
-            # There is a bug that leads to invalid memory access (CTK 12.1) for one-element,
-            # strided C2C complex32 tensors (either in the input or output) or results in
-            # CUFFT_INVALID_SIZE (CTK 12.3). This workaround relies on the fact that the
-            # [i|o]stride effectively does not matter in a one-element sample.
-            elif fft_abstract_type == "C2C":
-                istride = ostride = 1
-
-    # There's a bug in cuFFT in CTKs prior to 11.4U2
-    if len(axes) == 3 and fft_batch_size > 1 and cufft.get_version() < 10502:
-        raise ValueError(
-            "The 3D batched FFT is not supported by the installed cuFFT version. "
-            "Please update your CUDA Toolkit (to 11.4.2 or newer)"
+        istride, idistance = (
+            last_ordered_in_stride,
+            min_in_stride if not sorted_batch_strides else sorted_batch_strides[0],
         )
 
-    plan_traits = PlanTraits(result_shape=tuple(result_shape), result_strides=tuple(result_strides), ordered_axes=tuple(ordered_axes),
-                             ordered_fft_in_shape=tuple(ordered_fft_in_shape), ordered_fft_in_embedding_shape=tuple(ordered_fft_in_embedding_shape),
-                             ordered_fft_out_shape=tuple(ordered_fft_out_shape),
-                             fft_batch_size=fft_batch_size, istride=istride, idistance=idistance, ostride=ostride, odistance=odistance)
+    # Compute the result linear stride and distance needed for the cuFFT plan.
+    ostride = result_strides[ordered_axes[-1]]  #  minimal output fft stride
+    odistance = fft_out_size if not batch_axes else min(result_strides[axis] for axis in batch_axes)
+
+    if execution.name == "cpu":
+        if fft_out_size == 1:
+            istride = ostride = 1
+    else:
+        assert execution.name == "cuda"
+        if operand_dtype in ("float16", "complex32"):
+            if fft_abstract_type == "R2C" and istride != 1:
+                raise ValueError(
+                    f"The {fft_abstract_type} FFT of half-precision tensor ({operand_dtype}) "
+                    f"is currently not supported for strided inputs "
+                    f"(got input stride {istride})."
+                )
+            if fft_abstract_type == "C2R" and ostride != 1:
+                raise ValueError(
+                    f"The {fft_abstract_type} FFT of half-precision tensor ({operand_dtype}) "
+                    f"is currently not supported for strided outputs "
+                    f"(got output stride {ostride})."
+                )
+            if fft_out_size == 1:
+                if cufft.get_version() < 10702:  # 10702 is shipped with CTK 11.7
+                    raise ValueError(
+                        f"The FFT of sample size 1 and half-precision type ({operand_dtype}) "
+                        f"of size 1 is not supported by the installed cuFFT version. "
+                    )
+                # There is a bug that leads to invalid memory access (CTK 12.1) for one-element,
+                # strided C2C complex32 tensors (either in the input or output) or results in
+                # CUFFT_INVALID_SIZE (CTK 12.3). This workaround relies on the fact that the
+                # [i|o]stride effectively does not matter in a one-element sample.
+                elif fft_abstract_type == "C2C":
+                    istride = ostride = 1
+
+        # There's a bug in cuFFT in CTKs prior to 11.4U2
+        if len(axes) == 3 and fft_batch_size > 1 and cufft.get_version() < 10502:
+            raise ValueError(
+                "The 3D batched FFT is not supported by the installed cuFFT version. "
+                "Please update your CUDA Toolkit (to 11.4.2 or newer)"
+            )
+
+    plan_traits = PlanTraits(
+        result_shape=tuple(result_shape),
+        result_strides=tuple(result_strides),
+        ordered_axes=tuple(ordered_axes),
+        ordered_fft_in_shape=tuple(ordered_fft_in_shape),
+        ordered_fft_in_embedding_shape=tuple(ordered_fft_in_embedding_shape),
+        ordered_fft_out_shape=tuple(ordered_fft_out_shape),
+        fft_batch_size=fft_batch_size,
+        istride=istride,
+        idistance=idistance,
+        ostride=ostride,
+        odistance=odistance,
+    )
     return plan_traits
 
-def create_xt_plan_args(*, plan_traits=None, fft_abstract_type=None, operand_data_type=None, operand_layout=None, inplace=None):
+
+def _copy_operand_perhaps(
+    internal_operand,
+    operand,
+    stream_holder,
+    execution_space,
+    memory_space,
+    device_id,
+    fft_abstract_type,
+    logger,
+):
+    if execution_space == memory_space:
+        if fft_abstract_type != "C2R":
+            return operand, None
+        else:
+            # For C2R, we need to take a copy to avoid input being overwritten
+            logger.info(
+                "For C2R FFT with input operand on GPU, the input is copied to " "avoid being overwritten by cuFFT."
+            )
+            operand_copy = utils.create_empty_tensor(
+                operand.__class__,
+                operand.shape,
+                operand.dtype,
+                device_id,
+                stream_holder,
+                operand.strides,
+            )
+            operand_copy.copy_(operand.tensor, stream_holder=stream_holder)
+            # We don't need to keep the operand backup, because C2R precludes `inplace=True`
+            return operand_copy, None
+    else:
+        # Copy the `operand` to memory that matches the exec space
+        # and keep the original `operand` to handle `options.inplace=True`
+        if internal_operand is None:
+            if execution_space == "cuda":
+                assert isinstance(device_id, int)
+                to_device = device_id
+            else:
+                assert execution_space == "cpu"
+                to_device = "cpu"
+            exec_space_copy = tensor_wrapper.to(operand, to_device, stream_holder)
+            return exec_space_copy, operand
+        else:
+            # In-place copy to existing pointer
+            tensor_wrapper.copy_([operand], [internal_operand], stream_holder)
+            return internal_operand, operand
+
+
+def create_xt_plan_args(
+    *, plan_traits=None, fft_abstract_type=None, operand_data_type=None, operand_layout=None, inplace=None
+):
     """
     Create the arguments to xt_make_plan_many() except for the handle. This is also used for computing the FFT key.
     """
@@ -461,63 +610,265 @@ def create_xt_plan_args(*, plan_traits=None, fft_abstract_type=None, operand_dat
     result_data_type, compute_data_type = _get_fft_result_and_compute_types(operand_data_type, fft_abstract_type)
 
     # The input shape to the plan should be the logical FFT shape.
-    ordered_plan_shape = plan_traits.ordered_fft_out_shape if fft_abstract_type == 'C2R' else plan_traits.ordered_fft_in_shape
+    ordered_plan_shape = (
+        plan_traits.ordered_fft_out_shape if fft_abstract_type == "C2R" else plan_traits.ordered_fft_in_shape
+    )
 
     # Handle in-place transforms.
     if inplace:
         if overlapping_layout(operand_layout.shape, operand_layout.strides):
-            raise ValueError(f"In-place transform is not supported because the tensor with shape {operand_layout.shape} and strides {operand_layout.strides} overlaps in memory.")
-        ordered_fft_out_shape, ostride, odistance = plan_traits.ordered_fft_in_embedding_shape, plan_traits.istride, plan_traits.idistance
+            raise ValueError(
+                f"In-place transform is not supported because the tensor with shape {operand_layout.shape} and strides {operand_layout.strides} overlaps in memory."
+            )
+        ordered_fft_out_shape, ostride, odistance = (
+            plan_traits.ordered_fft_in_embedding_shape,
+            plan_traits.istride,
+            plan_traits.idistance,
+        )
     else:
-        ordered_fft_out_shape, ostride, odistance = plan_traits.ordered_fft_out_shape, plan_traits.ostride, plan_traits.odistance
+        ordered_fft_out_shape, ostride, odistance = (
+            plan_traits.ordered_fft_out_shape,
+            plan_traits.ostride,
+            plan_traits.odistance,
+        )
 
-    return len(ordered_plan_shape), ordered_plan_shape, plan_traits.ordered_fft_in_embedding_shape, plan_traits.istride, plan_traits.idistance, NAME_TO_DATA_TYPE[operand_data_type], ordered_fft_out_shape, ostride, odistance, NAME_TO_DATA_TYPE[result_data_type], plan_traits.fft_batch_size, NAME_TO_DATA_TYPE[compute_data_type]
+    return (
+        len(ordered_plan_shape),
+        ordered_plan_shape,
+        plan_traits.ordered_fft_in_embedding_shape,
+        plan_traits.istride,
+        plan_traits.idistance,
+        NAME_TO_DATA_TYPE[operand_data_type],
+        ordered_fft_out_shape,
+        ostride,
+        odistance,
+        NAME_TO_DATA_TYPE[result_data_type],
+        plan_traits.fft_batch_size,
+        NAME_TO_DATA_TYPE[compute_data_type],
+    )
 
-def create_fft_key(operand, *, axes=None, options=None, inplace=None, prolog=None, epilog=None, plan_args=None):
+
+def fftw_plan_args(xt_plan_args, operand_ptr, result_ptr, fft_abstract_type, direction):
+    """
+    Create the arguments for fftw API based on the args created by create_xt_plan_args and pointers
+    to the input and the output tensors.
+    Note, that while the pointers to the data are required in planning, different pointers may be passed
+    to the same plan in subsequent execute call
+    (assuming dtype, memory layout, alignment, and inplace properties do not change).
+    """
+    (
+        rank,
+        n,
+        inembed,
+        istride,
+        idist,
+        input_t,
+        onembed,
+        ostride,
+        odist,
+        output_t,
+        batch,
+        execution_t,
+    ) = xt_plan_args
+
+    if input_t in FFTW_SUPPORTED_SINGLE:
+        assert output_t in FFTW_SUPPORTED_SINGLE, "Expected single precision output for single precision input"
+        precision = fftw.Precision.FLOAT
+    elif input_t in FFTW_SUPPORTED_DOUBLE:
+        assert output_t in FFTW_SUPPORTED_DOUBLE, "Expected double precision output for double precision input"
+        precision = fftw.Precision.DOUBLE
+    else:
+        supported_types_str = ", ".join(DATA_TYPE_TO_NAME[dtype] for dtype in FFTW_SUPPORTED_TYPES)
+        raise ValueError(
+            f"Currently, the CPU FFT supports following input types: {supported_types_str}. "
+            f"Got input of type {DATA_TYPE_TO_NAME[input_t]}."
+        )
+    kind = getattr(fftw.Kind, fft_abstract_type)
+    if kind == fftw.Kind.C2C:
+        supported_in_t, supported_out_t = FFTW_SUPPORTED_COMPLEX, FFTW_SUPPORTED_COMPLEX
+    elif kind == fftw.Kind.C2R:
+        supported_in_t, supported_out_t = FFTW_SUPPORTED_COMPLEX, FFTW_SUPPORTED_FLOAT
+    else:
+        assert kind == fftw.Kind.R2C
+        supported_in_t, supported_out_t = FFTW_SUPPORTED_FLOAT, FFTW_SUPPORTED_COMPLEX
+    if input_t not in supported_in_t:
+        supported_types_str = ", ".join(DATA_TYPE_TO_NAME[dtype] for dtype in supported_in_t)
+        raise ValueError(
+            f"Got unsupported input data type {DATA_TYPE_TO_NAME[input_t]} "
+            f"for the {fft_abstract_type} transform. "
+            f"Supported types are {supported_types_str}."
+        )
+    assert output_t in supported_out_t, "Mismatched data type and FFT transform type"
+    if direction is None:
+        sign = fftw.Sign.UNSPECIFIED
+    else:
+        sign = fftw.Sign(direction)
+    return (
+        precision,
+        kind,
+        sign,
+        rank,
+        n,
+        batch,
+        operand_ptr,
+        inembed,
+        istride,
+        idist,
+        result_ptr,
+        onembed,
+        ostride,
+        odist,
+        fftw.PlannerFlags.ESTIMATE,
+    )
+
+
+def setup_options(operand, options, execution):
+    default_exec_space = "cpu" if operand.device_id is None else "cuda"
+    execution = utils.check_or_create_one_of_options(
+        (_configuration.ExecutionCUDA, _configuration.ExecutionCPU),
+        execution,
+        "'execution' options",
+        default_name=default_exec_space,
+    )
+    # Process options.
+    options = utils.check_or_create_options(_configuration.FFTOptions, options, "FFT options")
+    return _cross_setup_execution_and_options(options, execution)
+
+
+def create_fft_key(
+    operand, *, axes=None, options=None, execution=None, inplace=None, prolog=None, epilog=None, plan_args=None
+):
     """
     This key is not designed to be serialized and used on a different machine. It is meant for runtime use only.
     We use a specific inplace argument instead of taking it from options, because self.inplace != self.options.inplace
     for CPU tensors for efficiency.
 
-    It is the user's responsiblity to augment this key with the stream in case they use stream-ordered memory pools.
+    It is the user's responsibility to augment this key with the stream in case they use stream-ordered memory pools.
     """
     if plan_args is None:
-        # Process options.
-        options = utils.check_or_create_options(configuration.FFTOptions, options, "FFT options")
-
-        operand           = tensor_wrapper.wrap_operand(operand)
+        operand = tensor_wrapper.wrap_operand(operand)
+        options, execution = setup_options(operand, options, execution)
         fft_abstract_type = _get_default_fft_abstract_type(operand.dtype, options.fft_type)
+        if axes is None:
+            axes = range(len(operand.shape))
 
         # Determine plan traits.
-        plan_traits = get_fft_plan_traits(operand.shape, operand.strides, operand.dtype, axes, fft_abstract_type=fft_abstract_type, last_axis_size=options.last_axis_size, result_layout=options.result_layout, logger=None)
+        plan_traits = get_fft_plan_traits(
+            operand.shape,
+            operand.strides,
+            operand.dtype,
+            axes,
+            execution,
+            fft_abstract_type=fft_abstract_type,
+            last_axis_size=options.last_axis_size,
+            result_layout=options.result_layout,
+            logger=None,
+        )
 
-        # Inplace is always True for CPU tensors for efficiency.
+        # Inplace is always True when execution space is different than the operand's memory space
+        # (as the operand needs to be copied once anyway)
         if inplace is None:
-            inplace = True if operand.device_id is None else options.inplace
+            memory_space = "cpu" if operand.device_id is None else "cuda"
+            execution_space = execution.name
+            assert execution.name in ("cpu", "cuda")
+            inplace = memory_space != execution_space or options.inplace
 
         # Get the arguments to xt_make_plan_many.
-        plan_args = create_xt_plan_args(plan_traits=plan_traits, fft_abstract_type=fft_abstract_type, operand_data_type=operand.dtype, operand_layout=TensorLayout(shape=operand.shape, strides=operand.strides), inplace=inplace)
+        plan_args = create_xt_plan_args(
+            plan_traits=plan_traits,
+            fft_abstract_type=fft_abstract_type,
+            operand_data_type=operand.dtype,
+            operand_layout=TensorLayout(shape=operand.shape, strides=operand.strides),
+            inplace=inplace,
+        )
 
     # Prolog and epilog, if used.
     if prolog is not None or epilog is not None:
-        get_data = lambda device_callable: None if device_callable is None else (device_callable.ltoir, device_callable.data)
+        get_data = (
+            lambda device_callable: None if device_callable is None else (device_callable.ltoir, device_callable.data)
+        )
         callable_data = get_data(prolog), get_data(epilog)
     else:
         callable_data = None
 
-    # The key is based on plan arguments and callback data (a callable object of type DeviceCallback or None).
-    return plan_args, callable_data
+    # The key is based on plan arguments, callback data (a callable object of type DeviceCallback or None) and the
+    # execution options (in "normalized" form of ("cpu"/"cuda", *execution_options)).
+    return plan_args, callable_data, data_cls_astuple(execution)
+
+
+def _has_only_small_factors_extent(extent):
+    # fast track for powers of 2 (and zero)
+    if extent & (extent - 1) == 0:
+        return True
+    # Divide the `extent` by the product of all the prime factors up to
+    # 127 present in the `extent` until there are none left.
+    # Considering all the prime factors at once is faster, even though the
+    # first call (and only the first call) to gcd operates on ints with precision
+    # exceeding 64 bits. For common 2, 3, 5, 7 factors, the higher powers are included,
+    # to reduce number of iterations.
+    # math.prod(p for p in range(2, 128) if is_prime(p)) * 2**10 * 3**7 * 5**5 * 7**4
+    magic_prod = 67455891904760197438286248026720562156610454525830430432000000
+    d = math.gcd(extent, magic_prod)
+    while d > 1:
+        if extent == d:
+            return True
+        extent //= d
+        d = math.gcd(extent, d)
+    return False
+
+
+def _has_only_small_factors_shape(shape):
+    return all(extent <= 2048 or _has_only_small_factors_extent(extent) for extent in shape)
+
+
+def check_is_shape_supported_lto_ea(operand, plan_traits, fft_abstract_type):
+    if fft_abstract_type != "C2R":
+        shape = plan_traits.ordered_fft_in_shape
+    else:
+        shape = plan_traits.ordered_fft_out_shape
+    if not _has_only_small_factors_shape(shape):
+        raise ValueError(
+            f"cuFFT LTO EA does not support callbacks with inputs of certain shapes. "
+            f"Tensor with extents comprasing prime factors larger than 127 are not supported. "
+            f"Got a tensor of shape {operand.shape}."
+        )
+    if len(shape) == 3 and sum(e == 1 for e in shape) == 1 and shape[-1] == 1:
+        raise ValueError(
+            "cuFFT LTO EA does not support callbacks with inputs of certain shapes. "
+            "3D FFT with the last extent equal 1 are not supported"
+        )
+
+
+def _check_prolog_epilog_traits(prolog, epilog, plan_traits, operand, fft_abstract_type):
+    # Since the version 11300, cufft does the validation itself.
+    # In earlier versions, it could ignore the callback silently
+    # for unsupported shapes
+    if (prolog or epilog) and cufft.get_version() < 11300:
+        check_is_shape_supported_lto_ea(operand, plan_traits, fft_abstract_type)
+
 
 def set_prolog_and_epilog(handle, prolog, epilog, operand_dtype, result_dtype, logger):
-
     def set_callback(cbkind, cbobj, dtype):
         if cbobj is None:
             return
 
-        assert cbkind in ['prolog', 'epilog'], "Internal error."
-        CBType = CBLoadType if cbkind=="prolog" else CBStoreType
+        assert cbkind in ["prolog", "epilog"], "Internal error."
+        CBType = CBLoadType if cbkind == "prolog" else CBStoreType
 
-        cufft.xt_set_jit_callback(handle, cbobj.ltoir, cbobj.size, CBType[dtype.upper()], [cbobj.data])
+        try:
+            cufft.xt_set_jit_callback(handle, cbobj.ltoir, cbobj.size, CBType[dtype.upper()], [cbobj.data])
+        except _bindings_utils.FunctionNotFoundError as e:
+            version = cufft.get_version()
+            raise RuntimeError(
+                f"The currently running cuFFT version {version} does not support LTO callbacks. \n"
+                f"The following cuFFT releases support LTO callbacks: \n"
+                f"1. cuFFT shipped with CUDA 12.6U2 (11.3.0) or newer \n"
+                f"2. the older, experimental cuFFT LTO EA (early access) preview build "
+                f"(https://developer.nvidia.com/cufftea).\n"
+                f"To use version different from the one shipped with CUDA Toolkit, please make "
+                f"sure the right 'libcufft.so' takes precedence for nvmath. "
+                f"For example, by adjusting the 'LD_LIBRARY_PATH' or 'LD_PRELOAD'."
+            ) from e
 
         logger.info(f"The specified LTO-IR {cbkind} has been set.")
         if isinstance(cbobj.ltoir, int):
@@ -525,18 +876,19 @@ def set_prolog_and_epilog(handle, prolog, epilog, operand_dtype, result_dtype, l
         logger.debug(f"The {cbkind} LTO-IR size is {cbobj.size}, and data is {cbobj.data}.")
 
     if prolog is not None:
-        set_callback('prolog', prolog, operand_dtype)
+        set_callback("prolog", prolog, operand_dtype)
     if epilog is not None:
-        set_callback('epilog', epilog, result_dtype)
+        set_callback("epilog", epilog, result_dtype)
 
 
 class InvalidFFTState(Exception):
     pass
 
+
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
 class FFT:
     """
-    FFT(operand, *, axes=None, options=None, stream=None)
+    FFT(operand, *, axes=None, options=None, execution=None, stream=None)
 
     Create a stateful object that encapsulates the specified FFT computations and required resources.
     This object ensures the validity of resources during use and releases them when they are no longer needed to prevent misuse.
@@ -561,6 +913,7 @@ class FFT:
         operand: {operand}
         axes: {axes}
         options: {options}
+        execution: {execution}
         stream: {stream}
 
     See Also:
@@ -568,13 +921,13 @@ class FFT:
 
     Examples:
 
-        >>> import numpy as np
+        >>> import cupy as cp
         >>> import nvmath
 
-        Create a 3-D complex128 ndarray on the CPU:
+        Create a 3-D complex128 ndarray on the GPU:
 
         >>> shape = 128, 128, 128
-        >>> a = np.random.rand(*shape) + 1j * np.random.rand(*shape)
+        >>> a = cp.random.rand(*shape) + 1j * cp.random.rand(*shape)
 
         We will define a 2-D C2C FFT operation along the first two dimensions, batched along the last dimension:
 
@@ -585,29 +938,31 @@ class FFT:
         >>> f = nvmath.fft.FFT(a, axes=axes)
 
         Options can be provided above to control the behavior of the operation using the `options` argument (see :class:`FFTOptions`).
+        Similarly, the execution space (CUDA or CPU) and execution options can be passed using the `execution` argument (see :class:`ExecutionCUDA`, :class:`ExecutionCPU`).
 
         Next, plan the FFT. Load and/or store callback functions can be provided to :meth:`plan` using the `prolog` and `epilog` option:
 
         >>> f.plan()
 
-        Now execute the FFT, and obtain the result `r1` as a NumPy ndarray.
+        Now execute the FFT, and obtain the result `r1` as a CuPy ndarray. The transform will be performed on GPU,
+        because ``execution`` was not explicitly specified and ``a`` resides in GPU memory.
 
         >>> r1 = f.execute()
 
-        Finally, free the FFT object's resources. _To avoid having to explictly making this call, it's recommended to use the FFT object as
+        Finally, free the FFT object's resources. To avoid this explicit call, it's recommended to use the FFT object as
         a context manager as shown below, if possible.
 
         >>> f.free()
 
         Note that all :class:`FFT` methods execute on the current stream by default. Alternatively, the `stream` argument can be used to run a method on a specified stream.
 
-        Let's now look at the same problem with CuPy ndarrays on the GPU.
+        Let's now look at the same problem with NumPy ndarrays on the CPU.
 
-        Create a 3-D complex128 CuPy ndarray on the GPU:
+        Create a 3-D complex128 NumPy ndarray on the CPU:
 
-        >>> import cupy as cp
+        >>> import numpy as np
         >>> shape = 128, 128, 128
-        >>> a = cp.random.rand(*shape) + 1j * cp.random.rand(*shape)
+        >>> a = np.random.rand(*shape) + 1j * np.random.rand(*shape)
 
         Create an FFT object encapsulating the problem specification described earlier and use it as a context manager.
 
@@ -619,6 +974,16 @@ class FFT:
 
         All the resources used by the object are released at the end of the block.
 
+        The operation was performed on the CPU because ``a`` resides in host memory.
+        With ``execution`` specified to 'cuda', the NumPy array would be temporarily copied to device memory
+        and transformed on the GPU:
+
+        >>> with nvmath.fft.FFT(a, axes=axes, execution="cuda") as f:
+        ...    f.plan()
+        ...
+        ...    # Execute the FFT to get the first result.
+        ...    r1 = f.execute()
+
         Further examples can be found in the `nvmath/examples/fft <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft>`_ directory.
 
     Notes:
@@ -627,20 +992,20 @@ class FFT:
           then :attr:`FFTOptions.last_axis_size` must be set to `odd` to recover the original signal.
     """
 
-
-    def __init__(self, operand, *, axes=None, options=None, stream=None):
-
-        options = utils.check_or_create_options(configuration.FFTOptions, options, "FFT options")
-        self.options = options
-
+    def __init__(self, operand, *, axes=None, options=None, execution=None, stream=None):
         self.operand = operand = tensor_wrapper.wrap_operand(operand)
+        options, execution = setup_options(operand, options, execution)
+        self.options = options
+        self.execution_options = execution
 
         # Capture operand layout for consistency checks when resetting operands.
         self.operand_layout = TensorLayout(shape=operand.shape, strides=operand.strides)
-        self.operand_dim    = len(operand.shape)
+        self.operand_dim = len(operand.shape)
 
         if not axes and self.operand_dim > 3:
-            raise ValueError(f"The tensor is {self.operand_dim}-D and FFTs in number of dimensions > 3 is not supported. The FFT axes need to be specified using the 'axes' option.")
+            raise ValueError(
+                f"The tensor is {self.operand_dim}-D and FFTs in number of dimensions > 3 is not supported. The FFT axes need to be specified using the 'axes' option."
+            )
 
         if self.operand_dim == 0:
             raise ValueError(f"The tensor is {self.operand_dim}-D (i.e. a scalar). FFT does not support scalars.")
@@ -648,13 +1013,18 @@ class FFT:
         self.operand_data_type = operand.dtype
         self.fft_abstract_type = _get_default_fft_abstract_type(self.operand_data_type, options.fft_type)
 
-        self.result_data_type, self.compute_data_type = _get_fft_result_and_compute_types(operand.dtype, self.fft_abstract_type)
+        self.result_data_type, self.compute_data_type = _get_fft_result_and_compute_types(
+            operand.dtype, self.fft_abstract_type
+        )
 
         self.logger = options.logger if options.logger is not None else logging.getLogger()
         self.logger.info(f"The FFT type is {self.fft_abstract_type}.")
-        self.logger.info(f"The input data type is {self.operand_data_type}, and the result data type is {self.result_data_type}.")
+        self.logger.info(
+            f"The input data type is {self.operand_data_type}, and the result data type is {self.result_data_type}."
+        )
 
-        if axes is None: axes = range(self.operand_dim)
+        if axes is None:
+            axes = range(self.operand_dim)
 
         if any(axis >= self.operand_dim or axis < -self.operand_dim for axis in axes):
             raise ValueError(f"The specified FFT axes {axes} are out of bounds for a {self.operand_dim}-D tensor.")
@@ -666,83 +1036,143 @@ class FFT:
         self.package = utils.infer_object_package(operand.tensor)
 
         # NumPy and CuPy don't support complex32 yet.
-        if self.package in ['numpy', 'cupy'] and self.result_data_type == 'complex32':
-            raise TypeError(f"The result data type {self.result_data_type} is not supported by the operand package '{self.package}'.")
+        if self.package in ["numpy", "cupy"] and self.result_data_type == "complex32":
+            raise TypeError(
+                f"The result data type {self.result_data_type} is not supported by the operand package '{self.package}'."
+            )
 
         # Infer operand package, execution space, and memory space.
-        self.memory_space = 'cuda'
-        self.device_id = operand.device_id
-        if self.device_id is None:
-            self.package = self.operand.name
-            if self.package == 'numpy':
-                self.package = 'cupy'
-            self.memory_space = 'cpu'
-            self.device_id = options.device_id
-        self.logger.info(f"The input tensor's memory space is {self.memory_space}, and the execution space is on device {self.device_id}.")
+        if execution.name == "cuda":
+            if operand.device_id is not None:  # exec space matches the mem space
+                self.memory_space = "cuda"
+                self.device_id = operand.device_id
+            else:  # we need to move inputs cpu -> gpu and outputs gpu -> cpu
+                self.memory_space = "cpu"
+                self.device_id = execution.device_id
+                assert self.device_id is not None
+        else:
+            assert execution.name == "cpu"
+            self.device_id = None
+            if operand.device_id is None:  # exec space matches the mem space
+                self.memory_space = "cpu"
+            else:  # we need to move inputs gpu -> cpu and outputs cpu -> gpu
+                self.memory_space = "cuda"
+        self.execution_space = execution.name
+        self.operand_device_id = operand.device_id
+        self.internal_op_package = self._internal_operand_package(self.package)
+        exec_stream_holder, operand_stream_holder = self._get_or_create_stream_maybe(stream)
 
-        stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
-        self.logger.info(f"The specified stream for the FFT ctor is {stream_holder.obj}.")
+        self.logger.info(
+            f"The input tensor's memory space is {self.memory_space}, and the execution space "
+            f"is {self.execution_space}, with device {self.device_id}."
+        )
+
+        self.logger.info(
+            f"The specified stream for the FFT ctor is "
+            f"{(exec_stream_holder or operand_stream_holder) and (exec_stream_holder or operand_stream_holder).obj}."
+        )
 
         # In-place FFT option, available only for C2C transforms.
         self.inplace = self.options.inplace
-        if self.inplace and self.fft_abstract_type != 'C2C':
-            raise ValueError(f"The in-place option (FFTOptions.inplace=True) is only supported for complex-to-complex FFT. The FFT type is '{self.fft_abstract_type}'.")
+        if self.inplace and self.fft_abstract_type != "C2C":
+            raise ValueError(
+                f"The in-place option (FFTOptions.inplace=True) is only supported for complex-to-complex FFT. The FFT type is '{self.fft_abstract_type}'."
+            )
 
-        # Copy operand to device if needed.
-        if self.memory_space == 'cpu':
-            self.cpu_operand = self.operand
-            self.operand = operand = tensor_wrapper.to(operand, self.device_id, stream_holder)
-        else:
-            # take a copy of input for C2R since cufft overwrites input
-            if self.fft_abstract_type == 'C2R':
-                self.logger.info("For C2R FFT with input operand on GPU, the input is copied to avoid being overwritten by cuFFT.")
-                operand_copy = utils.create_empty_tensor(operand.__class__,
-                    operand.shape, operand.dtype, self.device_id, stream_holder, operand.strides)
-                operand_copy.copy_(operand.tensor, stream_holder=stream_holder)
-                assert operand_copy.strides == operand.strides and operand_copy.data_ptr != operand.data_ptr
-                self.operand = operand = operand_copy
+        # Copy the operand to execution_space's device if needed.
+        self.operand, self.operand_backup = _copy_operand_perhaps(
+            None,
+            operand,
+            operand_stream_holder,
+            self.execution_space,
+            self.memory_space,
+            self.device_id,
+            self.fft_abstract_type,
+            self.logger,
+        )
+        operand = self.operand
+        self._preallocated_result = None
 
-        if self.options.inplace:    # Don't use self.inplace here, because we always set it to True for CPU tensors.
-            self.logger.info(f"The FFT will be performed in-place, with the result overwriting the input.")
+        if self.options.inplace:  # Don't use self.inplace here, because we always set it to True for CPU tensors.
+            self.logger.info("The FFT will be performed in-place, with the result overwriting the input.")
         else:
-            self.logger.info(f"The FFT will be performed out-of-place.")
+            self.logger.info("The FFT will be performed out-of-place.")
 
         # Check if FFT is supported and calculate plan traits.
-        self.plan_traits = get_fft_plan_traits(operand.shape, operand.strides, operand.dtype, self.axes, fft_abstract_type=self.fft_abstract_type, last_axis_size=self.options.last_axis_size, result_layout=self.options.result_layout, logger=self.logger)
+        self.plan_traits = get_fft_plan_traits(
+            operand.shape,
+            operand.strides,
+            operand.dtype,
+            self.axes,
+            self.execution_options,
+            fft_abstract_type=self.fft_abstract_type,
+            last_axis_size=self.options.last_axis_size,
+            result_layout=self.options.result_layout,
+            logger=self.logger,
+        )
 
-        self.logger.info(f"The operand data type = {self.operand_data_type}, shape = {self.operand_layout.shape}, and strides = {self.operand_layout.strides}.")
-        result_data_type, result_shape, result_strides = (self.operand_data_type, self.operand_layout.shape, self.operand_layout.strides) if self.inplace else (self.result_data_type, self.plan_traits.result_shape, self.plan_traits.result_strides)
-        self.logger.info(f"The result data type = {result_data_type}, shape = {result_shape}, and strides = {result_strides}.")
+        self.logger.info(
+            f"The operand data type = {self.operand_data_type}, shape = {self.operand_layout.shape}, and strides = {self.operand_layout.strides}."
+        )
+        result_data_type, result_shape, result_strides = (
+            (self.operand_data_type, self.operand_layout.shape, self.operand_layout.strides)
+            if self.inplace
+            else (self.result_data_type, self.plan_traits.result_shape, self.plan_traits.result_strides)
+        )
+        self.logger.info(
+            f"The result data type = {result_data_type}, shape = {result_shape}, and strides = {result_strides}."
+        )
         self.logger.info(f"The FFT batch size is {self.plan_traits.fft_batch_size}.")
 
-        ordered_fft_out_shape, ostride, odistance = (self.plan_traits.ordered_fft_in_shape, self.plan_traits.istride, self.plan_traits.idistance) if self.inplace else (self.plan_traits.ordered_fft_out_shape, self.plan_traits.ostride, self.plan_traits.odistance)
-        self.logger.debug(f"The plan ordered axes = {self.plan_traits.ordered_axes}, ordered input shape = {self.plan_traits.ordered_fft_in_shape}, ordered input embedding shape = {self.plan_traits.ordered_fft_in_embedding_shape}, ordered output shape = {ordered_fft_out_shape}.")
-        self.logger.debug(f"The plan input stride is {self.plan_traits.istride} with distance {self.plan_traits.idistance}.")
+        ordered_fft_out_shape, ostride, odistance = (
+            (self.plan_traits.ordered_fft_in_shape, self.plan_traits.istride, self.plan_traits.idistance)
+            if self.inplace
+            else (self.plan_traits.ordered_fft_out_shape, self.plan_traits.ostride, self.plan_traits.odistance)
+        )
+        self.logger.debug(
+            f"The plan ordered axes = {self.plan_traits.ordered_axes}, ordered input shape = {self.plan_traits.ordered_fft_in_shape}, ordered input embedding shape = {self.plan_traits.ordered_fft_in_embedding_shape}, ordered output shape = {ordered_fft_out_shape}."
+        )
+        self.logger.debug(
+            f"The plan input stride is {self.plan_traits.istride} with distance {self.plan_traits.idistance}."
+        )
         self.logger.debug(f"The plan output stride is {ostride} with distance {odistance}.")
 
         # The result's package and device.
         self.result_class = operand.__class__
-        self.device = cp.cuda.Device(self.device_id)
 
         # Set blocking or non-blocking behavior.
-        self.blocking = self.options.blocking is True or self.memory_space == 'cpu'
+        self.blocking = self.options.blocking is True or self.memory_space == "cpu" or self.execution_space == "cpu"
         if self.blocking:
             self.call_prologue = "This call is blocking and will return only after the operation is complete."
         else:
-            self.call_prologue = "This call is non-blocking and will return immediately after the operation is launched on the device."
+            self.call_prologue = (
+                "This call is non-blocking and will return immediately after the operation is launched on the device."
+            )
 
         # Set memory allocator.
-        self.allocator = options.allocator if options.allocator is not None else memory._MEMORY_MANAGER[self.package](self.device_id, self.logger)
+        if self.execution_space == "cpu":
+            self.allocator = None  # currently, the nvpl/fftw does not support custom workspace allocation
+        else:
+            self.allocator = (
+                options.allocator
+                if options.allocator is not None
+                else memory._MEMORY_MANAGER[self.internal_op_package](self.device_id, self.logger)
+            )
 
-        # Create handle.
-        with utils.device_ctx(self.device_id):
-            self.handle = cufft.create()
+        if self.execution_space == "cpu":
+            # the handle is created alongside planning
+            self.handle = None
+        else:
+            # Create handle.
+            with utils.device_ctx(self.device_id):
+                self.handle = cufft.create()
 
-        # Set stream for the FFT.
-        cufft.set_stream(self.handle, stream_holder.ptr)
+            # Set stream for the FFT.
+            cufft.set_stream(self.handle, exec_stream_holder.ptr)
 
-        # Plan attributes.
-        cufft.set_auto_allocation(self.handle, 0)
+            # Plan attributes.
+            cufft.set_auto_allocation(self.handle, 0)
+
         self.fft_planned = False
 
         # Workspace attributes.
@@ -773,10 +1203,18 @@ class FFT:
         See Also:
             :meth:`create_key`
         """
-        return create_fft_key(self.operand.tensor, axes=self.axes, options=self.options, inplace=self.inplace, prolog=prolog, epilog=epilog)
+        return create_fft_key(
+            self.operand.tensor,
+            axes=self.axes,
+            options=self.options,
+            execution=self.execution_options,
+            inplace=self.inplace,
+            prolog=prolog,
+            epilog=epilog,
+        )
 
     @staticmethod
-    def create_key(operand, *, axes=None, options=None, prolog=None, epilog=None):
+    def create_key(operand, *, axes=None, options=None, execution=None, prolog=None, epilog=None):
         """
         Create a key as a compact representation of the FFT problem specification based on the given operand, axes and the FFT options.
         Note that different combinations of operand layout, axes and options can potentially correspond to the same underlying problem specification (key).
@@ -786,6 +1224,7 @@ class FFT:
             operand: {operand}
             axes: {axes}
             options: {options}
+            execution: {execution}
             prolog: {prolog}
             epilog: {epilog}
 
@@ -796,9 +1235,9 @@ class FFT:
             - Users may take advantage of this method to create cached version of :func:`fft` based on the stateful object APIs
               (see `caching.py <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/caching.py>`_ for an example implementation).
             - This key is meant for runtime use only and not designed to be serialized or used on a different machine.
-            - It is the user's responsiblity to augment this key with the stream in case they use stream-ordered memory pools.
+            - It is the user's responsibility to augment this key with the stream in case they use stream-ordered memory pools.
         """
-        return create_fft_key(operand, axes=axes, options=options, prolog=prolog, epilog=epilog)
+        return create_fft_key(operand, axes=axes, options=options, execution=execution, prolog=prolog, epilog=epilog)
 
     def __enter__(self):
         return self
@@ -813,54 +1252,170 @@ class FFT:
         if not self.valid_state:
             raise InvalidFFTState("The FFT object cannot be used after resources are free'd")
 
-    def _free_plan_resources(self, exception=None):
+    def _free_plan_resources(self, exception: Exception | None = None) -> bool:
         """
         Free resources allocated in planning.
         """
 
         self.workspace_ptr = None
-        self.fft_planned   = False
+        self.fft_planned = False
         return True
+
+    def _internal_operand_package(self, package_name):
+        if self.execution_space == "cuda":
+            return package_name if package_name != "numpy" else "cupy"
+        else:
+            return package_name if package_name != "cupy" else "numpy"
+
+    def _get_or_create_stream_maybe(self, stream):
+        if self.execution_space == "cuda":
+            stream = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
+            return stream, stream
+        elif self.memory_space == "cuda":
+            assert self.operand_device_id is not None
+            operand_device_steam = utils.get_or_create_stream(self.operand_device_id, stream, self.package)
+            return None, operand_device_steam
+        else:
+            return None, None
+
+    def _allocate_result_operand(self, exec_stream_holder, log_debug):
+        if log_debug:
+            self.logger.debug("Beginning output (empty) tensor creation...")
+            self.logger.debug(
+                f"The output tensor shape = {self.plan_traits.result_shape} with strides = {self.plan_traits.result_strides} and data type '{self.result_data_type}'."
+            )
+        result = utils.create_empty_tensor(
+            self.result_class,
+            self.plan_traits.result_shape,
+            self.result_data_type,
+            self.device_id,
+            exec_stream_holder,
+            self.plan_traits.result_strides,
+        )
+        if log_debug:
+            self.logger.debug("The output (empty) tensor has been created.")
+        return result
+
+    def _get_validate_direction(self, direction):
+        if isinstance(direction, str) and (d := direction.upper()) in ["FORWARD", "INVERSE"]:
+            direction = _configuration.FFTDirection[d]
+        else:
+            direction = _configuration.FFTDirection(direction)
+
+        if self.fft_abstract_type == "C2R":
+            if direction != _configuration.FFTDirection.INVERSE:
+                raise ValueError(
+                    f"The specified direction {direction.name} is not compatible with the FFT type '{self.fft_abstract_type}'."
+                )
+        elif self.fft_abstract_type == "R2C":
+            if direction != _configuration.FFTDirection.FORWARD:
+                raise ValueError(
+                    f"The specified direction {direction.name} is not compatible with the FFT type '{self.fft_abstract_type}'."
+                )
+        return direction
 
     @utils.precondition(_check_valid_fft)
     @utils.atomic(_free_plan_resources, method=True)
-    def plan(self, *, prolog=None, epilog=None, stream=None):
+    def plan(self, *, prolog=None, epilog=None, stream=None, direction=None):
         """Plan the FFT.
 
         Args:
             prolog: {prolog}
             epilog: {epilog}
             stream: {stream}
+            direction: If specified, the same direction must be passed to subsequent :meth:`execute` calls.
+                       It may be used as a hint to optimize C2C planning for CPU FFT calls.
         """
 
         if self.fft_planned:
             self.logger.debug("The FFT has already been planned, and redoing the plan is not supported.")
             return
 
-        stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
-        self.workspace_stream = stream_holder.obj
+        if self.execution_space == "cpu":
+            stream_holder = None
+            if prolog is not None or epilog is not None:
+                raise ValueError("The 'prolog' and 'epilog' are not supported with CPU 'execution'.")
+        else:
+            stream_holder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
+            self.workspace_stream = stream_holder.obj
 
-        # Set stream for the FFT.
-        cufft.set_stream(self.handle, stream_holder.ptr)
+            # Set stream for the FFT.
+            cufft.set_stream(self.handle, stream_holder.ptr)
 
-        # Set LTO-IR callbacks, if present.
-        prolog = utils.check_or_create_options(configuration.DeviceCallable, prolog, "prolog", keep_none=True)
-        epilog = utils.check_or_create_options(configuration.DeviceCallable, epilog, "epilog", keep_none=True)
-        set_prolog_and_epilog(self.handle, prolog, epilog, self.operand_data_type, self.result_data_type, self.logger)
+            # Set LTO-IR callbacks, if present.
+            prolog = utils.check_or_create_options(_configuration.DeviceCallable, prolog, "prolog", keep_none=True)
+            epilog = utils.check_or_create_options(_configuration.DeviceCallable, epilog, "epilog", keep_none=True)
+            _check_prolog_epilog_traits(prolog, epilog, self.plan_traits, self.operand, self.fft_abstract_type)
+            set_prolog_and_epilog(
+                self.handle, prolog, epilog, self.operand_data_type, self.result_data_type, self.logger
+            )
 
         # Get all the arguments to xt_make_plan_many except for the first (the handle).
-        plan_args = create_xt_plan_args(plan_traits=self.plan_traits, fft_abstract_type=self.fft_abstract_type, operand_data_type=self.operand_data_type, operand_layout=self.operand_layout, inplace=self.inplace)
+        plan_args = create_xt_plan_args(
+            plan_traits=self.plan_traits,
+            fft_abstract_type=self.fft_abstract_type,
+            operand_data_type=self.operand_data_type,
+            operand_layout=self.operand_layout,
+            inplace=self.inplace,
+        )
 
         # Keep track of original key (sans callback) for resetting operands. Pass in plan args to avoid recomputation.
-        self.orig_key = create_fft_key(self.operand.tensor, axes=self.axes, options=self.options, plan_args=plan_args)
+        self.orig_key = create_fft_key(
+            self.operand.tensor,
+            axes=self.axes,
+            options=self.options,
+            execution=self.execution_options,
+            plan_args=plan_args,
+        )
         self.logger.debug(f"The FFT key (sans callback) is {self.orig_key}.")
 
-        self.logger.debug(f"The operand CUDA type is {NAME_TO_DATA_TYPE[self.operand_data_type].name}, and the result CUDA type is {NAME_TO_DATA_TYPE[self.result_data_type].name}.")
+        self.logger.debug(
+            f"The operand CUDA type is {NAME_TO_DATA_TYPE[self.operand_data_type].name}, and the result CUDA type is {NAME_TO_DATA_TYPE[self.result_data_type].name}."
+        )
         self.logger.debug(f"The CUDA type used for compute is {NAME_TO_DATA_TYPE[self.compute_data_type].name}.")
-        timing =  bool(self.logger and self.logger.handlers)
+        timing = bool(self.logger and self.logger.handlers)
         self.logger.info("Starting FFT planning...")
-        with utils.device_ctx(self.device_id), utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (self.last_compute_event, elapsed):
-            self.workspace_size = cufft.xt_make_plan_many(self.handle, *plan_args)
+
+        if self.execution_space == "cpu":
+            if direction is not None:
+                direction = self._get_validate_direction(direction)
+            if self.inplace:
+                result_ptr = self.operand.data_ptr
+            else:
+                # FFTW3 API requires passing pointers to the input and output during planning.
+                # Passing different pointers to (properly strided and aligned) data in
+                # subsequent execute calls is supported, but it is not clear what planning
+                # is allowed to do with the provided pointers.
+                # For one, planning can compare the two pointers for equality to decide if
+                # it is inplace or out-of-place operation.
+                # To avoid subtle issues, just preallocate the result tensor earlier.
+                self._preallocated_result = self._allocate_result_operand(None, True)
+                result_ptr = self._preallocated_result.data_ptr
+            precision, *plan_args = fftw_plan_args(
+                plan_args,
+                self.operand.data_ptr,
+                result_ptr,
+                fft_abstract_type=self.fft_abstract_type,
+                direction=direction,
+            )
+            with utils.host_call_ctx(timing=timing) as elapsed:
+                fftw.plan_with_nthreads(precision, self.execution_options.num_threads)
+                try:
+                    assert self.handle is None
+                    self.handle = fftw.plan_many(precision, *plan_args)
+                except OverflowError as e:
+                    raise ValueError(
+                        "Currently, the CPU FFT only supports the problem sizes that "
+                        "can be expressed as 32-bit signed integer. "
+                        "Tensors with shape extents or stride larger than "
+                        "`2147483647` are not currently supported."
+                    ) from e
+        else:
+            with (
+                utils.device_ctx(self.device_id),
+                utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (self.last_compute_event, elapsed),
+            ):
+                self.workspace_size = cufft.xt_make_plan_many(self.handle, *plan_args)
 
         self.fft_planned = True
 
@@ -870,18 +1425,19 @@ class FFT:
     @utils.precondition(_check_valid_fft)
     def reset_operand(self, operand=None, *, stream=None):
         """
-        Reset the operand held by this :class:`FFT` instance. This method has two use cases: (1) it can be used to provide a new operand for execution when the
-        operand is on the CPU, and (2) it can be used to release the internal reference to the previous operand and potentially make its memory available for
+        Reset the operand held by this :class:`FFT` instance. This method has two use cases: (1) it can be used to provide a new operand for execution,
+        and (2) it can be used to release the internal reference to the previous operand and potentially make its memory available for
         other use by passing ``operand=None``.
 
         Args:
             operand: A tensor (ndarray-like object) compatible with the previous one or `None` (default).
                 A value of `None` will release the internal reference to the previous operand and user is expected to set a new operand before again calling :meth:`execute`.
-                The new operand is considered compatible if all following properties match with the previous one:
+                The new operand is considered compatible if all the following properties match with the previous one:
 
                     - The problem specification key for the new operand. Generally the keys will match if the operand shares the same layout (shape, strides and data type).
                       The keys may still match for certain operands with different layout, see :meth:`create_key` for details.
-                    - The package that the new operand belongs to .
+                    - The package that the new operand belongs to.
+                    - The memory space of the new operand (CPU or GPU).
                     - The device that new operand belongs to if it is on GPU.
 
             stream: {stream}.
@@ -916,108 +1472,156 @@ class FFT:
             With :meth:`reset_operand`, minimal overhead is achieved as problem specification and planning are only performed once.
 
             For the particular example above, explicitly calling :meth:`reset_operand` is equivalent to updating the operand in-place, i.e, replacing ``f.reset_operand(b)`` with ``a[:]=b``.
-            Note that updating the operand in-place should be adopted with caution as it can only yield the expected result under the additional constraints below:
+            Note that updating the operand in-place should be adopted with caution as it can only yield the expected result and incur no additional copies under the additional constraints below:
 
                 - The operation is not a complex-to-real (C2R) FFT.
-                - The operand is on the GPU (more precisely, the operand memory space should be accessible from the execution space).
+                - The operand's memory matches the FFT execution space. More precisely, the operand memory space should be accessible from the execution space (CPU or CUDA).
 
             For more details, please refer to `inplace update example <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example05_stateful_inplace.py>`_.
         """
 
         if operand is None:
             self.operand = None
-            self.logger.info(f"The operand has been reset to None.")
+            self.operand_backup = None
+            self.logger.info("The operand has been reset to None.")
             return
 
         self.logger.info("Resetting operand...")
         # First wrap operand.
         operand = tensor_wrapper.wrap_operand(operand)
 
+        # Check package match.
+        package = utils.infer_object_package(operand.tensor)
+        if self.package != package:
+            message = f"Library package mismatch: '{self.package}' => '{package}'"
+            raise TypeError(message)
+
+        utils.check_attribute_match(self.operand_data_type, operand.dtype, "data type")
+
+        exec_stream_holder, operand_stream_holder = self._get_or_create_stream_maybe(stream)
+        self.logger.info(
+            f"The specified stream for reset_operand() is {(exec_stream_holder or operand_stream_holder) and (exec_stream_holder or operand_stream_holder).obj}."
+        )
+
+        # In principle, we could support memory_space change,
+        # but to handle it properly we need to update self.memory_space and
+        # some dependent properties, like self.blocking, which may be error-prone
+        # from the user perspective. It would prevent inplace optimizations as well.
+        operand_device_id = operand.device_id
+        if operand_device_id != self.operand_device_id:
+
+            def device_str(device_id):
+                return "cpu" if device_id is None else f"cuda:{device_id}"
+
+            raise ValueError(
+                f"The new operand must be on the same device as the original one. "
+                f"The new operand's device is {device_str(operand_device_id)}, "
+                f"the original device is {device_str(self.operand_device_id)}"
+            )
+
         if self.orig_key is not None:
             # Compute the key corresponding to the new operand (sans callback).
             try:
-                new_key  = create_fft_key(operand.tensor, axes=self.axes, options=self.options, inplace=self.inplace)
+                new_key = create_fft_key(
+                    operand.tensor,
+                    axes=self.axes,
+                    options=self.options,
+                    execution=self.execution_options,
+                    inplace=self.inplace,
+                )
             except UnsupportedLayoutError:
                 new_key = None
             if self.orig_key != new_key:
                 self.logger.debug(f"The FFT key corresponding to the original operand is: {self.orig_key}.")
                 if new_key is None:
-                    self.logger.debug(f"The FFT key for the new operand cannot be computed since the layout (shape = {operand.shape}, strides = {operand.strides}) and axes = {self.axes} combination is unsupported.")
+                    self.logger.debug(
+                        f"The FFT key for the new operand cannot be computed since the layout (shape = {operand.shape}, strides = {operand.strides}) and axes = {self.axes} combination is unsupported."
+                    )
                 else:
                     self.logger.debug(f"The FFT key corresponding to the new operand is:      {new_key}.")
-                raise ValueError("The new operand's traits (data type, shape, or strides) are incompatible with that of the original operand.")
+                raise ValueError(
+                    "The new operand's traits (data type, shape, or strides) are incompatible with that of the original operand."
+                )
 
-        # Check package match.
-        package = utils.infer_object_package(operand.tensor)
-        utils.check_attribute_match(self.operand_data_type, operand.dtype, "data type")
+        if self.execution_space == "cuda":
+            # Set stream for the FFT.
+            cufft.set_stream(self.handle, exec_stream_holder.ptr)
 
-        stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
-        self.logger.info(f"The specified stream for reset_operand() is {stream_holder.obj}.")
-
-        # Set stream for the FFT.
-        cufft.set_stream(self.handle, stream_holder.ptr)
-
-        device_id = operand.device_id
-        if device_id is None:
-            package = 'cupy' if package == 'numpy' else package   # Handle the NumPy <=> CuPy asymmetry.
-            if self.package != package:
-                message = f"Library package mismatch: '{self.package}' => '{package}'"
-                raise TypeError(message)
-
-            if self.operand is None:
-                # Copy operand across memory spaces (CPU to GPU).
-                self.operand = tensor_wrapper.to(operand, self.device_id, stream_holder)
-            else:
-                # In-place copy to existing device pointer because the new operand is on the CPU.
-                tensor_wrapper.copy_([operand], [self.operand], stream_holder)
-            # Finally, replace the original CPU operand by the new one to handle cases like inplace transforms.
-            self.cpu_operand = operand
-        else:
-            if self.package != package:
-                message = f"Library package mismatch: '{self.package}' => '{package}'"
-                raise TypeError(message)
-
-            if self.device_id != device_id:
-                raise ValueError(f"The new operand must be on the same device ({device_id}) as the original operand "
-                                 f"({self.device_id}).")
-
-            # Finally, replace the original operand by the new one.
-            if self.fft_abstract_type == 'C2R':
-                # For C2R, we need to take a copy to avoid input being overwritten
-                self.logger.info("For C2R FFT with input operand on GPU, the input is copied to avoid being overwritten by cuFFT.")
-                operand_copy = utils.create_empty_tensor(operand.__class__,
-                    operand.shape, operand.dtype, self.device_id, stream_holder, operand.strides)
-                operand_copy.copy_(operand.tensor, stream_holder=stream_holder)
-                self.operand = operand = operand_copy
-            else:
-                self.operand = operand
+        self.operand, self.operand_backup = _copy_operand_perhaps(
+            self.operand,
+            operand,
+            operand_stream_holder,
+            self.execution_space,
+            self.memory_space,
+            self.device_id,
+            self.fft_abstract_type,
+            self.logger,
+        )
+        operand = self.operand
 
         # Update operand layout and plan traits.
         self.operand_layout = TensorLayout(shape=operand.shape, strides=operand.strides)
-        self.logger.info(f"The reset operand shape = {self.operand_layout.shape}, and strides = {self.operand_layout.strides}.")
+        self.logger.info(
+            f"The reset operand shape = {self.operand_layout.shape}, and strides = {self.operand_layout.strides}."
+        )
 
-        self.plan_traits    = get_fft_plan_traits(operand.shape, operand.strides, operand.dtype, self.axes, fft_abstract_type=self.fft_abstract_type,
-                                                  last_axis_size=self.options.last_axis_size, result_layout=self.options.result_layout, logger=self.logger)
-        result_shape, result_strides = (self.operand_layout.shape, self.operand_layout.strides) if self.inplace else (self.plan_traits.result_shape, self.plan_traits.result_strides)
+        self.plan_traits = get_fft_plan_traits(
+            operand.shape,
+            operand.strides,
+            operand.dtype,
+            self.axes,
+            self.execution_options,
+            fft_abstract_type=self.fft_abstract_type,
+            last_axis_size=self.options.last_axis_size,
+            result_layout=self.options.result_layout,
+            logger=self.logger,
+        )
+        result_shape, result_strides = (
+            (self.operand_layout.shape, self.operand_layout.strides)
+            if self.inplace
+            else (self.plan_traits.result_shape, self.plan_traits.result_strides)
+        )
         self.logger.info(f"The result shape = {result_shape}, and strides = {result_strides}.")
 
         self.logger.info("The operand has been reset to the specified operand.")
 
+    def get_input_layout(self):
+        """
+        Returns a pair of tuples: shape and strides of the FFT input.
+
+        .. note::
+            In some cases, the FFT operation requires taking a copy of the input tensor
+            (e.g. C2R cuFFT, or provided tensor resides on CPU but FFT is executed on GPU).
+            The copied tensor strides may differ from the input tensor passed by the user,
+            if the original tensor's strides do not conform to dense C-like layout.
+        """
+        return self.operand_layout.shape, self.operand_layout.strides
+
+    def get_output_layout(self):
+        """
+        Returns a pair of tuples: shape and strides of the FFT output.
+        """
+        return (
+            (self.operand_layout.shape, self.operand_layout.strides)
+            if self.inplace
+            else (self.plan_traits.result_shape, self.plan_traits.result_strides)
+        )
+
     def _check_planned(self, *args, **kwargs):
-        """
-        """
-        what = kwargs['what']
+        """ """
+        what = kwargs["what"]
         if not self.fft_planned:
             raise RuntimeError(f"{what} cannot be performed before plan() has been called.")
 
     def _check_valid_operand(self, *args, **kwargs):
-        """
-        """
-        what = kwargs['what']
+        """ """
+        what = kwargs["what"]
         if self.operand is None:
-            raise RuntimeError(f"{what} cannot be performed if the input operand has been set to None. Use reset_operand() to set the desired input before using performing the {what.lower()}.")
+            raise RuntimeError(
+                f"{what} cannot be performed if the input operand has been set to None. Use reset_operand() to set the desired input before using performing the {what.lower()}."
+            )
 
-    def _free_workspace_memory(self, exception=None):
+    def _free_workspace_memory(self, exception: Exception | None = None) -> bool:
         """
         Free workspace by releasing the MemoryPointer object.
         """
@@ -1032,30 +1636,40 @@ class FFT:
     @utils.precondition(_check_valid_fft)
     @utils.precondition(_check_planned, "Workspace memory allocation")
     @utils.atomic(_free_workspace_memory, method=True)
-    def _allocate_workspace_memory_perhaps(self, stream_holder):
+    def _allocate_workspace_memory(self, stream_holder):
         """
-        Allocate workspace memory using the specified allocator, if it hasn't already been done.
+        Allocate workspace memory using the specified allocator.
         """
 
         assert self._workspace_allocated_here is False, "Internal Error."
 
-        if self.workspace_ptr is not None:
-            return
-
-        self.logger.debug(f"Allocating workspace for performing the FFT...")
+        self.logger.debug("Allocating workspace for performing the FFT...")
         with utils.device_ctx(self.device_id), stream_holder.ctx:
             try:
                 self.workspace_ptr = self.allocator.memalloc(self.workspace_size)
                 self._workspace_allocated_here = True
             except TypeError as e:
-                message = "The method 'memalloc' in the allocator object must conform to the interface in the "\
-                          "'BaseCUDAMemoryManager' protocol."
+                message = (
+                    "The method 'memalloc' in the allocator object must conform to the interface in the "
+                    "'BaseCUDAMemoryManager' protocol."
+                )
                 raise TypeError(message) from e
             raw_workspace_ptr = utils.get_ptr_from_memory_pointer(self.workspace_ptr)
             cufft.set_work_area(self.handle, raw_workspace_ptr)
 
         self.workspace_stream = stream_holder.obj
-        self.logger.debug(f"Finished allocating device workspace of size {formatters.MemoryStr(self.workspace_size)} in the context of stream {self.workspace_stream}.")
+        self.logger.debug(
+            f"Finished allocating device workspace of size {formatters.MemoryStr(self.workspace_size)} in the context of stream {self.workspace_stream}."
+        )
+
+    def _allocate_workspace_memory_perhaps(self, stream_holder):
+        """
+        Allocate workspace memory using the specified allocator, if it hasn't already been done.
+        """
+        if self.execution_space != "cuda" or self.workspace_ptr is not None:
+            return
+
+        return self._allocate_workspace_memory(stream_holder)
 
     @utils.precondition(_check_valid_fft)
     def _free_workspace_memory_perhaps(self, release_workspace):
@@ -1075,12 +1689,14 @@ class FFT:
 
         return True
 
-    def _release_workspace_memory_perhaps(self, exception=None):
+    def _release_workspace_memory_perhaps(self, exception: Exception | None = None) -> bool:
         """
         Free workspace memory if it was allocated in this call (self._workspace_allocated_here == True) when an exception occurs.
         """
         release_workspace = self._workspace_allocated_here
-        self.logger.debug(f"[_release_workspace_memory_perhaps] The release_workspace flag is set to {release_workspace} based upon the value of 'workspace_allocated_here'.")
+        self.logger.debug(
+            f"[_release_workspace_memory_perhaps] The release_workspace flag is set to {release_workspace} based upon the value of 'workspace_allocated_here'."
+        )
         self._free_workspace_memory_perhaps(release_workspace)
         return True
 
@@ -1105,50 +1721,53 @@ class FFT:
                 - For R2C and C2R FFT, both data type and shape differ from the input.
         """
 
-        log_info  = self.logger.isEnabledFor(logging.INFO)
+        log_info = self.logger.isEnabledFor(logging.INFO)
         log_debug = self.logger.isEnabledFor(logging.DEBUG)
 
         if direction is None:
             direction = _get_fft_default_direction(self.fft_abstract_type)
-        elif isinstance(direction, str) and (d := direction.upper()) in ['FORWARD', 'INVERSE']:
-            direction = configuration.FFTDirection[d]
         else:
-            direction = configuration.FFTDirection(direction)
+            direction = self._get_validate_direction(direction)
 
-            if self.fft_abstract_type == 'C2R':
-                if direction != configuration.FFTDirection.INVERSE:
-                    raise ValueError(f"The specified direction {direction.name} is not compatible with the FFT type '{self.fft_abstract_type}'.")
-            elif self.fft_abstract_type == 'R2C':
-                if direction != configuration.FFTDirection.FORWARD:
-                    raise ValueError(f"The specified direction {direction.name} is not compatible with the FFT type '{self.fft_abstract_type}'.")
+        exec_stream_holder, operand_stream_holder = self._get_or_create_stream_maybe(stream)
 
-        stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
-        if log_info: self.logger.info(f"The specified stream for execute() is {stream_holder.obj}.")
-
-        # Set stream for the FFT.
-        cufft.set_stream(self.handle, stream_holder.ptr)
+        if self.execution_space == "cuda":
+            # Set stream for the FFT.
+            cufft.set_stream(self.handle, exec_stream_holder.ptr)
 
         # Allocate workspace if needed.
-        self._allocate_workspace_memory_perhaps(stream_holder)
+        self._allocate_workspace_memory_perhaps(exec_stream_holder)
+        # Allocate output operand if needed
+        if self.inplace:
+            result_ptr = self.operand.data_ptr
+        else:
+            if self._preallocated_result is not None:
+                assert self.execution_space == "cpu"
+                self.result = self._preallocated_result
+                self._preallocated_result = None
+            else:
+                self.result = self._allocate_result_operand(exec_stream_holder, log_debug)
+            result_ptr = self.result.data_ptr
 
-        # Create empty tensor for the result, if it's not an in-place operation.
-        if not self.inplace:
-            if log_debug: self.logger.debug("Beginning output (empty) tensor creation...")
-            if log_debug: self.logger.debug(f"The output tensor shape = {self.plan_traits.result_shape} with strides = {self.plan_traits.result_strides} and data type '{self.result_data_type}'.")
-            self.result = utils.create_empty_tensor(self.result_class, self.plan_traits.result_shape, self.result_data_type, self.device_id, stream_holder, self.plan_traits.result_strides)
-            if log_debug: self.logger.debug("The output (empty) tensor has been created.")
+        timing = bool(self.logger and self.logger.handlers)
+        if log_info:
+            self.logger.info(f"Starting FFT {self.fft_abstract_type} calculation in the {direction.name} direction...")
+            self.logger.info(f"{self.call_prologue}")
 
-        result_ptr = self.operand.data_ptr if self.inplace else self.result.data_ptr
+        if self.execution_space == "cpu":
+            with utils.host_call_ctx(timing=timing) as elapsed:
+                fftw.execute(self.handle, self.operand.data_ptr, result_ptr, direction)
+        else:
+            with (
+                utils.device_ctx(self.device_id),
+                utils.cuda_call_ctx(exec_stream_holder, self.blocking, timing) as (self.last_compute_event, elapsed),
+            ):
+                if log_debug:
+                    self.logger.debug("The cuFFT execution function is 'xt_exec'.")
+                cufft.xt_exec(self.handle, self.operand.data_ptr, result_ptr, direction)
 
-        timing =  bool(self.logger and self.logger.handlers)
-        if log_info: self.logger.info(f"Starting FFT {self.fft_abstract_type} calculation in the {direction.name} direction...")
-        if log_info: self.logger.info(f"{self.call_prologue}")
-        with utils.device_ctx(self.device_id), utils.cuda_call_ctx(stream_holder, self.blocking, timing) as (self.last_compute_event, elapsed):
-            if log_debug: self.logger.debug(f"The cuFFT execution function is 'xt_exec'.")
-            cufft.xt_exec(self.handle, self.operand.data_ptr, result_ptr, direction)
-
-        if elapsed.data is not None:
-            if log_info: self.logger.info(f"The FFT calculation took {elapsed.data:.3f} ms to complete.")
+        if log_info and elapsed.data is not None:
+            self.logger.info(f"The FFT calculation took {elapsed.data:.3f} ms to complete.")
 
         # Establish ordering wrt the computation and free workspace if it's more than the specified cache limit.
         self._free_workspace_memory_perhaps(release_workspace)
@@ -1159,13 +1778,14 @@ class FFT:
 
         # Return the result.
         result = self.operand if self.inplace else self.result
-        if self.memory_space == 'cpu':
-            if self.options.inplace:    # Don't use self.inplace here, because we always set it to True for CPU tensors.
-                out = self.cpu_operand.copy_(result.tensor, stream_holder=stream_holder)
-            else:
-                out = result.to('cpu', stream_holder=stream_holder)
-        else:
+        if self.memory_space == self.execution_space:
             out = result.tensor
+        else:
+            if self.options.inplace:  # Don't use self.inplace here, because we always set it to True for CPU tensors.
+                out = self.operand_backup.copy_(result.tensor, stream_holder=operand_stream_holder)
+            else:
+                target_dev = "cpu" if self.memory_space == "cpu" else self.operand_device_id
+                out = result.to(target_dev, stream_holder=operand_stream_holder)
 
         # Release internal reference to the result to permit recycling of memory.
         self.result = None
@@ -1191,7 +1811,10 @@ class FFT:
             self._free_workspace_memory()
 
             if self.handle is not None:
-                cufft.destroy(self.handle)
+                if self.execution_space == "cuda":
+                    cufft.destroy(self.handle)
+                else:
+                    fftw.destroy(self.handle)
                 self.handle = None
 
         except Exception as e:
@@ -1203,9 +1826,21 @@ class FFT:
 
         self.logger.info("The FFT object's resources have been released.")
 
-def _fft(x, *, axes=None, direction=None, options=None,  prolog=None, epilog=None, stream=None, check_dtype=None):
+
+def _fft(
+    x,
+    *,
+    axes=None,
+    direction=None,
+    options=None,
+    execution=None,
+    prolog=None,
+    epilog=None,
+    stream=None,
+    check_dtype=None,
+):
     r"""
-    fft(operand, axes=None, direction=None, options=None, prolog=None, epilog=None, stream=None)
+    fft(operand, axes=None, direction=None, options=None, execution=None, prolog=None, epilog=None, stream=None)
 
     Perform an N-D *complex-to-complex* (C2C) FFT on the provided complex operand.
 
@@ -1230,6 +1865,7 @@ def _fft(x, *, axes=None, direction=None, options=None,  prolog=None, epilog=Non
 
         Create a 3-D complex128 ndarray on the GPU:
 
+        >>> shape = 256, 256, 256
         >>> a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
         Perform a 3-D C2C FFT using :func:`fft`. The result `r` is also a CuPy complex128 ndarray:
@@ -1247,7 +1883,7 @@ def _fft(x, *, axes=None, direction=None, options=None,  prolog=None, epilog=Non
         >>> r = nvmath.fft.fft(a, options=o)
         >>> r is a
 
-        See `FFTOptions` for the complete list of available options.
+        See :class:`FFTOptions` for the complete list of available options.
 
         The package current stream is used by default, but a stream can be explicitly provided to the FFT operation. This can be done if the
         FFT operand is computed on a different stream, for example:
@@ -1277,15 +1913,14 @@ def _fft(x, *, axes=None, direction=None, options=None,  prolog=None, epilog=Non
     Further examples can be found in the `nvmath/examples/fft <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft>`_ directory.
     """
     if check_dtype is not None:
-        assert check_dtype in {'real', 'complex'}, "internal error"
+        assert check_dtype in {"real", "complex"}, "internal error"
         operand = tensor_wrapper.wrap_operand(x)
-        if ('complex' in operand.dtype) != (check_dtype == 'complex'):
+        if ("complex" in operand.dtype) != (check_dtype == "complex"):
             raise ValueError(f"This function expects {check_dtype} operand, found {operand.dtype}")
 
-    with FFT(x, axes=axes, options=options, stream=stream) as fftobj:
-
+    with FFT(x, axes=axes, options=options, execution=execution, stream=stream) as fftobj:
         # Plan the FFT.
-        fftobj.plan(stream=stream, prolog=prolog, epilog=epilog)
+        fftobj.plan(stream=stream, prolog=prolog, epilog=epilog, direction=direction)
 
         # Execute the FFT.
         result = fftobj.execute(direction=direction, stream=stream)
@@ -1294,15 +1929,18 @@ def _fft(x, *, axes=None, direction=None, options=None,  prolog=None, epilog=Non
 
 
 # Forward C2C FFT Function.
-fft  = functools.wraps(_fft)(functools.partial(_fft, direction=configuration.FFTDirection.FORWARD, check_dtype='complex'))
-fft.__doc__ = fft.__doc__.format(**SHARED_FFT_DOCUMENTATION)
-fft.__name__ = 'fft'
+fft = functools.wraps(_fft)(
+    functools.partial(_fft, direction=_configuration.FFTDirection.FORWARD, check_dtype="complex")
+)
+fft.__doc__ = fft.__doc__.format(**SHARED_FFT_DOCUMENTATION)  # type: ignore
+fft.__name__ = "fft"
+
 
 # Forward R2C FFT Function
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
-def rfft(operand, *, axes=None, options=None, prolog=None, epilog=None, stream=None):
+def rfft(operand, *, axes=None, options=None, execution=None, prolog=None, epilog=None, stream=None):
     r"""
-    rfft(operand, axes=None, options=None, prolog=None, epilog=None, stream=None)
+    rfft(operand, axes=None, options=None, execution=None, prolog=None, epilog=None, stream=None)
 
     Perform an N-D *real-to-complex* (R2C) FFT on the provided real operand.
 
@@ -1324,16 +1962,29 @@ def rfft(operand, *, axes=None, options=None, prolog=None, epilog=None, stream=N
     """
     wrapped_operand = tensor_wrapper.wrap_operand(operand)
     # check if input operand if real type
-    if 'complex' in wrapped_operand.dtype:
-        raise RuntimeError(f"rfft expects a real input, but got {wrapped_operand.dtype}. Please use fft for complex input.")
+    if "complex" in wrapped_operand.dtype:
+        raise RuntimeError(
+            f"rfft expects a real input, but got {wrapped_operand.dtype}. Please use fft for complex input."
+        )
 
-    return _fft(operand, axes=axes, options=options, prolog=prolog, epilog=epilog, stream=stream, check_dtype='real')
+    return _fft(
+        operand,
+        axes=axes,
+        options=options,
+        execution=execution,
+        prolog=prolog,
+        epilog=epilog,
+        stream=stream,
+        check_dtype="real",
+    )
 
 
 # Inverse C2C/R2C FFT Function.
-ifft = functools.wraps(_fft)(functools.partial(_fft, direction=configuration.FFTDirection.INVERSE, check_dtype='complex'))
+ifft = functools.wraps(_fft)(
+    functools.partial(_fft, direction=_configuration.FFTDirection.INVERSE, check_dtype="complex")
+)
 ifft.__doc__ = """
-    ifft(operand, axes=None, options=None, prolog=None, epilog=None, stream=None)
+    ifft(operand, axes=None, options=None, execution=None, prolog=None, epilog=None, stream=None)
 
     Perform an N-D *complex-to-complex* (C2C) inverse FFT on the provided complex operand. The direction is implicitly inverse.
 
@@ -1357,14 +2008,14 @@ ifft.__doc__ = """
         - This function is a convenience wrapper around :class:`FFT` and and is specifically meant for *single* use.
           The same computation can be performed with the stateful API by passing the argument ``direction='inverse'`` when calling :meth:`FFT.execute`.
 """.format(**SHARED_FFT_DOCUMENTATION)
-ifft.__name__  = 'ifft'
+ifft.__name__ = "ifft"
 
 
 # Inverse C2R FFT Function.
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
-def irfft(x, *, axes=None, options=None,  prolog=None, epilog=None, stream=None):
+def irfft(x, *, axes=None, options=None, execution=None, prolog=None, epilog=None, stream=None):
     """
-    irfft(operand, axes=None, options=None, prolog=None, epilog=None, stream=None)
+    irfft(operand, axes=None, options=None, execution=None, prolog=None, epilog=None, stream=None)
 
     Perform an N-D *complex-to-real* (C2R) FFT on the provided complex operand. The direction is implicitly inverse.
 
@@ -1411,6 +2062,16 @@ def irfft(x, *, axes=None, options=None,  prolog=None, epilog=None, stream=None)
         - For more details, please refer to `C2R example <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example07_c2r.py>`_
           and `odd C2R example <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example07_c2r_odd.py>`_.
     """
-    options = utils.check_or_create_options(configuration.FFTOptions, options, "FFT options")
-    options.fft_type = 'C2R'
-    return _fft(x, axes=axes, direction=configuration.FFTDirection.INVERSE, options=options, prolog=prolog, epilog=epilog, stream=stream, check_dtype='complex')
+    options = utils.check_or_create_options(_configuration.FFTOptions, options, "FFT options")
+    options.fft_type = "C2R"
+    return _fft(
+        x,
+        axes=axes,
+        direction=_configuration.FFTDirection.INVERSE,
+        options=options,
+        execution=execution,
+        prolog=prolog,
+        epilog=epilog,
+        stream=stream,
+        check_dtype="complex",
+    )

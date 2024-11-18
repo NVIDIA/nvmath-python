@@ -8,12 +8,13 @@ This example illustrates the use of function-form FFT APIs with CuPy ndarrays.
 The input as well as the result from the FFT operations are CuPy ndarrays, resulting
 in effortless interoperability between nvmath-python and CuPy.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 512, 256, 512
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 

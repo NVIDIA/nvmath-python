@@ -9,25 +9,30 @@ import cupy
 from numba import cuda
 from .helpers_numba import run_and_time
 
+
 class NumbaGemmLoop:
-
     def __init__(self, size, precision, data_type, transpose_mode, block_size, repeat):
-
         assert precision == np.float32
-        assert data_type == 'real'
+        assert data_type == "real"
 
-        MM = matmul(size=size, data_type='real', precision=np.float32, \
-                    transpose_mode=transpose_mode, \
-                    block_size=block_size, execution='Block', compiler='numba')
+        MM = matmul(
+            size=size,
+            data_type="real",
+            precision=np.float32,
+            transpose_mode=transpose_mode,
+            block_size=block_size,
+            execution="Block",
+            compiler="numba",
+        )
 
-        input_type  = MM.input_type
+        input_type = MM.input_type
         output_type = MM.output_type
-        block_dim   = MM.block_dim
-        block_size  = MM.block_size
+        block_dim = MM.block_dim
+        block_size = MM.block_size
         shared_memory_size = MM.shared_memory_size
-        a_size      = MM.a_size
-        b_size      = MM.b_size
-        c_size      = MM.c_size
+        a_size = MM.a_size
+        b_size = MM.b_size
+        c_size = MM.c_size
         assert block_dim == (block_size, 1, 1)
 
         alpha = 1.0
@@ -37,7 +42,6 @@ class NumbaGemmLoop:
 
         @cuda.jit(link=MM.files)
         def f(a_global, b_global, c_global):
-
             # Input/output
             a_smem = cuda.shared.array(shape=(a_size,), dtype=input_type)
             b_smem = cuda.shared.array(shape=(b_size,), dtype=input_type)
@@ -47,13 +51,13 @@ class NumbaGemmLoop:
             if cuda.threadIdx.x == 0 and cuda.threadIdx.y == 0 and cuda.threadIdx.z == 0:
                 for i in range(m):
                     for j in range(k):
-                        a_smem[j * lda + i] = a_global[i, j] # m x k
+                        a_smem[j * lda + i] = a_global[i, j]  # m x k
                 for i in range(k):
                     for j in range(n):
-                        b_smem[j * ldb + i] = b_global[i, j] # k x n
+                        b_smem[j * ldb + i] = b_global[i, j]  # k x n
                 for i in range(m):
                     for j in range(n):
-                        c_smem[j * ldc + i] = 0 # m x n
+                        c_smem[j * ldc + i] = 0  # m x n
 
             cuda.syncthreads()
 
@@ -77,10 +81,9 @@ class NumbaGemmLoop:
         self._block_dim = block_dim
 
     def run(self, a, b, reference, ncycles):
-
         m, n, k = self._size
-        assert a.shape         == (m, k)
-        assert b.shape         == (k, n)
+        assert a.shape == (m, k)
+        assert b.shape == (k, n)
         assert reference.shape == (m, n)
         print(f"NumbaGemmLoop ncycles {ncycles}")
 
@@ -91,12 +94,7 @@ class NumbaGemmLoop:
 
         grid_dim = (1, 1, 1)
 
-        time_ms = run_and_time(self._kernel, \
-                               grid_dim, \
-                               self._block_dim, \
-                               0, \
-                               ncycles, \
-                               a_d, b_d, c_d)
+        time_ms = run_and_time(self._kernel, grid_dim, self._block_dim, 0, ncycles, a_d, b_d, c_d)
 
         output = cupy.array(c_d)
         error = l2error(test=output, ref=reference)
@@ -105,4 +103,4 @@ class NumbaGemmLoop:
         print(f"NumbaGemmLoop numba time per kernel = {time_ms}")
         assert error < _TOLERANCE[self._precision]
 
-        return {'time_ms': time_ms}
+        return {"time_ms": time_ms}

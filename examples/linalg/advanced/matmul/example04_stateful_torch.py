@@ -7,6 +7,7 @@ This example illustrates the use of stateful matrix multiplication objects. Stat
 
 The inputs as well as the result are PyTorch tensors on the GPU.
 """
+
 import torch
 
 import nvmath
@@ -19,7 +20,6 @@ b = torch.rand(k, n, device=device_id)
 
 # Use the stateful object as a context manager to automatically release resources.
 with nvmath.linalg.advanced.Matmul(a, b) as mm:
-
     # Plan the matrix multiplication. Planning returns a sequence of algorithms that can be configured, as we'll see in a later example.
     mm.plan()
 

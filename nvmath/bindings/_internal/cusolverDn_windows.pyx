@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -482,2197 +482,2197 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
             __cusolverDnCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCreate')
         except:
             pass
-    
+
         global __cusolverDnDestroy
         try:
             __cusolverDnDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDestroy')
         except:
             pass
-    
+
         global __cusolverDnSetStream
         try:
             __cusolverDnSetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSetStream')
         except:
             pass
-    
+
         global __cusolverDnGetStream
         try:
             __cusolverDnGetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnGetStream')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsCreate
         try:
             __cusolverDnIRSParamsCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsCreate')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsDestroy
         try:
             __cusolverDnIRSParamsDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsDestroy')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetRefinementSolver
         try:
             __cusolverDnIRSParamsSetRefinementSolver = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetRefinementSolver')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetSolverMainPrecision
         try:
             __cusolverDnIRSParamsSetSolverMainPrecision = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetSolverMainPrecision')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetSolverLowestPrecision
         try:
             __cusolverDnIRSParamsSetSolverLowestPrecision = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetSolverLowestPrecision')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetSolverPrecisions
         try:
             __cusolverDnIRSParamsSetSolverPrecisions = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetSolverPrecisions')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetTol
         try:
             __cusolverDnIRSParamsSetTol = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetTol')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetTolInner
         try:
             __cusolverDnIRSParamsSetTolInner = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetTolInner')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetMaxIters
         try:
             __cusolverDnIRSParamsSetMaxIters = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetMaxIters')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsSetMaxItersInner
         try:
             __cusolverDnIRSParamsSetMaxItersInner = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsSetMaxItersInner')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsGetMaxIters
         try:
             __cusolverDnIRSParamsGetMaxIters = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsGetMaxIters')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsEnableFallback
         try:
             __cusolverDnIRSParamsEnableFallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsEnableFallback')
         except:
             pass
-    
+
         global __cusolverDnIRSParamsDisableFallback
         try:
             __cusolverDnIRSParamsDisableFallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSParamsDisableFallback')
         except:
             pass
-    
+
         global __cusolverDnIRSInfosDestroy
         try:
             __cusolverDnIRSInfosDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSInfosDestroy')
         except:
             pass
-    
+
         global __cusolverDnIRSInfosCreate
         try:
             __cusolverDnIRSInfosCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSInfosCreate')
         except:
             pass
-    
+
         global __cusolverDnIRSInfosGetNiters
         try:
             __cusolverDnIRSInfosGetNiters = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSInfosGetNiters')
         except:
             pass
-    
+
         global __cusolverDnIRSInfosGetOuterNiters
         try:
             __cusolverDnIRSInfosGetOuterNiters = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSInfosGetOuterNiters')
         except:
             pass
-    
+
         global __cusolverDnIRSInfosRequestResidual
         try:
             __cusolverDnIRSInfosRequestResidual = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSInfosRequestResidual')
         except:
             pass
-    
+
         global __cusolverDnIRSInfosGetResidualHistory
         try:
             __cusolverDnIRSInfosGetResidualHistory = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSInfosGetResidualHistory')
         except:
             pass
-    
+
         global __cusolverDnIRSInfosGetMaxIters
         try:
             __cusolverDnIRSInfosGetMaxIters = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSInfosGetMaxIters')
         except:
             pass
-    
+
         global __cusolverDnZZgesv
         try:
             __cusolverDnZZgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZZgesv')
         except:
             pass
-    
+
         global __cusolverDnZCgesv
         try:
             __cusolverDnZCgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZCgesv')
         except:
             pass
-    
+
         global __cusolverDnZKgesv
         try:
             __cusolverDnZKgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZKgesv')
         except:
             pass
-    
+
         global __cusolverDnZEgesv
         try:
             __cusolverDnZEgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZEgesv')
         except:
             pass
-    
+
         global __cusolverDnZYgesv
         try:
             __cusolverDnZYgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZYgesv')
         except:
             pass
-    
+
         global __cusolverDnCCgesv
         try:
             __cusolverDnCCgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCCgesv')
         except:
             pass
-    
+
         global __cusolverDnCEgesv
         try:
             __cusolverDnCEgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCEgesv')
         except:
             pass
-    
+
         global __cusolverDnCKgesv
         try:
             __cusolverDnCKgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCKgesv')
         except:
             pass
-    
+
         global __cusolverDnCYgesv
         try:
             __cusolverDnCYgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCYgesv')
         except:
             pass
-    
+
         global __cusolverDnDDgesv
         try:
             __cusolverDnDDgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDDgesv')
         except:
             pass
-    
+
         global __cusolverDnDSgesv
         try:
             __cusolverDnDSgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDSgesv')
         except:
             pass
-    
+
         global __cusolverDnDHgesv
         try:
             __cusolverDnDHgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDHgesv')
         except:
             pass
-    
+
         global __cusolverDnDBgesv
         try:
             __cusolverDnDBgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDBgesv')
         except:
             pass
-    
+
         global __cusolverDnDXgesv
         try:
             __cusolverDnDXgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDXgesv')
         except:
             pass
-    
+
         global __cusolverDnSSgesv
         try:
             __cusolverDnSSgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSSgesv')
         except:
             pass
-    
+
         global __cusolverDnSHgesv
         try:
             __cusolverDnSHgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSHgesv')
         except:
             pass
-    
+
         global __cusolverDnSBgesv
         try:
             __cusolverDnSBgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSBgesv')
         except:
             pass
-    
+
         global __cusolverDnSXgesv
         try:
             __cusolverDnSXgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSXgesv')
         except:
             pass
-    
+
         global __cusolverDnZZgesv_bufferSize
         try:
             __cusolverDnZZgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZZgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZCgesv_bufferSize
         try:
             __cusolverDnZCgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZCgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZKgesv_bufferSize
         try:
             __cusolverDnZKgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZKgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZEgesv_bufferSize
         try:
             __cusolverDnZEgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZEgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZYgesv_bufferSize
         try:
             __cusolverDnZYgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZYgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCCgesv_bufferSize
         try:
             __cusolverDnCCgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCCgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCKgesv_bufferSize
         try:
             __cusolverDnCKgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCKgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCEgesv_bufferSize
         try:
             __cusolverDnCEgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCEgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCYgesv_bufferSize
         try:
             __cusolverDnCYgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCYgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDDgesv_bufferSize
         try:
             __cusolverDnDDgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDDgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDSgesv_bufferSize
         try:
             __cusolverDnDSgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDSgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDHgesv_bufferSize
         try:
             __cusolverDnDHgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDHgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDBgesv_bufferSize
         try:
             __cusolverDnDBgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDBgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDXgesv_bufferSize
         try:
             __cusolverDnDXgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDXgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSSgesv_bufferSize
         try:
             __cusolverDnSSgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSSgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSHgesv_bufferSize
         try:
             __cusolverDnSHgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSHgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSBgesv_bufferSize
         try:
             __cusolverDnSBgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSBgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSXgesv_bufferSize
         try:
             __cusolverDnSXgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSXgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZZgels
         try:
             __cusolverDnZZgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZZgels')
         except:
             pass
-    
+
         global __cusolverDnZCgels
         try:
             __cusolverDnZCgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZCgels')
         except:
             pass
-    
+
         global __cusolverDnZKgels
         try:
             __cusolverDnZKgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZKgels')
         except:
             pass
-    
+
         global __cusolverDnZEgels
         try:
             __cusolverDnZEgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZEgels')
         except:
             pass
-    
+
         global __cusolverDnZYgels
         try:
             __cusolverDnZYgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZYgels')
         except:
             pass
-    
+
         global __cusolverDnCCgels
         try:
             __cusolverDnCCgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCCgels')
         except:
             pass
-    
+
         global __cusolverDnCKgels
         try:
             __cusolverDnCKgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCKgels')
         except:
             pass
-    
+
         global __cusolverDnCEgels
         try:
             __cusolverDnCEgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCEgels')
         except:
             pass
-    
+
         global __cusolverDnCYgels
         try:
             __cusolverDnCYgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCYgels')
         except:
             pass
-    
+
         global __cusolverDnDDgels
         try:
             __cusolverDnDDgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDDgels')
         except:
             pass
-    
+
         global __cusolverDnDSgels
         try:
             __cusolverDnDSgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDSgels')
         except:
             pass
-    
+
         global __cusolverDnDHgels
         try:
             __cusolverDnDHgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDHgels')
         except:
             pass
-    
+
         global __cusolverDnDBgels
         try:
             __cusolverDnDBgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDBgels')
         except:
             pass
-    
+
         global __cusolverDnDXgels
         try:
             __cusolverDnDXgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDXgels')
         except:
             pass
-    
+
         global __cusolverDnSSgels
         try:
             __cusolverDnSSgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSSgels')
         except:
             pass
-    
+
         global __cusolverDnSHgels
         try:
             __cusolverDnSHgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSHgels')
         except:
             pass
-    
+
         global __cusolverDnSBgels
         try:
             __cusolverDnSBgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSBgels')
         except:
             pass
-    
+
         global __cusolverDnSXgels
         try:
             __cusolverDnSXgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSXgels')
         except:
             pass
-    
+
         global __cusolverDnZZgels_bufferSize
         try:
             __cusolverDnZZgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZZgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZCgels_bufferSize
         try:
             __cusolverDnZCgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZCgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZKgels_bufferSize
         try:
             __cusolverDnZKgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZKgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZEgels_bufferSize
         try:
             __cusolverDnZEgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZEgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZYgels_bufferSize
         try:
             __cusolverDnZYgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZYgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCCgels_bufferSize
         try:
             __cusolverDnCCgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCCgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCKgels_bufferSize
         try:
             __cusolverDnCKgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCKgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCEgels_bufferSize
         try:
             __cusolverDnCEgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCEgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCYgels_bufferSize
         try:
             __cusolverDnCYgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCYgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDDgels_bufferSize
         try:
             __cusolverDnDDgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDDgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDSgels_bufferSize
         try:
             __cusolverDnDSgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDSgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDHgels_bufferSize
         try:
             __cusolverDnDHgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDHgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDBgels_bufferSize
         try:
             __cusolverDnDBgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDBgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDXgels_bufferSize
         try:
             __cusolverDnDXgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDXgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSSgels_bufferSize
         try:
             __cusolverDnSSgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSSgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSHgels_bufferSize
         try:
             __cusolverDnSHgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSHgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSBgels_bufferSize
         try:
             __cusolverDnSBgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSBgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSXgels_bufferSize
         try:
             __cusolverDnSXgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSXgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnIRSXgesv
         try:
             __cusolverDnIRSXgesv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSXgesv')
         except:
             pass
-    
+
         global __cusolverDnIRSXgesv_bufferSize
         try:
             __cusolverDnIRSXgesv_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSXgesv_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnIRSXgels
         try:
             __cusolverDnIRSXgels = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSXgels')
         except:
             pass
-    
+
         global __cusolverDnIRSXgels_bufferSize
         try:
             __cusolverDnIRSXgels_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnIRSXgels_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSpotrf_bufferSize
         try:
             __cusolverDnSpotrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSpotrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDpotrf_bufferSize
         try:
             __cusolverDnDpotrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDpotrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCpotrf_bufferSize
         try:
             __cusolverDnCpotrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCpotrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZpotrf_bufferSize
         try:
             __cusolverDnZpotrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZpotrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSpotrf
         try:
             __cusolverDnSpotrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSpotrf')
         except:
             pass
-    
+
         global __cusolverDnDpotrf
         try:
             __cusolverDnDpotrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDpotrf')
         except:
             pass
-    
+
         global __cusolverDnCpotrf
         try:
             __cusolverDnCpotrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCpotrf')
         except:
             pass
-    
+
         global __cusolverDnZpotrf
         try:
             __cusolverDnZpotrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZpotrf')
         except:
             pass
-    
+
         global __cusolverDnSpotrs
         try:
             __cusolverDnSpotrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSpotrs')
         except:
             pass
-    
+
         global __cusolverDnDpotrs
         try:
             __cusolverDnDpotrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDpotrs')
         except:
             pass
-    
+
         global __cusolverDnCpotrs
         try:
             __cusolverDnCpotrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCpotrs')
         except:
             pass
-    
+
         global __cusolverDnZpotrs
         try:
             __cusolverDnZpotrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZpotrs')
         except:
             pass
-    
+
         global __cusolverDnSpotrfBatched
         try:
             __cusolverDnSpotrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSpotrfBatched')
         except:
             pass
-    
+
         global __cusolverDnDpotrfBatched
         try:
             __cusolverDnDpotrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDpotrfBatched')
         except:
             pass
-    
+
         global __cusolverDnCpotrfBatched
         try:
             __cusolverDnCpotrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCpotrfBatched')
         except:
             pass
-    
+
         global __cusolverDnZpotrfBatched
         try:
             __cusolverDnZpotrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZpotrfBatched')
         except:
             pass
-    
+
         global __cusolverDnSpotrsBatched
         try:
             __cusolverDnSpotrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSpotrsBatched')
         except:
             pass
-    
+
         global __cusolverDnDpotrsBatched
         try:
             __cusolverDnDpotrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDpotrsBatched')
         except:
             pass
-    
+
         global __cusolverDnCpotrsBatched
         try:
             __cusolverDnCpotrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCpotrsBatched')
         except:
             pass
-    
+
         global __cusolverDnZpotrsBatched
         try:
             __cusolverDnZpotrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZpotrsBatched')
         except:
             pass
-    
+
         global __cusolverDnSpotri_bufferSize
         try:
             __cusolverDnSpotri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSpotri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDpotri_bufferSize
         try:
             __cusolverDnDpotri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDpotri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCpotri_bufferSize
         try:
             __cusolverDnCpotri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCpotri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZpotri_bufferSize
         try:
             __cusolverDnZpotri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZpotri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSpotri
         try:
             __cusolverDnSpotri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSpotri')
         except:
             pass
-    
+
         global __cusolverDnDpotri
         try:
             __cusolverDnDpotri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDpotri')
         except:
             pass
-    
+
         global __cusolverDnCpotri
         try:
             __cusolverDnCpotri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCpotri')
         except:
             pass
-    
+
         global __cusolverDnZpotri
         try:
             __cusolverDnZpotri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZpotri')
         except:
             pass
-    
+
         global __cusolverDnSlauum_bufferSize
         try:
             __cusolverDnSlauum_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSlauum_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDlauum_bufferSize
         try:
             __cusolverDnDlauum_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDlauum_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnClauum_bufferSize
         try:
             __cusolverDnClauum_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnClauum_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZlauum_bufferSize
         try:
             __cusolverDnZlauum_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZlauum_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSlauum
         try:
             __cusolverDnSlauum = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSlauum')
         except:
             pass
-    
+
         global __cusolverDnDlauum
         try:
             __cusolverDnDlauum = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDlauum')
         except:
             pass
-    
+
         global __cusolverDnClauum
         try:
             __cusolverDnClauum = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnClauum')
         except:
             pass
-    
+
         global __cusolverDnZlauum
         try:
             __cusolverDnZlauum = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZlauum')
         except:
             pass
-    
+
         global __cusolverDnSgetrf_bufferSize
         try:
             __cusolverDnSgetrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgetrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDgetrf_bufferSize
         try:
             __cusolverDnDgetrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgetrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCgetrf_bufferSize
         try:
             __cusolverDnCgetrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgetrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZgetrf_bufferSize
         try:
             __cusolverDnZgetrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgetrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSgetrf
         try:
             __cusolverDnSgetrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgetrf')
         except:
             pass
-    
+
         global __cusolverDnDgetrf
         try:
             __cusolverDnDgetrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgetrf')
         except:
             pass
-    
+
         global __cusolverDnCgetrf
         try:
             __cusolverDnCgetrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgetrf')
         except:
             pass
-    
+
         global __cusolverDnZgetrf
         try:
             __cusolverDnZgetrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgetrf')
         except:
             pass
-    
+
         global __cusolverDnSlaswp
         try:
             __cusolverDnSlaswp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSlaswp')
         except:
             pass
-    
+
         global __cusolverDnDlaswp
         try:
             __cusolverDnDlaswp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDlaswp')
         except:
             pass
-    
+
         global __cusolverDnClaswp
         try:
             __cusolverDnClaswp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnClaswp')
         except:
             pass
-    
+
         global __cusolverDnZlaswp
         try:
             __cusolverDnZlaswp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZlaswp')
         except:
             pass
-    
+
         global __cusolverDnSgetrs
         try:
             __cusolverDnSgetrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgetrs')
         except:
             pass
-    
+
         global __cusolverDnDgetrs
         try:
             __cusolverDnDgetrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgetrs')
         except:
             pass
-    
+
         global __cusolverDnCgetrs
         try:
             __cusolverDnCgetrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgetrs')
         except:
             pass
-    
+
         global __cusolverDnZgetrs
         try:
             __cusolverDnZgetrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgetrs')
         except:
             pass
-    
+
         global __cusolverDnSgeqrf_bufferSize
         try:
             __cusolverDnSgeqrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgeqrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDgeqrf_bufferSize
         try:
             __cusolverDnDgeqrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgeqrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCgeqrf_bufferSize
         try:
             __cusolverDnCgeqrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgeqrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZgeqrf_bufferSize
         try:
             __cusolverDnZgeqrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgeqrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSgeqrf
         try:
             __cusolverDnSgeqrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgeqrf')
         except:
             pass
-    
+
         global __cusolverDnDgeqrf
         try:
             __cusolverDnDgeqrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgeqrf')
         except:
             pass
-    
+
         global __cusolverDnCgeqrf
         try:
             __cusolverDnCgeqrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgeqrf')
         except:
             pass
-    
+
         global __cusolverDnZgeqrf
         try:
             __cusolverDnZgeqrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgeqrf')
         except:
             pass
-    
+
         global __cusolverDnSorgqr_bufferSize
         try:
             __cusolverDnSorgqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSorgqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDorgqr_bufferSize
         try:
             __cusolverDnDorgqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDorgqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCungqr_bufferSize
         try:
             __cusolverDnCungqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCungqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZungqr_bufferSize
         try:
             __cusolverDnZungqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZungqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSorgqr
         try:
             __cusolverDnSorgqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSorgqr')
         except:
             pass
-    
+
         global __cusolverDnDorgqr
         try:
             __cusolverDnDorgqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDorgqr')
         except:
             pass
-    
+
         global __cusolverDnCungqr
         try:
             __cusolverDnCungqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCungqr')
         except:
             pass
-    
+
         global __cusolverDnZungqr
         try:
             __cusolverDnZungqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZungqr')
         except:
             pass
-    
+
         global __cusolverDnSormqr_bufferSize
         try:
             __cusolverDnSormqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSormqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDormqr_bufferSize
         try:
             __cusolverDnDormqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDormqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCunmqr_bufferSize
         try:
             __cusolverDnCunmqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCunmqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZunmqr_bufferSize
         try:
             __cusolverDnZunmqr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZunmqr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSormqr
         try:
             __cusolverDnSormqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSormqr')
         except:
             pass
-    
+
         global __cusolverDnDormqr
         try:
             __cusolverDnDormqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDormqr')
         except:
             pass
-    
+
         global __cusolverDnCunmqr
         try:
             __cusolverDnCunmqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCunmqr')
         except:
             pass
-    
+
         global __cusolverDnZunmqr
         try:
             __cusolverDnZunmqr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZunmqr')
         except:
             pass
-    
+
         global __cusolverDnSsytrf_bufferSize
         try:
             __cusolverDnSsytrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsytrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsytrf_bufferSize
         try:
             __cusolverDnDsytrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsytrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCsytrf_bufferSize
         try:
             __cusolverDnCsytrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCsytrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZsytrf_bufferSize
         try:
             __cusolverDnZsytrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZsytrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsytrf
         try:
             __cusolverDnSsytrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsytrf')
         except:
             pass
-    
+
         global __cusolverDnDsytrf
         try:
             __cusolverDnDsytrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsytrf')
         except:
             pass
-    
+
         global __cusolverDnCsytrf
         try:
             __cusolverDnCsytrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCsytrf')
         except:
             pass
-    
+
         global __cusolverDnZsytrf
         try:
             __cusolverDnZsytrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZsytrf')
         except:
             pass
-    
+
         global __cusolverDnSsytri_bufferSize
         try:
             __cusolverDnSsytri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsytri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsytri_bufferSize
         try:
             __cusolverDnDsytri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsytri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCsytri_bufferSize
         try:
             __cusolverDnCsytri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCsytri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZsytri_bufferSize
         try:
             __cusolverDnZsytri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZsytri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsytri
         try:
             __cusolverDnSsytri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsytri')
         except:
             pass
-    
+
         global __cusolverDnDsytri
         try:
             __cusolverDnDsytri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsytri')
         except:
             pass
-    
+
         global __cusolverDnCsytri
         try:
             __cusolverDnCsytri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCsytri')
         except:
             pass
-    
+
         global __cusolverDnZsytri
         try:
             __cusolverDnZsytri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZsytri')
         except:
             pass
-    
+
         global __cusolverDnSgebrd_bufferSize
         try:
             __cusolverDnSgebrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgebrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDgebrd_bufferSize
         try:
             __cusolverDnDgebrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgebrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCgebrd_bufferSize
         try:
             __cusolverDnCgebrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgebrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZgebrd_bufferSize
         try:
             __cusolverDnZgebrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgebrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSgebrd
         try:
             __cusolverDnSgebrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgebrd')
         except:
             pass
-    
+
         global __cusolverDnDgebrd
         try:
             __cusolverDnDgebrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgebrd')
         except:
             pass
-    
+
         global __cusolverDnCgebrd
         try:
             __cusolverDnCgebrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgebrd')
         except:
             pass
-    
+
         global __cusolverDnZgebrd
         try:
             __cusolverDnZgebrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgebrd')
         except:
             pass
-    
+
         global __cusolverDnSorgbr_bufferSize
         try:
             __cusolverDnSorgbr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSorgbr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDorgbr_bufferSize
         try:
             __cusolverDnDorgbr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDorgbr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCungbr_bufferSize
         try:
             __cusolverDnCungbr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCungbr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZungbr_bufferSize
         try:
             __cusolverDnZungbr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZungbr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSorgbr
         try:
             __cusolverDnSorgbr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSorgbr')
         except:
             pass
-    
+
         global __cusolverDnDorgbr
         try:
             __cusolverDnDorgbr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDorgbr')
         except:
             pass
-    
+
         global __cusolverDnCungbr
         try:
             __cusolverDnCungbr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCungbr')
         except:
             pass
-    
+
         global __cusolverDnZungbr
         try:
             __cusolverDnZungbr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZungbr')
         except:
             pass
-    
+
         global __cusolverDnSsytrd_bufferSize
         try:
             __cusolverDnSsytrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsytrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsytrd_bufferSize
         try:
             __cusolverDnDsytrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsytrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnChetrd_bufferSize
         try:
             __cusolverDnChetrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChetrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZhetrd_bufferSize
         try:
             __cusolverDnZhetrd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhetrd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsytrd
         try:
             __cusolverDnSsytrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsytrd')
         except:
             pass
-    
+
         global __cusolverDnDsytrd
         try:
             __cusolverDnDsytrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsytrd')
         except:
             pass
-    
+
         global __cusolverDnChetrd
         try:
             __cusolverDnChetrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChetrd')
         except:
             pass
-    
+
         global __cusolverDnZhetrd
         try:
             __cusolverDnZhetrd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhetrd')
         except:
             pass
-    
+
         global __cusolverDnSorgtr_bufferSize
         try:
             __cusolverDnSorgtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSorgtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDorgtr_bufferSize
         try:
             __cusolverDnDorgtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDorgtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCungtr_bufferSize
         try:
             __cusolverDnCungtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCungtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZungtr_bufferSize
         try:
             __cusolverDnZungtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZungtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSorgtr
         try:
             __cusolverDnSorgtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSorgtr')
         except:
             pass
-    
+
         global __cusolverDnDorgtr
         try:
             __cusolverDnDorgtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDorgtr')
         except:
             pass
-    
+
         global __cusolverDnCungtr
         try:
             __cusolverDnCungtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCungtr')
         except:
             pass
-    
+
         global __cusolverDnZungtr
         try:
             __cusolverDnZungtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZungtr')
         except:
             pass
-    
+
         global __cusolverDnSormtr_bufferSize
         try:
             __cusolverDnSormtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSormtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDormtr_bufferSize
         try:
             __cusolverDnDormtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDormtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCunmtr_bufferSize
         try:
             __cusolverDnCunmtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCunmtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZunmtr_bufferSize
         try:
             __cusolverDnZunmtr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZunmtr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSormtr
         try:
             __cusolverDnSormtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSormtr')
         except:
             pass
-    
+
         global __cusolverDnDormtr
         try:
             __cusolverDnDormtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDormtr')
         except:
             pass
-    
+
         global __cusolverDnCunmtr
         try:
             __cusolverDnCunmtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCunmtr')
         except:
             pass
-    
+
         global __cusolverDnZunmtr
         try:
             __cusolverDnZunmtr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZunmtr')
         except:
             pass
-    
+
         global __cusolverDnSgesvd_bufferSize
         try:
             __cusolverDnSgesvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDgesvd_bufferSize
         try:
             __cusolverDnDgesvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCgesvd_bufferSize
         try:
             __cusolverDnCgesvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZgesvd_bufferSize
         try:
             __cusolverDnZgesvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSgesvd
         try:
             __cusolverDnSgesvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvd')
         except:
             pass
-    
+
         global __cusolverDnDgesvd
         try:
             __cusolverDnDgesvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvd')
         except:
             pass
-    
+
         global __cusolverDnCgesvd
         try:
             __cusolverDnCgesvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvd')
         except:
             pass
-    
+
         global __cusolverDnZgesvd
         try:
             __cusolverDnZgesvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvd')
         except:
             pass
-    
+
         global __cusolverDnSsyevd_bufferSize
         try:
             __cusolverDnSsyevd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsyevd_bufferSize
         try:
             __cusolverDnDsyevd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCheevd_bufferSize
         try:
             __cusolverDnCheevd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZheevd_bufferSize
         try:
             __cusolverDnZheevd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsyevd
         try:
             __cusolverDnSsyevd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevd')
         except:
             pass
-    
+
         global __cusolverDnDsyevd
         try:
             __cusolverDnDsyevd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevd')
         except:
             pass
-    
+
         global __cusolverDnCheevd
         try:
             __cusolverDnCheevd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevd')
         except:
             pass
-    
+
         global __cusolverDnZheevd
         try:
             __cusolverDnZheevd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevd')
         except:
             pass
-    
+
         global __cusolverDnSsyevdx_bufferSize
         try:
             __cusolverDnSsyevdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsyevdx_bufferSize
         try:
             __cusolverDnDsyevdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCheevdx_bufferSize
         try:
             __cusolverDnCheevdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZheevdx_bufferSize
         try:
             __cusolverDnZheevdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsyevdx
         try:
             __cusolverDnSsyevdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevdx')
         except:
             pass
-    
+
         global __cusolverDnDsyevdx
         try:
             __cusolverDnDsyevdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevdx')
         except:
             pass
-    
+
         global __cusolverDnCheevdx
         try:
             __cusolverDnCheevdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevdx')
         except:
             pass
-    
+
         global __cusolverDnZheevdx
         try:
             __cusolverDnZheevdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevdx')
         except:
             pass
-    
+
         global __cusolverDnSsygvdx_bufferSize
         try:
             __cusolverDnSsygvdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsygvdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsygvdx_bufferSize
         try:
             __cusolverDnDsygvdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsygvdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnChegvdx_bufferSize
         try:
             __cusolverDnChegvdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChegvdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZhegvdx_bufferSize
         try:
             __cusolverDnZhegvdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhegvdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsygvdx
         try:
             __cusolverDnSsygvdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsygvdx')
         except:
             pass
-    
+
         global __cusolverDnDsygvdx
         try:
             __cusolverDnDsygvdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsygvdx')
         except:
             pass
-    
+
         global __cusolverDnChegvdx
         try:
             __cusolverDnChegvdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChegvdx')
         except:
             pass
-    
+
         global __cusolverDnZhegvdx
         try:
             __cusolverDnZhegvdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhegvdx')
         except:
             pass
-    
+
         global __cusolverDnSsygvd_bufferSize
         try:
             __cusolverDnSsygvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsygvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsygvd_bufferSize
         try:
             __cusolverDnDsygvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsygvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnChegvd_bufferSize
         try:
             __cusolverDnChegvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChegvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZhegvd_bufferSize
         try:
             __cusolverDnZhegvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhegvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsygvd
         try:
             __cusolverDnSsygvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsygvd')
         except:
             pass
-    
+
         global __cusolverDnDsygvd
         try:
             __cusolverDnDsygvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsygvd')
         except:
             pass
-    
+
         global __cusolverDnChegvd
         try:
             __cusolverDnChegvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChegvd')
         except:
             pass
-    
+
         global __cusolverDnZhegvd
         try:
             __cusolverDnZhegvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhegvd')
         except:
             pass
-    
+
         global __cusolverDnCreateSyevjInfo
         try:
             __cusolverDnCreateSyevjInfo = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCreateSyevjInfo')
         except:
             pass
-    
+
         global __cusolverDnDestroySyevjInfo
         try:
             __cusolverDnDestroySyevjInfo = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDestroySyevjInfo')
         except:
             pass
-    
+
         global __cusolverDnXsyevjSetTolerance
         try:
             __cusolverDnXsyevjSetTolerance = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevjSetTolerance')
         except:
             pass
-    
+
         global __cusolverDnXsyevjSetMaxSweeps
         try:
             __cusolverDnXsyevjSetMaxSweeps = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevjSetMaxSweeps')
         except:
             pass
-    
+
         global __cusolverDnXsyevjSetSortEig
         try:
             __cusolverDnXsyevjSetSortEig = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevjSetSortEig')
         except:
             pass
-    
+
         global __cusolverDnXsyevjGetResidual
         try:
             __cusolverDnXsyevjGetResidual = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevjGetResidual')
         except:
             pass
-    
+
         global __cusolverDnXsyevjGetSweeps
         try:
             __cusolverDnXsyevjGetSweeps = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevjGetSweeps')
         except:
             pass
-    
+
         global __cusolverDnSsyevjBatched_bufferSize
         try:
             __cusolverDnSsyevjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsyevjBatched_bufferSize
         try:
             __cusolverDnDsyevjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCheevjBatched_bufferSize
         try:
             __cusolverDnCheevjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZheevjBatched_bufferSize
         try:
             __cusolverDnZheevjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsyevjBatched
         try:
             __cusolverDnSsyevjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevjBatched')
         except:
             pass
-    
+
         global __cusolverDnDsyevjBatched
         try:
             __cusolverDnDsyevjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevjBatched')
         except:
             pass
-    
+
         global __cusolverDnCheevjBatched
         try:
             __cusolverDnCheevjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevjBatched')
         except:
             pass
-    
+
         global __cusolverDnZheevjBatched
         try:
             __cusolverDnZheevjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevjBatched')
         except:
             pass
-    
+
         global __cusolverDnSsyevj_bufferSize
         try:
             __cusolverDnSsyevj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsyevj_bufferSize
         try:
             __cusolverDnDsyevj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCheevj_bufferSize
         try:
             __cusolverDnCheevj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZheevj_bufferSize
         try:
             __cusolverDnZheevj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsyevj
         try:
             __cusolverDnSsyevj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsyevj')
         except:
             pass
-    
+
         global __cusolverDnDsyevj
         try:
             __cusolverDnDsyevj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsyevj')
         except:
             pass
-    
+
         global __cusolverDnCheevj
         try:
             __cusolverDnCheevj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCheevj')
         except:
             pass
-    
+
         global __cusolverDnZheevj
         try:
             __cusolverDnZheevj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZheevj')
         except:
             pass
-    
+
         global __cusolverDnSsygvj_bufferSize
         try:
             __cusolverDnSsygvj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsygvj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDsygvj_bufferSize
         try:
             __cusolverDnDsygvj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsygvj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnChegvj_bufferSize
         try:
             __cusolverDnChegvj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChegvj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZhegvj_bufferSize
         try:
             __cusolverDnZhegvj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhegvj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSsygvj
         try:
             __cusolverDnSsygvj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSsygvj')
         except:
             pass
-    
+
         global __cusolverDnDsygvj
         try:
             __cusolverDnDsygvj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDsygvj')
         except:
             pass
-    
+
         global __cusolverDnChegvj
         try:
             __cusolverDnChegvj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnChegvj')
         except:
             pass
-    
+
         global __cusolverDnZhegvj
         try:
             __cusolverDnZhegvj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZhegvj')
         except:
             pass
-    
+
         global __cusolverDnCreateGesvdjInfo
         try:
             __cusolverDnCreateGesvdjInfo = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCreateGesvdjInfo')
         except:
             pass
-    
+
         global __cusolverDnDestroyGesvdjInfo
         try:
             __cusolverDnDestroyGesvdjInfo = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDestroyGesvdjInfo')
         except:
             pass
-    
+
         global __cusolverDnXgesvdjSetTolerance
         try:
             __cusolverDnXgesvdjSetTolerance = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdjSetTolerance')
         except:
             pass
-    
+
         global __cusolverDnXgesvdjSetMaxSweeps
         try:
             __cusolverDnXgesvdjSetMaxSweeps = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdjSetMaxSweeps')
         except:
             pass
-    
+
         global __cusolverDnXgesvdjSetSortEig
         try:
             __cusolverDnXgesvdjSetSortEig = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdjSetSortEig')
         except:
             pass
-    
+
         global __cusolverDnXgesvdjGetResidual
         try:
             __cusolverDnXgesvdjGetResidual = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdjGetResidual')
         except:
             pass
-    
+
         global __cusolverDnXgesvdjGetSweeps
         try:
             __cusolverDnXgesvdjGetSweeps = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdjGetSweeps')
         except:
             pass
-    
+
         global __cusolverDnSgesvdjBatched_bufferSize
         try:
             __cusolverDnSgesvdjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvdjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDgesvdjBatched_bufferSize
         try:
             __cusolverDnDgesvdjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvdjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCgesvdjBatched_bufferSize
         try:
             __cusolverDnCgesvdjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvdjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZgesvdjBatched_bufferSize
         try:
             __cusolverDnZgesvdjBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvdjBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSgesvdjBatched
         try:
             __cusolverDnSgesvdjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvdjBatched')
         except:
             pass
-    
+
         global __cusolverDnDgesvdjBatched
         try:
             __cusolverDnDgesvdjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvdjBatched')
         except:
             pass
-    
+
         global __cusolverDnCgesvdjBatched
         try:
             __cusolverDnCgesvdjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvdjBatched')
         except:
             pass
-    
+
         global __cusolverDnZgesvdjBatched
         try:
             __cusolverDnZgesvdjBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvdjBatched')
         except:
             pass
-    
+
         global __cusolverDnSgesvdj_bufferSize
         try:
             __cusolverDnSgesvdj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvdj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDgesvdj_bufferSize
         try:
             __cusolverDnDgesvdj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvdj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCgesvdj_bufferSize
         try:
             __cusolverDnCgesvdj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvdj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZgesvdj_bufferSize
         try:
             __cusolverDnZgesvdj_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvdj_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSgesvdj
         try:
             __cusolverDnSgesvdj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvdj')
         except:
             pass
-    
+
         global __cusolverDnDgesvdj
         try:
             __cusolverDnDgesvdj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvdj')
         except:
             pass
-    
+
         global __cusolverDnCgesvdj
         try:
             __cusolverDnCgesvdj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvdj')
         except:
             pass
-    
+
         global __cusolverDnZgesvdj
         try:
             __cusolverDnZgesvdj = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvdj')
         except:
             pass
-    
+
         global __cusolverDnSgesvdaStridedBatched_bufferSize
         try:
             __cusolverDnSgesvdaStridedBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvdaStridedBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnDgesvdaStridedBatched_bufferSize
         try:
             __cusolverDnDgesvdaStridedBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvdaStridedBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnCgesvdaStridedBatched_bufferSize
         try:
             __cusolverDnCgesvdaStridedBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvdaStridedBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnZgesvdaStridedBatched_bufferSize
         try:
             __cusolverDnZgesvdaStridedBatched_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvdaStridedBatched_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnSgesvdaStridedBatched
         try:
             __cusolverDnSgesvdaStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSgesvdaStridedBatched')
         except:
             pass
-    
+
         global __cusolverDnDgesvdaStridedBatched
         try:
             __cusolverDnDgesvdaStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDgesvdaStridedBatched')
         except:
             pass
-    
+
         global __cusolverDnCgesvdaStridedBatched
         try:
             __cusolverDnCgesvdaStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCgesvdaStridedBatched')
         except:
             pass
-    
+
         global __cusolverDnZgesvdaStridedBatched
         try:
             __cusolverDnZgesvdaStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnZgesvdaStridedBatched')
         except:
             pass
-    
+
         global __cusolverDnCreateParams
         try:
             __cusolverDnCreateParams = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnCreateParams')
         except:
             pass
-    
+
         global __cusolverDnDestroyParams
         try:
             __cusolverDnDestroyParams = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnDestroyParams')
         except:
             pass
-    
+
         global __cusolverDnSetAdvOptions
         try:
             __cusolverDnSetAdvOptions = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSetAdvOptions')
         except:
             pass
-    
+
         global __cusolverDnXpotrf_bufferSize
         try:
             __cusolverDnXpotrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXpotrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXpotrf
         try:
             __cusolverDnXpotrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXpotrf')
         except:
             pass
-    
+
         global __cusolverDnXpotrs
         try:
             __cusolverDnXpotrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXpotrs')
         except:
             pass
-    
+
         global __cusolverDnXgeqrf_bufferSize
         try:
             __cusolverDnXgeqrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgeqrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXgeqrf
         try:
             __cusolverDnXgeqrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgeqrf')
         except:
             pass
-    
+
         global __cusolverDnXgetrf_bufferSize
         try:
             __cusolverDnXgetrf_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgetrf_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXgetrf
         try:
             __cusolverDnXgetrf = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgetrf')
         except:
             pass
-    
+
         global __cusolverDnXgetrs
         try:
             __cusolverDnXgetrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgetrs')
         except:
             pass
-    
+
         global __cusolverDnXsyevd_bufferSize
         try:
             __cusolverDnXsyevd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXsyevd
         try:
             __cusolverDnXsyevd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevd')
         except:
             pass
-    
+
         global __cusolverDnXsyevdx_bufferSize
         try:
             __cusolverDnXsyevdx_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevdx_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXsyevdx
         try:
             __cusolverDnXsyevdx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsyevdx')
         except:
             pass
-    
+
         global __cusolverDnXgesvd_bufferSize
         try:
             __cusolverDnXgesvd_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvd_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXgesvd
         try:
             __cusolverDnXgesvd = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvd')
         except:
             pass
-    
+
         global __cusolverDnXgesvdp_bufferSize
         try:
             __cusolverDnXgesvdp_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdp_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXgesvdp
         try:
             __cusolverDnXgesvdp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdp')
         except:
             pass
-    
+
         global __cusolverDnXgesvdr_bufferSize
         try:
             __cusolverDnXgesvdr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdr_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXgesvdr
         try:
             __cusolverDnXgesvdr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXgesvdr')
         except:
             pass
-    
+
         global __cusolverDnXsytrs_bufferSize
         try:
             __cusolverDnXsytrs_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsytrs_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXsytrs
         try:
             __cusolverDnXsytrs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXsytrs')
         except:
             pass
-    
+
         global __cusolverDnXtrtri_bufferSize
         try:
             __cusolverDnXtrtri_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXtrtri_bufferSize')
         except:
             pass
-    
+
         global __cusolverDnXtrtri
         try:
             __cusolverDnXtrtri = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnXtrtri')
         except:
             pass
-    
+
         global __cusolverDnLoggerSetCallback
         try:
             __cusolverDnLoggerSetCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnLoggerSetCallback')
         except:
             pass
-    
+
         global __cusolverDnLoggerSetFile
         try:
             __cusolverDnLoggerSetFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnLoggerSetFile')
         except:
             pass
-    
+
         global __cusolverDnLoggerOpenFile
         try:
             __cusolverDnLoggerOpenFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnLoggerOpenFile')
         except:
             pass
-    
+
         global __cusolverDnLoggerSetLevel
         try:
             __cusolverDnLoggerSetLevel = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnLoggerSetLevel')
         except:
             pass
-    
+
         global __cusolverDnLoggerSetMask
         try:
             __cusolverDnLoggerSetMask = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnLoggerSetMask')
         except:
             pass
-    
+
         global __cusolverDnLoggerForceDisable
         try:
             __cusolverDnLoggerForceDisable = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnLoggerForceDisable')
         except:
             pass
-    
+
         global __cusolverDnSetDeterministicMode
         try:
             __cusolverDnSetDeterministicMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnSetDeterministicMode')
         except:
             pass
-    
+
         global __cusolverDnGetDeterministicMode
         try:
             __cusolverDnGetDeterministicMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverDnGetDeterministicMode')
@@ -2696,1102 +2696,1102 @@ cpdef dict _inspect_function_pointers():
 
     global __cusolverDnCreate
     data["__cusolverDnCreate"] = <intptr_t>__cusolverDnCreate
-    
+
     global __cusolverDnDestroy
     data["__cusolverDnDestroy"] = <intptr_t>__cusolverDnDestroy
-    
+
     global __cusolverDnSetStream
     data["__cusolverDnSetStream"] = <intptr_t>__cusolverDnSetStream
-    
+
     global __cusolverDnGetStream
     data["__cusolverDnGetStream"] = <intptr_t>__cusolverDnGetStream
-    
+
     global __cusolverDnIRSParamsCreate
     data["__cusolverDnIRSParamsCreate"] = <intptr_t>__cusolverDnIRSParamsCreate
-    
+
     global __cusolverDnIRSParamsDestroy
     data["__cusolverDnIRSParamsDestroy"] = <intptr_t>__cusolverDnIRSParamsDestroy
-    
+
     global __cusolverDnIRSParamsSetRefinementSolver
     data["__cusolverDnIRSParamsSetRefinementSolver"] = <intptr_t>__cusolverDnIRSParamsSetRefinementSolver
-    
+
     global __cusolverDnIRSParamsSetSolverMainPrecision
     data["__cusolverDnIRSParamsSetSolverMainPrecision"] = <intptr_t>__cusolverDnIRSParamsSetSolverMainPrecision
-    
+
     global __cusolverDnIRSParamsSetSolverLowestPrecision
     data["__cusolverDnIRSParamsSetSolverLowestPrecision"] = <intptr_t>__cusolverDnIRSParamsSetSolverLowestPrecision
-    
+
     global __cusolverDnIRSParamsSetSolverPrecisions
     data["__cusolverDnIRSParamsSetSolverPrecisions"] = <intptr_t>__cusolverDnIRSParamsSetSolverPrecisions
-    
+
     global __cusolverDnIRSParamsSetTol
     data["__cusolverDnIRSParamsSetTol"] = <intptr_t>__cusolverDnIRSParamsSetTol
-    
+
     global __cusolverDnIRSParamsSetTolInner
     data["__cusolverDnIRSParamsSetTolInner"] = <intptr_t>__cusolverDnIRSParamsSetTolInner
-    
+
     global __cusolverDnIRSParamsSetMaxIters
     data["__cusolverDnIRSParamsSetMaxIters"] = <intptr_t>__cusolverDnIRSParamsSetMaxIters
-    
+
     global __cusolverDnIRSParamsSetMaxItersInner
     data["__cusolverDnIRSParamsSetMaxItersInner"] = <intptr_t>__cusolverDnIRSParamsSetMaxItersInner
-    
+
     global __cusolverDnIRSParamsGetMaxIters
     data["__cusolverDnIRSParamsGetMaxIters"] = <intptr_t>__cusolverDnIRSParamsGetMaxIters
-    
+
     global __cusolverDnIRSParamsEnableFallback
     data["__cusolverDnIRSParamsEnableFallback"] = <intptr_t>__cusolverDnIRSParamsEnableFallback
-    
+
     global __cusolverDnIRSParamsDisableFallback
     data["__cusolverDnIRSParamsDisableFallback"] = <intptr_t>__cusolverDnIRSParamsDisableFallback
-    
+
     global __cusolverDnIRSInfosDestroy
     data["__cusolverDnIRSInfosDestroy"] = <intptr_t>__cusolverDnIRSInfosDestroy
-    
+
     global __cusolverDnIRSInfosCreate
     data["__cusolverDnIRSInfosCreate"] = <intptr_t>__cusolverDnIRSInfosCreate
-    
+
     global __cusolverDnIRSInfosGetNiters
     data["__cusolverDnIRSInfosGetNiters"] = <intptr_t>__cusolverDnIRSInfosGetNiters
-    
+
     global __cusolverDnIRSInfosGetOuterNiters
     data["__cusolverDnIRSInfosGetOuterNiters"] = <intptr_t>__cusolverDnIRSInfosGetOuterNiters
-    
+
     global __cusolverDnIRSInfosRequestResidual
     data["__cusolverDnIRSInfosRequestResidual"] = <intptr_t>__cusolverDnIRSInfosRequestResidual
-    
+
     global __cusolverDnIRSInfosGetResidualHistory
     data["__cusolverDnIRSInfosGetResidualHistory"] = <intptr_t>__cusolverDnIRSInfosGetResidualHistory
-    
+
     global __cusolverDnIRSInfosGetMaxIters
     data["__cusolverDnIRSInfosGetMaxIters"] = <intptr_t>__cusolverDnIRSInfosGetMaxIters
-    
+
     global __cusolverDnZZgesv
     data["__cusolverDnZZgesv"] = <intptr_t>__cusolverDnZZgesv
-    
+
     global __cusolverDnZCgesv
     data["__cusolverDnZCgesv"] = <intptr_t>__cusolverDnZCgesv
-    
+
     global __cusolverDnZKgesv
     data["__cusolverDnZKgesv"] = <intptr_t>__cusolverDnZKgesv
-    
+
     global __cusolverDnZEgesv
     data["__cusolverDnZEgesv"] = <intptr_t>__cusolverDnZEgesv
-    
+
     global __cusolverDnZYgesv
     data["__cusolverDnZYgesv"] = <intptr_t>__cusolverDnZYgesv
-    
+
     global __cusolverDnCCgesv
     data["__cusolverDnCCgesv"] = <intptr_t>__cusolverDnCCgesv
-    
+
     global __cusolverDnCEgesv
     data["__cusolverDnCEgesv"] = <intptr_t>__cusolverDnCEgesv
-    
+
     global __cusolverDnCKgesv
     data["__cusolverDnCKgesv"] = <intptr_t>__cusolverDnCKgesv
-    
+
     global __cusolverDnCYgesv
     data["__cusolverDnCYgesv"] = <intptr_t>__cusolverDnCYgesv
-    
+
     global __cusolverDnDDgesv
     data["__cusolverDnDDgesv"] = <intptr_t>__cusolverDnDDgesv
-    
+
     global __cusolverDnDSgesv
     data["__cusolverDnDSgesv"] = <intptr_t>__cusolverDnDSgesv
-    
+
     global __cusolverDnDHgesv
     data["__cusolverDnDHgesv"] = <intptr_t>__cusolverDnDHgesv
-    
+
     global __cusolverDnDBgesv
     data["__cusolverDnDBgesv"] = <intptr_t>__cusolverDnDBgesv
-    
+
     global __cusolverDnDXgesv
     data["__cusolverDnDXgesv"] = <intptr_t>__cusolverDnDXgesv
-    
+
     global __cusolverDnSSgesv
     data["__cusolverDnSSgesv"] = <intptr_t>__cusolverDnSSgesv
-    
+
     global __cusolverDnSHgesv
     data["__cusolverDnSHgesv"] = <intptr_t>__cusolverDnSHgesv
-    
+
     global __cusolverDnSBgesv
     data["__cusolverDnSBgesv"] = <intptr_t>__cusolverDnSBgesv
-    
+
     global __cusolverDnSXgesv
     data["__cusolverDnSXgesv"] = <intptr_t>__cusolverDnSXgesv
-    
+
     global __cusolverDnZZgesv_bufferSize
     data["__cusolverDnZZgesv_bufferSize"] = <intptr_t>__cusolverDnZZgesv_bufferSize
-    
+
     global __cusolverDnZCgesv_bufferSize
     data["__cusolverDnZCgesv_bufferSize"] = <intptr_t>__cusolverDnZCgesv_bufferSize
-    
+
     global __cusolverDnZKgesv_bufferSize
     data["__cusolverDnZKgesv_bufferSize"] = <intptr_t>__cusolverDnZKgesv_bufferSize
-    
+
     global __cusolverDnZEgesv_bufferSize
     data["__cusolverDnZEgesv_bufferSize"] = <intptr_t>__cusolverDnZEgesv_bufferSize
-    
+
     global __cusolverDnZYgesv_bufferSize
     data["__cusolverDnZYgesv_bufferSize"] = <intptr_t>__cusolverDnZYgesv_bufferSize
-    
+
     global __cusolverDnCCgesv_bufferSize
     data["__cusolverDnCCgesv_bufferSize"] = <intptr_t>__cusolverDnCCgesv_bufferSize
-    
+
     global __cusolverDnCKgesv_bufferSize
     data["__cusolverDnCKgesv_bufferSize"] = <intptr_t>__cusolverDnCKgesv_bufferSize
-    
+
     global __cusolverDnCEgesv_bufferSize
     data["__cusolverDnCEgesv_bufferSize"] = <intptr_t>__cusolverDnCEgesv_bufferSize
-    
+
     global __cusolverDnCYgesv_bufferSize
     data["__cusolverDnCYgesv_bufferSize"] = <intptr_t>__cusolverDnCYgesv_bufferSize
-    
+
     global __cusolverDnDDgesv_bufferSize
     data["__cusolverDnDDgesv_bufferSize"] = <intptr_t>__cusolverDnDDgesv_bufferSize
-    
+
     global __cusolverDnDSgesv_bufferSize
     data["__cusolverDnDSgesv_bufferSize"] = <intptr_t>__cusolverDnDSgesv_bufferSize
-    
+
     global __cusolverDnDHgesv_bufferSize
     data["__cusolverDnDHgesv_bufferSize"] = <intptr_t>__cusolverDnDHgesv_bufferSize
-    
+
     global __cusolverDnDBgesv_bufferSize
     data["__cusolverDnDBgesv_bufferSize"] = <intptr_t>__cusolverDnDBgesv_bufferSize
-    
+
     global __cusolverDnDXgesv_bufferSize
     data["__cusolverDnDXgesv_bufferSize"] = <intptr_t>__cusolverDnDXgesv_bufferSize
-    
+
     global __cusolverDnSSgesv_bufferSize
     data["__cusolverDnSSgesv_bufferSize"] = <intptr_t>__cusolverDnSSgesv_bufferSize
-    
+
     global __cusolverDnSHgesv_bufferSize
     data["__cusolverDnSHgesv_bufferSize"] = <intptr_t>__cusolverDnSHgesv_bufferSize
-    
+
     global __cusolverDnSBgesv_bufferSize
     data["__cusolverDnSBgesv_bufferSize"] = <intptr_t>__cusolverDnSBgesv_bufferSize
-    
+
     global __cusolverDnSXgesv_bufferSize
     data["__cusolverDnSXgesv_bufferSize"] = <intptr_t>__cusolverDnSXgesv_bufferSize
-    
+
     global __cusolverDnZZgels
     data["__cusolverDnZZgels"] = <intptr_t>__cusolverDnZZgels
-    
+
     global __cusolverDnZCgels
     data["__cusolverDnZCgels"] = <intptr_t>__cusolverDnZCgels
-    
+
     global __cusolverDnZKgels
     data["__cusolverDnZKgels"] = <intptr_t>__cusolverDnZKgels
-    
+
     global __cusolverDnZEgels
     data["__cusolverDnZEgels"] = <intptr_t>__cusolverDnZEgels
-    
+
     global __cusolverDnZYgels
     data["__cusolverDnZYgels"] = <intptr_t>__cusolverDnZYgels
-    
+
     global __cusolverDnCCgels
     data["__cusolverDnCCgels"] = <intptr_t>__cusolverDnCCgels
-    
+
     global __cusolverDnCKgels
     data["__cusolverDnCKgels"] = <intptr_t>__cusolverDnCKgels
-    
+
     global __cusolverDnCEgels
     data["__cusolverDnCEgels"] = <intptr_t>__cusolverDnCEgels
-    
+
     global __cusolverDnCYgels
     data["__cusolverDnCYgels"] = <intptr_t>__cusolverDnCYgels
-    
+
     global __cusolverDnDDgels
     data["__cusolverDnDDgels"] = <intptr_t>__cusolverDnDDgels
-    
+
     global __cusolverDnDSgels
     data["__cusolverDnDSgels"] = <intptr_t>__cusolverDnDSgels
-    
+
     global __cusolverDnDHgels
     data["__cusolverDnDHgels"] = <intptr_t>__cusolverDnDHgels
-    
+
     global __cusolverDnDBgels
     data["__cusolverDnDBgels"] = <intptr_t>__cusolverDnDBgels
-    
+
     global __cusolverDnDXgels
     data["__cusolverDnDXgels"] = <intptr_t>__cusolverDnDXgels
-    
+
     global __cusolverDnSSgels
     data["__cusolverDnSSgels"] = <intptr_t>__cusolverDnSSgels
-    
+
     global __cusolverDnSHgels
     data["__cusolverDnSHgels"] = <intptr_t>__cusolverDnSHgels
-    
+
     global __cusolverDnSBgels
     data["__cusolverDnSBgels"] = <intptr_t>__cusolverDnSBgels
-    
+
     global __cusolverDnSXgels
     data["__cusolverDnSXgels"] = <intptr_t>__cusolverDnSXgels
-    
+
     global __cusolverDnZZgels_bufferSize
     data["__cusolverDnZZgels_bufferSize"] = <intptr_t>__cusolverDnZZgels_bufferSize
-    
+
     global __cusolverDnZCgels_bufferSize
     data["__cusolverDnZCgels_bufferSize"] = <intptr_t>__cusolverDnZCgels_bufferSize
-    
+
     global __cusolverDnZKgels_bufferSize
     data["__cusolverDnZKgels_bufferSize"] = <intptr_t>__cusolverDnZKgels_bufferSize
-    
+
     global __cusolverDnZEgels_bufferSize
     data["__cusolverDnZEgels_bufferSize"] = <intptr_t>__cusolverDnZEgels_bufferSize
-    
+
     global __cusolverDnZYgels_bufferSize
     data["__cusolverDnZYgels_bufferSize"] = <intptr_t>__cusolverDnZYgels_bufferSize
-    
+
     global __cusolverDnCCgels_bufferSize
     data["__cusolverDnCCgels_bufferSize"] = <intptr_t>__cusolverDnCCgels_bufferSize
-    
+
     global __cusolverDnCKgels_bufferSize
     data["__cusolverDnCKgels_bufferSize"] = <intptr_t>__cusolverDnCKgels_bufferSize
-    
+
     global __cusolverDnCEgels_bufferSize
     data["__cusolverDnCEgels_bufferSize"] = <intptr_t>__cusolverDnCEgels_bufferSize
-    
+
     global __cusolverDnCYgels_bufferSize
     data["__cusolverDnCYgels_bufferSize"] = <intptr_t>__cusolverDnCYgels_bufferSize
-    
+
     global __cusolverDnDDgels_bufferSize
     data["__cusolverDnDDgels_bufferSize"] = <intptr_t>__cusolverDnDDgels_bufferSize
-    
+
     global __cusolverDnDSgels_bufferSize
     data["__cusolverDnDSgels_bufferSize"] = <intptr_t>__cusolverDnDSgels_bufferSize
-    
+
     global __cusolverDnDHgels_bufferSize
     data["__cusolverDnDHgels_bufferSize"] = <intptr_t>__cusolverDnDHgels_bufferSize
-    
+
     global __cusolverDnDBgels_bufferSize
     data["__cusolverDnDBgels_bufferSize"] = <intptr_t>__cusolverDnDBgels_bufferSize
-    
+
     global __cusolverDnDXgels_bufferSize
     data["__cusolverDnDXgels_bufferSize"] = <intptr_t>__cusolverDnDXgels_bufferSize
-    
+
     global __cusolverDnSSgels_bufferSize
     data["__cusolverDnSSgels_bufferSize"] = <intptr_t>__cusolverDnSSgels_bufferSize
-    
+
     global __cusolverDnSHgels_bufferSize
     data["__cusolverDnSHgels_bufferSize"] = <intptr_t>__cusolverDnSHgels_bufferSize
-    
+
     global __cusolverDnSBgels_bufferSize
     data["__cusolverDnSBgels_bufferSize"] = <intptr_t>__cusolverDnSBgels_bufferSize
-    
+
     global __cusolverDnSXgels_bufferSize
     data["__cusolverDnSXgels_bufferSize"] = <intptr_t>__cusolverDnSXgels_bufferSize
-    
+
     global __cusolverDnIRSXgesv
     data["__cusolverDnIRSXgesv"] = <intptr_t>__cusolverDnIRSXgesv
-    
+
     global __cusolverDnIRSXgesv_bufferSize
     data["__cusolverDnIRSXgesv_bufferSize"] = <intptr_t>__cusolverDnIRSXgesv_bufferSize
-    
+
     global __cusolverDnIRSXgels
     data["__cusolverDnIRSXgels"] = <intptr_t>__cusolverDnIRSXgels
-    
+
     global __cusolverDnIRSXgels_bufferSize
     data["__cusolverDnIRSXgels_bufferSize"] = <intptr_t>__cusolverDnIRSXgels_bufferSize
-    
+
     global __cusolverDnSpotrf_bufferSize
     data["__cusolverDnSpotrf_bufferSize"] = <intptr_t>__cusolverDnSpotrf_bufferSize
-    
+
     global __cusolverDnDpotrf_bufferSize
     data["__cusolverDnDpotrf_bufferSize"] = <intptr_t>__cusolverDnDpotrf_bufferSize
-    
+
     global __cusolverDnCpotrf_bufferSize
     data["__cusolverDnCpotrf_bufferSize"] = <intptr_t>__cusolverDnCpotrf_bufferSize
-    
+
     global __cusolverDnZpotrf_bufferSize
     data["__cusolverDnZpotrf_bufferSize"] = <intptr_t>__cusolverDnZpotrf_bufferSize
-    
+
     global __cusolverDnSpotrf
     data["__cusolverDnSpotrf"] = <intptr_t>__cusolverDnSpotrf
-    
+
     global __cusolverDnDpotrf
     data["__cusolverDnDpotrf"] = <intptr_t>__cusolverDnDpotrf
-    
+
     global __cusolverDnCpotrf
     data["__cusolverDnCpotrf"] = <intptr_t>__cusolverDnCpotrf
-    
+
     global __cusolverDnZpotrf
     data["__cusolverDnZpotrf"] = <intptr_t>__cusolverDnZpotrf
-    
+
     global __cusolverDnSpotrs
     data["__cusolverDnSpotrs"] = <intptr_t>__cusolverDnSpotrs
-    
+
     global __cusolverDnDpotrs
     data["__cusolverDnDpotrs"] = <intptr_t>__cusolverDnDpotrs
-    
+
     global __cusolverDnCpotrs
     data["__cusolverDnCpotrs"] = <intptr_t>__cusolverDnCpotrs
-    
+
     global __cusolverDnZpotrs
     data["__cusolverDnZpotrs"] = <intptr_t>__cusolverDnZpotrs
-    
+
     global __cusolverDnSpotrfBatched
     data["__cusolverDnSpotrfBatched"] = <intptr_t>__cusolverDnSpotrfBatched
-    
+
     global __cusolverDnDpotrfBatched
     data["__cusolverDnDpotrfBatched"] = <intptr_t>__cusolverDnDpotrfBatched
-    
+
     global __cusolverDnCpotrfBatched
     data["__cusolverDnCpotrfBatched"] = <intptr_t>__cusolverDnCpotrfBatched
-    
+
     global __cusolverDnZpotrfBatched
     data["__cusolverDnZpotrfBatched"] = <intptr_t>__cusolverDnZpotrfBatched
-    
+
     global __cusolverDnSpotrsBatched
     data["__cusolverDnSpotrsBatched"] = <intptr_t>__cusolverDnSpotrsBatched
-    
+
     global __cusolverDnDpotrsBatched
     data["__cusolverDnDpotrsBatched"] = <intptr_t>__cusolverDnDpotrsBatched
-    
+
     global __cusolverDnCpotrsBatched
     data["__cusolverDnCpotrsBatched"] = <intptr_t>__cusolverDnCpotrsBatched
-    
+
     global __cusolverDnZpotrsBatched
     data["__cusolverDnZpotrsBatched"] = <intptr_t>__cusolverDnZpotrsBatched
-    
+
     global __cusolverDnSpotri_bufferSize
     data["__cusolverDnSpotri_bufferSize"] = <intptr_t>__cusolverDnSpotri_bufferSize
-    
+
     global __cusolverDnDpotri_bufferSize
     data["__cusolverDnDpotri_bufferSize"] = <intptr_t>__cusolverDnDpotri_bufferSize
-    
+
     global __cusolverDnCpotri_bufferSize
     data["__cusolverDnCpotri_bufferSize"] = <intptr_t>__cusolverDnCpotri_bufferSize
-    
+
     global __cusolverDnZpotri_bufferSize
     data["__cusolverDnZpotri_bufferSize"] = <intptr_t>__cusolverDnZpotri_bufferSize
-    
+
     global __cusolverDnSpotri
     data["__cusolverDnSpotri"] = <intptr_t>__cusolverDnSpotri
-    
+
     global __cusolverDnDpotri
     data["__cusolverDnDpotri"] = <intptr_t>__cusolverDnDpotri
-    
+
     global __cusolverDnCpotri
     data["__cusolverDnCpotri"] = <intptr_t>__cusolverDnCpotri
-    
+
     global __cusolverDnZpotri
     data["__cusolverDnZpotri"] = <intptr_t>__cusolverDnZpotri
-    
+
     global __cusolverDnSlauum_bufferSize
     data["__cusolverDnSlauum_bufferSize"] = <intptr_t>__cusolverDnSlauum_bufferSize
-    
+
     global __cusolverDnDlauum_bufferSize
     data["__cusolverDnDlauum_bufferSize"] = <intptr_t>__cusolverDnDlauum_bufferSize
-    
+
     global __cusolverDnClauum_bufferSize
     data["__cusolverDnClauum_bufferSize"] = <intptr_t>__cusolverDnClauum_bufferSize
-    
+
     global __cusolverDnZlauum_bufferSize
     data["__cusolverDnZlauum_bufferSize"] = <intptr_t>__cusolverDnZlauum_bufferSize
-    
+
     global __cusolverDnSlauum
     data["__cusolverDnSlauum"] = <intptr_t>__cusolverDnSlauum
-    
+
     global __cusolverDnDlauum
     data["__cusolverDnDlauum"] = <intptr_t>__cusolverDnDlauum
-    
+
     global __cusolverDnClauum
     data["__cusolverDnClauum"] = <intptr_t>__cusolverDnClauum
-    
+
     global __cusolverDnZlauum
     data["__cusolverDnZlauum"] = <intptr_t>__cusolverDnZlauum
-    
+
     global __cusolverDnSgetrf_bufferSize
     data["__cusolverDnSgetrf_bufferSize"] = <intptr_t>__cusolverDnSgetrf_bufferSize
-    
+
     global __cusolverDnDgetrf_bufferSize
     data["__cusolverDnDgetrf_bufferSize"] = <intptr_t>__cusolverDnDgetrf_bufferSize
-    
+
     global __cusolverDnCgetrf_bufferSize
     data["__cusolverDnCgetrf_bufferSize"] = <intptr_t>__cusolverDnCgetrf_bufferSize
-    
+
     global __cusolverDnZgetrf_bufferSize
     data["__cusolverDnZgetrf_bufferSize"] = <intptr_t>__cusolverDnZgetrf_bufferSize
-    
+
     global __cusolverDnSgetrf
     data["__cusolverDnSgetrf"] = <intptr_t>__cusolverDnSgetrf
-    
+
     global __cusolverDnDgetrf
     data["__cusolverDnDgetrf"] = <intptr_t>__cusolverDnDgetrf
-    
+
     global __cusolverDnCgetrf
     data["__cusolverDnCgetrf"] = <intptr_t>__cusolverDnCgetrf
-    
+
     global __cusolverDnZgetrf
     data["__cusolverDnZgetrf"] = <intptr_t>__cusolverDnZgetrf
-    
+
     global __cusolverDnSlaswp
     data["__cusolverDnSlaswp"] = <intptr_t>__cusolverDnSlaswp
-    
+
     global __cusolverDnDlaswp
     data["__cusolverDnDlaswp"] = <intptr_t>__cusolverDnDlaswp
-    
+
     global __cusolverDnClaswp
     data["__cusolverDnClaswp"] = <intptr_t>__cusolverDnClaswp
-    
+
     global __cusolverDnZlaswp
     data["__cusolverDnZlaswp"] = <intptr_t>__cusolverDnZlaswp
-    
+
     global __cusolverDnSgetrs
     data["__cusolverDnSgetrs"] = <intptr_t>__cusolverDnSgetrs
-    
+
     global __cusolverDnDgetrs
     data["__cusolverDnDgetrs"] = <intptr_t>__cusolverDnDgetrs
-    
+
     global __cusolverDnCgetrs
     data["__cusolverDnCgetrs"] = <intptr_t>__cusolverDnCgetrs
-    
+
     global __cusolverDnZgetrs
     data["__cusolverDnZgetrs"] = <intptr_t>__cusolverDnZgetrs
-    
+
     global __cusolverDnSgeqrf_bufferSize
     data["__cusolverDnSgeqrf_bufferSize"] = <intptr_t>__cusolverDnSgeqrf_bufferSize
-    
+
     global __cusolverDnDgeqrf_bufferSize
     data["__cusolverDnDgeqrf_bufferSize"] = <intptr_t>__cusolverDnDgeqrf_bufferSize
-    
+
     global __cusolverDnCgeqrf_bufferSize
     data["__cusolverDnCgeqrf_bufferSize"] = <intptr_t>__cusolverDnCgeqrf_bufferSize
-    
+
     global __cusolverDnZgeqrf_bufferSize
     data["__cusolverDnZgeqrf_bufferSize"] = <intptr_t>__cusolverDnZgeqrf_bufferSize
-    
+
     global __cusolverDnSgeqrf
     data["__cusolverDnSgeqrf"] = <intptr_t>__cusolverDnSgeqrf
-    
+
     global __cusolverDnDgeqrf
     data["__cusolverDnDgeqrf"] = <intptr_t>__cusolverDnDgeqrf
-    
+
     global __cusolverDnCgeqrf
     data["__cusolverDnCgeqrf"] = <intptr_t>__cusolverDnCgeqrf
-    
+
     global __cusolverDnZgeqrf
     data["__cusolverDnZgeqrf"] = <intptr_t>__cusolverDnZgeqrf
-    
+
     global __cusolverDnSorgqr_bufferSize
     data["__cusolverDnSorgqr_bufferSize"] = <intptr_t>__cusolverDnSorgqr_bufferSize
-    
+
     global __cusolverDnDorgqr_bufferSize
     data["__cusolverDnDorgqr_bufferSize"] = <intptr_t>__cusolverDnDorgqr_bufferSize
-    
+
     global __cusolverDnCungqr_bufferSize
     data["__cusolverDnCungqr_bufferSize"] = <intptr_t>__cusolverDnCungqr_bufferSize
-    
+
     global __cusolverDnZungqr_bufferSize
     data["__cusolverDnZungqr_bufferSize"] = <intptr_t>__cusolverDnZungqr_bufferSize
-    
+
     global __cusolverDnSorgqr
     data["__cusolverDnSorgqr"] = <intptr_t>__cusolverDnSorgqr
-    
+
     global __cusolverDnDorgqr
     data["__cusolverDnDorgqr"] = <intptr_t>__cusolverDnDorgqr
-    
+
     global __cusolverDnCungqr
     data["__cusolverDnCungqr"] = <intptr_t>__cusolverDnCungqr
-    
+
     global __cusolverDnZungqr
     data["__cusolverDnZungqr"] = <intptr_t>__cusolverDnZungqr
-    
+
     global __cusolverDnSormqr_bufferSize
     data["__cusolverDnSormqr_bufferSize"] = <intptr_t>__cusolverDnSormqr_bufferSize
-    
+
     global __cusolverDnDormqr_bufferSize
     data["__cusolverDnDormqr_bufferSize"] = <intptr_t>__cusolverDnDormqr_bufferSize
-    
+
     global __cusolverDnCunmqr_bufferSize
     data["__cusolverDnCunmqr_bufferSize"] = <intptr_t>__cusolverDnCunmqr_bufferSize
-    
+
     global __cusolverDnZunmqr_bufferSize
     data["__cusolverDnZunmqr_bufferSize"] = <intptr_t>__cusolverDnZunmqr_bufferSize
-    
+
     global __cusolverDnSormqr
     data["__cusolverDnSormqr"] = <intptr_t>__cusolverDnSormqr
-    
+
     global __cusolverDnDormqr
     data["__cusolverDnDormqr"] = <intptr_t>__cusolverDnDormqr
-    
+
     global __cusolverDnCunmqr
     data["__cusolverDnCunmqr"] = <intptr_t>__cusolverDnCunmqr
-    
+
     global __cusolverDnZunmqr
     data["__cusolverDnZunmqr"] = <intptr_t>__cusolverDnZunmqr
-    
+
     global __cusolverDnSsytrf_bufferSize
     data["__cusolverDnSsytrf_bufferSize"] = <intptr_t>__cusolverDnSsytrf_bufferSize
-    
+
     global __cusolverDnDsytrf_bufferSize
     data["__cusolverDnDsytrf_bufferSize"] = <intptr_t>__cusolverDnDsytrf_bufferSize
-    
+
     global __cusolverDnCsytrf_bufferSize
     data["__cusolverDnCsytrf_bufferSize"] = <intptr_t>__cusolverDnCsytrf_bufferSize
-    
+
     global __cusolverDnZsytrf_bufferSize
     data["__cusolverDnZsytrf_bufferSize"] = <intptr_t>__cusolverDnZsytrf_bufferSize
-    
+
     global __cusolverDnSsytrf
     data["__cusolverDnSsytrf"] = <intptr_t>__cusolverDnSsytrf
-    
+
     global __cusolverDnDsytrf
     data["__cusolverDnDsytrf"] = <intptr_t>__cusolverDnDsytrf
-    
+
     global __cusolverDnCsytrf
     data["__cusolverDnCsytrf"] = <intptr_t>__cusolverDnCsytrf
-    
+
     global __cusolverDnZsytrf
     data["__cusolverDnZsytrf"] = <intptr_t>__cusolverDnZsytrf
-    
+
     global __cusolverDnSsytri_bufferSize
     data["__cusolverDnSsytri_bufferSize"] = <intptr_t>__cusolverDnSsytri_bufferSize
-    
+
     global __cusolverDnDsytri_bufferSize
     data["__cusolverDnDsytri_bufferSize"] = <intptr_t>__cusolverDnDsytri_bufferSize
-    
+
     global __cusolverDnCsytri_bufferSize
     data["__cusolverDnCsytri_bufferSize"] = <intptr_t>__cusolverDnCsytri_bufferSize
-    
+
     global __cusolverDnZsytri_bufferSize
     data["__cusolverDnZsytri_bufferSize"] = <intptr_t>__cusolverDnZsytri_bufferSize
-    
+
     global __cusolverDnSsytri
     data["__cusolverDnSsytri"] = <intptr_t>__cusolverDnSsytri
-    
+
     global __cusolverDnDsytri
     data["__cusolverDnDsytri"] = <intptr_t>__cusolverDnDsytri
-    
+
     global __cusolverDnCsytri
     data["__cusolverDnCsytri"] = <intptr_t>__cusolverDnCsytri
-    
+
     global __cusolverDnZsytri
     data["__cusolverDnZsytri"] = <intptr_t>__cusolverDnZsytri
-    
+
     global __cusolverDnSgebrd_bufferSize
     data["__cusolverDnSgebrd_bufferSize"] = <intptr_t>__cusolverDnSgebrd_bufferSize
-    
+
     global __cusolverDnDgebrd_bufferSize
     data["__cusolverDnDgebrd_bufferSize"] = <intptr_t>__cusolverDnDgebrd_bufferSize
-    
+
     global __cusolverDnCgebrd_bufferSize
     data["__cusolverDnCgebrd_bufferSize"] = <intptr_t>__cusolverDnCgebrd_bufferSize
-    
+
     global __cusolverDnZgebrd_bufferSize
     data["__cusolverDnZgebrd_bufferSize"] = <intptr_t>__cusolverDnZgebrd_bufferSize
-    
+
     global __cusolverDnSgebrd
     data["__cusolverDnSgebrd"] = <intptr_t>__cusolverDnSgebrd
-    
+
     global __cusolverDnDgebrd
     data["__cusolverDnDgebrd"] = <intptr_t>__cusolverDnDgebrd
-    
+
     global __cusolverDnCgebrd
     data["__cusolverDnCgebrd"] = <intptr_t>__cusolverDnCgebrd
-    
+
     global __cusolverDnZgebrd
     data["__cusolverDnZgebrd"] = <intptr_t>__cusolverDnZgebrd
-    
+
     global __cusolverDnSorgbr_bufferSize
     data["__cusolverDnSorgbr_bufferSize"] = <intptr_t>__cusolverDnSorgbr_bufferSize
-    
+
     global __cusolverDnDorgbr_bufferSize
     data["__cusolverDnDorgbr_bufferSize"] = <intptr_t>__cusolverDnDorgbr_bufferSize
-    
+
     global __cusolverDnCungbr_bufferSize
     data["__cusolverDnCungbr_bufferSize"] = <intptr_t>__cusolverDnCungbr_bufferSize
-    
+
     global __cusolverDnZungbr_bufferSize
     data["__cusolverDnZungbr_bufferSize"] = <intptr_t>__cusolverDnZungbr_bufferSize
-    
+
     global __cusolverDnSorgbr
     data["__cusolverDnSorgbr"] = <intptr_t>__cusolverDnSorgbr
-    
+
     global __cusolverDnDorgbr
     data["__cusolverDnDorgbr"] = <intptr_t>__cusolverDnDorgbr
-    
+
     global __cusolverDnCungbr
     data["__cusolverDnCungbr"] = <intptr_t>__cusolverDnCungbr
-    
+
     global __cusolverDnZungbr
     data["__cusolverDnZungbr"] = <intptr_t>__cusolverDnZungbr
-    
+
     global __cusolverDnSsytrd_bufferSize
     data["__cusolverDnSsytrd_bufferSize"] = <intptr_t>__cusolverDnSsytrd_bufferSize
-    
+
     global __cusolverDnDsytrd_bufferSize
     data["__cusolverDnDsytrd_bufferSize"] = <intptr_t>__cusolverDnDsytrd_bufferSize
-    
+
     global __cusolverDnChetrd_bufferSize
     data["__cusolverDnChetrd_bufferSize"] = <intptr_t>__cusolverDnChetrd_bufferSize
-    
+
     global __cusolverDnZhetrd_bufferSize
     data["__cusolverDnZhetrd_bufferSize"] = <intptr_t>__cusolverDnZhetrd_bufferSize
-    
+
     global __cusolverDnSsytrd
     data["__cusolverDnSsytrd"] = <intptr_t>__cusolverDnSsytrd
-    
+
     global __cusolverDnDsytrd
     data["__cusolverDnDsytrd"] = <intptr_t>__cusolverDnDsytrd
-    
+
     global __cusolverDnChetrd
     data["__cusolverDnChetrd"] = <intptr_t>__cusolverDnChetrd
-    
+
     global __cusolverDnZhetrd
     data["__cusolverDnZhetrd"] = <intptr_t>__cusolverDnZhetrd
-    
+
     global __cusolverDnSorgtr_bufferSize
     data["__cusolverDnSorgtr_bufferSize"] = <intptr_t>__cusolverDnSorgtr_bufferSize
-    
+
     global __cusolverDnDorgtr_bufferSize
     data["__cusolverDnDorgtr_bufferSize"] = <intptr_t>__cusolverDnDorgtr_bufferSize
-    
+
     global __cusolverDnCungtr_bufferSize
     data["__cusolverDnCungtr_bufferSize"] = <intptr_t>__cusolverDnCungtr_bufferSize
-    
+
     global __cusolverDnZungtr_bufferSize
     data["__cusolverDnZungtr_bufferSize"] = <intptr_t>__cusolverDnZungtr_bufferSize
-    
+
     global __cusolverDnSorgtr
     data["__cusolverDnSorgtr"] = <intptr_t>__cusolverDnSorgtr
-    
+
     global __cusolverDnDorgtr
     data["__cusolverDnDorgtr"] = <intptr_t>__cusolverDnDorgtr
-    
+
     global __cusolverDnCungtr
     data["__cusolverDnCungtr"] = <intptr_t>__cusolverDnCungtr
-    
+
     global __cusolverDnZungtr
     data["__cusolverDnZungtr"] = <intptr_t>__cusolverDnZungtr
-    
+
     global __cusolverDnSormtr_bufferSize
     data["__cusolverDnSormtr_bufferSize"] = <intptr_t>__cusolverDnSormtr_bufferSize
-    
+
     global __cusolverDnDormtr_bufferSize
     data["__cusolverDnDormtr_bufferSize"] = <intptr_t>__cusolverDnDormtr_bufferSize
-    
+
     global __cusolverDnCunmtr_bufferSize
     data["__cusolverDnCunmtr_bufferSize"] = <intptr_t>__cusolverDnCunmtr_bufferSize
-    
+
     global __cusolverDnZunmtr_bufferSize
     data["__cusolverDnZunmtr_bufferSize"] = <intptr_t>__cusolverDnZunmtr_bufferSize
-    
+
     global __cusolverDnSormtr
     data["__cusolverDnSormtr"] = <intptr_t>__cusolverDnSormtr
-    
+
     global __cusolverDnDormtr
     data["__cusolverDnDormtr"] = <intptr_t>__cusolverDnDormtr
-    
+
     global __cusolverDnCunmtr
     data["__cusolverDnCunmtr"] = <intptr_t>__cusolverDnCunmtr
-    
+
     global __cusolverDnZunmtr
     data["__cusolverDnZunmtr"] = <intptr_t>__cusolverDnZunmtr
-    
+
     global __cusolverDnSgesvd_bufferSize
     data["__cusolverDnSgesvd_bufferSize"] = <intptr_t>__cusolverDnSgesvd_bufferSize
-    
+
     global __cusolverDnDgesvd_bufferSize
     data["__cusolverDnDgesvd_bufferSize"] = <intptr_t>__cusolverDnDgesvd_bufferSize
-    
+
     global __cusolverDnCgesvd_bufferSize
     data["__cusolverDnCgesvd_bufferSize"] = <intptr_t>__cusolverDnCgesvd_bufferSize
-    
+
     global __cusolverDnZgesvd_bufferSize
     data["__cusolverDnZgesvd_bufferSize"] = <intptr_t>__cusolverDnZgesvd_bufferSize
-    
+
     global __cusolverDnSgesvd
     data["__cusolverDnSgesvd"] = <intptr_t>__cusolverDnSgesvd
-    
+
     global __cusolverDnDgesvd
     data["__cusolverDnDgesvd"] = <intptr_t>__cusolverDnDgesvd
-    
+
     global __cusolverDnCgesvd
     data["__cusolverDnCgesvd"] = <intptr_t>__cusolverDnCgesvd
-    
+
     global __cusolverDnZgesvd
     data["__cusolverDnZgesvd"] = <intptr_t>__cusolverDnZgesvd
-    
+
     global __cusolverDnSsyevd_bufferSize
     data["__cusolverDnSsyevd_bufferSize"] = <intptr_t>__cusolverDnSsyevd_bufferSize
-    
+
     global __cusolverDnDsyevd_bufferSize
     data["__cusolverDnDsyevd_bufferSize"] = <intptr_t>__cusolverDnDsyevd_bufferSize
-    
+
     global __cusolverDnCheevd_bufferSize
     data["__cusolverDnCheevd_bufferSize"] = <intptr_t>__cusolverDnCheevd_bufferSize
-    
+
     global __cusolverDnZheevd_bufferSize
     data["__cusolverDnZheevd_bufferSize"] = <intptr_t>__cusolverDnZheevd_bufferSize
-    
+
     global __cusolverDnSsyevd
     data["__cusolverDnSsyevd"] = <intptr_t>__cusolverDnSsyevd
-    
+
     global __cusolverDnDsyevd
     data["__cusolverDnDsyevd"] = <intptr_t>__cusolverDnDsyevd
-    
+
     global __cusolverDnCheevd
     data["__cusolverDnCheevd"] = <intptr_t>__cusolverDnCheevd
-    
+
     global __cusolverDnZheevd
     data["__cusolverDnZheevd"] = <intptr_t>__cusolverDnZheevd
-    
+
     global __cusolverDnSsyevdx_bufferSize
     data["__cusolverDnSsyevdx_bufferSize"] = <intptr_t>__cusolverDnSsyevdx_bufferSize
-    
+
     global __cusolverDnDsyevdx_bufferSize
     data["__cusolverDnDsyevdx_bufferSize"] = <intptr_t>__cusolverDnDsyevdx_bufferSize
-    
+
     global __cusolverDnCheevdx_bufferSize
     data["__cusolverDnCheevdx_bufferSize"] = <intptr_t>__cusolverDnCheevdx_bufferSize
-    
+
     global __cusolverDnZheevdx_bufferSize
     data["__cusolverDnZheevdx_bufferSize"] = <intptr_t>__cusolverDnZheevdx_bufferSize
-    
+
     global __cusolverDnSsyevdx
     data["__cusolverDnSsyevdx"] = <intptr_t>__cusolverDnSsyevdx
-    
+
     global __cusolverDnDsyevdx
     data["__cusolverDnDsyevdx"] = <intptr_t>__cusolverDnDsyevdx
-    
+
     global __cusolverDnCheevdx
     data["__cusolverDnCheevdx"] = <intptr_t>__cusolverDnCheevdx
-    
+
     global __cusolverDnZheevdx
     data["__cusolverDnZheevdx"] = <intptr_t>__cusolverDnZheevdx
-    
+
     global __cusolverDnSsygvdx_bufferSize
     data["__cusolverDnSsygvdx_bufferSize"] = <intptr_t>__cusolverDnSsygvdx_bufferSize
-    
+
     global __cusolverDnDsygvdx_bufferSize
     data["__cusolverDnDsygvdx_bufferSize"] = <intptr_t>__cusolverDnDsygvdx_bufferSize
-    
+
     global __cusolverDnChegvdx_bufferSize
     data["__cusolverDnChegvdx_bufferSize"] = <intptr_t>__cusolverDnChegvdx_bufferSize
-    
+
     global __cusolverDnZhegvdx_bufferSize
     data["__cusolverDnZhegvdx_bufferSize"] = <intptr_t>__cusolverDnZhegvdx_bufferSize
-    
+
     global __cusolverDnSsygvdx
     data["__cusolverDnSsygvdx"] = <intptr_t>__cusolverDnSsygvdx
-    
+
     global __cusolverDnDsygvdx
     data["__cusolverDnDsygvdx"] = <intptr_t>__cusolverDnDsygvdx
-    
+
     global __cusolverDnChegvdx
     data["__cusolverDnChegvdx"] = <intptr_t>__cusolverDnChegvdx
-    
+
     global __cusolverDnZhegvdx
     data["__cusolverDnZhegvdx"] = <intptr_t>__cusolverDnZhegvdx
-    
+
     global __cusolverDnSsygvd_bufferSize
     data["__cusolverDnSsygvd_bufferSize"] = <intptr_t>__cusolverDnSsygvd_bufferSize
-    
+
     global __cusolverDnDsygvd_bufferSize
     data["__cusolverDnDsygvd_bufferSize"] = <intptr_t>__cusolverDnDsygvd_bufferSize
-    
+
     global __cusolverDnChegvd_bufferSize
     data["__cusolverDnChegvd_bufferSize"] = <intptr_t>__cusolverDnChegvd_bufferSize
-    
+
     global __cusolverDnZhegvd_bufferSize
     data["__cusolverDnZhegvd_bufferSize"] = <intptr_t>__cusolverDnZhegvd_bufferSize
-    
+
     global __cusolverDnSsygvd
     data["__cusolverDnSsygvd"] = <intptr_t>__cusolverDnSsygvd
-    
+
     global __cusolverDnDsygvd
     data["__cusolverDnDsygvd"] = <intptr_t>__cusolverDnDsygvd
-    
+
     global __cusolverDnChegvd
     data["__cusolverDnChegvd"] = <intptr_t>__cusolverDnChegvd
-    
+
     global __cusolverDnZhegvd
     data["__cusolverDnZhegvd"] = <intptr_t>__cusolverDnZhegvd
-    
+
     global __cusolverDnCreateSyevjInfo
     data["__cusolverDnCreateSyevjInfo"] = <intptr_t>__cusolverDnCreateSyevjInfo
-    
+
     global __cusolverDnDestroySyevjInfo
     data["__cusolverDnDestroySyevjInfo"] = <intptr_t>__cusolverDnDestroySyevjInfo
-    
+
     global __cusolverDnXsyevjSetTolerance
     data["__cusolverDnXsyevjSetTolerance"] = <intptr_t>__cusolverDnXsyevjSetTolerance
-    
+
     global __cusolverDnXsyevjSetMaxSweeps
     data["__cusolverDnXsyevjSetMaxSweeps"] = <intptr_t>__cusolverDnXsyevjSetMaxSweeps
-    
+
     global __cusolverDnXsyevjSetSortEig
     data["__cusolverDnXsyevjSetSortEig"] = <intptr_t>__cusolverDnXsyevjSetSortEig
-    
+
     global __cusolverDnXsyevjGetResidual
     data["__cusolverDnXsyevjGetResidual"] = <intptr_t>__cusolverDnXsyevjGetResidual
-    
+
     global __cusolverDnXsyevjGetSweeps
     data["__cusolverDnXsyevjGetSweeps"] = <intptr_t>__cusolverDnXsyevjGetSweeps
-    
+
     global __cusolverDnSsyevjBatched_bufferSize
     data["__cusolverDnSsyevjBatched_bufferSize"] = <intptr_t>__cusolverDnSsyevjBatched_bufferSize
-    
+
     global __cusolverDnDsyevjBatched_bufferSize
     data["__cusolverDnDsyevjBatched_bufferSize"] = <intptr_t>__cusolverDnDsyevjBatched_bufferSize
-    
+
     global __cusolverDnCheevjBatched_bufferSize
     data["__cusolverDnCheevjBatched_bufferSize"] = <intptr_t>__cusolverDnCheevjBatched_bufferSize
-    
+
     global __cusolverDnZheevjBatched_bufferSize
     data["__cusolverDnZheevjBatched_bufferSize"] = <intptr_t>__cusolverDnZheevjBatched_bufferSize
-    
+
     global __cusolverDnSsyevjBatched
     data["__cusolverDnSsyevjBatched"] = <intptr_t>__cusolverDnSsyevjBatched
-    
+
     global __cusolverDnDsyevjBatched
     data["__cusolverDnDsyevjBatched"] = <intptr_t>__cusolverDnDsyevjBatched
-    
+
     global __cusolverDnCheevjBatched
     data["__cusolverDnCheevjBatched"] = <intptr_t>__cusolverDnCheevjBatched
-    
+
     global __cusolverDnZheevjBatched
     data["__cusolverDnZheevjBatched"] = <intptr_t>__cusolverDnZheevjBatched
-    
+
     global __cusolverDnSsyevj_bufferSize
     data["__cusolverDnSsyevj_bufferSize"] = <intptr_t>__cusolverDnSsyevj_bufferSize
-    
+
     global __cusolverDnDsyevj_bufferSize
     data["__cusolverDnDsyevj_bufferSize"] = <intptr_t>__cusolverDnDsyevj_bufferSize
-    
+
     global __cusolverDnCheevj_bufferSize
     data["__cusolverDnCheevj_bufferSize"] = <intptr_t>__cusolverDnCheevj_bufferSize
-    
+
     global __cusolverDnZheevj_bufferSize
     data["__cusolverDnZheevj_bufferSize"] = <intptr_t>__cusolverDnZheevj_bufferSize
-    
+
     global __cusolverDnSsyevj
     data["__cusolverDnSsyevj"] = <intptr_t>__cusolverDnSsyevj
-    
+
     global __cusolverDnDsyevj
     data["__cusolverDnDsyevj"] = <intptr_t>__cusolverDnDsyevj
-    
+
     global __cusolverDnCheevj
     data["__cusolverDnCheevj"] = <intptr_t>__cusolverDnCheevj
-    
+
     global __cusolverDnZheevj
     data["__cusolverDnZheevj"] = <intptr_t>__cusolverDnZheevj
-    
+
     global __cusolverDnSsygvj_bufferSize
     data["__cusolverDnSsygvj_bufferSize"] = <intptr_t>__cusolverDnSsygvj_bufferSize
-    
+
     global __cusolverDnDsygvj_bufferSize
     data["__cusolverDnDsygvj_bufferSize"] = <intptr_t>__cusolverDnDsygvj_bufferSize
-    
+
     global __cusolverDnChegvj_bufferSize
     data["__cusolverDnChegvj_bufferSize"] = <intptr_t>__cusolverDnChegvj_bufferSize
-    
+
     global __cusolverDnZhegvj_bufferSize
     data["__cusolverDnZhegvj_bufferSize"] = <intptr_t>__cusolverDnZhegvj_bufferSize
-    
+
     global __cusolverDnSsygvj
     data["__cusolverDnSsygvj"] = <intptr_t>__cusolverDnSsygvj
-    
+
     global __cusolverDnDsygvj
     data["__cusolverDnDsygvj"] = <intptr_t>__cusolverDnDsygvj
-    
+
     global __cusolverDnChegvj
     data["__cusolverDnChegvj"] = <intptr_t>__cusolverDnChegvj
-    
+
     global __cusolverDnZhegvj
     data["__cusolverDnZhegvj"] = <intptr_t>__cusolverDnZhegvj
-    
+
     global __cusolverDnCreateGesvdjInfo
     data["__cusolverDnCreateGesvdjInfo"] = <intptr_t>__cusolverDnCreateGesvdjInfo
-    
+
     global __cusolverDnDestroyGesvdjInfo
     data["__cusolverDnDestroyGesvdjInfo"] = <intptr_t>__cusolverDnDestroyGesvdjInfo
-    
+
     global __cusolverDnXgesvdjSetTolerance
     data["__cusolverDnXgesvdjSetTolerance"] = <intptr_t>__cusolverDnXgesvdjSetTolerance
-    
+
     global __cusolverDnXgesvdjSetMaxSweeps
     data["__cusolverDnXgesvdjSetMaxSweeps"] = <intptr_t>__cusolverDnXgesvdjSetMaxSweeps
-    
+
     global __cusolverDnXgesvdjSetSortEig
     data["__cusolverDnXgesvdjSetSortEig"] = <intptr_t>__cusolverDnXgesvdjSetSortEig
-    
+
     global __cusolverDnXgesvdjGetResidual
     data["__cusolverDnXgesvdjGetResidual"] = <intptr_t>__cusolverDnXgesvdjGetResidual
-    
+
     global __cusolverDnXgesvdjGetSweeps
     data["__cusolverDnXgesvdjGetSweeps"] = <intptr_t>__cusolverDnXgesvdjGetSweeps
-    
+
     global __cusolverDnSgesvdjBatched_bufferSize
     data["__cusolverDnSgesvdjBatched_bufferSize"] = <intptr_t>__cusolverDnSgesvdjBatched_bufferSize
-    
+
     global __cusolverDnDgesvdjBatched_bufferSize
     data["__cusolverDnDgesvdjBatched_bufferSize"] = <intptr_t>__cusolverDnDgesvdjBatched_bufferSize
-    
+
     global __cusolverDnCgesvdjBatched_bufferSize
     data["__cusolverDnCgesvdjBatched_bufferSize"] = <intptr_t>__cusolverDnCgesvdjBatched_bufferSize
-    
+
     global __cusolverDnZgesvdjBatched_bufferSize
     data["__cusolverDnZgesvdjBatched_bufferSize"] = <intptr_t>__cusolverDnZgesvdjBatched_bufferSize
-    
+
     global __cusolverDnSgesvdjBatched
     data["__cusolverDnSgesvdjBatched"] = <intptr_t>__cusolverDnSgesvdjBatched
-    
+
     global __cusolverDnDgesvdjBatched
     data["__cusolverDnDgesvdjBatched"] = <intptr_t>__cusolverDnDgesvdjBatched
-    
+
     global __cusolverDnCgesvdjBatched
     data["__cusolverDnCgesvdjBatched"] = <intptr_t>__cusolverDnCgesvdjBatched
-    
+
     global __cusolverDnZgesvdjBatched
     data["__cusolverDnZgesvdjBatched"] = <intptr_t>__cusolverDnZgesvdjBatched
-    
+
     global __cusolverDnSgesvdj_bufferSize
     data["__cusolverDnSgesvdj_bufferSize"] = <intptr_t>__cusolverDnSgesvdj_bufferSize
-    
+
     global __cusolverDnDgesvdj_bufferSize
     data["__cusolverDnDgesvdj_bufferSize"] = <intptr_t>__cusolverDnDgesvdj_bufferSize
-    
+
     global __cusolverDnCgesvdj_bufferSize
     data["__cusolverDnCgesvdj_bufferSize"] = <intptr_t>__cusolverDnCgesvdj_bufferSize
-    
+
     global __cusolverDnZgesvdj_bufferSize
     data["__cusolverDnZgesvdj_bufferSize"] = <intptr_t>__cusolverDnZgesvdj_bufferSize
-    
+
     global __cusolverDnSgesvdj
     data["__cusolverDnSgesvdj"] = <intptr_t>__cusolverDnSgesvdj
-    
+
     global __cusolverDnDgesvdj
     data["__cusolverDnDgesvdj"] = <intptr_t>__cusolverDnDgesvdj
-    
+
     global __cusolverDnCgesvdj
     data["__cusolverDnCgesvdj"] = <intptr_t>__cusolverDnCgesvdj
-    
+
     global __cusolverDnZgesvdj
     data["__cusolverDnZgesvdj"] = <intptr_t>__cusolverDnZgesvdj
-    
+
     global __cusolverDnSgesvdaStridedBatched_bufferSize
     data["__cusolverDnSgesvdaStridedBatched_bufferSize"] = <intptr_t>__cusolverDnSgesvdaStridedBatched_bufferSize
-    
+
     global __cusolverDnDgesvdaStridedBatched_bufferSize
     data["__cusolverDnDgesvdaStridedBatched_bufferSize"] = <intptr_t>__cusolverDnDgesvdaStridedBatched_bufferSize
-    
+
     global __cusolverDnCgesvdaStridedBatched_bufferSize
     data["__cusolverDnCgesvdaStridedBatched_bufferSize"] = <intptr_t>__cusolverDnCgesvdaStridedBatched_bufferSize
-    
+
     global __cusolverDnZgesvdaStridedBatched_bufferSize
     data["__cusolverDnZgesvdaStridedBatched_bufferSize"] = <intptr_t>__cusolverDnZgesvdaStridedBatched_bufferSize
-    
+
     global __cusolverDnSgesvdaStridedBatched
     data["__cusolverDnSgesvdaStridedBatched"] = <intptr_t>__cusolverDnSgesvdaStridedBatched
-    
+
     global __cusolverDnDgesvdaStridedBatched
     data["__cusolverDnDgesvdaStridedBatched"] = <intptr_t>__cusolverDnDgesvdaStridedBatched
-    
+
     global __cusolverDnCgesvdaStridedBatched
     data["__cusolverDnCgesvdaStridedBatched"] = <intptr_t>__cusolverDnCgesvdaStridedBatched
-    
+
     global __cusolverDnZgesvdaStridedBatched
     data["__cusolverDnZgesvdaStridedBatched"] = <intptr_t>__cusolverDnZgesvdaStridedBatched
-    
+
     global __cusolverDnCreateParams
     data["__cusolverDnCreateParams"] = <intptr_t>__cusolverDnCreateParams
-    
+
     global __cusolverDnDestroyParams
     data["__cusolverDnDestroyParams"] = <intptr_t>__cusolverDnDestroyParams
-    
+
     global __cusolverDnSetAdvOptions
     data["__cusolverDnSetAdvOptions"] = <intptr_t>__cusolverDnSetAdvOptions
-    
+
     global __cusolverDnXpotrf_bufferSize
     data["__cusolverDnXpotrf_bufferSize"] = <intptr_t>__cusolverDnXpotrf_bufferSize
-    
+
     global __cusolverDnXpotrf
     data["__cusolverDnXpotrf"] = <intptr_t>__cusolverDnXpotrf
-    
+
     global __cusolverDnXpotrs
     data["__cusolverDnXpotrs"] = <intptr_t>__cusolverDnXpotrs
-    
+
     global __cusolverDnXgeqrf_bufferSize
     data["__cusolverDnXgeqrf_bufferSize"] = <intptr_t>__cusolverDnXgeqrf_bufferSize
-    
+
     global __cusolverDnXgeqrf
     data["__cusolverDnXgeqrf"] = <intptr_t>__cusolverDnXgeqrf
-    
+
     global __cusolverDnXgetrf_bufferSize
     data["__cusolverDnXgetrf_bufferSize"] = <intptr_t>__cusolverDnXgetrf_bufferSize
-    
+
     global __cusolverDnXgetrf
     data["__cusolverDnXgetrf"] = <intptr_t>__cusolverDnXgetrf
-    
+
     global __cusolverDnXgetrs
     data["__cusolverDnXgetrs"] = <intptr_t>__cusolverDnXgetrs
-    
+
     global __cusolverDnXsyevd_bufferSize
     data["__cusolverDnXsyevd_bufferSize"] = <intptr_t>__cusolverDnXsyevd_bufferSize
-    
+
     global __cusolverDnXsyevd
     data["__cusolverDnXsyevd"] = <intptr_t>__cusolverDnXsyevd
-    
+
     global __cusolverDnXsyevdx_bufferSize
     data["__cusolverDnXsyevdx_bufferSize"] = <intptr_t>__cusolverDnXsyevdx_bufferSize
-    
+
     global __cusolverDnXsyevdx
     data["__cusolverDnXsyevdx"] = <intptr_t>__cusolverDnXsyevdx
-    
+
     global __cusolverDnXgesvd_bufferSize
     data["__cusolverDnXgesvd_bufferSize"] = <intptr_t>__cusolverDnXgesvd_bufferSize
-    
+
     global __cusolverDnXgesvd
     data["__cusolverDnXgesvd"] = <intptr_t>__cusolverDnXgesvd
-    
+
     global __cusolverDnXgesvdp_bufferSize
     data["__cusolverDnXgesvdp_bufferSize"] = <intptr_t>__cusolverDnXgesvdp_bufferSize
-    
+
     global __cusolverDnXgesvdp
     data["__cusolverDnXgesvdp"] = <intptr_t>__cusolverDnXgesvdp
-    
+
     global __cusolverDnXgesvdr_bufferSize
     data["__cusolverDnXgesvdr_bufferSize"] = <intptr_t>__cusolverDnXgesvdr_bufferSize
-    
+
     global __cusolverDnXgesvdr
     data["__cusolverDnXgesvdr"] = <intptr_t>__cusolverDnXgesvdr
-    
+
     global __cusolverDnXsytrs_bufferSize
     data["__cusolverDnXsytrs_bufferSize"] = <intptr_t>__cusolverDnXsytrs_bufferSize
-    
+
     global __cusolverDnXsytrs
     data["__cusolverDnXsytrs"] = <intptr_t>__cusolverDnXsytrs
-    
+
     global __cusolverDnXtrtri_bufferSize
     data["__cusolverDnXtrtri_bufferSize"] = <intptr_t>__cusolverDnXtrtri_bufferSize
-    
+
     global __cusolverDnXtrtri
     data["__cusolverDnXtrtri"] = <intptr_t>__cusolverDnXtrtri
-    
+
     global __cusolverDnLoggerSetCallback
     data["__cusolverDnLoggerSetCallback"] = <intptr_t>__cusolverDnLoggerSetCallback
-    
+
     global __cusolverDnLoggerSetFile
     data["__cusolverDnLoggerSetFile"] = <intptr_t>__cusolverDnLoggerSetFile
-    
+
     global __cusolverDnLoggerOpenFile
     data["__cusolverDnLoggerOpenFile"] = <intptr_t>__cusolverDnLoggerOpenFile
-    
+
     global __cusolverDnLoggerSetLevel
     data["__cusolverDnLoggerSetLevel"] = <intptr_t>__cusolverDnLoggerSetLevel
-    
+
     global __cusolverDnLoggerSetMask
     data["__cusolverDnLoggerSetMask"] = <intptr_t>__cusolverDnLoggerSetMask
-    
+
     global __cusolverDnLoggerForceDisable
     data["__cusolverDnLoggerForceDisable"] = <intptr_t>__cusolverDnLoggerForceDisable
-    
+
     global __cusolverDnSetDeterministicMode
     data["__cusolverDnSetDeterministicMode"] = <intptr_t>__cusolverDnSetDeterministicMode
-    
+
     global __cusolverDnGetDeterministicMode
     data["__cusolverDnGetDeterministicMode"] = <intptr_t>__cusolverDnGetDeterministicMode
 

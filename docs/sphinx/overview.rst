@@ -6,7 +6,7 @@ Overview
 The primary goal of nvmath-python is to bring the power of the NVIDIA math libraries to the Python ecosystem. The package aims to provide intuitive pythonic APIs that provide
 users full access to all the features offered by our libraries in a variety of execution spaces.
 
-We hope to empower a wide range of Python users by providing easy access to high-performance core math operations such as FFT, dense and sparse linear algebra, and more. 
+We hope to empower a wide range of Python users by providing easy access to high-performance core math operations such as FFT, dense and sparse linear algebra, and more.
 This includes the following groups of users:
 
 1. **Practitioners**: Researchers and application programmers who require robust, high-performance mathematical tools.
@@ -22,12 +22,12 @@ nvmath-python is dedicated to delivering the following key features and commitme
 
 1. **Logical Feature Parity**: While the pythonic API surface (the number of APIs and the complexity of each) is more concise compared to that of the C libraries, it provides access to their complete functionality.
 2. **Consistent Design Patterns**: Uniform design across all modules to simplify user experience.
-3. **Transparency and Explicitness**: Avoiding implicit, costly operations such as copying data across the same memory space, automatic type promotion, and alterations to the user environment or state (current device, current stream, etc.). 
+3. **Transparency and Explicitness**: Avoiding implicit, costly operations such as copying data across the same memory space, automatic type promotion, and alterations to the user environment or state (current device, current stream, etc.).
    This allows users to perform the required conversion once for use in all subsequent operations instead of incurring hidden costs on each call.
 4. **Clear, Actionable Error Messages**: Ensuring that errors are informative and helpful in resolving the problem.
 5. **DRY Principle Compliance**: Automatically utilizing available information such as the current stream and memory pool to avoid redundant specification ("don't repeat yourself").
 
-With nvmath-python, a few lines of code are sufficient to unlock the extensive performance capabilities of the NVIDIA math libraries. 
+With nvmath-python, a few lines of code are sufficient to unlock the extensive performance capabilities of the NVIDIA math libraries.
 Explore our sample Python codes and more detailed examples in the `examples directory on GitHub <https://github.com/NVIDIA/nvmath-python/tree/main/examples>`_.
 
 Architecture
@@ -43,9 +43,9 @@ nvmath-python is designed to support integration at any level desired by the use
     :width: 1000px
     :align: center
 
-Additionally, we offer :doc:`Python bindings <bindings/index>` that provide a 1:1 mapping with the C APIs. These bindings, which serve as wrappers with API signatures similar to their C counterparts, 
-are ideal for library developers looking to integrate the capabilities of the NVIDIA Math Libraries in a customized manner, in the event that the pythonic APIs don't meet their specific requirements. 
-Conversely, our high-level pythonic APIs deliver a fully integrated solution suitable for native Python users as well as library developers, encompassing both host and device APIs. 
+Additionally, we offer :doc:`Python bindings <bindings/index>` that provide a 1:1 mapping with the C APIs. These bindings, which serve as wrappers with API signatures similar to their C counterparts,
+are ideal for library developers looking to integrate the capabilities of the NVIDIA Math Libraries in a customized manner, in the event that the pythonic APIs don't meet their specific requirements.
+Conversely, our high-level pythonic APIs deliver a fully integrated solution suitable for native Python users as well as library developers, encompassing both host and device APIs.
 In the future, select host APIs will accept **callback functions written in Python** and compiled into supported formats such as LTO-IR, using compilers like `Numba`_.
 
 .. _host api section:
@@ -124,13 +124,13 @@ Generic and Specialized APIs
 
 Another way of categorizing the host APIs within nvmath-python is by splitting them into *generic* and *specialized* APIs, based on their flexibility and the scope of their functionality:
 
-- **Generic APIs** are designed to accommodate a broad range of operands and customization with these APIs is confined to options that are universally applicable across all supported operand types. 
+- **Generic APIs** are designed to accommodate a broad range of operands and customization with these APIs is confined to options that are universally applicable across all supported operand types.
   For instance, the generic matrix multiplication API can handle structured matrices (such as triangular and banded, in full or packed form) in addition to dense full matrices, but the available options are limited to those applicable to all these matrix types.
 
-- **Specialized APIs**, on the other hand, are tailored for specific types of operands, allowing for full customization that is available to this kind. 
+- **Specialized APIs**, on the other hand, are tailored for specific types of operands, allowing for full customization that is available to this kind.
   A prime example is the specialized matrix multiplication API for dense matrices, which provides numerous options specifically suited to dense matrices.
 
-It should be noted that the notion of generic and specialized APIs is orthogonal to the notion of stateful versus stateless APIs. 
+It should be noted that the notion of generic and specialized APIs is orthogonal to the notion of stateful versus stateless APIs.
 Currently, nvmath-python offers the specialized interface for dense matrix multiplication, in :class:`stateful <nvmath.linalg.advanced.Matmul>` and :func:`stateless <nvmath.linalg.advanced.matmul>` forms.
 
 .. _high-level api logging:
@@ -240,6 +240,40 @@ Common Objects (:mod:`nvmath`)
    BaseCUDAMemoryManager
    MemoryPointer
 
+.. _host api callback section:
+
+Host APIs with Callbacks
+========================
+
+.. _host apis callback:
+
+Certain host APIs (such as :func:`nvmath.fft.fft` and :meth:`nvmath.fft.FFT.plan`) allow the user to provide prolog or epilog functions *written in Python*, resulting in
+a *fused kernel*. This improves performance by avoiding extra roundtrips to global memory and effectively increases the arithmetic intensity of the operation.
+
+.. code-block:: python
+
+        import cupy as cp
+        import nvmath
+
+
+        # Create the data for the batched 1-D FFT.
+        B, N = 256, 1024
+        a = cp.random.rand(B, N, dtype=cp.float64) + 1j * cp.random.rand(B, N, dtype=cp.float64)
+
+        # Compute the normalization factor.
+        scale = 1.0 / N
+
+        # Define the epilog function for the FFT.
+        def rescale(data_out, offset, data, user_info, unused):
+            data_out[offset] = data * scale
+
+        # Compile the epilog to LTO-IR (in the context of the execution space).
+        with a.device:
+            epilog = nvmath.fft.compile_epilog(rescale, "complex128", "complex128")
+
+        # Perform the forward FFT, applying the filter as an epilog...
+        r = nvmath.fft.fft(a, axes=[-1], epilog={"ltoir": epilog})
+
 .. _device api section:
 
 Device APIs
@@ -250,8 +284,9 @@ Device APIs
 The :doc:`device APIs <device-apis/index>` enable the user to call core mathematical operations in their Python CUDA kernels, resulting in a *fully fused kernel*. Fusion is essential
 for performance in latency-dominated cases to reduce the number of kernel launches, and in memory-bound operations to avoid the extra roundtrip to global memory.
 
-We currently offer support for calling FFT and matrix multiplication APIs in kernels written using `Numba`_, with plans to offer more core operations and support other compilers in the future.
-The design of the device APIs closely mimics the corresponding C++ APIs from NVIDIA MathDx libraries including `cuFFTDx <https://docs.nvidia.com/cuda/cufftdx/1.2.0>`_ and `cuBLASDx <https://docs.nvidia.com/cuda/cublasdx/0.1.1>`_.
+We currently offer support for calling FFT, matrix multiplication, and random number generation APIs in kernels written using `Numba`_, with plans to offer more core operations and support other compilers in the future.
+The design of the device APIs closely mimics that of the C++ APIs from the corresponding NVIDIA Math Libraries (MathDx libraries `cuFFTDx <https://docs.nvidia.com/cuda/cufftdx/1.2.0>`_ and `cuBLASDx <https://docs.nvidia.com/cuda/cublasdx/0.1.1>`_
+for FFT and matrix multiplication, and `cuRAND device APIs <https://docs.nvidia.com/cuda/curand/group__DEVICE.html#group__DEVICE>`_ for random number generation).
 
 .. _commitment:
 
@@ -268,8 +303,8 @@ depending on, collaborating with, and evolving alongside the Python community. G
 
    Note that all bindings are currently *experimental*.
 
-2. For the high-level pythonic APIs, we maintain backward compatibility to the greatest extent feasible. 
-   When a breaking change is necessary, we issue a runtime warning to alert users of the upcoming changes in the next major release. 
+2. For the high-level pythonic APIs, we maintain backward compatibility to the greatest extent feasible.
+   When a breaking change is necessary, we issue a runtime warning to alert users of the upcoming changes in the next major release.
    This practice ensures that breaking changes are clearly communicated and reserved for major version updates, allowing users to prepare and adapt without surprises.
 3. We comply with `NEP-29`_ and support a community-defined set of core dependencies (CPython, NumPy, etc).
 

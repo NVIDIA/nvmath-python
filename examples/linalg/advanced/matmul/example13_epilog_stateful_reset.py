@@ -4,11 +4,12 @@
 
 """
 This example illustrates how to reset operands and epilog inputs in stateful matrix multiplication APIs, and reuse the object
-for multiple executions. This is needed when the memory space of the operands is not accesible from the execution space, or if
+for multiple executions. This is needed when the memory space of the operands is not accessible from the execution space, or if
  it's desired to bind new (compatible) operands to the stateful object.
 
 The inputs as well as the result are NumPy ndarrays.
 """
+
 import numpy as np
 
 import nvmath
@@ -21,14 +22,14 @@ bias = np.random.rand(m, 1)
 
 # Turn on logging to see what's happening.
 import logging
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Use the stateful object as a context manager to automatically release resources.
 with nvmath.linalg.advanced.Matmul(a, b) as mm:
-
     # Plan the matrix multiplication for the BIAS epilog.
     epilog = nvmath.linalg.advanced.MatmulEpilog.BIAS
-    mm.plan(epilog=epilog, epilog_inputs={'bias': bias})
+    mm.plan(epilog=epilog, epilog_inputs={"bias": bias})
 
     # Execute the matrix multiplication.
     result = mm.execute()
@@ -37,7 +38,7 @@ with nvmath.linalg.advanced.Matmul(a, b) as mm:
     c = np.random.rand(m, k)
     d = np.random.rand(k, n)
     bias = np.random.rand(m, 1)
-    mm.reset_operands(a=c, b=d, epilog_inputs={'bias': bias})
+    mm.reset_operands(a=c, b=d, epilog_inputs={"bias": bias})
 
     # Execute the new matrix multiplication.
     result = mm.execute()

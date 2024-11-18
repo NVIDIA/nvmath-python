@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .algorithmmod import *
+from ._algorithmmod import *
+from ._configuration import *
 from .matmulmod import *
-from .configuration import *
-del algorithmmod
-del configuration

@@ -7,19 +7,19 @@ This example illustrates how to reuse the stateful API to perform FFT operations
 
 In this example we will perform a forward and an inverse FFT operation to demonstrate how to recover the original input operand.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 512, 512, 512
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.ones(shape, dtype=cp.complex64)
 
 # Create a stateful FFT object 'f'.
 # Note here that we need to enforce natural layout in the result in order to reuse the FFT object
-with nvmath.fft.FFT(a, axes=axes, options={'result_layout': 'natural'}) as f:
-
+with nvmath.fft.FFT(a, axes=axes, options={"result_layout": "natural"}) as f:
     # Plan the FFT.
     f.plan()
 

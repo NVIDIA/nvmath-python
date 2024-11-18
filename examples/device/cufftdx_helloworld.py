@@ -10,27 +10,25 @@ import numpy as np
 from numba import cuda
 from nvmath.device import fft
 
-def main():
 
+def main():
     size = 1024
 
-    FFT = fft(fft_type='c2c', size=size, precision=np.float32, direction='forward', execution='Block', compiler='numba')
+    FFT = fft(fft_type="c2c", size=size, precision=np.float32, direction="forward", execution="Block", compiler="numba")
 
-    size                = FFT.size
-    value_type          = FFT.value_type
-    storage_size        = FFT.storage_size
-    shared_memory_size  = FFT.shared_memory_size
-    files               = FFT.files
-    stride              = FFT.stride
-    ept                 = FFT.elements_per_thread
-    block_dim           = FFT.block_dim
-    ffts_per_block      = FFT.ffts_per_block
+    size = FFT.size
+    value_type = FFT.value_type
+    storage_size = FFT.storage_size
+    shared_memory_size = FFT.shared_memory_size
+    files = FFT.files
+    stride = FFT.stride
+    ept = FFT.elements_per_thread
+    block_dim = FFT.block_dim
+    ffts_per_block = FFT.ffts_per_block
     elements_per_thread = FFT.elements_per_thread
-
 
     @cuda.jit(link=FFT.files)
     def f(data):
-
         thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
 
         local_fft_id = cuda.threadIdx.y
@@ -61,6 +59,7 @@ def main():
     data_ref = np.fft.fft(data, axis=-1)
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-5
+
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -583,3479 +583,3479 @@ cdef int _check_or_init_cublas() except -1 nogil:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCreate_v2 = dlsym(handle, 'cublasCreate_v2')
-    
+
     global __cublasDestroy_v2
     __cublasDestroy_v2 = dlsym(RTLD_DEFAULT, 'cublasDestroy_v2')
     if __cublasDestroy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDestroy_v2 = dlsym(handle, 'cublasDestroy_v2')
-    
+
     global __cublasGetVersion_v2
     __cublasGetVersion_v2 = dlsym(RTLD_DEFAULT, 'cublasGetVersion_v2')
     if __cublasGetVersion_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetVersion_v2 = dlsym(handle, 'cublasGetVersion_v2')
-    
+
     global __cublasGetProperty
     __cublasGetProperty = dlsym(RTLD_DEFAULT, 'cublasGetProperty')
     if __cublasGetProperty == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetProperty = dlsym(handle, 'cublasGetProperty')
-    
+
     global __cublasGetCudartVersion
     __cublasGetCudartVersion = dlsym(RTLD_DEFAULT, 'cublasGetCudartVersion')
     if __cublasGetCudartVersion == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetCudartVersion = dlsym(handle, 'cublasGetCudartVersion')
-    
+
     global __cublasSetWorkspace_v2
     __cublasSetWorkspace_v2 = dlsym(RTLD_DEFAULT, 'cublasSetWorkspace_v2')
     if __cublasSetWorkspace_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetWorkspace_v2 = dlsym(handle, 'cublasSetWorkspace_v2')
-    
+
     global __cublasSetStream_v2
     __cublasSetStream_v2 = dlsym(RTLD_DEFAULT, 'cublasSetStream_v2')
     if __cublasSetStream_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetStream_v2 = dlsym(handle, 'cublasSetStream_v2')
-    
+
     global __cublasGetStream_v2
     __cublasGetStream_v2 = dlsym(RTLD_DEFAULT, 'cublasGetStream_v2')
     if __cublasGetStream_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetStream_v2 = dlsym(handle, 'cublasGetStream_v2')
-    
+
     global __cublasGetPointerMode_v2
     __cublasGetPointerMode_v2 = dlsym(RTLD_DEFAULT, 'cublasGetPointerMode_v2')
     if __cublasGetPointerMode_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetPointerMode_v2 = dlsym(handle, 'cublasGetPointerMode_v2')
-    
+
     global __cublasSetPointerMode_v2
     __cublasSetPointerMode_v2 = dlsym(RTLD_DEFAULT, 'cublasSetPointerMode_v2')
     if __cublasSetPointerMode_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetPointerMode_v2 = dlsym(handle, 'cublasSetPointerMode_v2')
-    
+
     global __cublasGetAtomicsMode
     __cublasGetAtomicsMode = dlsym(RTLD_DEFAULT, 'cublasGetAtomicsMode')
     if __cublasGetAtomicsMode == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetAtomicsMode = dlsym(handle, 'cublasGetAtomicsMode')
-    
+
     global __cublasSetAtomicsMode
     __cublasSetAtomicsMode = dlsym(RTLD_DEFAULT, 'cublasSetAtomicsMode')
     if __cublasSetAtomicsMode == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetAtomicsMode = dlsym(handle, 'cublasSetAtomicsMode')
-    
+
     global __cublasGetMathMode
     __cublasGetMathMode = dlsym(RTLD_DEFAULT, 'cublasGetMathMode')
     if __cublasGetMathMode == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetMathMode = dlsym(handle, 'cublasGetMathMode')
-    
+
     global __cublasSetMathMode
     __cublasSetMathMode = dlsym(RTLD_DEFAULT, 'cublasSetMathMode')
     if __cublasSetMathMode == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetMathMode = dlsym(handle, 'cublasSetMathMode')
-    
+
     global __cublasLoggerConfigure
     __cublasLoggerConfigure = dlsym(RTLD_DEFAULT, 'cublasLoggerConfigure')
     if __cublasLoggerConfigure == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasLoggerConfigure = dlsym(handle, 'cublasLoggerConfigure')
-    
+
     global __cublasSetLoggerCallback
     __cublasSetLoggerCallback = dlsym(RTLD_DEFAULT, 'cublasSetLoggerCallback')
     if __cublasSetLoggerCallback == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetLoggerCallback = dlsym(handle, 'cublasSetLoggerCallback')
-    
+
     global __cublasGetLoggerCallback
     __cublasGetLoggerCallback = dlsym(RTLD_DEFAULT, 'cublasGetLoggerCallback')
     if __cublasGetLoggerCallback == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetLoggerCallback = dlsym(handle, 'cublasGetLoggerCallback')
-    
+
     global __cublasSetVector
     __cublasSetVector = dlsym(RTLD_DEFAULT, 'cublasSetVector')
     if __cublasSetVector == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetVector = dlsym(handle, 'cublasSetVector')
-    
+
     global __cublasGetVector
     __cublasGetVector = dlsym(RTLD_DEFAULT, 'cublasGetVector')
     if __cublasGetVector == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetVector = dlsym(handle, 'cublasGetVector')
-    
+
     global __cublasSetMatrix
     __cublasSetMatrix = dlsym(RTLD_DEFAULT, 'cublasSetMatrix')
     if __cublasSetMatrix == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetMatrix = dlsym(handle, 'cublasSetMatrix')
-    
+
     global __cublasGetMatrix
     __cublasGetMatrix = dlsym(RTLD_DEFAULT, 'cublasGetMatrix')
     if __cublasGetMatrix == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetMatrix = dlsym(handle, 'cublasGetMatrix')
-    
+
     global __cublasSetVectorAsync
     __cublasSetVectorAsync = dlsym(RTLD_DEFAULT, 'cublasSetVectorAsync')
     if __cublasSetVectorAsync == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetVectorAsync = dlsym(handle, 'cublasSetVectorAsync')
-    
+
     global __cublasGetVectorAsync
     __cublasGetVectorAsync = dlsym(RTLD_DEFAULT, 'cublasGetVectorAsync')
     if __cublasGetVectorAsync == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetVectorAsync = dlsym(handle, 'cublasGetVectorAsync')
-    
+
     global __cublasSetMatrixAsync
     __cublasSetMatrixAsync = dlsym(RTLD_DEFAULT, 'cublasSetMatrixAsync')
     if __cublasSetMatrixAsync == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetMatrixAsync = dlsym(handle, 'cublasSetMatrixAsync')
-    
+
     global __cublasGetMatrixAsync
     __cublasGetMatrixAsync = dlsym(RTLD_DEFAULT, 'cublasGetMatrixAsync')
     if __cublasGetMatrixAsync == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetMatrixAsync = dlsym(handle, 'cublasGetMatrixAsync')
-    
+
     global __cublasNrm2Ex
     __cublasNrm2Ex = dlsym(RTLD_DEFAULT, 'cublasNrm2Ex')
     if __cublasNrm2Ex == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasNrm2Ex = dlsym(handle, 'cublasNrm2Ex')
-    
+
     global __cublasSnrm2_v2
     __cublasSnrm2_v2 = dlsym(RTLD_DEFAULT, 'cublasSnrm2_v2')
     if __cublasSnrm2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSnrm2_v2 = dlsym(handle, 'cublasSnrm2_v2')
-    
+
     global __cublasDnrm2_v2
     __cublasDnrm2_v2 = dlsym(RTLD_DEFAULT, 'cublasDnrm2_v2')
     if __cublasDnrm2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDnrm2_v2 = dlsym(handle, 'cublasDnrm2_v2')
-    
+
     global __cublasScnrm2_v2
     __cublasScnrm2_v2 = dlsym(RTLD_DEFAULT, 'cublasScnrm2_v2')
     if __cublasScnrm2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScnrm2_v2 = dlsym(handle, 'cublasScnrm2_v2')
-    
+
     global __cublasDznrm2_v2
     __cublasDznrm2_v2 = dlsym(RTLD_DEFAULT, 'cublasDznrm2_v2')
     if __cublasDznrm2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDznrm2_v2 = dlsym(handle, 'cublasDznrm2_v2')
-    
+
     global __cublasDotEx
     __cublasDotEx = dlsym(RTLD_DEFAULT, 'cublasDotEx')
     if __cublasDotEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDotEx = dlsym(handle, 'cublasDotEx')
-    
+
     global __cublasDotcEx
     __cublasDotcEx = dlsym(RTLD_DEFAULT, 'cublasDotcEx')
     if __cublasDotcEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDotcEx = dlsym(handle, 'cublasDotcEx')
-    
+
     global __cublasSdot_v2
     __cublasSdot_v2 = dlsym(RTLD_DEFAULT, 'cublasSdot_v2')
     if __cublasSdot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSdot_v2 = dlsym(handle, 'cublasSdot_v2')
-    
+
     global __cublasDdot_v2
     __cublasDdot_v2 = dlsym(RTLD_DEFAULT, 'cublasDdot_v2')
     if __cublasDdot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDdot_v2 = dlsym(handle, 'cublasDdot_v2')
-    
+
     global __cublasCdotu_v2
     __cublasCdotu_v2 = dlsym(RTLD_DEFAULT, 'cublasCdotu_v2')
     if __cublasCdotu_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCdotu_v2 = dlsym(handle, 'cublasCdotu_v2')
-    
+
     global __cublasCdotc_v2
     __cublasCdotc_v2 = dlsym(RTLD_DEFAULT, 'cublasCdotc_v2')
     if __cublasCdotc_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCdotc_v2 = dlsym(handle, 'cublasCdotc_v2')
-    
+
     global __cublasZdotu_v2
     __cublasZdotu_v2 = dlsym(RTLD_DEFAULT, 'cublasZdotu_v2')
     if __cublasZdotu_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdotu_v2 = dlsym(handle, 'cublasZdotu_v2')
-    
+
     global __cublasZdotc_v2
     __cublasZdotc_v2 = dlsym(RTLD_DEFAULT, 'cublasZdotc_v2')
     if __cublasZdotc_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdotc_v2 = dlsym(handle, 'cublasZdotc_v2')
-    
+
     global __cublasScalEx
     __cublasScalEx = dlsym(RTLD_DEFAULT, 'cublasScalEx')
     if __cublasScalEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScalEx = dlsym(handle, 'cublasScalEx')
-    
+
     global __cublasSscal_v2
     __cublasSscal_v2 = dlsym(RTLD_DEFAULT, 'cublasSscal_v2')
     if __cublasSscal_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSscal_v2 = dlsym(handle, 'cublasSscal_v2')
-    
+
     global __cublasDscal_v2
     __cublasDscal_v2 = dlsym(RTLD_DEFAULT, 'cublasDscal_v2')
     if __cublasDscal_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDscal_v2 = dlsym(handle, 'cublasDscal_v2')
-    
+
     global __cublasCscal_v2
     __cublasCscal_v2 = dlsym(RTLD_DEFAULT, 'cublasCscal_v2')
     if __cublasCscal_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCscal_v2 = dlsym(handle, 'cublasCscal_v2')
-    
+
     global __cublasCsscal_v2
     __cublasCsscal_v2 = dlsym(RTLD_DEFAULT, 'cublasCsscal_v2')
     if __cublasCsscal_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsscal_v2 = dlsym(handle, 'cublasCsscal_v2')
-    
+
     global __cublasZscal_v2
     __cublasZscal_v2 = dlsym(RTLD_DEFAULT, 'cublasZscal_v2')
     if __cublasZscal_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZscal_v2 = dlsym(handle, 'cublasZscal_v2')
-    
+
     global __cublasZdscal_v2
     __cublasZdscal_v2 = dlsym(RTLD_DEFAULT, 'cublasZdscal_v2')
     if __cublasZdscal_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdscal_v2 = dlsym(handle, 'cublasZdscal_v2')
-    
+
     global __cublasAxpyEx
     __cublasAxpyEx = dlsym(RTLD_DEFAULT, 'cublasAxpyEx')
     if __cublasAxpyEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasAxpyEx = dlsym(handle, 'cublasAxpyEx')
-    
+
     global __cublasSaxpy_v2
     __cublasSaxpy_v2 = dlsym(RTLD_DEFAULT, 'cublasSaxpy_v2')
     if __cublasSaxpy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSaxpy_v2 = dlsym(handle, 'cublasSaxpy_v2')
-    
+
     global __cublasDaxpy_v2
     __cublasDaxpy_v2 = dlsym(RTLD_DEFAULT, 'cublasDaxpy_v2')
     if __cublasDaxpy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDaxpy_v2 = dlsym(handle, 'cublasDaxpy_v2')
-    
+
     global __cublasCaxpy_v2
     __cublasCaxpy_v2 = dlsym(RTLD_DEFAULT, 'cublasCaxpy_v2')
     if __cublasCaxpy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCaxpy_v2 = dlsym(handle, 'cublasCaxpy_v2')
-    
+
     global __cublasZaxpy_v2
     __cublasZaxpy_v2 = dlsym(RTLD_DEFAULT, 'cublasZaxpy_v2')
     if __cublasZaxpy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZaxpy_v2 = dlsym(handle, 'cublasZaxpy_v2')
-    
+
     global __cublasCopyEx
     __cublasCopyEx = dlsym(RTLD_DEFAULT, 'cublasCopyEx')
     if __cublasCopyEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCopyEx = dlsym(handle, 'cublasCopyEx')
-    
+
     global __cublasScopy_v2
     __cublasScopy_v2 = dlsym(RTLD_DEFAULT, 'cublasScopy_v2')
     if __cublasScopy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScopy_v2 = dlsym(handle, 'cublasScopy_v2')
-    
+
     global __cublasDcopy_v2
     __cublasDcopy_v2 = dlsym(RTLD_DEFAULT, 'cublasDcopy_v2')
     if __cublasDcopy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDcopy_v2 = dlsym(handle, 'cublasDcopy_v2')
-    
+
     global __cublasCcopy_v2
     __cublasCcopy_v2 = dlsym(RTLD_DEFAULT, 'cublasCcopy_v2')
     if __cublasCcopy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCcopy_v2 = dlsym(handle, 'cublasCcopy_v2')
-    
+
     global __cublasZcopy_v2
     __cublasZcopy_v2 = dlsym(RTLD_DEFAULT, 'cublasZcopy_v2')
     if __cublasZcopy_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZcopy_v2 = dlsym(handle, 'cublasZcopy_v2')
-    
+
     global __cublasSswap_v2
     __cublasSswap_v2 = dlsym(RTLD_DEFAULT, 'cublasSswap_v2')
     if __cublasSswap_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSswap_v2 = dlsym(handle, 'cublasSswap_v2')
-    
+
     global __cublasDswap_v2
     __cublasDswap_v2 = dlsym(RTLD_DEFAULT, 'cublasDswap_v2')
     if __cublasDswap_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDswap_v2 = dlsym(handle, 'cublasDswap_v2')
-    
+
     global __cublasCswap_v2
     __cublasCswap_v2 = dlsym(RTLD_DEFAULT, 'cublasCswap_v2')
     if __cublasCswap_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCswap_v2 = dlsym(handle, 'cublasCswap_v2')
-    
+
     global __cublasZswap_v2
     __cublasZswap_v2 = dlsym(RTLD_DEFAULT, 'cublasZswap_v2')
     if __cublasZswap_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZswap_v2 = dlsym(handle, 'cublasZswap_v2')
-    
+
     global __cublasSwapEx
     __cublasSwapEx = dlsym(RTLD_DEFAULT, 'cublasSwapEx')
     if __cublasSwapEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSwapEx = dlsym(handle, 'cublasSwapEx')
-    
+
     global __cublasIsamax_v2
     __cublasIsamax_v2 = dlsym(RTLD_DEFAULT, 'cublasIsamax_v2')
     if __cublasIsamax_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIsamax_v2 = dlsym(handle, 'cublasIsamax_v2')
-    
+
     global __cublasIdamax_v2
     __cublasIdamax_v2 = dlsym(RTLD_DEFAULT, 'cublasIdamax_v2')
     if __cublasIdamax_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIdamax_v2 = dlsym(handle, 'cublasIdamax_v2')
-    
+
     global __cublasIcamax_v2
     __cublasIcamax_v2 = dlsym(RTLD_DEFAULT, 'cublasIcamax_v2')
     if __cublasIcamax_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIcamax_v2 = dlsym(handle, 'cublasIcamax_v2')
-    
+
     global __cublasIzamax_v2
     __cublasIzamax_v2 = dlsym(RTLD_DEFAULT, 'cublasIzamax_v2')
     if __cublasIzamax_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIzamax_v2 = dlsym(handle, 'cublasIzamax_v2')
-    
+
     global __cublasIamaxEx
     __cublasIamaxEx = dlsym(RTLD_DEFAULT, 'cublasIamaxEx')
     if __cublasIamaxEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIamaxEx = dlsym(handle, 'cublasIamaxEx')
-    
+
     global __cublasIsamin_v2
     __cublasIsamin_v2 = dlsym(RTLD_DEFAULT, 'cublasIsamin_v2')
     if __cublasIsamin_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIsamin_v2 = dlsym(handle, 'cublasIsamin_v2')
-    
+
     global __cublasIdamin_v2
     __cublasIdamin_v2 = dlsym(RTLD_DEFAULT, 'cublasIdamin_v2')
     if __cublasIdamin_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIdamin_v2 = dlsym(handle, 'cublasIdamin_v2')
-    
+
     global __cublasIcamin_v2
     __cublasIcamin_v2 = dlsym(RTLD_DEFAULT, 'cublasIcamin_v2')
     if __cublasIcamin_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIcamin_v2 = dlsym(handle, 'cublasIcamin_v2')
-    
+
     global __cublasIzamin_v2
     __cublasIzamin_v2 = dlsym(RTLD_DEFAULT, 'cublasIzamin_v2')
     if __cublasIzamin_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIzamin_v2 = dlsym(handle, 'cublasIzamin_v2')
-    
+
     global __cublasIaminEx
     __cublasIaminEx = dlsym(RTLD_DEFAULT, 'cublasIaminEx')
     if __cublasIaminEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIaminEx = dlsym(handle, 'cublasIaminEx')
-    
+
     global __cublasAsumEx
     __cublasAsumEx = dlsym(RTLD_DEFAULT, 'cublasAsumEx')
     if __cublasAsumEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasAsumEx = dlsym(handle, 'cublasAsumEx')
-    
+
     global __cublasSasum_v2
     __cublasSasum_v2 = dlsym(RTLD_DEFAULT, 'cublasSasum_v2')
     if __cublasSasum_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSasum_v2 = dlsym(handle, 'cublasSasum_v2')
-    
+
     global __cublasDasum_v2
     __cublasDasum_v2 = dlsym(RTLD_DEFAULT, 'cublasDasum_v2')
     if __cublasDasum_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDasum_v2 = dlsym(handle, 'cublasDasum_v2')
-    
+
     global __cublasScasum_v2
     __cublasScasum_v2 = dlsym(RTLD_DEFAULT, 'cublasScasum_v2')
     if __cublasScasum_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScasum_v2 = dlsym(handle, 'cublasScasum_v2')
-    
+
     global __cublasDzasum_v2
     __cublasDzasum_v2 = dlsym(RTLD_DEFAULT, 'cublasDzasum_v2')
     if __cublasDzasum_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDzasum_v2 = dlsym(handle, 'cublasDzasum_v2')
-    
+
     global __cublasSrot_v2
     __cublasSrot_v2 = dlsym(RTLD_DEFAULT, 'cublasSrot_v2')
     if __cublasSrot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSrot_v2 = dlsym(handle, 'cublasSrot_v2')
-    
+
     global __cublasDrot_v2
     __cublasDrot_v2 = dlsym(RTLD_DEFAULT, 'cublasDrot_v2')
     if __cublasDrot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDrot_v2 = dlsym(handle, 'cublasDrot_v2')
-    
+
     global __cublasCrot_v2
     __cublasCrot_v2 = dlsym(RTLD_DEFAULT, 'cublasCrot_v2')
     if __cublasCrot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCrot_v2 = dlsym(handle, 'cublasCrot_v2')
-    
+
     global __cublasCsrot_v2
     __cublasCsrot_v2 = dlsym(RTLD_DEFAULT, 'cublasCsrot_v2')
     if __cublasCsrot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsrot_v2 = dlsym(handle, 'cublasCsrot_v2')
-    
+
     global __cublasZrot_v2
     __cublasZrot_v2 = dlsym(RTLD_DEFAULT, 'cublasZrot_v2')
     if __cublasZrot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZrot_v2 = dlsym(handle, 'cublasZrot_v2')
-    
+
     global __cublasZdrot_v2
     __cublasZdrot_v2 = dlsym(RTLD_DEFAULT, 'cublasZdrot_v2')
     if __cublasZdrot_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdrot_v2 = dlsym(handle, 'cublasZdrot_v2')
-    
+
     global __cublasRotEx
     __cublasRotEx = dlsym(RTLD_DEFAULT, 'cublasRotEx')
     if __cublasRotEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasRotEx = dlsym(handle, 'cublasRotEx')
-    
+
     global __cublasSrotg_v2
     __cublasSrotg_v2 = dlsym(RTLD_DEFAULT, 'cublasSrotg_v2')
     if __cublasSrotg_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSrotg_v2 = dlsym(handle, 'cublasSrotg_v2')
-    
+
     global __cublasDrotg_v2
     __cublasDrotg_v2 = dlsym(RTLD_DEFAULT, 'cublasDrotg_v2')
     if __cublasDrotg_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDrotg_v2 = dlsym(handle, 'cublasDrotg_v2')
-    
+
     global __cublasCrotg_v2
     __cublasCrotg_v2 = dlsym(RTLD_DEFAULT, 'cublasCrotg_v2')
     if __cublasCrotg_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCrotg_v2 = dlsym(handle, 'cublasCrotg_v2')
-    
+
     global __cublasZrotg_v2
     __cublasZrotg_v2 = dlsym(RTLD_DEFAULT, 'cublasZrotg_v2')
     if __cublasZrotg_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZrotg_v2 = dlsym(handle, 'cublasZrotg_v2')
-    
+
     global __cublasRotgEx
     __cublasRotgEx = dlsym(RTLD_DEFAULT, 'cublasRotgEx')
     if __cublasRotgEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasRotgEx = dlsym(handle, 'cublasRotgEx')
-    
+
     global __cublasSrotm_v2
     __cublasSrotm_v2 = dlsym(RTLD_DEFAULT, 'cublasSrotm_v2')
     if __cublasSrotm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSrotm_v2 = dlsym(handle, 'cublasSrotm_v2')
-    
+
     global __cublasDrotm_v2
     __cublasDrotm_v2 = dlsym(RTLD_DEFAULT, 'cublasDrotm_v2')
     if __cublasDrotm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDrotm_v2 = dlsym(handle, 'cublasDrotm_v2')
-    
+
     global __cublasRotmEx
     __cublasRotmEx = dlsym(RTLD_DEFAULT, 'cublasRotmEx')
     if __cublasRotmEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasRotmEx = dlsym(handle, 'cublasRotmEx')
-    
+
     global __cublasSrotmg_v2
     __cublasSrotmg_v2 = dlsym(RTLD_DEFAULT, 'cublasSrotmg_v2')
     if __cublasSrotmg_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSrotmg_v2 = dlsym(handle, 'cublasSrotmg_v2')
-    
+
     global __cublasDrotmg_v2
     __cublasDrotmg_v2 = dlsym(RTLD_DEFAULT, 'cublasDrotmg_v2')
     if __cublasDrotmg_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDrotmg_v2 = dlsym(handle, 'cublasDrotmg_v2')
-    
+
     global __cublasRotmgEx
     __cublasRotmgEx = dlsym(RTLD_DEFAULT, 'cublasRotmgEx')
     if __cublasRotmgEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasRotmgEx = dlsym(handle, 'cublasRotmgEx')
-    
+
     global __cublasSgemv_v2
     __cublasSgemv_v2 = dlsym(RTLD_DEFAULT, 'cublasSgemv_v2')
     if __cublasSgemv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemv_v2 = dlsym(handle, 'cublasSgemv_v2')
-    
+
     global __cublasDgemv_v2
     __cublasDgemv_v2 = dlsym(RTLD_DEFAULT, 'cublasDgemv_v2')
     if __cublasDgemv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemv_v2 = dlsym(handle, 'cublasDgemv_v2')
-    
+
     global __cublasCgemv_v2
     __cublasCgemv_v2 = dlsym(RTLD_DEFAULT, 'cublasCgemv_v2')
     if __cublasCgemv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemv_v2 = dlsym(handle, 'cublasCgemv_v2')
-    
+
     global __cublasZgemv_v2
     __cublasZgemv_v2 = dlsym(RTLD_DEFAULT, 'cublasZgemv_v2')
     if __cublasZgemv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemv_v2 = dlsym(handle, 'cublasZgemv_v2')
-    
+
     global __cublasSgbmv_v2
     __cublasSgbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasSgbmv_v2')
     if __cublasSgbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgbmv_v2 = dlsym(handle, 'cublasSgbmv_v2')
-    
+
     global __cublasDgbmv_v2
     __cublasDgbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasDgbmv_v2')
     if __cublasDgbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgbmv_v2 = dlsym(handle, 'cublasDgbmv_v2')
-    
+
     global __cublasCgbmv_v2
     __cublasCgbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasCgbmv_v2')
     if __cublasCgbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgbmv_v2 = dlsym(handle, 'cublasCgbmv_v2')
-    
+
     global __cublasZgbmv_v2
     __cublasZgbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasZgbmv_v2')
     if __cublasZgbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgbmv_v2 = dlsym(handle, 'cublasZgbmv_v2')
-    
+
     global __cublasStrmv_v2
     __cublasStrmv_v2 = dlsym(RTLD_DEFAULT, 'cublasStrmv_v2')
     if __cublasStrmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrmv_v2 = dlsym(handle, 'cublasStrmv_v2')
-    
+
     global __cublasDtrmv_v2
     __cublasDtrmv_v2 = dlsym(RTLD_DEFAULT, 'cublasDtrmv_v2')
     if __cublasDtrmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrmv_v2 = dlsym(handle, 'cublasDtrmv_v2')
-    
+
     global __cublasCtrmv_v2
     __cublasCtrmv_v2 = dlsym(RTLD_DEFAULT, 'cublasCtrmv_v2')
     if __cublasCtrmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrmv_v2 = dlsym(handle, 'cublasCtrmv_v2')
-    
+
     global __cublasZtrmv_v2
     __cublasZtrmv_v2 = dlsym(RTLD_DEFAULT, 'cublasZtrmv_v2')
     if __cublasZtrmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrmv_v2 = dlsym(handle, 'cublasZtrmv_v2')
-    
+
     global __cublasStbmv_v2
     __cublasStbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasStbmv_v2')
     if __cublasStbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStbmv_v2 = dlsym(handle, 'cublasStbmv_v2')
-    
+
     global __cublasDtbmv_v2
     __cublasDtbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasDtbmv_v2')
     if __cublasDtbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtbmv_v2 = dlsym(handle, 'cublasDtbmv_v2')
-    
+
     global __cublasCtbmv_v2
     __cublasCtbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasCtbmv_v2')
     if __cublasCtbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtbmv_v2 = dlsym(handle, 'cublasCtbmv_v2')
-    
+
     global __cublasZtbmv_v2
     __cublasZtbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasZtbmv_v2')
     if __cublasZtbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtbmv_v2 = dlsym(handle, 'cublasZtbmv_v2')
-    
+
     global __cublasStpmv_v2
     __cublasStpmv_v2 = dlsym(RTLD_DEFAULT, 'cublasStpmv_v2')
     if __cublasStpmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStpmv_v2 = dlsym(handle, 'cublasStpmv_v2')
-    
+
     global __cublasDtpmv_v2
     __cublasDtpmv_v2 = dlsym(RTLD_DEFAULT, 'cublasDtpmv_v2')
     if __cublasDtpmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtpmv_v2 = dlsym(handle, 'cublasDtpmv_v2')
-    
+
     global __cublasCtpmv_v2
     __cublasCtpmv_v2 = dlsym(RTLD_DEFAULT, 'cublasCtpmv_v2')
     if __cublasCtpmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtpmv_v2 = dlsym(handle, 'cublasCtpmv_v2')
-    
+
     global __cublasZtpmv_v2
     __cublasZtpmv_v2 = dlsym(RTLD_DEFAULT, 'cublasZtpmv_v2')
     if __cublasZtpmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtpmv_v2 = dlsym(handle, 'cublasZtpmv_v2')
-    
+
     global __cublasStrsv_v2
     __cublasStrsv_v2 = dlsym(RTLD_DEFAULT, 'cublasStrsv_v2')
     if __cublasStrsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrsv_v2 = dlsym(handle, 'cublasStrsv_v2')
-    
+
     global __cublasDtrsv_v2
     __cublasDtrsv_v2 = dlsym(RTLD_DEFAULT, 'cublasDtrsv_v2')
     if __cublasDtrsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrsv_v2 = dlsym(handle, 'cublasDtrsv_v2')
-    
+
     global __cublasCtrsv_v2
     __cublasCtrsv_v2 = dlsym(RTLD_DEFAULT, 'cublasCtrsv_v2')
     if __cublasCtrsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrsv_v2 = dlsym(handle, 'cublasCtrsv_v2')
-    
+
     global __cublasZtrsv_v2
     __cublasZtrsv_v2 = dlsym(RTLD_DEFAULT, 'cublasZtrsv_v2')
     if __cublasZtrsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrsv_v2 = dlsym(handle, 'cublasZtrsv_v2')
-    
+
     global __cublasStpsv_v2
     __cublasStpsv_v2 = dlsym(RTLD_DEFAULT, 'cublasStpsv_v2')
     if __cublasStpsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStpsv_v2 = dlsym(handle, 'cublasStpsv_v2')
-    
+
     global __cublasDtpsv_v2
     __cublasDtpsv_v2 = dlsym(RTLD_DEFAULT, 'cublasDtpsv_v2')
     if __cublasDtpsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtpsv_v2 = dlsym(handle, 'cublasDtpsv_v2')
-    
+
     global __cublasCtpsv_v2
     __cublasCtpsv_v2 = dlsym(RTLD_DEFAULT, 'cublasCtpsv_v2')
     if __cublasCtpsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtpsv_v2 = dlsym(handle, 'cublasCtpsv_v2')
-    
+
     global __cublasZtpsv_v2
     __cublasZtpsv_v2 = dlsym(RTLD_DEFAULT, 'cublasZtpsv_v2')
     if __cublasZtpsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtpsv_v2 = dlsym(handle, 'cublasZtpsv_v2')
-    
+
     global __cublasStbsv_v2
     __cublasStbsv_v2 = dlsym(RTLD_DEFAULT, 'cublasStbsv_v2')
     if __cublasStbsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStbsv_v2 = dlsym(handle, 'cublasStbsv_v2')
-    
+
     global __cublasDtbsv_v2
     __cublasDtbsv_v2 = dlsym(RTLD_DEFAULT, 'cublasDtbsv_v2')
     if __cublasDtbsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtbsv_v2 = dlsym(handle, 'cublasDtbsv_v2')
-    
+
     global __cublasCtbsv_v2
     __cublasCtbsv_v2 = dlsym(RTLD_DEFAULT, 'cublasCtbsv_v2')
     if __cublasCtbsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtbsv_v2 = dlsym(handle, 'cublasCtbsv_v2')
-    
+
     global __cublasZtbsv_v2
     __cublasZtbsv_v2 = dlsym(RTLD_DEFAULT, 'cublasZtbsv_v2')
     if __cublasZtbsv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtbsv_v2 = dlsym(handle, 'cublasZtbsv_v2')
-    
+
     global __cublasSsymv_v2
     __cublasSsymv_v2 = dlsym(RTLD_DEFAULT, 'cublasSsymv_v2')
     if __cublasSsymv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsymv_v2 = dlsym(handle, 'cublasSsymv_v2')
-    
+
     global __cublasDsymv_v2
     __cublasDsymv_v2 = dlsym(RTLD_DEFAULT, 'cublasDsymv_v2')
     if __cublasDsymv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsymv_v2 = dlsym(handle, 'cublasDsymv_v2')
-    
+
     global __cublasCsymv_v2
     __cublasCsymv_v2 = dlsym(RTLD_DEFAULT, 'cublasCsymv_v2')
     if __cublasCsymv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsymv_v2 = dlsym(handle, 'cublasCsymv_v2')
-    
+
     global __cublasZsymv_v2
     __cublasZsymv_v2 = dlsym(RTLD_DEFAULT, 'cublasZsymv_v2')
     if __cublasZsymv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsymv_v2 = dlsym(handle, 'cublasZsymv_v2')
-    
+
     global __cublasChemv_v2
     __cublasChemv_v2 = dlsym(RTLD_DEFAULT, 'cublasChemv_v2')
     if __cublasChemv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChemv_v2 = dlsym(handle, 'cublasChemv_v2')
-    
+
     global __cublasZhemv_v2
     __cublasZhemv_v2 = dlsym(RTLD_DEFAULT, 'cublasZhemv_v2')
     if __cublasZhemv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhemv_v2 = dlsym(handle, 'cublasZhemv_v2')
-    
+
     global __cublasSsbmv_v2
     __cublasSsbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasSsbmv_v2')
     if __cublasSsbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsbmv_v2 = dlsym(handle, 'cublasSsbmv_v2')
-    
+
     global __cublasDsbmv_v2
     __cublasDsbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasDsbmv_v2')
     if __cublasDsbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsbmv_v2 = dlsym(handle, 'cublasDsbmv_v2')
-    
+
     global __cublasChbmv_v2
     __cublasChbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasChbmv_v2')
     if __cublasChbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChbmv_v2 = dlsym(handle, 'cublasChbmv_v2')
-    
+
     global __cublasZhbmv_v2
     __cublasZhbmv_v2 = dlsym(RTLD_DEFAULT, 'cublasZhbmv_v2')
     if __cublasZhbmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhbmv_v2 = dlsym(handle, 'cublasZhbmv_v2')
-    
+
     global __cublasSspmv_v2
     __cublasSspmv_v2 = dlsym(RTLD_DEFAULT, 'cublasSspmv_v2')
     if __cublasSspmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSspmv_v2 = dlsym(handle, 'cublasSspmv_v2')
-    
+
     global __cublasDspmv_v2
     __cublasDspmv_v2 = dlsym(RTLD_DEFAULT, 'cublasDspmv_v2')
     if __cublasDspmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDspmv_v2 = dlsym(handle, 'cublasDspmv_v2')
-    
+
     global __cublasChpmv_v2
     __cublasChpmv_v2 = dlsym(RTLD_DEFAULT, 'cublasChpmv_v2')
     if __cublasChpmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChpmv_v2 = dlsym(handle, 'cublasChpmv_v2')
-    
+
     global __cublasZhpmv_v2
     __cublasZhpmv_v2 = dlsym(RTLD_DEFAULT, 'cublasZhpmv_v2')
     if __cublasZhpmv_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhpmv_v2 = dlsym(handle, 'cublasZhpmv_v2')
-    
+
     global __cublasSger_v2
     __cublasSger_v2 = dlsym(RTLD_DEFAULT, 'cublasSger_v2')
     if __cublasSger_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSger_v2 = dlsym(handle, 'cublasSger_v2')
-    
+
     global __cublasDger_v2
     __cublasDger_v2 = dlsym(RTLD_DEFAULT, 'cublasDger_v2')
     if __cublasDger_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDger_v2 = dlsym(handle, 'cublasDger_v2')
-    
+
     global __cublasCgeru_v2
     __cublasCgeru_v2 = dlsym(RTLD_DEFAULT, 'cublasCgeru_v2')
     if __cublasCgeru_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgeru_v2 = dlsym(handle, 'cublasCgeru_v2')
-    
+
     global __cublasCgerc_v2
     __cublasCgerc_v2 = dlsym(RTLD_DEFAULT, 'cublasCgerc_v2')
     if __cublasCgerc_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgerc_v2 = dlsym(handle, 'cublasCgerc_v2')
-    
+
     global __cublasZgeru_v2
     __cublasZgeru_v2 = dlsym(RTLD_DEFAULT, 'cublasZgeru_v2')
     if __cublasZgeru_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgeru_v2 = dlsym(handle, 'cublasZgeru_v2')
-    
+
     global __cublasZgerc_v2
     __cublasZgerc_v2 = dlsym(RTLD_DEFAULT, 'cublasZgerc_v2')
     if __cublasZgerc_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgerc_v2 = dlsym(handle, 'cublasZgerc_v2')
-    
+
     global __cublasSsyr_v2
     __cublasSsyr_v2 = dlsym(RTLD_DEFAULT, 'cublasSsyr_v2')
     if __cublasSsyr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyr_v2 = dlsym(handle, 'cublasSsyr_v2')
-    
+
     global __cublasDsyr_v2
     __cublasDsyr_v2 = dlsym(RTLD_DEFAULT, 'cublasDsyr_v2')
     if __cublasDsyr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyr_v2 = dlsym(handle, 'cublasDsyr_v2')
-    
+
     global __cublasCsyr_v2
     __cublasCsyr_v2 = dlsym(RTLD_DEFAULT, 'cublasCsyr_v2')
     if __cublasCsyr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyr_v2 = dlsym(handle, 'cublasCsyr_v2')
-    
+
     global __cublasZsyr_v2
     __cublasZsyr_v2 = dlsym(RTLD_DEFAULT, 'cublasZsyr_v2')
     if __cublasZsyr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyr_v2 = dlsym(handle, 'cublasZsyr_v2')
-    
+
     global __cublasCher_v2
     __cublasCher_v2 = dlsym(RTLD_DEFAULT, 'cublasCher_v2')
     if __cublasCher_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCher_v2 = dlsym(handle, 'cublasCher_v2')
-    
+
     global __cublasZher_v2
     __cublasZher_v2 = dlsym(RTLD_DEFAULT, 'cublasZher_v2')
     if __cublasZher_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZher_v2 = dlsym(handle, 'cublasZher_v2')
-    
+
     global __cublasSspr_v2
     __cublasSspr_v2 = dlsym(RTLD_DEFAULT, 'cublasSspr_v2')
     if __cublasSspr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSspr_v2 = dlsym(handle, 'cublasSspr_v2')
-    
+
     global __cublasDspr_v2
     __cublasDspr_v2 = dlsym(RTLD_DEFAULT, 'cublasDspr_v2')
     if __cublasDspr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDspr_v2 = dlsym(handle, 'cublasDspr_v2')
-    
+
     global __cublasChpr_v2
     __cublasChpr_v2 = dlsym(RTLD_DEFAULT, 'cublasChpr_v2')
     if __cublasChpr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChpr_v2 = dlsym(handle, 'cublasChpr_v2')
-    
+
     global __cublasZhpr_v2
     __cublasZhpr_v2 = dlsym(RTLD_DEFAULT, 'cublasZhpr_v2')
     if __cublasZhpr_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhpr_v2 = dlsym(handle, 'cublasZhpr_v2')
-    
+
     global __cublasSsyr2_v2
     __cublasSsyr2_v2 = dlsym(RTLD_DEFAULT, 'cublasSsyr2_v2')
     if __cublasSsyr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyr2_v2 = dlsym(handle, 'cublasSsyr2_v2')
-    
+
     global __cublasDsyr2_v2
     __cublasDsyr2_v2 = dlsym(RTLD_DEFAULT, 'cublasDsyr2_v2')
     if __cublasDsyr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyr2_v2 = dlsym(handle, 'cublasDsyr2_v2')
-    
+
     global __cublasCsyr2_v2
     __cublasCsyr2_v2 = dlsym(RTLD_DEFAULT, 'cublasCsyr2_v2')
     if __cublasCsyr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyr2_v2 = dlsym(handle, 'cublasCsyr2_v2')
-    
+
     global __cublasZsyr2_v2
     __cublasZsyr2_v2 = dlsym(RTLD_DEFAULT, 'cublasZsyr2_v2')
     if __cublasZsyr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyr2_v2 = dlsym(handle, 'cublasZsyr2_v2')
-    
+
     global __cublasCher2_v2
     __cublasCher2_v2 = dlsym(RTLD_DEFAULT, 'cublasCher2_v2')
     if __cublasCher2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCher2_v2 = dlsym(handle, 'cublasCher2_v2')
-    
+
     global __cublasZher2_v2
     __cublasZher2_v2 = dlsym(RTLD_DEFAULT, 'cublasZher2_v2')
     if __cublasZher2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZher2_v2 = dlsym(handle, 'cublasZher2_v2')
-    
+
     global __cublasSspr2_v2
     __cublasSspr2_v2 = dlsym(RTLD_DEFAULT, 'cublasSspr2_v2')
     if __cublasSspr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSspr2_v2 = dlsym(handle, 'cublasSspr2_v2')
-    
+
     global __cublasDspr2_v2
     __cublasDspr2_v2 = dlsym(RTLD_DEFAULT, 'cublasDspr2_v2')
     if __cublasDspr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDspr2_v2 = dlsym(handle, 'cublasDspr2_v2')
-    
+
     global __cublasChpr2_v2
     __cublasChpr2_v2 = dlsym(RTLD_DEFAULT, 'cublasChpr2_v2')
     if __cublasChpr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChpr2_v2 = dlsym(handle, 'cublasChpr2_v2')
-    
+
     global __cublasZhpr2_v2
     __cublasZhpr2_v2 = dlsym(RTLD_DEFAULT, 'cublasZhpr2_v2')
     if __cublasZhpr2_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhpr2_v2 = dlsym(handle, 'cublasZhpr2_v2')
-    
+
     global __cublasSgemm_v2
     __cublasSgemm_v2 = dlsym(RTLD_DEFAULT, 'cublasSgemm_v2')
     if __cublasSgemm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemm_v2 = dlsym(handle, 'cublasSgemm_v2')
-    
+
     global __cublasDgemm_v2
     __cublasDgemm_v2 = dlsym(RTLD_DEFAULT, 'cublasDgemm_v2')
     if __cublasDgemm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemm_v2 = dlsym(handle, 'cublasDgemm_v2')
-    
+
     global __cublasCgemm_v2
     __cublasCgemm_v2 = dlsym(RTLD_DEFAULT, 'cublasCgemm_v2')
     if __cublasCgemm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm_v2 = dlsym(handle, 'cublasCgemm_v2')
-    
+
     global __cublasCgemm3m
     __cublasCgemm3m = dlsym(RTLD_DEFAULT, 'cublasCgemm3m')
     if __cublasCgemm3m == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3m = dlsym(handle, 'cublasCgemm3m')
-    
+
     global __cublasCgemm3mEx
     __cublasCgemm3mEx = dlsym(RTLD_DEFAULT, 'cublasCgemm3mEx')
     if __cublasCgemm3mEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3mEx = dlsym(handle, 'cublasCgemm3mEx')
-    
+
     global __cublasZgemm_v2
     __cublasZgemm_v2 = dlsym(RTLD_DEFAULT, 'cublasZgemm_v2')
     if __cublasZgemm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemm_v2 = dlsym(handle, 'cublasZgemm_v2')
-    
+
     global __cublasZgemm3m
     __cublasZgemm3m = dlsym(RTLD_DEFAULT, 'cublasZgemm3m')
     if __cublasZgemm3m == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemm3m = dlsym(handle, 'cublasZgemm3m')
-    
+
     global __cublasSgemmEx
     __cublasSgemmEx = dlsym(RTLD_DEFAULT, 'cublasSgemmEx')
     if __cublasSgemmEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemmEx = dlsym(handle, 'cublasSgemmEx')
-    
+
     global __cublasGemmEx
     __cublasGemmEx = dlsym(RTLD_DEFAULT, 'cublasGemmEx')
     if __cublasGemmEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGemmEx = dlsym(handle, 'cublasGemmEx')
-    
+
     global __cublasCgemmEx
     __cublasCgemmEx = dlsym(RTLD_DEFAULT, 'cublasCgemmEx')
     if __cublasCgemmEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemmEx = dlsym(handle, 'cublasCgemmEx')
-    
+
     global __cublasUint8gemmBias
     __cublasUint8gemmBias = dlsym(RTLD_DEFAULT, 'cublasUint8gemmBias')
     if __cublasUint8gemmBias == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasUint8gemmBias = dlsym(handle, 'cublasUint8gemmBias')
-    
+
     global __cublasSsyrk_v2
     __cublasSsyrk_v2 = dlsym(RTLD_DEFAULT, 'cublasSsyrk_v2')
     if __cublasSsyrk_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyrk_v2 = dlsym(handle, 'cublasSsyrk_v2')
-    
+
     global __cublasDsyrk_v2
     __cublasDsyrk_v2 = dlsym(RTLD_DEFAULT, 'cublasDsyrk_v2')
     if __cublasDsyrk_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyrk_v2 = dlsym(handle, 'cublasDsyrk_v2')
-    
+
     global __cublasCsyrk_v2
     __cublasCsyrk_v2 = dlsym(RTLD_DEFAULT, 'cublasCsyrk_v2')
     if __cublasCsyrk_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrk_v2 = dlsym(handle, 'cublasCsyrk_v2')
-    
+
     global __cublasZsyrk_v2
     __cublasZsyrk_v2 = dlsym(RTLD_DEFAULT, 'cublasZsyrk_v2')
     if __cublasZsyrk_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyrk_v2 = dlsym(handle, 'cublasZsyrk_v2')
-    
+
     global __cublasCsyrkEx
     __cublasCsyrkEx = dlsym(RTLD_DEFAULT, 'cublasCsyrkEx')
     if __cublasCsyrkEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrkEx = dlsym(handle, 'cublasCsyrkEx')
-    
+
     global __cublasCsyrk3mEx
     __cublasCsyrk3mEx = dlsym(RTLD_DEFAULT, 'cublasCsyrk3mEx')
     if __cublasCsyrk3mEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrk3mEx = dlsym(handle, 'cublasCsyrk3mEx')
-    
+
     global __cublasCherk_v2
     __cublasCherk_v2 = dlsym(RTLD_DEFAULT, 'cublasCherk_v2')
     if __cublasCherk_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherk_v2 = dlsym(handle, 'cublasCherk_v2')
-    
+
     global __cublasZherk_v2
     __cublasZherk_v2 = dlsym(RTLD_DEFAULT, 'cublasZherk_v2')
     if __cublasZherk_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZherk_v2 = dlsym(handle, 'cublasZherk_v2')
-    
+
     global __cublasCherkEx
     __cublasCherkEx = dlsym(RTLD_DEFAULT, 'cublasCherkEx')
     if __cublasCherkEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherkEx = dlsym(handle, 'cublasCherkEx')
-    
+
     global __cublasCherk3mEx
     __cublasCherk3mEx = dlsym(RTLD_DEFAULT, 'cublasCherk3mEx')
     if __cublasCherk3mEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherk3mEx = dlsym(handle, 'cublasCherk3mEx')
-    
+
     global __cublasSsyr2k_v2
     __cublasSsyr2k_v2 = dlsym(RTLD_DEFAULT, 'cublasSsyr2k_v2')
     if __cublasSsyr2k_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyr2k_v2 = dlsym(handle, 'cublasSsyr2k_v2')
-    
+
     global __cublasDsyr2k_v2
     __cublasDsyr2k_v2 = dlsym(RTLD_DEFAULT, 'cublasDsyr2k_v2')
     if __cublasDsyr2k_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyr2k_v2 = dlsym(handle, 'cublasDsyr2k_v2')
-    
+
     global __cublasCsyr2k_v2
     __cublasCsyr2k_v2 = dlsym(RTLD_DEFAULT, 'cublasCsyr2k_v2')
     if __cublasCsyr2k_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyr2k_v2 = dlsym(handle, 'cublasCsyr2k_v2')
-    
+
     global __cublasZsyr2k_v2
     __cublasZsyr2k_v2 = dlsym(RTLD_DEFAULT, 'cublasZsyr2k_v2')
     if __cublasZsyr2k_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyr2k_v2 = dlsym(handle, 'cublasZsyr2k_v2')
-    
+
     global __cublasCher2k_v2
     __cublasCher2k_v2 = dlsym(RTLD_DEFAULT, 'cublasCher2k_v2')
     if __cublasCher2k_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCher2k_v2 = dlsym(handle, 'cublasCher2k_v2')
-    
+
     global __cublasZher2k_v2
     __cublasZher2k_v2 = dlsym(RTLD_DEFAULT, 'cublasZher2k_v2')
     if __cublasZher2k_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZher2k_v2 = dlsym(handle, 'cublasZher2k_v2')
-    
+
     global __cublasSsyrkx
     __cublasSsyrkx = dlsym(RTLD_DEFAULT, 'cublasSsyrkx')
     if __cublasSsyrkx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyrkx = dlsym(handle, 'cublasSsyrkx')
-    
+
     global __cublasDsyrkx
     __cublasDsyrkx = dlsym(RTLD_DEFAULT, 'cublasDsyrkx')
     if __cublasDsyrkx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyrkx = dlsym(handle, 'cublasDsyrkx')
-    
+
     global __cublasCsyrkx
     __cublasCsyrkx = dlsym(RTLD_DEFAULT, 'cublasCsyrkx')
     if __cublasCsyrkx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrkx = dlsym(handle, 'cublasCsyrkx')
-    
+
     global __cublasZsyrkx
     __cublasZsyrkx = dlsym(RTLD_DEFAULT, 'cublasZsyrkx')
     if __cublasZsyrkx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyrkx = dlsym(handle, 'cublasZsyrkx')
-    
+
     global __cublasCherkx
     __cublasCherkx = dlsym(RTLD_DEFAULT, 'cublasCherkx')
     if __cublasCherkx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherkx = dlsym(handle, 'cublasCherkx')
-    
+
     global __cublasZherkx
     __cublasZherkx = dlsym(RTLD_DEFAULT, 'cublasZherkx')
     if __cublasZherkx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZherkx = dlsym(handle, 'cublasZherkx')
-    
+
     global __cublasSsymm_v2
     __cublasSsymm_v2 = dlsym(RTLD_DEFAULT, 'cublasSsymm_v2')
     if __cublasSsymm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsymm_v2 = dlsym(handle, 'cublasSsymm_v2')
-    
+
     global __cublasDsymm_v2
     __cublasDsymm_v2 = dlsym(RTLD_DEFAULT, 'cublasDsymm_v2')
     if __cublasDsymm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsymm_v2 = dlsym(handle, 'cublasDsymm_v2')
-    
+
     global __cublasCsymm_v2
     __cublasCsymm_v2 = dlsym(RTLD_DEFAULT, 'cublasCsymm_v2')
     if __cublasCsymm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsymm_v2 = dlsym(handle, 'cublasCsymm_v2')
-    
+
     global __cublasZsymm_v2
     __cublasZsymm_v2 = dlsym(RTLD_DEFAULT, 'cublasZsymm_v2')
     if __cublasZsymm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsymm_v2 = dlsym(handle, 'cublasZsymm_v2')
-    
+
     global __cublasChemm_v2
     __cublasChemm_v2 = dlsym(RTLD_DEFAULT, 'cublasChemm_v2')
     if __cublasChemm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChemm_v2 = dlsym(handle, 'cublasChemm_v2')
-    
+
     global __cublasZhemm_v2
     __cublasZhemm_v2 = dlsym(RTLD_DEFAULT, 'cublasZhemm_v2')
     if __cublasZhemm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhemm_v2 = dlsym(handle, 'cublasZhemm_v2')
-    
+
     global __cublasStrsm_v2
     __cublasStrsm_v2 = dlsym(RTLD_DEFAULT, 'cublasStrsm_v2')
     if __cublasStrsm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrsm_v2 = dlsym(handle, 'cublasStrsm_v2')
-    
+
     global __cublasDtrsm_v2
     __cublasDtrsm_v2 = dlsym(RTLD_DEFAULT, 'cublasDtrsm_v2')
     if __cublasDtrsm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrsm_v2 = dlsym(handle, 'cublasDtrsm_v2')
-    
+
     global __cublasCtrsm_v2
     __cublasCtrsm_v2 = dlsym(RTLD_DEFAULT, 'cublasCtrsm_v2')
     if __cublasCtrsm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrsm_v2 = dlsym(handle, 'cublasCtrsm_v2')
-    
+
     global __cublasZtrsm_v2
     __cublasZtrsm_v2 = dlsym(RTLD_DEFAULT, 'cublasZtrsm_v2')
     if __cublasZtrsm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrsm_v2 = dlsym(handle, 'cublasZtrsm_v2')
-    
+
     global __cublasStrmm_v2
     __cublasStrmm_v2 = dlsym(RTLD_DEFAULT, 'cublasStrmm_v2')
     if __cublasStrmm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrmm_v2 = dlsym(handle, 'cublasStrmm_v2')
-    
+
     global __cublasDtrmm_v2
     __cublasDtrmm_v2 = dlsym(RTLD_DEFAULT, 'cublasDtrmm_v2')
     if __cublasDtrmm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrmm_v2 = dlsym(handle, 'cublasDtrmm_v2')
-    
+
     global __cublasCtrmm_v2
     __cublasCtrmm_v2 = dlsym(RTLD_DEFAULT, 'cublasCtrmm_v2')
     if __cublasCtrmm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrmm_v2 = dlsym(handle, 'cublasCtrmm_v2')
-    
+
     global __cublasZtrmm_v2
     __cublasZtrmm_v2 = dlsym(RTLD_DEFAULT, 'cublasZtrmm_v2')
     if __cublasZtrmm_v2 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrmm_v2 = dlsym(handle, 'cublasZtrmm_v2')
-    
+
     global __cublasSgemmBatched
     __cublasSgemmBatched = dlsym(RTLD_DEFAULT, 'cublasSgemmBatched')
     if __cublasSgemmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemmBatched = dlsym(handle, 'cublasSgemmBatched')
-    
+
     global __cublasDgemmBatched
     __cublasDgemmBatched = dlsym(RTLD_DEFAULT, 'cublasDgemmBatched')
     if __cublasDgemmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemmBatched = dlsym(handle, 'cublasDgemmBatched')
-    
+
     global __cublasCgemmBatched
     __cublasCgemmBatched = dlsym(RTLD_DEFAULT, 'cublasCgemmBatched')
     if __cublasCgemmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemmBatched = dlsym(handle, 'cublasCgemmBatched')
-    
+
     global __cublasCgemm3mBatched
     __cublasCgemm3mBatched = dlsym(RTLD_DEFAULT, 'cublasCgemm3mBatched')
     if __cublasCgemm3mBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3mBatched = dlsym(handle, 'cublasCgemm3mBatched')
-    
+
     global __cublasZgemmBatched
     __cublasZgemmBatched = dlsym(RTLD_DEFAULT, 'cublasZgemmBatched')
     if __cublasZgemmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemmBatched = dlsym(handle, 'cublasZgemmBatched')
-    
+
     global __cublasGemmBatchedEx
     __cublasGemmBatchedEx = dlsym(RTLD_DEFAULT, 'cublasGemmBatchedEx')
     if __cublasGemmBatchedEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGemmBatchedEx = dlsym(handle, 'cublasGemmBatchedEx')
-    
+
     global __cublasGemmStridedBatchedEx
     __cublasGemmStridedBatchedEx = dlsym(RTLD_DEFAULT, 'cublasGemmStridedBatchedEx')
     if __cublasGemmStridedBatchedEx == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGemmStridedBatchedEx = dlsym(handle, 'cublasGemmStridedBatchedEx')
-    
+
     global __cublasSgemmStridedBatched
     __cublasSgemmStridedBatched = dlsym(RTLD_DEFAULT, 'cublasSgemmStridedBatched')
     if __cublasSgemmStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemmStridedBatched = dlsym(handle, 'cublasSgemmStridedBatched')
-    
+
     global __cublasDgemmStridedBatched
     __cublasDgemmStridedBatched = dlsym(RTLD_DEFAULT, 'cublasDgemmStridedBatched')
     if __cublasDgemmStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemmStridedBatched = dlsym(handle, 'cublasDgemmStridedBatched')
-    
+
     global __cublasCgemmStridedBatched
     __cublasCgemmStridedBatched = dlsym(RTLD_DEFAULT, 'cublasCgemmStridedBatched')
     if __cublasCgemmStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemmStridedBatched = dlsym(handle, 'cublasCgemmStridedBatched')
-    
+
     global __cublasCgemm3mStridedBatched
     __cublasCgemm3mStridedBatched = dlsym(RTLD_DEFAULT, 'cublasCgemm3mStridedBatched')
     if __cublasCgemm3mStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3mStridedBatched = dlsym(handle, 'cublasCgemm3mStridedBatched')
-    
+
     global __cublasZgemmStridedBatched
     __cublasZgemmStridedBatched = dlsym(RTLD_DEFAULT, 'cublasZgemmStridedBatched')
     if __cublasZgemmStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemmStridedBatched = dlsym(handle, 'cublasZgemmStridedBatched')
-    
+
     global __cublasSgeam
     __cublasSgeam = dlsym(RTLD_DEFAULT, 'cublasSgeam')
     if __cublasSgeam == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgeam = dlsym(handle, 'cublasSgeam')
-    
+
     global __cublasDgeam
     __cublasDgeam = dlsym(RTLD_DEFAULT, 'cublasDgeam')
     if __cublasDgeam == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgeam = dlsym(handle, 'cublasDgeam')
-    
+
     global __cublasCgeam
     __cublasCgeam = dlsym(RTLD_DEFAULT, 'cublasCgeam')
     if __cublasCgeam == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgeam = dlsym(handle, 'cublasCgeam')
-    
+
     global __cublasZgeam
     __cublasZgeam = dlsym(RTLD_DEFAULT, 'cublasZgeam')
     if __cublasZgeam == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgeam = dlsym(handle, 'cublasZgeam')
-    
+
     global __cublasSgetrfBatched
     __cublasSgetrfBatched = dlsym(RTLD_DEFAULT, 'cublasSgetrfBatched')
     if __cublasSgetrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgetrfBatched = dlsym(handle, 'cublasSgetrfBatched')
-    
+
     global __cublasDgetrfBatched
     __cublasDgetrfBatched = dlsym(RTLD_DEFAULT, 'cublasDgetrfBatched')
     if __cublasDgetrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgetrfBatched = dlsym(handle, 'cublasDgetrfBatched')
-    
+
     global __cublasCgetrfBatched
     __cublasCgetrfBatched = dlsym(RTLD_DEFAULT, 'cublasCgetrfBatched')
     if __cublasCgetrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgetrfBatched = dlsym(handle, 'cublasCgetrfBatched')
-    
+
     global __cublasZgetrfBatched
     __cublasZgetrfBatched = dlsym(RTLD_DEFAULT, 'cublasZgetrfBatched')
     if __cublasZgetrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgetrfBatched = dlsym(handle, 'cublasZgetrfBatched')
-    
+
     global __cublasSgetriBatched
     __cublasSgetriBatched = dlsym(RTLD_DEFAULT, 'cublasSgetriBatched')
     if __cublasSgetriBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgetriBatched = dlsym(handle, 'cublasSgetriBatched')
-    
+
     global __cublasDgetriBatched
     __cublasDgetriBatched = dlsym(RTLD_DEFAULT, 'cublasDgetriBatched')
     if __cublasDgetriBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgetriBatched = dlsym(handle, 'cublasDgetriBatched')
-    
+
     global __cublasCgetriBatched
     __cublasCgetriBatched = dlsym(RTLD_DEFAULT, 'cublasCgetriBatched')
     if __cublasCgetriBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgetriBatched = dlsym(handle, 'cublasCgetriBatched')
-    
+
     global __cublasZgetriBatched
     __cublasZgetriBatched = dlsym(RTLD_DEFAULT, 'cublasZgetriBatched')
     if __cublasZgetriBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgetriBatched = dlsym(handle, 'cublasZgetriBatched')
-    
+
     global __cublasSgetrsBatched
     __cublasSgetrsBatched = dlsym(RTLD_DEFAULT, 'cublasSgetrsBatched')
     if __cublasSgetrsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgetrsBatched = dlsym(handle, 'cublasSgetrsBatched')
-    
+
     global __cublasDgetrsBatched
     __cublasDgetrsBatched = dlsym(RTLD_DEFAULT, 'cublasDgetrsBatched')
     if __cublasDgetrsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgetrsBatched = dlsym(handle, 'cublasDgetrsBatched')
-    
+
     global __cublasCgetrsBatched
     __cublasCgetrsBatched = dlsym(RTLD_DEFAULT, 'cublasCgetrsBatched')
     if __cublasCgetrsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgetrsBatched = dlsym(handle, 'cublasCgetrsBatched')
-    
+
     global __cublasZgetrsBatched
     __cublasZgetrsBatched = dlsym(RTLD_DEFAULT, 'cublasZgetrsBatched')
     if __cublasZgetrsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgetrsBatched = dlsym(handle, 'cublasZgetrsBatched')
-    
+
     global __cublasStrsmBatched
     __cublasStrsmBatched = dlsym(RTLD_DEFAULT, 'cublasStrsmBatched')
     if __cublasStrsmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrsmBatched = dlsym(handle, 'cublasStrsmBatched')
-    
+
     global __cublasDtrsmBatched
     __cublasDtrsmBatched = dlsym(RTLD_DEFAULT, 'cublasDtrsmBatched')
     if __cublasDtrsmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrsmBatched = dlsym(handle, 'cublasDtrsmBatched')
-    
+
     global __cublasCtrsmBatched
     __cublasCtrsmBatched = dlsym(RTLD_DEFAULT, 'cublasCtrsmBatched')
     if __cublasCtrsmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrsmBatched = dlsym(handle, 'cublasCtrsmBatched')
-    
+
     global __cublasZtrsmBatched
     __cublasZtrsmBatched = dlsym(RTLD_DEFAULT, 'cublasZtrsmBatched')
     if __cublasZtrsmBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrsmBatched = dlsym(handle, 'cublasZtrsmBatched')
-    
+
     global __cublasSmatinvBatched
     __cublasSmatinvBatched = dlsym(RTLD_DEFAULT, 'cublasSmatinvBatched')
     if __cublasSmatinvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSmatinvBatched = dlsym(handle, 'cublasSmatinvBatched')
-    
+
     global __cublasDmatinvBatched
     __cublasDmatinvBatched = dlsym(RTLD_DEFAULT, 'cublasDmatinvBatched')
     if __cublasDmatinvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDmatinvBatched = dlsym(handle, 'cublasDmatinvBatched')
-    
+
     global __cublasCmatinvBatched
     __cublasCmatinvBatched = dlsym(RTLD_DEFAULT, 'cublasCmatinvBatched')
     if __cublasCmatinvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCmatinvBatched = dlsym(handle, 'cublasCmatinvBatched')
-    
+
     global __cublasZmatinvBatched
     __cublasZmatinvBatched = dlsym(RTLD_DEFAULT, 'cublasZmatinvBatched')
     if __cublasZmatinvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZmatinvBatched = dlsym(handle, 'cublasZmatinvBatched')
-    
+
     global __cublasSgeqrfBatched
     __cublasSgeqrfBatched = dlsym(RTLD_DEFAULT, 'cublasSgeqrfBatched')
     if __cublasSgeqrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgeqrfBatched = dlsym(handle, 'cublasSgeqrfBatched')
-    
+
     global __cublasDgeqrfBatched
     __cublasDgeqrfBatched = dlsym(RTLD_DEFAULT, 'cublasDgeqrfBatched')
     if __cublasDgeqrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgeqrfBatched = dlsym(handle, 'cublasDgeqrfBatched')
-    
+
     global __cublasCgeqrfBatched
     __cublasCgeqrfBatched = dlsym(RTLD_DEFAULT, 'cublasCgeqrfBatched')
     if __cublasCgeqrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgeqrfBatched = dlsym(handle, 'cublasCgeqrfBatched')
-    
+
     global __cublasZgeqrfBatched
     __cublasZgeqrfBatched = dlsym(RTLD_DEFAULT, 'cublasZgeqrfBatched')
     if __cublasZgeqrfBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgeqrfBatched = dlsym(handle, 'cublasZgeqrfBatched')
-    
+
     global __cublasSgelsBatched
     __cublasSgelsBatched = dlsym(RTLD_DEFAULT, 'cublasSgelsBatched')
     if __cublasSgelsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgelsBatched = dlsym(handle, 'cublasSgelsBatched')
-    
+
     global __cublasDgelsBatched
     __cublasDgelsBatched = dlsym(RTLD_DEFAULT, 'cublasDgelsBatched')
     if __cublasDgelsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgelsBatched = dlsym(handle, 'cublasDgelsBatched')
-    
+
     global __cublasCgelsBatched
     __cublasCgelsBatched = dlsym(RTLD_DEFAULT, 'cublasCgelsBatched')
     if __cublasCgelsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgelsBatched = dlsym(handle, 'cublasCgelsBatched')
-    
+
     global __cublasZgelsBatched
     __cublasZgelsBatched = dlsym(RTLD_DEFAULT, 'cublasZgelsBatched')
     if __cublasZgelsBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgelsBatched = dlsym(handle, 'cublasZgelsBatched')
-    
+
     global __cublasSdgmm
     __cublasSdgmm = dlsym(RTLD_DEFAULT, 'cublasSdgmm')
     if __cublasSdgmm == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSdgmm = dlsym(handle, 'cublasSdgmm')
-    
+
     global __cublasDdgmm
     __cublasDdgmm = dlsym(RTLD_DEFAULT, 'cublasDdgmm')
     if __cublasDdgmm == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDdgmm = dlsym(handle, 'cublasDdgmm')
-    
+
     global __cublasCdgmm
     __cublasCdgmm = dlsym(RTLD_DEFAULT, 'cublasCdgmm')
     if __cublasCdgmm == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCdgmm = dlsym(handle, 'cublasCdgmm')
-    
+
     global __cublasZdgmm
     __cublasZdgmm = dlsym(RTLD_DEFAULT, 'cublasZdgmm')
     if __cublasZdgmm == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdgmm = dlsym(handle, 'cublasZdgmm')
-    
+
     global __cublasStpttr
     __cublasStpttr = dlsym(RTLD_DEFAULT, 'cublasStpttr')
     if __cublasStpttr == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStpttr = dlsym(handle, 'cublasStpttr')
-    
+
     global __cublasDtpttr
     __cublasDtpttr = dlsym(RTLD_DEFAULT, 'cublasDtpttr')
     if __cublasDtpttr == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtpttr = dlsym(handle, 'cublasDtpttr')
-    
+
     global __cublasCtpttr
     __cublasCtpttr = dlsym(RTLD_DEFAULT, 'cublasCtpttr')
     if __cublasCtpttr == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtpttr = dlsym(handle, 'cublasCtpttr')
-    
+
     global __cublasZtpttr
     __cublasZtpttr = dlsym(RTLD_DEFAULT, 'cublasZtpttr')
     if __cublasZtpttr == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtpttr = dlsym(handle, 'cublasZtpttr')
-    
+
     global __cublasStrttp
     __cublasStrttp = dlsym(RTLD_DEFAULT, 'cublasStrttp')
     if __cublasStrttp == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrttp = dlsym(handle, 'cublasStrttp')
-    
+
     global __cublasDtrttp
     __cublasDtrttp = dlsym(RTLD_DEFAULT, 'cublasDtrttp')
     if __cublasDtrttp == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrttp = dlsym(handle, 'cublasDtrttp')
-    
+
     global __cublasCtrttp
     __cublasCtrttp = dlsym(RTLD_DEFAULT, 'cublasCtrttp')
     if __cublasCtrttp == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrttp = dlsym(handle, 'cublasCtrttp')
-    
+
     global __cublasZtrttp
     __cublasZtrttp = dlsym(RTLD_DEFAULT, 'cublasZtrttp')
     if __cublasZtrttp == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrttp = dlsym(handle, 'cublasZtrttp')
-    
+
     global __cublasGetSmCountTarget
     __cublasGetSmCountTarget = dlsym(RTLD_DEFAULT, 'cublasGetSmCountTarget')
     if __cublasGetSmCountTarget == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetSmCountTarget = dlsym(handle, 'cublasGetSmCountTarget')
-    
+
     global __cublasSetSmCountTarget
     __cublasSetSmCountTarget = dlsym(RTLD_DEFAULT, 'cublasSetSmCountTarget')
     if __cublasSetSmCountTarget == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetSmCountTarget = dlsym(handle, 'cublasSetSmCountTarget')
-    
+
     global __cublasGetStatusName
     __cublasGetStatusName = dlsym(RTLD_DEFAULT, 'cublasGetStatusName')
     if __cublasGetStatusName == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetStatusName = dlsym(handle, 'cublasGetStatusName')
-    
+
     global __cublasGetStatusString
     __cublasGetStatusString = dlsym(RTLD_DEFAULT, 'cublasGetStatusString')
     if __cublasGetStatusString == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetStatusString = dlsym(handle, 'cublasGetStatusString')
-    
+
     global __cublasSgemvBatched
     __cublasSgemvBatched = dlsym(RTLD_DEFAULT, 'cublasSgemvBatched')
     if __cublasSgemvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemvBatched = dlsym(handle, 'cublasSgemvBatched')
-    
+
     global __cublasDgemvBatched
     __cublasDgemvBatched = dlsym(RTLD_DEFAULT, 'cublasDgemvBatched')
     if __cublasDgemvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemvBatched = dlsym(handle, 'cublasDgemvBatched')
-    
+
     global __cublasCgemvBatched
     __cublasCgemvBatched = dlsym(RTLD_DEFAULT, 'cublasCgemvBatched')
     if __cublasCgemvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemvBatched = dlsym(handle, 'cublasCgemvBatched')
-    
+
     global __cublasZgemvBatched
     __cublasZgemvBatched = dlsym(RTLD_DEFAULT, 'cublasZgemvBatched')
     if __cublasZgemvBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemvBatched = dlsym(handle, 'cublasZgemvBatched')
-    
+
     global __cublasSgemvStridedBatched
     __cublasSgemvStridedBatched = dlsym(RTLD_DEFAULT, 'cublasSgemvStridedBatched')
     if __cublasSgemvStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemvStridedBatched = dlsym(handle, 'cublasSgemvStridedBatched')
-    
+
     global __cublasDgemvStridedBatched
     __cublasDgemvStridedBatched = dlsym(RTLD_DEFAULT, 'cublasDgemvStridedBatched')
     if __cublasDgemvStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemvStridedBatched = dlsym(handle, 'cublasDgemvStridedBatched')
-    
+
     global __cublasCgemvStridedBatched
     __cublasCgemvStridedBatched = dlsym(RTLD_DEFAULT, 'cublasCgemvStridedBatched')
     if __cublasCgemvStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemvStridedBatched = dlsym(handle, 'cublasCgemvStridedBatched')
-    
+
     global __cublasZgemvStridedBatched
     __cublasZgemvStridedBatched = dlsym(RTLD_DEFAULT, 'cublasZgemvStridedBatched')
     if __cublasZgemvStridedBatched == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemvStridedBatched = dlsym(handle, 'cublasZgemvStridedBatched')
-    
+
     global __cublasSetVector_64
     __cublasSetVector_64 = dlsym(RTLD_DEFAULT, 'cublasSetVector_64')
     if __cublasSetVector_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetVector_64 = dlsym(handle, 'cublasSetVector_64')
-    
+
     global __cublasGetVector_64
     __cublasGetVector_64 = dlsym(RTLD_DEFAULT, 'cublasGetVector_64')
     if __cublasGetVector_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetVector_64 = dlsym(handle, 'cublasGetVector_64')
-    
+
     global __cublasSetMatrix_64
     __cublasSetMatrix_64 = dlsym(RTLD_DEFAULT, 'cublasSetMatrix_64')
     if __cublasSetMatrix_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetMatrix_64 = dlsym(handle, 'cublasSetMatrix_64')
-    
+
     global __cublasGetMatrix_64
     __cublasGetMatrix_64 = dlsym(RTLD_DEFAULT, 'cublasGetMatrix_64')
     if __cublasGetMatrix_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetMatrix_64 = dlsym(handle, 'cublasGetMatrix_64')
-    
+
     global __cublasSetVectorAsync_64
     __cublasSetVectorAsync_64 = dlsym(RTLD_DEFAULT, 'cublasSetVectorAsync_64')
     if __cublasSetVectorAsync_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetVectorAsync_64 = dlsym(handle, 'cublasSetVectorAsync_64')
-    
+
     global __cublasGetVectorAsync_64
     __cublasGetVectorAsync_64 = dlsym(RTLD_DEFAULT, 'cublasGetVectorAsync_64')
     if __cublasGetVectorAsync_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetVectorAsync_64 = dlsym(handle, 'cublasGetVectorAsync_64')
-    
+
     global __cublasSetMatrixAsync_64
     __cublasSetMatrixAsync_64 = dlsym(RTLD_DEFAULT, 'cublasSetMatrixAsync_64')
     if __cublasSetMatrixAsync_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSetMatrixAsync_64 = dlsym(handle, 'cublasSetMatrixAsync_64')
-    
+
     global __cublasGetMatrixAsync_64
     __cublasGetMatrixAsync_64 = dlsym(RTLD_DEFAULT, 'cublasGetMatrixAsync_64')
     if __cublasGetMatrixAsync_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGetMatrixAsync_64 = dlsym(handle, 'cublasGetMatrixAsync_64')
-    
+
     global __cublasNrm2Ex_64
     __cublasNrm2Ex_64 = dlsym(RTLD_DEFAULT, 'cublasNrm2Ex_64')
     if __cublasNrm2Ex_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasNrm2Ex_64 = dlsym(handle, 'cublasNrm2Ex_64')
-    
+
     global __cublasSnrm2_v2_64
     __cublasSnrm2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSnrm2_v2_64')
     if __cublasSnrm2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSnrm2_v2_64 = dlsym(handle, 'cublasSnrm2_v2_64')
-    
+
     global __cublasDnrm2_v2_64
     __cublasDnrm2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDnrm2_v2_64')
     if __cublasDnrm2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDnrm2_v2_64 = dlsym(handle, 'cublasDnrm2_v2_64')
-    
+
     global __cublasScnrm2_v2_64
     __cublasScnrm2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasScnrm2_v2_64')
     if __cublasScnrm2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScnrm2_v2_64 = dlsym(handle, 'cublasScnrm2_v2_64')
-    
+
     global __cublasDznrm2_v2_64
     __cublasDznrm2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDznrm2_v2_64')
     if __cublasDznrm2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDznrm2_v2_64 = dlsym(handle, 'cublasDznrm2_v2_64')
-    
+
     global __cublasDotEx_64
     __cublasDotEx_64 = dlsym(RTLD_DEFAULT, 'cublasDotEx_64')
     if __cublasDotEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDotEx_64 = dlsym(handle, 'cublasDotEx_64')
-    
+
     global __cublasDotcEx_64
     __cublasDotcEx_64 = dlsym(RTLD_DEFAULT, 'cublasDotcEx_64')
     if __cublasDotcEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDotcEx_64 = dlsym(handle, 'cublasDotcEx_64')
-    
+
     global __cublasSdot_v2_64
     __cublasSdot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSdot_v2_64')
     if __cublasSdot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSdot_v2_64 = dlsym(handle, 'cublasSdot_v2_64')
-    
+
     global __cublasDdot_v2_64
     __cublasDdot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDdot_v2_64')
     if __cublasDdot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDdot_v2_64 = dlsym(handle, 'cublasDdot_v2_64')
-    
+
     global __cublasCdotu_v2_64
     __cublasCdotu_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCdotu_v2_64')
     if __cublasCdotu_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCdotu_v2_64 = dlsym(handle, 'cublasCdotu_v2_64')
-    
+
     global __cublasCdotc_v2_64
     __cublasCdotc_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCdotc_v2_64')
     if __cublasCdotc_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCdotc_v2_64 = dlsym(handle, 'cublasCdotc_v2_64')
-    
+
     global __cublasZdotu_v2_64
     __cublasZdotu_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZdotu_v2_64')
     if __cublasZdotu_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdotu_v2_64 = dlsym(handle, 'cublasZdotu_v2_64')
-    
+
     global __cublasZdotc_v2_64
     __cublasZdotc_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZdotc_v2_64')
     if __cublasZdotc_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdotc_v2_64 = dlsym(handle, 'cublasZdotc_v2_64')
-    
+
     global __cublasScalEx_64
     __cublasScalEx_64 = dlsym(RTLD_DEFAULT, 'cublasScalEx_64')
     if __cublasScalEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScalEx_64 = dlsym(handle, 'cublasScalEx_64')
-    
+
     global __cublasSscal_v2_64
     __cublasSscal_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSscal_v2_64')
     if __cublasSscal_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSscal_v2_64 = dlsym(handle, 'cublasSscal_v2_64')
-    
+
     global __cublasDscal_v2_64
     __cublasDscal_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDscal_v2_64')
     if __cublasDscal_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDscal_v2_64 = dlsym(handle, 'cublasDscal_v2_64')
-    
+
     global __cublasCscal_v2_64
     __cublasCscal_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCscal_v2_64')
     if __cublasCscal_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCscal_v2_64 = dlsym(handle, 'cublasCscal_v2_64')
-    
+
     global __cublasCsscal_v2_64
     __cublasCsscal_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsscal_v2_64')
     if __cublasCsscal_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsscal_v2_64 = dlsym(handle, 'cublasCsscal_v2_64')
-    
+
     global __cublasZscal_v2_64
     __cublasZscal_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZscal_v2_64')
     if __cublasZscal_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZscal_v2_64 = dlsym(handle, 'cublasZscal_v2_64')
-    
+
     global __cublasZdscal_v2_64
     __cublasZdscal_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZdscal_v2_64')
     if __cublasZdscal_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdscal_v2_64 = dlsym(handle, 'cublasZdscal_v2_64')
-    
+
     global __cublasAxpyEx_64
     __cublasAxpyEx_64 = dlsym(RTLD_DEFAULT, 'cublasAxpyEx_64')
     if __cublasAxpyEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasAxpyEx_64 = dlsym(handle, 'cublasAxpyEx_64')
-    
+
     global __cublasSaxpy_v2_64
     __cublasSaxpy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSaxpy_v2_64')
     if __cublasSaxpy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSaxpy_v2_64 = dlsym(handle, 'cublasSaxpy_v2_64')
-    
+
     global __cublasDaxpy_v2_64
     __cublasDaxpy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDaxpy_v2_64')
     if __cublasDaxpy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDaxpy_v2_64 = dlsym(handle, 'cublasDaxpy_v2_64')
-    
+
     global __cublasCaxpy_v2_64
     __cublasCaxpy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCaxpy_v2_64')
     if __cublasCaxpy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCaxpy_v2_64 = dlsym(handle, 'cublasCaxpy_v2_64')
-    
+
     global __cublasZaxpy_v2_64
     __cublasZaxpy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZaxpy_v2_64')
     if __cublasZaxpy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZaxpy_v2_64 = dlsym(handle, 'cublasZaxpy_v2_64')
-    
+
     global __cublasCopyEx_64
     __cublasCopyEx_64 = dlsym(RTLD_DEFAULT, 'cublasCopyEx_64')
     if __cublasCopyEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCopyEx_64 = dlsym(handle, 'cublasCopyEx_64')
-    
+
     global __cublasScopy_v2_64
     __cublasScopy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasScopy_v2_64')
     if __cublasScopy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScopy_v2_64 = dlsym(handle, 'cublasScopy_v2_64')
-    
+
     global __cublasDcopy_v2_64
     __cublasDcopy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDcopy_v2_64')
     if __cublasDcopy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDcopy_v2_64 = dlsym(handle, 'cublasDcopy_v2_64')
-    
+
     global __cublasCcopy_v2_64
     __cublasCcopy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCcopy_v2_64')
     if __cublasCcopy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCcopy_v2_64 = dlsym(handle, 'cublasCcopy_v2_64')
-    
+
     global __cublasZcopy_v2_64
     __cublasZcopy_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZcopy_v2_64')
     if __cublasZcopy_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZcopy_v2_64 = dlsym(handle, 'cublasZcopy_v2_64')
-    
+
     global __cublasSswap_v2_64
     __cublasSswap_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSswap_v2_64')
     if __cublasSswap_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSswap_v2_64 = dlsym(handle, 'cublasSswap_v2_64')
-    
+
     global __cublasDswap_v2_64
     __cublasDswap_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDswap_v2_64')
     if __cublasDswap_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDswap_v2_64 = dlsym(handle, 'cublasDswap_v2_64')
-    
+
     global __cublasCswap_v2_64
     __cublasCswap_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCswap_v2_64')
     if __cublasCswap_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCswap_v2_64 = dlsym(handle, 'cublasCswap_v2_64')
-    
+
     global __cublasZswap_v2_64
     __cublasZswap_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZswap_v2_64')
     if __cublasZswap_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZswap_v2_64 = dlsym(handle, 'cublasZswap_v2_64')
-    
+
     global __cublasSwapEx_64
     __cublasSwapEx_64 = dlsym(RTLD_DEFAULT, 'cublasSwapEx_64')
     if __cublasSwapEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSwapEx_64 = dlsym(handle, 'cublasSwapEx_64')
-    
+
     global __cublasIsamax_v2_64
     __cublasIsamax_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIsamax_v2_64')
     if __cublasIsamax_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIsamax_v2_64 = dlsym(handle, 'cublasIsamax_v2_64')
-    
+
     global __cublasIdamax_v2_64
     __cublasIdamax_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIdamax_v2_64')
     if __cublasIdamax_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIdamax_v2_64 = dlsym(handle, 'cublasIdamax_v2_64')
-    
+
     global __cublasIcamax_v2_64
     __cublasIcamax_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIcamax_v2_64')
     if __cublasIcamax_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIcamax_v2_64 = dlsym(handle, 'cublasIcamax_v2_64')
-    
+
     global __cublasIzamax_v2_64
     __cublasIzamax_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIzamax_v2_64')
     if __cublasIzamax_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIzamax_v2_64 = dlsym(handle, 'cublasIzamax_v2_64')
-    
+
     global __cublasIamaxEx_64
     __cublasIamaxEx_64 = dlsym(RTLD_DEFAULT, 'cublasIamaxEx_64')
     if __cublasIamaxEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIamaxEx_64 = dlsym(handle, 'cublasIamaxEx_64')
-    
+
     global __cublasIsamin_v2_64
     __cublasIsamin_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIsamin_v2_64')
     if __cublasIsamin_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIsamin_v2_64 = dlsym(handle, 'cublasIsamin_v2_64')
-    
+
     global __cublasIdamin_v2_64
     __cublasIdamin_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIdamin_v2_64')
     if __cublasIdamin_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIdamin_v2_64 = dlsym(handle, 'cublasIdamin_v2_64')
-    
+
     global __cublasIcamin_v2_64
     __cublasIcamin_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIcamin_v2_64')
     if __cublasIcamin_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIcamin_v2_64 = dlsym(handle, 'cublasIcamin_v2_64')
-    
+
     global __cublasIzamin_v2_64
     __cublasIzamin_v2_64 = dlsym(RTLD_DEFAULT, 'cublasIzamin_v2_64')
     if __cublasIzamin_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIzamin_v2_64 = dlsym(handle, 'cublasIzamin_v2_64')
-    
+
     global __cublasIaminEx_64
     __cublasIaminEx_64 = dlsym(RTLD_DEFAULT, 'cublasIaminEx_64')
     if __cublasIaminEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasIaminEx_64 = dlsym(handle, 'cublasIaminEx_64')
-    
+
     global __cublasAsumEx_64
     __cublasAsumEx_64 = dlsym(RTLD_DEFAULT, 'cublasAsumEx_64')
     if __cublasAsumEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasAsumEx_64 = dlsym(handle, 'cublasAsumEx_64')
-    
+
     global __cublasSasum_v2_64
     __cublasSasum_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSasum_v2_64')
     if __cublasSasum_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSasum_v2_64 = dlsym(handle, 'cublasSasum_v2_64')
-    
+
     global __cublasDasum_v2_64
     __cublasDasum_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDasum_v2_64')
     if __cublasDasum_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDasum_v2_64 = dlsym(handle, 'cublasDasum_v2_64')
-    
+
     global __cublasScasum_v2_64
     __cublasScasum_v2_64 = dlsym(RTLD_DEFAULT, 'cublasScasum_v2_64')
     if __cublasScasum_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasScasum_v2_64 = dlsym(handle, 'cublasScasum_v2_64')
-    
+
     global __cublasDzasum_v2_64
     __cublasDzasum_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDzasum_v2_64')
     if __cublasDzasum_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDzasum_v2_64 = dlsym(handle, 'cublasDzasum_v2_64')
-    
+
     global __cublasSrot_v2_64
     __cublasSrot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSrot_v2_64')
     if __cublasSrot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSrot_v2_64 = dlsym(handle, 'cublasSrot_v2_64')
-    
+
     global __cublasDrot_v2_64
     __cublasDrot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDrot_v2_64')
     if __cublasDrot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDrot_v2_64 = dlsym(handle, 'cublasDrot_v2_64')
-    
+
     global __cublasCrot_v2_64
     __cublasCrot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCrot_v2_64')
     if __cublasCrot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCrot_v2_64 = dlsym(handle, 'cublasCrot_v2_64')
-    
+
     global __cublasCsrot_v2_64
     __cublasCsrot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsrot_v2_64')
     if __cublasCsrot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsrot_v2_64 = dlsym(handle, 'cublasCsrot_v2_64')
-    
+
     global __cublasZrot_v2_64
     __cublasZrot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZrot_v2_64')
     if __cublasZrot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZrot_v2_64 = dlsym(handle, 'cublasZrot_v2_64')
-    
+
     global __cublasZdrot_v2_64
     __cublasZdrot_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZdrot_v2_64')
     if __cublasZdrot_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZdrot_v2_64 = dlsym(handle, 'cublasZdrot_v2_64')
-    
+
     global __cublasRotEx_64
     __cublasRotEx_64 = dlsym(RTLD_DEFAULT, 'cublasRotEx_64')
     if __cublasRotEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasRotEx_64 = dlsym(handle, 'cublasRotEx_64')
-    
+
     global __cublasSrotm_v2_64
     __cublasSrotm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSrotm_v2_64')
     if __cublasSrotm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSrotm_v2_64 = dlsym(handle, 'cublasSrotm_v2_64')
-    
+
     global __cublasDrotm_v2_64
     __cublasDrotm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDrotm_v2_64')
     if __cublasDrotm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDrotm_v2_64 = dlsym(handle, 'cublasDrotm_v2_64')
-    
+
     global __cublasRotmEx_64
     __cublasRotmEx_64 = dlsym(RTLD_DEFAULT, 'cublasRotmEx_64')
     if __cublasRotmEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasRotmEx_64 = dlsym(handle, 'cublasRotmEx_64')
-    
+
     global __cublasSgemv_v2_64
     __cublasSgemv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSgemv_v2_64')
     if __cublasSgemv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemv_v2_64 = dlsym(handle, 'cublasSgemv_v2_64')
-    
+
     global __cublasDgemv_v2_64
     __cublasDgemv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDgemv_v2_64')
     if __cublasDgemv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemv_v2_64 = dlsym(handle, 'cublasDgemv_v2_64')
-    
+
     global __cublasCgemv_v2_64
     __cublasCgemv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCgemv_v2_64')
     if __cublasCgemv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemv_v2_64 = dlsym(handle, 'cublasCgemv_v2_64')
-    
+
     global __cublasZgemv_v2_64
     __cublasZgemv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZgemv_v2_64')
     if __cublasZgemv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemv_v2_64 = dlsym(handle, 'cublasZgemv_v2_64')
-    
+
     global __cublasSgbmv_v2_64
     __cublasSgbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSgbmv_v2_64')
     if __cublasSgbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgbmv_v2_64 = dlsym(handle, 'cublasSgbmv_v2_64')
-    
+
     global __cublasDgbmv_v2_64
     __cublasDgbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDgbmv_v2_64')
     if __cublasDgbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgbmv_v2_64 = dlsym(handle, 'cublasDgbmv_v2_64')
-    
+
     global __cublasCgbmv_v2_64
     __cublasCgbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCgbmv_v2_64')
     if __cublasCgbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgbmv_v2_64 = dlsym(handle, 'cublasCgbmv_v2_64')
-    
+
     global __cublasZgbmv_v2_64
     __cublasZgbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZgbmv_v2_64')
     if __cublasZgbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgbmv_v2_64 = dlsym(handle, 'cublasZgbmv_v2_64')
-    
+
     global __cublasStrmv_v2_64
     __cublasStrmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStrmv_v2_64')
     if __cublasStrmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrmv_v2_64 = dlsym(handle, 'cublasStrmv_v2_64')
-    
+
     global __cublasDtrmv_v2_64
     __cublasDtrmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtrmv_v2_64')
     if __cublasDtrmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrmv_v2_64 = dlsym(handle, 'cublasDtrmv_v2_64')
-    
+
     global __cublasCtrmv_v2_64
     __cublasCtrmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtrmv_v2_64')
     if __cublasCtrmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrmv_v2_64 = dlsym(handle, 'cublasCtrmv_v2_64')
-    
+
     global __cublasZtrmv_v2_64
     __cublasZtrmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtrmv_v2_64')
     if __cublasZtrmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrmv_v2_64 = dlsym(handle, 'cublasZtrmv_v2_64')
-    
+
     global __cublasStbmv_v2_64
     __cublasStbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStbmv_v2_64')
     if __cublasStbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStbmv_v2_64 = dlsym(handle, 'cublasStbmv_v2_64')
-    
+
     global __cublasDtbmv_v2_64
     __cublasDtbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtbmv_v2_64')
     if __cublasDtbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtbmv_v2_64 = dlsym(handle, 'cublasDtbmv_v2_64')
-    
+
     global __cublasCtbmv_v2_64
     __cublasCtbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtbmv_v2_64')
     if __cublasCtbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtbmv_v2_64 = dlsym(handle, 'cublasCtbmv_v2_64')
-    
+
     global __cublasZtbmv_v2_64
     __cublasZtbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtbmv_v2_64')
     if __cublasZtbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtbmv_v2_64 = dlsym(handle, 'cublasZtbmv_v2_64')
-    
+
     global __cublasStpmv_v2_64
     __cublasStpmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStpmv_v2_64')
     if __cublasStpmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStpmv_v2_64 = dlsym(handle, 'cublasStpmv_v2_64')
-    
+
     global __cublasDtpmv_v2_64
     __cublasDtpmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtpmv_v2_64')
     if __cublasDtpmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtpmv_v2_64 = dlsym(handle, 'cublasDtpmv_v2_64')
-    
+
     global __cublasCtpmv_v2_64
     __cublasCtpmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtpmv_v2_64')
     if __cublasCtpmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtpmv_v2_64 = dlsym(handle, 'cublasCtpmv_v2_64')
-    
+
     global __cublasZtpmv_v2_64
     __cublasZtpmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtpmv_v2_64')
     if __cublasZtpmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtpmv_v2_64 = dlsym(handle, 'cublasZtpmv_v2_64')
-    
+
     global __cublasStrsv_v2_64
     __cublasStrsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStrsv_v2_64')
     if __cublasStrsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrsv_v2_64 = dlsym(handle, 'cublasStrsv_v2_64')
-    
+
     global __cublasDtrsv_v2_64
     __cublasDtrsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtrsv_v2_64')
     if __cublasDtrsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrsv_v2_64 = dlsym(handle, 'cublasDtrsv_v2_64')
-    
+
     global __cublasCtrsv_v2_64
     __cublasCtrsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtrsv_v2_64')
     if __cublasCtrsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrsv_v2_64 = dlsym(handle, 'cublasCtrsv_v2_64')
-    
+
     global __cublasZtrsv_v2_64
     __cublasZtrsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtrsv_v2_64')
     if __cublasZtrsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrsv_v2_64 = dlsym(handle, 'cublasZtrsv_v2_64')
-    
+
     global __cublasStpsv_v2_64
     __cublasStpsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStpsv_v2_64')
     if __cublasStpsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStpsv_v2_64 = dlsym(handle, 'cublasStpsv_v2_64')
-    
+
     global __cublasDtpsv_v2_64
     __cublasDtpsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtpsv_v2_64')
     if __cublasDtpsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtpsv_v2_64 = dlsym(handle, 'cublasDtpsv_v2_64')
-    
+
     global __cublasCtpsv_v2_64
     __cublasCtpsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtpsv_v2_64')
     if __cublasCtpsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtpsv_v2_64 = dlsym(handle, 'cublasCtpsv_v2_64')
-    
+
     global __cublasZtpsv_v2_64
     __cublasZtpsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtpsv_v2_64')
     if __cublasZtpsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtpsv_v2_64 = dlsym(handle, 'cublasZtpsv_v2_64')
-    
+
     global __cublasStbsv_v2_64
     __cublasStbsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStbsv_v2_64')
     if __cublasStbsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStbsv_v2_64 = dlsym(handle, 'cublasStbsv_v2_64')
-    
+
     global __cublasDtbsv_v2_64
     __cublasDtbsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtbsv_v2_64')
     if __cublasDtbsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtbsv_v2_64 = dlsym(handle, 'cublasDtbsv_v2_64')
-    
+
     global __cublasCtbsv_v2_64
     __cublasCtbsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtbsv_v2_64')
     if __cublasCtbsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtbsv_v2_64 = dlsym(handle, 'cublasCtbsv_v2_64')
-    
+
     global __cublasZtbsv_v2_64
     __cublasZtbsv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtbsv_v2_64')
     if __cublasZtbsv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtbsv_v2_64 = dlsym(handle, 'cublasZtbsv_v2_64')
-    
+
     global __cublasSsymv_v2_64
     __cublasSsymv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSsymv_v2_64')
     if __cublasSsymv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsymv_v2_64 = dlsym(handle, 'cublasSsymv_v2_64')
-    
+
     global __cublasDsymv_v2_64
     __cublasDsymv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDsymv_v2_64')
     if __cublasDsymv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsymv_v2_64 = dlsym(handle, 'cublasDsymv_v2_64')
-    
+
     global __cublasCsymv_v2_64
     __cublasCsymv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsymv_v2_64')
     if __cublasCsymv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsymv_v2_64 = dlsym(handle, 'cublasCsymv_v2_64')
-    
+
     global __cublasZsymv_v2_64
     __cublasZsymv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZsymv_v2_64')
     if __cublasZsymv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsymv_v2_64 = dlsym(handle, 'cublasZsymv_v2_64')
-    
+
     global __cublasChemv_v2_64
     __cublasChemv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasChemv_v2_64')
     if __cublasChemv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChemv_v2_64 = dlsym(handle, 'cublasChemv_v2_64')
-    
+
     global __cublasZhemv_v2_64
     __cublasZhemv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZhemv_v2_64')
     if __cublasZhemv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhemv_v2_64 = dlsym(handle, 'cublasZhemv_v2_64')
-    
+
     global __cublasSsbmv_v2_64
     __cublasSsbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSsbmv_v2_64')
     if __cublasSsbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsbmv_v2_64 = dlsym(handle, 'cublasSsbmv_v2_64')
-    
+
     global __cublasDsbmv_v2_64
     __cublasDsbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDsbmv_v2_64')
     if __cublasDsbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsbmv_v2_64 = dlsym(handle, 'cublasDsbmv_v2_64')
-    
+
     global __cublasChbmv_v2_64
     __cublasChbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasChbmv_v2_64')
     if __cublasChbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChbmv_v2_64 = dlsym(handle, 'cublasChbmv_v2_64')
-    
+
     global __cublasZhbmv_v2_64
     __cublasZhbmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZhbmv_v2_64')
     if __cublasZhbmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhbmv_v2_64 = dlsym(handle, 'cublasZhbmv_v2_64')
-    
+
     global __cublasSspmv_v2_64
     __cublasSspmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSspmv_v2_64')
     if __cublasSspmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSspmv_v2_64 = dlsym(handle, 'cublasSspmv_v2_64')
-    
+
     global __cublasDspmv_v2_64
     __cublasDspmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDspmv_v2_64')
     if __cublasDspmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDspmv_v2_64 = dlsym(handle, 'cublasDspmv_v2_64')
-    
+
     global __cublasChpmv_v2_64
     __cublasChpmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasChpmv_v2_64')
     if __cublasChpmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChpmv_v2_64 = dlsym(handle, 'cublasChpmv_v2_64')
-    
+
     global __cublasZhpmv_v2_64
     __cublasZhpmv_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZhpmv_v2_64')
     if __cublasZhpmv_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhpmv_v2_64 = dlsym(handle, 'cublasZhpmv_v2_64')
-    
+
     global __cublasSger_v2_64
     __cublasSger_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSger_v2_64')
     if __cublasSger_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSger_v2_64 = dlsym(handle, 'cublasSger_v2_64')
-    
+
     global __cublasDger_v2_64
     __cublasDger_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDger_v2_64')
     if __cublasDger_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDger_v2_64 = dlsym(handle, 'cublasDger_v2_64')
-    
+
     global __cublasCgeru_v2_64
     __cublasCgeru_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCgeru_v2_64')
     if __cublasCgeru_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgeru_v2_64 = dlsym(handle, 'cublasCgeru_v2_64')
-    
+
     global __cublasCgerc_v2_64
     __cublasCgerc_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCgerc_v2_64')
     if __cublasCgerc_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgerc_v2_64 = dlsym(handle, 'cublasCgerc_v2_64')
-    
+
     global __cublasZgeru_v2_64
     __cublasZgeru_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZgeru_v2_64')
     if __cublasZgeru_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgeru_v2_64 = dlsym(handle, 'cublasZgeru_v2_64')
-    
+
     global __cublasZgerc_v2_64
     __cublasZgerc_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZgerc_v2_64')
     if __cublasZgerc_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgerc_v2_64 = dlsym(handle, 'cublasZgerc_v2_64')
-    
+
     global __cublasSsyr_v2_64
     __cublasSsyr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSsyr_v2_64')
     if __cublasSsyr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyr_v2_64 = dlsym(handle, 'cublasSsyr_v2_64')
-    
+
     global __cublasDsyr_v2_64
     __cublasDsyr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDsyr_v2_64')
     if __cublasDsyr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyr_v2_64 = dlsym(handle, 'cublasDsyr_v2_64')
-    
+
     global __cublasCsyr_v2_64
     __cublasCsyr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsyr_v2_64')
     if __cublasCsyr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyr_v2_64 = dlsym(handle, 'cublasCsyr_v2_64')
-    
+
     global __cublasZsyr_v2_64
     __cublasZsyr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZsyr_v2_64')
     if __cublasZsyr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyr_v2_64 = dlsym(handle, 'cublasZsyr_v2_64')
-    
+
     global __cublasCher_v2_64
     __cublasCher_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCher_v2_64')
     if __cublasCher_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCher_v2_64 = dlsym(handle, 'cublasCher_v2_64')
-    
+
     global __cublasZher_v2_64
     __cublasZher_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZher_v2_64')
     if __cublasZher_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZher_v2_64 = dlsym(handle, 'cublasZher_v2_64')
-    
+
     global __cublasSspr_v2_64
     __cublasSspr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSspr_v2_64')
     if __cublasSspr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSspr_v2_64 = dlsym(handle, 'cublasSspr_v2_64')
-    
+
     global __cublasDspr_v2_64
     __cublasDspr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDspr_v2_64')
     if __cublasDspr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDspr_v2_64 = dlsym(handle, 'cublasDspr_v2_64')
-    
+
     global __cublasChpr_v2_64
     __cublasChpr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasChpr_v2_64')
     if __cublasChpr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChpr_v2_64 = dlsym(handle, 'cublasChpr_v2_64')
-    
+
     global __cublasZhpr_v2_64
     __cublasZhpr_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZhpr_v2_64')
     if __cublasZhpr_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhpr_v2_64 = dlsym(handle, 'cublasZhpr_v2_64')
-    
+
     global __cublasSsyr2_v2_64
     __cublasSsyr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSsyr2_v2_64')
     if __cublasSsyr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyr2_v2_64 = dlsym(handle, 'cublasSsyr2_v2_64')
-    
+
     global __cublasDsyr2_v2_64
     __cublasDsyr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDsyr2_v2_64')
     if __cublasDsyr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyr2_v2_64 = dlsym(handle, 'cublasDsyr2_v2_64')
-    
+
     global __cublasCsyr2_v2_64
     __cublasCsyr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsyr2_v2_64')
     if __cublasCsyr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyr2_v2_64 = dlsym(handle, 'cublasCsyr2_v2_64')
-    
+
     global __cublasZsyr2_v2_64
     __cublasZsyr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZsyr2_v2_64')
     if __cublasZsyr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyr2_v2_64 = dlsym(handle, 'cublasZsyr2_v2_64')
-    
+
     global __cublasCher2_v2_64
     __cublasCher2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCher2_v2_64')
     if __cublasCher2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCher2_v2_64 = dlsym(handle, 'cublasCher2_v2_64')
-    
+
     global __cublasZher2_v2_64
     __cublasZher2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZher2_v2_64')
     if __cublasZher2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZher2_v2_64 = dlsym(handle, 'cublasZher2_v2_64')
-    
+
     global __cublasSspr2_v2_64
     __cublasSspr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSspr2_v2_64')
     if __cublasSspr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSspr2_v2_64 = dlsym(handle, 'cublasSspr2_v2_64')
-    
+
     global __cublasDspr2_v2_64
     __cublasDspr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDspr2_v2_64')
     if __cublasDspr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDspr2_v2_64 = dlsym(handle, 'cublasDspr2_v2_64')
-    
+
     global __cublasChpr2_v2_64
     __cublasChpr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasChpr2_v2_64')
     if __cublasChpr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChpr2_v2_64 = dlsym(handle, 'cublasChpr2_v2_64')
-    
+
     global __cublasZhpr2_v2_64
     __cublasZhpr2_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZhpr2_v2_64')
     if __cublasZhpr2_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhpr2_v2_64 = dlsym(handle, 'cublasZhpr2_v2_64')
-    
+
     global __cublasSgemvBatched_64
     __cublasSgemvBatched_64 = dlsym(RTLD_DEFAULT, 'cublasSgemvBatched_64')
     if __cublasSgemvBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemvBatched_64 = dlsym(handle, 'cublasSgemvBatched_64')
-    
+
     global __cublasDgemvBatched_64
     __cublasDgemvBatched_64 = dlsym(RTLD_DEFAULT, 'cublasDgemvBatched_64')
     if __cublasDgemvBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemvBatched_64 = dlsym(handle, 'cublasDgemvBatched_64')
-    
+
     global __cublasCgemvBatched_64
     __cublasCgemvBatched_64 = dlsym(RTLD_DEFAULT, 'cublasCgemvBatched_64')
     if __cublasCgemvBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemvBatched_64 = dlsym(handle, 'cublasCgemvBatched_64')
-    
+
     global __cublasZgemvBatched_64
     __cublasZgemvBatched_64 = dlsym(RTLD_DEFAULT, 'cublasZgemvBatched_64')
     if __cublasZgemvBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemvBatched_64 = dlsym(handle, 'cublasZgemvBatched_64')
-    
+
     global __cublasSgemvStridedBatched_64
     __cublasSgemvStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasSgemvStridedBatched_64')
     if __cublasSgemvStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemvStridedBatched_64 = dlsym(handle, 'cublasSgemvStridedBatched_64')
-    
+
     global __cublasDgemvStridedBatched_64
     __cublasDgemvStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasDgemvStridedBatched_64')
     if __cublasDgemvStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemvStridedBatched_64 = dlsym(handle, 'cublasDgemvStridedBatched_64')
-    
+
     global __cublasCgemvStridedBatched_64
     __cublasCgemvStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasCgemvStridedBatched_64')
     if __cublasCgemvStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemvStridedBatched_64 = dlsym(handle, 'cublasCgemvStridedBatched_64')
-    
+
     global __cublasZgemvStridedBatched_64
     __cublasZgemvStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasZgemvStridedBatched_64')
     if __cublasZgemvStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemvStridedBatched_64 = dlsym(handle, 'cublasZgemvStridedBatched_64')
-    
+
     global __cublasSgemm_v2_64
     __cublasSgemm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSgemm_v2_64')
     if __cublasSgemm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemm_v2_64 = dlsym(handle, 'cublasSgemm_v2_64')
-    
+
     global __cublasDgemm_v2_64
     __cublasDgemm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDgemm_v2_64')
     if __cublasDgemm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemm_v2_64 = dlsym(handle, 'cublasDgemm_v2_64')
-    
+
     global __cublasCgemm_v2_64
     __cublasCgemm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCgemm_v2_64')
     if __cublasCgemm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm_v2_64 = dlsym(handle, 'cublasCgemm_v2_64')
-    
+
     global __cublasCgemm3m_64
     __cublasCgemm3m_64 = dlsym(RTLD_DEFAULT, 'cublasCgemm3m_64')
     if __cublasCgemm3m_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3m_64 = dlsym(handle, 'cublasCgemm3m_64')
-    
+
     global __cublasCgemm3mEx_64
     __cublasCgemm3mEx_64 = dlsym(RTLD_DEFAULT, 'cublasCgemm3mEx_64')
     if __cublasCgemm3mEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3mEx_64 = dlsym(handle, 'cublasCgemm3mEx_64')
-    
+
     global __cublasZgemm_v2_64
     __cublasZgemm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZgemm_v2_64')
     if __cublasZgemm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemm_v2_64 = dlsym(handle, 'cublasZgemm_v2_64')
-    
+
     global __cublasZgemm3m_64
     __cublasZgemm3m_64 = dlsym(RTLD_DEFAULT, 'cublasZgemm3m_64')
     if __cublasZgemm3m_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemm3m_64 = dlsym(handle, 'cublasZgemm3m_64')
-    
+
     global __cublasSgemmEx_64
     __cublasSgemmEx_64 = dlsym(RTLD_DEFAULT, 'cublasSgemmEx_64')
     if __cublasSgemmEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemmEx_64 = dlsym(handle, 'cublasSgemmEx_64')
-    
+
     global __cublasGemmEx_64
     __cublasGemmEx_64 = dlsym(RTLD_DEFAULT, 'cublasGemmEx_64')
     if __cublasGemmEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGemmEx_64 = dlsym(handle, 'cublasGemmEx_64')
-    
+
     global __cublasCgemmEx_64
     __cublasCgemmEx_64 = dlsym(RTLD_DEFAULT, 'cublasCgemmEx_64')
     if __cublasCgemmEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemmEx_64 = dlsym(handle, 'cublasCgemmEx_64')
-    
+
     global __cublasSsyrk_v2_64
     __cublasSsyrk_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSsyrk_v2_64')
     if __cublasSsyrk_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyrk_v2_64 = dlsym(handle, 'cublasSsyrk_v2_64')
-    
+
     global __cublasDsyrk_v2_64
     __cublasDsyrk_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDsyrk_v2_64')
     if __cublasDsyrk_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyrk_v2_64 = dlsym(handle, 'cublasDsyrk_v2_64')
-    
+
     global __cublasCsyrk_v2_64
     __cublasCsyrk_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsyrk_v2_64')
     if __cublasCsyrk_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrk_v2_64 = dlsym(handle, 'cublasCsyrk_v2_64')
-    
+
     global __cublasZsyrk_v2_64
     __cublasZsyrk_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZsyrk_v2_64')
     if __cublasZsyrk_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyrk_v2_64 = dlsym(handle, 'cublasZsyrk_v2_64')
-    
+
     global __cublasCsyrkEx_64
     __cublasCsyrkEx_64 = dlsym(RTLD_DEFAULT, 'cublasCsyrkEx_64')
     if __cublasCsyrkEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrkEx_64 = dlsym(handle, 'cublasCsyrkEx_64')
-    
+
     global __cublasCsyrk3mEx_64
     __cublasCsyrk3mEx_64 = dlsym(RTLD_DEFAULT, 'cublasCsyrk3mEx_64')
     if __cublasCsyrk3mEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrk3mEx_64 = dlsym(handle, 'cublasCsyrk3mEx_64')
-    
+
     global __cublasCherk_v2_64
     __cublasCherk_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCherk_v2_64')
     if __cublasCherk_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherk_v2_64 = dlsym(handle, 'cublasCherk_v2_64')
-    
+
     global __cublasZherk_v2_64
     __cublasZherk_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZherk_v2_64')
     if __cublasZherk_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZherk_v2_64 = dlsym(handle, 'cublasZherk_v2_64')
-    
+
     global __cublasCherkEx_64
     __cublasCherkEx_64 = dlsym(RTLD_DEFAULT, 'cublasCherkEx_64')
     if __cublasCherkEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherkEx_64 = dlsym(handle, 'cublasCherkEx_64')
-    
+
     global __cublasCherk3mEx_64
     __cublasCherk3mEx_64 = dlsym(RTLD_DEFAULT, 'cublasCherk3mEx_64')
     if __cublasCherk3mEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherk3mEx_64 = dlsym(handle, 'cublasCherk3mEx_64')
-    
+
     global __cublasSsyr2k_v2_64
     __cublasSsyr2k_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSsyr2k_v2_64')
     if __cublasSsyr2k_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyr2k_v2_64 = dlsym(handle, 'cublasSsyr2k_v2_64')
-    
+
     global __cublasDsyr2k_v2_64
     __cublasDsyr2k_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDsyr2k_v2_64')
     if __cublasDsyr2k_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyr2k_v2_64 = dlsym(handle, 'cublasDsyr2k_v2_64')
-    
+
     global __cublasCsyr2k_v2_64
     __cublasCsyr2k_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsyr2k_v2_64')
     if __cublasCsyr2k_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyr2k_v2_64 = dlsym(handle, 'cublasCsyr2k_v2_64')
-    
+
     global __cublasZsyr2k_v2_64
     __cublasZsyr2k_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZsyr2k_v2_64')
     if __cublasZsyr2k_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyr2k_v2_64 = dlsym(handle, 'cublasZsyr2k_v2_64')
-    
+
     global __cublasCher2k_v2_64
     __cublasCher2k_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCher2k_v2_64')
     if __cublasCher2k_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCher2k_v2_64 = dlsym(handle, 'cublasCher2k_v2_64')
-    
+
     global __cublasZher2k_v2_64
     __cublasZher2k_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZher2k_v2_64')
     if __cublasZher2k_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZher2k_v2_64 = dlsym(handle, 'cublasZher2k_v2_64')
-    
+
     global __cublasSsyrkx_64
     __cublasSsyrkx_64 = dlsym(RTLD_DEFAULT, 'cublasSsyrkx_64')
     if __cublasSsyrkx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsyrkx_64 = dlsym(handle, 'cublasSsyrkx_64')
-    
+
     global __cublasDsyrkx_64
     __cublasDsyrkx_64 = dlsym(RTLD_DEFAULT, 'cublasDsyrkx_64')
     if __cublasDsyrkx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsyrkx_64 = dlsym(handle, 'cublasDsyrkx_64')
-    
+
     global __cublasCsyrkx_64
     __cublasCsyrkx_64 = dlsym(RTLD_DEFAULT, 'cublasCsyrkx_64')
     if __cublasCsyrkx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsyrkx_64 = dlsym(handle, 'cublasCsyrkx_64')
-    
+
     global __cublasZsyrkx_64
     __cublasZsyrkx_64 = dlsym(RTLD_DEFAULT, 'cublasZsyrkx_64')
     if __cublasZsyrkx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsyrkx_64 = dlsym(handle, 'cublasZsyrkx_64')
-    
+
     global __cublasCherkx_64
     __cublasCherkx_64 = dlsym(RTLD_DEFAULT, 'cublasCherkx_64')
     if __cublasCherkx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCherkx_64 = dlsym(handle, 'cublasCherkx_64')
-    
+
     global __cublasZherkx_64
     __cublasZherkx_64 = dlsym(RTLD_DEFAULT, 'cublasZherkx_64')
     if __cublasZherkx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZherkx_64 = dlsym(handle, 'cublasZherkx_64')
-    
+
     global __cublasSsymm_v2_64
     __cublasSsymm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasSsymm_v2_64')
     if __cublasSsymm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSsymm_v2_64 = dlsym(handle, 'cublasSsymm_v2_64')
-    
+
     global __cublasDsymm_v2_64
     __cublasDsymm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDsymm_v2_64')
     if __cublasDsymm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDsymm_v2_64 = dlsym(handle, 'cublasDsymm_v2_64')
-    
+
     global __cublasCsymm_v2_64
     __cublasCsymm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCsymm_v2_64')
     if __cublasCsymm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCsymm_v2_64 = dlsym(handle, 'cublasCsymm_v2_64')
-    
+
     global __cublasZsymm_v2_64
     __cublasZsymm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZsymm_v2_64')
     if __cublasZsymm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZsymm_v2_64 = dlsym(handle, 'cublasZsymm_v2_64')
-    
+
     global __cublasChemm_v2_64
     __cublasChemm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasChemm_v2_64')
     if __cublasChemm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasChemm_v2_64 = dlsym(handle, 'cublasChemm_v2_64')
-    
+
     global __cublasZhemm_v2_64
     __cublasZhemm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZhemm_v2_64')
     if __cublasZhemm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZhemm_v2_64 = dlsym(handle, 'cublasZhemm_v2_64')
-    
+
     global __cublasStrsm_v2_64
     __cublasStrsm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStrsm_v2_64')
     if __cublasStrsm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrsm_v2_64 = dlsym(handle, 'cublasStrsm_v2_64')
-    
+
     global __cublasDtrsm_v2_64
     __cublasDtrsm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtrsm_v2_64')
     if __cublasDtrsm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrsm_v2_64 = dlsym(handle, 'cublasDtrsm_v2_64')
-    
+
     global __cublasCtrsm_v2_64
     __cublasCtrsm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtrsm_v2_64')
     if __cublasCtrsm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrsm_v2_64 = dlsym(handle, 'cublasCtrsm_v2_64')
-    
+
     global __cublasZtrsm_v2_64
     __cublasZtrsm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtrsm_v2_64')
     if __cublasZtrsm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrsm_v2_64 = dlsym(handle, 'cublasZtrsm_v2_64')
-    
+
     global __cublasStrmm_v2_64
     __cublasStrmm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasStrmm_v2_64')
     if __cublasStrmm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrmm_v2_64 = dlsym(handle, 'cublasStrmm_v2_64')
-    
+
     global __cublasDtrmm_v2_64
     __cublasDtrmm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasDtrmm_v2_64')
     if __cublasDtrmm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrmm_v2_64 = dlsym(handle, 'cublasDtrmm_v2_64')
-    
+
     global __cublasCtrmm_v2_64
     __cublasCtrmm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasCtrmm_v2_64')
     if __cublasCtrmm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrmm_v2_64 = dlsym(handle, 'cublasCtrmm_v2_64')
-    
+
     global __cublasZtrmm_v2_64
     __cublasZtrmm_v2_64 = dlsym(RTLD_DEFAULT, 'cublasZtrmm_v2_64')
     if __cublasZtrmm_v2_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrmm_v2_64 = dlsym(handle, 'cublasZtrmm_v2_64')
-    
+
     global __cublasSgemmBatched_64
     __cublasSgemmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasSgemmBatched_64')
     if __cublasSgemmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemmBatched_64 = dlsym(handle, 'cublasSgemmBatched_64')
-    
+
     global __cublasDgemmBatched_64
     __cublasDgemmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasDgemmBatched_64')
     if __cublasDgemmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemmBatched_64 = dlsym(handle, 'cublasDgemmBatched_64')
-    
+
     global __cublasCgemmBatched_64
     __cublasCgemmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasCgemmBatched_64')
     if __cublasCgemmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemmBatched_64 = dlsym(handle, 'cublasCgemmBatched_64')
-    
+
     global __cublasCgemm3mBatched_64
     __cublasCgemm3mBatched_64 = dlsym(RTLD_DEFAULT, 'cublasCgemm3mBatched_64')
     if __cublasCgemm3mBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3mBatched_64 = dlsym(handle, 'cublasCgemm3mBatched_64')
-    
+
     global __cublasZgemmBatched_64
     __cublasZgemmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasZgemmBatched_64')
     if __cublasZgemmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemmBatched_64 = dlsym(handle, 'cublasZgemmBatched_64')
-    
+
     global __cublasSgemmStridedBatched_64
     __cublasSgemmStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasSgemmStridedBatched_64')
     if __cublasSgemmStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgemmStridedBatched_64 = dlsym(handle, 'cublasSgemmStridedBatched_64')
-    
+
     global __cublasDgemmStridedBatched_64
     __cublasDgemmStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasDgemmStridedBatched_64')
     if __cublasDgemmStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgemmStridedBatched_64 = dlsym(handle, 'cublasDgemmStridedBatched_64')
-    
+
     global __cublasCgemmStridedBatched_64
     __cublasCgemmStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasCgemmStridedBatched_64')
     if __cublasCgemmStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemmStridedBatched_64 = dlsym(handle, 'cublasCgemmStridedBatched_64')
-    
+
     global __cublasCgemm3mStridedBatched_64
     __cublasCgemm3mStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasCgemm3mStridedBatched_64')
     if __cublasCgemm3mStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgemm3mStridedBatched_64 = dlsym(handle, 'cublasCgemm3mStridedBatched_64')
-    
+
     global __cublasZgemmStridedBatched_64
     __cublasZgemmStridedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasZgemmStridedBatched_64')
     if __cublasZgemmStridedBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgemmStridedBatched_64 = dlsym(handle, 'cublasZgemmStridedBatched_64')
-    
+
     global __cublasGemmBatchedEx_64
     __cublasGemmBatchedEx_64 = dlsym(RTLD_DEFAULT, 'cublasGemmBatchedEx_64')
     if __cublasGemmBatchedEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGemmBatchedEx_64 = dlsym(handle, 'cublasGemmBatchedEx_64')
-    
+
     global __cublasGemmStridedBatchedEx_64
     __cublasGemmStridedBatchedEx_64 = dlsym(RTLD_DEFAULT, 'cublasGemmStridedBatchedEx_64')
     if __cublasGemmStridedBatchedEx_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasGemmStridedBatchedEx_64 = dlsym(handle, 'cublasGemmStridedBatchedEx_64')
-    
+
     global __cublasSgeam_64
     __cublasSgeam_64 = dlsym(RTLD_DEFAULT, 'cublasSgeam_64')
     if __cublasSgeam_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSgeam_64 = dlsym(handle, 'cublasSgeam_64')
-    
+
     global __cublasDgeam_64
     __cublasDgeam_64 = dlsym(RTLD_DEFAULT, 'cublasDgeam_64')
     if __cublasDgeam_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDgeam_64 = dlsym(handle, 'cublasDgeam_64')
-    
+
     global __cublasCgeam_64
     __cublasCgeam_64 = dlsym(RTLD_DEFAULT, 'cublasCgeam_64')
     if __cublasCgeam_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCgeam_64 = dlsym(handle, 'cublasCgeam_64')
-    
+
     global __cublasZgeam_64
     __cublasZgeam_64 = dlsym(RTLD_DEFAULT, 'cublasZgeam_64')
     if __cublasZgeam_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZgeam_64 = dlsym(handle, 'cublasZgeam_64')
-    
+
     global __cublasStrsmBatched_64
     __cublasStrsmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasStrsmBatched_64')
     if __cublasStrsmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasStrsmBatched_64 = dlsym(handle, 'cublasStrsmBatched_64')
-    
+
     global __cublasDtrsmBatched_64
     __cublasDtrsmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasDtrsmBatched_64')
     if __cublasDtrsmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDtrsmBatched_64 = dlsym(handle, 'cublasDtrsmBatched_64')
-    
+
     global __cublasCtrsmBatched_64
     __cublasCtrsmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasCtrsmBatched_64')
     if __cublasCtrsmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCtrsmBatched_64 = dlsym(handle, 'cublasCtrsmBatched_64')
-    
+
     global __cublasZtrsmBatched_64
     __cublasZtrsmBatched_64 = dlsym(RTLD_DEFAULT, 'cublasZtrsmBatched_64')
     if __cublasZtrsmBatched_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasZtrsmBatched_64 = dlsym(handle, 'cublasZtrsmBatched_64')
-    
+
     global __cublasSdgmm_64
     __cublasSdgmm_64 = dlsym(RTLD_DEFAULT, 'cublasSdgmm_64')
     if __cublasSdgmm_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasSdgmm_64 = dlsym(handle, 'cublasSdgmm_64')
-    
+
     global __cublasDdgmm_64
     __cublasDdgmm_64 = dlsym(RTLD_DEFAULT, 'cublasDdgmm_64')
     if __cublasDdgmm_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasDdgmm_64 = dlsym(handle, 'cublasDdgmm_64')
-    
+
     global __cublasCdgmm_64
     __cublasCdgmm_64 = dlsym(RTLD_DEFAULT, 'cublasCdgmm_64')
     if __cublasCdgmm_64 == NULL:
         if handle == NULL:
             handle = load_library(driver_ver)
         __cublasCdgmm_64 = dlsym(handle, 'cublasCdgmm_64')
-    
+
     global __cublasZdgmm_64
     __cublasZdgmm_64 = dlsym(RTLD_DEFAULT, 'cublasZdgmm_64')
     if __cublasZdgmm_64 == NULL:
@@ -4080,1495 +4080,1495 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasCreate_v2
     data["__cublasCreate_v2"] = <intptr_t>__cublasCreate_v2
-    
+
     global __cublasDestroy_v2
     data["__cublasDestroy_v2"] = <intptr_t>__cublasDestroy_v2
-    
+
     global __cublasGetVersion_v2
     data["__cublasGetVersion_v2"] = <intptr_t>__cublasGetVersion_v2
-    
+
     global __cublasGetProperty
     data["__cublasGetProperty"] = <intptr_t>__cublasGetProperty
-    
+
     global __cublasGetCudartVersion
     data["__cublasGetCudartVersion"] = <intptr_t>__cublasGetCudartVersion
-    
+
     global __cublasSetWorkspace_v2
     data["__cublasSetWorkspace_v2"] = <intptr_t>__cublasSetWorkspace_v2
-    
+
     global __cublasSetStream_v2
     data["__cublasSetStream_v2"] = <intptr_t>__cublasSetStream_v2
-    
+
     global __cublasGetStream_v2
     data["__cublasGetStream_v2"] = <intptr_t>__cublasGetStream_v2
-    
+
     global __cublasGetPointerMode_v2
     data["__cublasGetPointerMode_v2"] = <intptr_t>__cublasGetPointerMode_v2
-    
+
     global __cublasSetPointerMode_v2
     data["__cublasSetPointerMode_v2"] = <intptr_t>__cublasSetPointerMode_v2
-    
+
     global __cublasGetAtomicsMode
     data["__cublasGetAtomicsMode"] = <intptr_t>__cublasGetAtomicsMode
-    
+
     global __cublasSetAtomicsMode
     data["__cublasSetAtomicsMode"] = <intptr_t>__cublasSetAtomicsMode
-    
+
     global __cublasGetMathMode
     data["__cublasGetMathMode"] = <intptr_t>__cublasGetMathMode
-    
+
     global __cublasSetMathMode
     data["__cublasSetMathMode"] = <intptr_t>__cublasSetMathMode
-    
+
     global __cublasLoggerConfigure
     data["__cublasLoggerConfigure"] = <intptr_t>__cublasLoggerConfigure
-    
+
     global __cublasSetLoggerCallback
     data["__cublasSetLoggerCallback"] = <intptr_t>__cublasSetLoggerCallback
-    
+
     global __cublasGetLoggerCallback
     data["__cublasGetLoggerCallback"] = <intptr_t>__cublasGetLoggerCallback
-    
+
     global __cublasSetVector
     data["__cublasSetVector"] = <intptr_t>__cublasSetVector
-    
+
     global __cublasGetVector
     data["__cublasGetVector"] = <intptr_t>__cublasGetVector
-    
+
     global __cublasSetMatrix
     data["__cublasSetMatrix"] = <intptr_t>__cublasSetMatrix
-    
+
     global __cublasGetMatrix
     data["__cublasGetMatrix"] = <intptr_t>__cublasGetMatrix
-    
+
     global __cublasSetVectorAsync
     data["__cublasSetVectorAsync"] = <intptr_t>__cublasSetVectorAsync
-    
+
     global __cublasGetVectorAsync
     data["__cublasGetVectorAsync"] = <intptr_t>__cublasGetVectorAsync
-    
+
     global __cublasSetMatrixAsync
     data["__cublasSetMatrixAsync"] = <intptr_t>__cublasSetMatrixAsync
-    
+
     global __cublasGetMatrixAsync
     data["__cublasGetMatrixAsync"] = <intptr_t>__cublasGetMatrixAsync
-    
+
     global __cublasNrm2Ex
     data["__cublasNrm2Ex"] = <intptr_t>__cublasNrm2Ex
-    
+
     global __cublasSnrm2_v2
     data["__cublasSnrm2_v2"] = <intptr_t>__cublasSnrm2_v2
-    
+
     global __cublasDnrm2_v2
     data["__cublasDnrm2_v2"] = <intptr_t>__cublasDnrm2_v2
-    
+
     global __cublasScnrm2_v2
     data["__cublasScnrm2_v2"] = <intptr_t>__cublasScnrm2_v2
-    
+
     global __cublasDznrm2_v2
     data["__cublasDznrm2_v2"] = <intptr_t>__cublasDznrm2_v2
-    
+
     global __cublasDotEx
     data["__cublasDotEx"] = <intptr_t>__cublasDotEx
-    
+
     global __cublasDotcEx
     data["__cublasDotcEx"] = <intptr_t>__cublasDotcEx
-    
+
     global __cublasSdot_v2
     data["__cublasSdot_v2"] = <intptr_t>__cublasSdot_v2
-    
+
     global __cublasDdot_v2
     data["__cublasDdot_v2"] = <intptr_t>__cublasDdot_v2
-    
+
     global __cublasCdotu_v2
     data["__cublasCdotu_v2"] = <intptr_t>__cublasCdotu_v2
-    
+
     global __cublasCdotc_v2
     data["__cublasCdotc_v2"] = <intptr_t>__cublasCdotc_v2
-    
+
     global __cublasZdotu_v2
     data["__cublasZdotu_v2"] = <intptr_t>__cublasZdotu_v2
-    
+
     global __cublasZdotc_v2
     data["__cublasZdotc_v2"] = <intptr_t>__cublasZdotc_v2
-    
+
     global __cublasScalEx
     data["__cublasScalEx"] = <intptr_t>__cublasScalEx
-    
+
     global __cublasSscal_v2
     data["__cublasSscal_v2"] = <intptr_t>__cublasSscal_v2
-    
+
     global __cublasDscal_v2
     data["__cublasDscal_v2"] = <intptr_t>__cublasDscal_v2
-    
+
     global __cublasCscal_v2
     data["__cublasCscal_v2"] = <intptr_t>__cublasCscal_v2
-    
+
     global __cublasCsscal_v2
     data["__cublasCsscal_v2"] = <intptr_t>__cublasCsscal_v2
-    
+
     global __cublasZscal_v2
     data["__cublasZscal_v2"] = <intptr_t>__cublasZscal_v2
-    
+
     global __cublasZdscal_v2
     data["__cublasZdscal_v2"] = <intptr_t>__cublasZdscal_v2
-    
+
     global __cublasAxpyEx
     data["__cublasAxpyEx"] = <intptr_t>__cublasAxpyEx
-    
+
     global __cublasSaxpy_v2
     data["__cublasSaxpy_v2"] = <intptr_t>__cublasSaxpy_v2
-    
+
     global __cublasDaxpy_v2
     data["__cublasDaxpy_v2"] = <intptr_t>__cublasDaxpy_v2
-    
+
     global __cublasCaxpy_v2
     data["__cublasCaxpy_v2"] = <intptr_t>__cublasCaxpy_v2
-    
+
     global __cublasZaxpy_v2
     data["__cublasZaxpy_v2"] = <intptr_t>__cublasZaxpy_v2
-    
+
     global __cublasCopyEx
     data["__cublasCopyEx"] = <intptr_t>__cublasCopyEx
-    
+
     global __cublasScopy_v2
     data["__cublasScopy_v2"] = <intptr_t>__cublasScopy_v2
-    
+
     global __cublasDcopy_v2
     data["__cublasDcopy_v2"] = <intptr_t>__cublasDcopy_v2
-    
+
     global __cublasCcopy_v2
     data["__cublasCcopy_v2"] = <intptr_t>__cublasCcopy_v2
-    
+
     global __cublasZcopy_v2
     data["__cublasZcopy_v2"] = <intptr_t>__cublasZcopy_v2
-    
+
     global __cublasSswap_v2
     data["__cublasSswap_v2"] = <intptr_t>__cublasSswap_v2
-    
+
     global __cublasDswap_v2
     data["__cublasDswap_v2"] = <intptr_t>__cublasDswap_v2
-    
+
     global __cublasCswap_v2
     data["__cublasCswap_v2"] = <intptr_t>__cublasCswap_v2
-    
+
     global __cublasZswap_v2
     data["__cublasZswap_v2"] = <intptr_t>__cublasZswap_v2
-    
+
     global __cublasSwapEx
     data["__cublasSwapEx"] = <intptr_t>__cublasSwapEx
-    
+
     global __cublasIsamax_v2
     data["__cublasIsamax_v2"] = <intptr_t>__cublasIsamax_v2
-    
+
     global __cublasIdamax_v2
     data["__cublasIdamax_v2"] = <intptr_t>__cublasIdamax_v2
-    
+
     global __cublasIcamax_v2
     data["__cublasIcamax_v2"] = <intptr_t>__cublasIcamax_v2
-    
+
     global __cublasIzamax_v2
     data["__cublasIzamax_v2"] = <intptr_t>__cublasIzamax_v2
-    
+
     global __cublasIamaxEx
     data["__cublasIamaxEx"] = <intptr_t>__cublasIamaxEx
-    
+
     global __cublasIsamin_v2
     data["__cublasIsamin_v2"] = <intptr_t>__cublasIsamin_v2
-    
+
     global __cublasIdamin_v2
     data["__cublasIdamin_v2"] = <intptr_t>__cublasIdamin_v2
-    
+
     global __cublasIcamin_v2
     data["__cublasIcamin_v2"] = <intptr_t>__cublasIcamin_v2
-    
+
     global __cublasIzamin_v2
     data["__cublasIzamin_v2"] = <intptr_t>__cublasIzamin_v2
-    
+
     global __cublasIaminEx
     data["__cublasIaminEx"] = <intptr_t>__cublasIaminEx
-    
+
     global __cublasAsumEx
     data["__cublasAsumEx"] = <intptr_t>__cublasAsumEx
-    
+
     global __cublasSasum_v2
     data["__cublasSasum_v2"] = <intptr_t>__cublasSasum_v2
-    
+
     global __cublasDasum_v2
     data["__cublasDasum_v2"] = <intptr_t>__cublasDasum_v2
-    
+
     global __cublasScasum_v2
     data["__cublasScasum_v2"] = <intptr_t>__cublasScasum_v2
-    
+
     global __cublasDzasum_v2
     data["__cublasDzasum_v2"] = <intptr_t>__cublasDzasum_v2
-    
+
     global __cublasSrot_v2
     data["__cublasSrot_v2"] = <intptr_t>__cublasSrot_v2
-    
+
     global __cublasDrot_v2
     data["__cublasDrot_v2"] = <intptr_t>__cublasDrot_v2
-    
+
     global __cublasCrot_v2
     data["__cublasCrot_v2"] = <intptr_t>__cublasCrot_v2
-    
+
     global __cublasCsrot_v2
     data["__cublasCsrot_v2"] = <intptr_t>__cublasCsrot_v2
-    
+
     global __cublasZrot_v2
     data["__cublasZrot_v2"] = <intptr_t>__cublasZrot_v2
-    
+
     global __cublasZdrot_v2
     data["__cublasZdrot_v2"] = <intptr_t>__cublasZdrot_v2
-    
+
     global __cublasRotEx
     data["__cublasRotEx"] = <intptr_t>__cublasRotEx
-    
+
     global __cublasSrotg_v2
     data["__cublasSrotg_v2"] = <intptr_t>__cublasSrotg_v2
-    
+
     global __cublasDrotg_v2
     data["__cublasDrotg_v2"] = <intptr_t>__cublasDrotg_v2
-    
+
     global __cublasCrotg_v2
     data["__cublasCrotg_v2"] = <intptr_t>__cublasCrotg_v2
-    
+
     global __cublasZrotg_v2
     data["__cublasZrotg_v2"] = <intptr_t>__cublasZrotg_v2
-    
+
     global __cublasRotgEx
     data["__cublasRotgEx"] = <intptr_t>__cublasRotgEx
-    
+
     global __cublasSrotm_v2
     data["__cublasSrotm_v2"] = <intptr_t>__cublasSrotm_v2
-    
+
     global __cublasDrotm_v2
     data["__cublasDrotm_v2"] = <intptr_t>__cublasDrotm_v2
-    
+
     global __cublasRotmEx
     data["__cublasRotmEx"] = <intptr_t>__cublasRotmEx
-    
+
     global __cublasSrotmg_v2
     data["__cublasSrotmg_v2"] = <intptr_t>__cublasSrotmg_v2
-    
+
     global __cublasDrotmg_v2
     data["__cublasDrotmg_v2"] = <intptr_t>__cublasDrotmg_v2
-    
+
     global __cublasRotmgEx
     data["__cublasRotmgEx"] = <intptr_t>__cublasRotmgEx
-    
+
     global __cublasSgemv_v2
     data["__cublasSgemv_v2"] = <intptr_t>__cublasSgemv_v2
-    
+
     global __cublasDgemv_v2
     data["__cublasDgemv_v2"] = <intptr_t>__cublasDgemv_v2
-    
+
     global __cublasCgemv_v2
     data["__cublasCgemv_v2"] = <intptr_t>__cublasCgemv_v2
-    
+
     global __cublasZgemv_v2
     data["__cublasZgemv_v2"] = <intptr_t>__cublasZgemv_v2
-    
+
     global __cublasSgbmv_v2
     data["__cublasSgbmv_v2"] = <intptr_t>__cublasSgbmv_v2
-    
+
     global __cublasDgbmv_v2
     data["__cublasDgbmv_v2"] = <intptr_t>__cublasDgbmv_v2
-    
+
     global __cublasCgbmv_v2
     data["__cublasCgbmv_v2"] = <intptr_t>__cublasCgbmv_v2
-    
+
     global __cublasZgbmv_v2
     data["__cublasZgbmv_v2"] = <intptr_t>__cublasZgbmv_v2
-    
+
     global __cublasStrmv_v2
     data["__cublasStrmv_v2"] = <intptr_t>__cublasStrmv_v2
-    
+
     global __cublasDtrmv_v2
     data["__cublasDtrmv_v2"] = <intptr_t>__cublasDtrmv_v2
-    
+
     global __cublasCtrmv_v2
     data["__cublasCtrmv_v2"] = <intptr_t>__cublasCtrmv_v2
-    
+
     global __cublasZtrmv_v2
     data["__cublasZtrmv_v2"] = <intptr_t>__cublasZtrmv_v2
-    
+
     global __cublasStbmv_v2
     data["__cublasStbmv_v2"] = <intptr_t>__cublasStbmv_v2
-    
+
     global __cublasDtbmv_v2
     data["__cublasDtbmv_v2"] = <intptr_t>__cublasDtbmv_v2
-    
+
     global __cublasCtbmv_v2
     data["__cublasCtbmv_v2"] = <intptr_t>__cublasCtbmv_v2
-    
+
     global __cublasZtbmv_v2
     data["__cublasZtbmv_v2"] = <intptr_t>__cublasZtbmv_v2
-    
+
     global __cublasStpmv_v2
     data["__cublasStpmv_v2"] = <intptr_t>__cublasStpmv_v2
-    
+
     global __cublasDtpmv_v2
     data["__cublasDtpmv_v2"] = <intptr_t>__cublasDtpmv_v2
-    
+
     global __cublasCtpmv_v2
     data["__cublasCtpmv_v2"] = <intptr_t>__cublasCtpmv_v2
-    
+
     global __cublasZtpmv_v2
     data["__cublasZtpmv_v2"] = <intptr_t>__cublasZtpmv_v2
-    
+
     global __cublasStrsv_v2
     data["__cublasStrsv_v2"] = <intptr_t>__cublasStrsv_v2
-    
+
     global __cublasDtrsv_v2
     data["__cublasDtrsv_v2"] = <intptr_t>__cublasDtrsv_v2
-    
+
     global __cublasCtrsv_v2
     data["__cublasCtrsv_v2"] = <intptr_t>__cublasCtrsv_v2
-    
+
     global __cublasZtrsv_v2
     data["__cublasZtrsv_v2"] = <intptr_t>__cublasZtrsv_v2
-    
+
     global __cublasStpsv_v2
     data["__cublasStpsv_v2"] = <intptr_t>__cublasStpsv_v2
-    
+
     global __cublasDtpsv_v2
     data["__cublasDtpsv_v2"] = <intptr_t>__cublasDtpsv_v2
-    
+
     global __cublasCtpsv_v2
     data["__cublasCtpsv_v2"] = <intptr_t>__cublasCtpsv_v2
-    
+
     global __cublasZtpsv_v2
     data["__cublasZtpsv_v2"] = <intptr_t>__cublasZtpsv_v2
-    
+
     global __cublasStbsv_v2
     data["__cublasStbsv_v2"] = <intptr_t>__cublasStbsv_v2
-    
+
     global __cublasDtbsv_v2
     data["__cublasDtbsv_v2"] = <intptr_t>__cublasDtbsv_v2
-    
+
     global __cublasCtbsv_v2
     data["__cublasCtbsv_v2"] = <intptr_t>__cublasCtbsv_v2
-    
+
     global __cublasZtbsv_v2
     data["__cublasZtbsv_v2"] = <intptr_t>__cublasZtbsv_v2
-    
+
     global __cublasSsymv_v2
     data["__cublasSsymv_v2"] = <intptr_t>__cublasSsymv_v2
-    
+
     global __cublasDsymv_v2
     data["__cublasDsymv_v2"] = <intptr_t>__cublasDsymv_v2
-    
+
     global __cublasCsymv_v2
     data["__cublasCsymv_v2"] = <intptr_t>__cublasCsymv_v2
-    
+
     global __cublasZsymv_v2
     data["__cublasZsymv_v2"] = <intptr_t>__cublasZsymv_v2
-    
+
     global __cublasChemv_v2
     data["__cublasChemv_v2"] = <intptr_t>__cublasChemv_v2
-    
+
     global __cublasZhemv_v2
     data["__cublasZhemv_v2"] = <intptr_t>__cublasZhemv_v2
-    
+
     global __cublasSsbmv_v2
     data["__cublasSsbmv_v2"] = <intptr_t>__cublasSsbmv_v2
-    
+
     global __cublasDsbmv_v2
     data["__cublasDsbmv_v2"] = <intptr_t>__cublasDsbmv_v2
-    
+
     global __cublasChbmv_v2
     data["__cublasChbmv_v2"] = <intptr_t>__cublasChbmv_v2
-    
+
     global __cublasZhbmv_v2
     data["__cublasZhbmv_v2"] = <intptr_t>__cublasZhbmv_v2
-    
+
     global __cublasSspmv_v2
     data["__cublasSspmv_v2"] = <intptr_t>__cublasSspmv_v2
-    
+
     global __cublasDspmv_v2
     data["__cublasDspmv_v2"] = <intptr_t>__cublasDspmv_v2
-    
+
     global __cublasChpmv_v2
     data["__cublasChpmv_v2"] = <intptr_t>__cublasChpmv_v2
-    
+
     global __cublasZhpmv_v2
     data["__cublasZhpmv_v2"] = <intptr_t>__cublasZhpmv_v2
-    
+
     global __cublasSger_v2
     data["__cublasSger_v2"] = <intptr_t>__cublasSger_v2
-    
+
     global __cublasDger_v2
     data["__cublasDger_v2"] = <intptr_t>__cublasDger_v2
-    
+
     global __cublasCgeru_v2
     data["__cublasCgeru_v2"] = <intptr_t>__cublasCgeru_v2
-    
+
     global __cublasCgerc_v2
     data["__cublasCgerc_v2"] = <intptr_t>__cublasCgerc_v2
-    
+
     global __cublasZgeru_v2
     data["__cublasZgeru_v2"] = <intptr_t>__cublasZgeru_v2
-    
+
     global __cublasZgerc_v2
     data["__cublasZgerc_v2"] = <intptr_t>__cublasZgerc_v2
-    
+
     global __cublasSsyr_v2
     data["__cublasSsyr_v2"] = <intptr_t>__cublasSsyr_v2
-    
+
     global __cublasDsyr_v2
     data["__cublasDsyr_v2"] = <intptr_t>__cublasDsyr_v2
-    
+
     global __cublasCsyr_v2
     data["__cublasCsyr_v2"] = <intptr_t>__cublasCsyr_v2
-    
+
     global __cublasZsyr_v2
     data["__cublasZsyr_v2"] = <intptr_t>__cublasZsyr_v2
-    
+
     global __cublasCher_v2
     data["__cublasCher_v2"] = <intptr_t>__cublasCher_v2
-    
+
     global __cublasZher_v2
     data["__cublasZher_v2"] = <intptr_t>__cublasZher_v2
-    
+
     global __cublasSspr_v2
     data["__cublasSspr_v2"] = <intptr_t>__cublasSspr_v2
-    
+
     global __cublasDspr_v2
     data["__cublasDspr_v2"] = <intptr_t>__cublasDspr_v2
-    
+
     global __cublasChpr_v2
     data["__cublasChpr_v2"] = <intptr_t>__cublasChpr_v2
-    
+
     global __cublasZhpr_v2
     data["__cublasZhpr_v2"] = <intptr_t>__cublasZhpr_v2
-    
+
     global __cublasSsyr2_v2
     data["__cublasSsyr2_v2"] = <intptr_t>__cublasSsyr2_v2
-    
+
     global __cublasDsyr2_v2
     data["__cublasDsyr2_v2"] = <intptr_t>__cublasDsyr2_v2
-    
+
     global __cublasCsyr2_v2
     data["__cublasCsyr2_v2"] = <intptr_t>__cublasCsyr2_v2
-    
+
     global __cublasZsyr2_v2
     data["__cublasZsyr2_v2"] = <intptr_t>__cublasZsyr2_v2
-    
+
     global __cublasCher2_v2
     data["__cublasCher2_v2"] = <intptr_t>__cublasCher2_v2
-    
+
     global __cublasZher2_v2
     data["__cublasZher2_v2"] = <intptr_t>__cublasZher2_v2
-    
+
     global __cublasSspr2_v2
     data["__cublasSspr2_v2"] = <intptr_t>__cublasSspr2_v2
-    
+
     global __cublasDspr2_v2
     data["__cublasDspr2_v2"] = <intptr_t>__cublasDspr2_v2
-    
+
     global __cublasChpr2_v2
     data["__cublasChpr2_v2"] = <intptr_t>__cublasChpr2_v2
-    
+
     global __cublasZhpr2_v2
     data["__cublasZhpr2_v2"] = <intptr_t>__cublasZhpr2_v2
-    
+
     global __cublasSgemm_v2
     data["__cublasSgemm_v2"] = <intptr_t>__cublasSgemm_v2
-    
+
     global __cublasDgemm_v2
     data["__cublasDgemm_v2"] = <intptr_t>__cublasDgemm_v2
-    
+
     global __cublasCgemm_v2
     data["__cublasCgemm_v2"] = <intptr_t>__cublasCgemm_v2
-    
+
     global __cublasCgemm3m
     data["__cublasCgemm3m"] = <intptr_t>__cublasCgemm3m
-    
+
     global __cublasCgemm3mEx
     data["__cublasCgemm3mEx"] = <intptr_t>__cublasCgemm3mEx
-    
+
     global __cublasZgemm_v2
     data["__cublasZgemm_v2"] = <intptr_t>__cublasZgemm_v2
-    
+
     global __cublasZgemm3m
     data["__cublasZgemm3m"] = <intptr_t>__cublasZgemm3m
-    
+
     global __cublasSgemmEx
     data["__cublasSgemmEx"] = <intptr_t>__cublasSgemmEx
-    
+
     global __cublasGemmEx
     data["__cublasGemmEx"] = <intptr_t>__cublasGemmEx
-    
+
     global __cublasCgemmEx
     data["__cublasCgemmEx"] = <intptr_t>__cublasCgemmEx
-    
+
     global __cublasUint8gemmBias
     data["__cublasUint8gemmBias"] = <intptr_t>__cublasUint8gemmBias
-    
+
     global __cublasSsyrk_v2
     data["__cublasSsyrk_v2"] = <intptr_t>__cublasSsyrk_v2
-    
+
     global __cublasDsyrk_v2
     data["__cublasDsyrk_v2"] = <intptr_t>__cublasDsyrk_v2
-    
+
     global __cublasCsyrk_v2
     data["__cublasCsyrk_v2"] = <intptr_t>__cublasCsyrk_v2
-    
+
     global __cublasZsyrk_v2
     data["__cublasZsyrk_v2"] = <intptr_t>__cublasZsyrk_v2
-    
+
     global __cublasCsyrkEx
     data["__cublasCsyrkEx"] = <intptr_t>__cublasCsyrkEx
-    
+
     global __cublasCsyrk3mEx
     data["__cublasCsyrk3mEx"] = <intptr_t>__cublasCsyrk3mEx
-    
+
     global __cublasCherk_v2
     data["__cublasCherk_v2"] = <intptr_t>__cublasCherk_v2
-    
+
     global __cublasZherk_v2
     data["__cublasZherk_v2"] = <intptr_t>__cublasZherk_v2
-    
+
     global __cublasCherkEx
     data["__cublasCherkEx"] = <intptr_t>__cublasCherkEx
-    
+
     global __cublasCherk3mEx
     data["__cublasCherk3mEx"] = <intptr_t>__cublasCherk3mEx
-    
+
     global __cublasSsyr2k_v2
     data["__cublasSsyr2k_v2"] = <intptr_t>__cublasSsyr2k_v2
-    
+
     global __cublasDsyr2k_v2
     data["__cublasDsyr2k_v2"] = <intptr_t>__cublasDsyr2k_v2
-    
+
     global __cublasCsyr2k_v2
     data["__cublasCsyr2k_v2"] = <intptr_t>__cublasCsyr2k_v2
-    
+
     global __cublasZsyr2k_v2
     data["__cublasZsyr2k_v2"] = <intptr_t>__cublasZsyr2k_v2
-    
+
     global __cublasCher2k_v2
     data["__cublasCher2k_v2"] = <intptr_t>__cublasCher2k_v2
-    
+
     global __cublasZher2k_v2
     data["__cublasZher2k_v2"] = <intptr_t>__cublasZher2k_v2
-    
+
     global __cublasSsyrkx
     data["__cublasSsyrkx"] = <intptr_t>__cublasSsyrkx
-    
+
     global __cublasDsyrkx
     data["__cublasDsyrkx"] = <intptr_t>__cublasDsyrkx
-    
+
     global __cublasCsyrkx
     data["__cublasCsyrkx"] = <intptr_t>__cublasCsyrkx
-    
+
     global __cublasZsyrkx
     data["__cublasZsyrkx"] = <intptr_t>__cublasZsyrkx
-    
+
     global __cublasCherkx
     data["__cublasCherkx"] = <intptr_t>__cublasCherkx
-    
+
     global __cublasZherkx
     data["__cublasZherkx"] = <intptr_t>__cublasZherkx
-    
+
     global __cublasSsymm_v2
     data["__cublasSsymm_v2"] = <intptr_t>__cublasSsymm_v2
-    
+
     global __cublasDsymm_v2
     data["__cublasDsymm_v2"] = <intptr_t>__cublasDsymm_v2
-    
+
     global __cublasCsymm_v2
     data["__cublasCsymm_v2"] = <intptr_t>__cublasCsymm_v2
-    
+
     global __cublasZsymm_v2
     data["__cublasZsymm_v2"] = <intptr_t>__cublasZsymm_v2
-    
+
     global __cublasChemm_v2
     data["__cublasChemm_v2"] = <intptr_t>__cublasChemm_v2
-    
+
     global __cublasZhemm_v2
     data["__cublasZhemm_v2"] = <intptr_t>__cublasZhemm_v2
-    
+
     global __cublasStrsm_v2
     data["__cublasStrsm_v2"] = <intptr_t>__cublasStrsm_v2
-    
+
     global __cublasDtrsm_v2
     data["__cublasDtrsm_v2"] = <intptr_t>__cublasDtrsm_v2
-    
+
     global __cublasCtrsm_v2
     data["__cublasCtrsm_v2"] = <intptr_t>__cublasCtrsm_v2
-    
+
     global __cublasZtrsm_v2
     data["__cublasZtrsm_v2"] = <intptr_t>__cublasZtrsm_v2
-    
+
     global __cublasStrmm_v2
     data["__cublasStrmm_v2"] = <intptr_t>__cublasStrmm_v2
-    
+
     global __cublasDtrmm_v2
     data["__cublasDtrmm_v2"] = <intptr_t>__cublasDtrmm_v2
-    
+
     global __cublasCtrmm_v2
     data["__cublasCtrmm_v2"] = <intptr_t>__cublasCtrmm_v2
-    
+
     global __cublasZtrmm_v2
     data["__cublasZtrmm_v2"] = <intptr_t>__cublasZtrmm_v2
-    
+
     global __cublasSgemmBatched
     data["__cublasSgemmBatched"] = <intptr_t>__cublasSgemmBatched
-    
+
     global __cublasDgemmBatched
     data["__cublasDgemmBatched"] = <intptr_t>__cublasDgemmBatched
-    
+
     global __cublasCgemmBatched
     data["__cublasCgemmBatched"] = <intptr_t>__cublasCgemmBatched
-    
+
     global __cublasCgemm3mBatched
     data["__cublasCgemm3mBatched"] = <intptr_t>__cublasCgemm3mBatched
-    
+
     global __cublasZgemmBatched
     data["__cublasZgemmBatched"] = <intptr_t>__cublasZgemmBatched
-    
+
     global __cublasGemmBatchedEx
     data["__cublasGemmBatchedEx"] = <intptr_t>__cublasGemmBatchedEx
-    
+
     global __cublasGemmStridedBatchedEx
     data["__cublasGemmStridedBatchedEx"] = <intptr_t>__cublasGemmStridedBatchedEx
-    
+
     global __cublasSgemmStridedBatched
     data["__cublasSgemmStridedBatched"] = <intptr_t>__cublasSgemmStridedBatched
-    
+
     global __cublasDgemmStridedBatched
     data["__cublasDgemmStridedBatched"] = <intptr_t>__cublasDgemmStridedBatched
-    
+
     global __cublasCgemmStridedBatched
     data["__cublasCgemmStridedBatched"] = <intptr_t>__cublasCgemmStridedBatched
-    
+
     global __cublasCgemm3mStridedBatched
     data["__cublasCgemm3mStridedBatched"] = <intptr_t>__cublasCgemm3mStridedBatched
-    
+
     global __cublasZgemmStridedBatched
     data["__cublasZgemmStridedBatched"] = <intptr_t>__cublasZgemmStridedBatched
-    
+
     global __cublasSgeam
     data["__cublasSgeam"] = <intptr_t>__cublasSgeam
-    
+
     global __cublasDgeam
     data["__cublasDgeam"] = <intptr_t>__cublasDgeam
-    
+
     global __cublasCgeam
     data["__cublasCgeam"] = <intptr_t>__cublasCgeam
-    
+
     global __cublasZgeam
     data["__cublasZgeam"] = <intptr_t>__cublasZgeam
-    
+
     global __cublasSgetrfBatched
     data["__cublasSgetrfBatched"] = <intptr_t>__cublasSgetrfBatched
-    
+
     global __cublasDgetrfBatched
     data["__cublasDgetrfBatched"] = <intptr_t>__cublasDgetrfBatched
-    
+
     global __cublasCgetrfBatched
     data["__cublasCgetrfBatched"] = <intptr_t>__cublasCgetrfBatched
-    
+
     global __cublasZgetrfBatched
     data["__cublasZgetrfBatched"] = <intptr_t>__cublasZgetrfBatched
-    
+
     global __cublasSgetriBatched
     data["__cublasSgetriBatched"] = <intptr_t>__cublasSgetriBatched
-    
+
     global __cublasDgetriBatched
     data["__cublasDgetriBatched"] = <intptr_t>__cublasDgetriBatched
-    
+
     global __cublasCgetriBatched
     data["__cublasCgetriBatched"] = <intptr_t>__cublasCgetriBatched
-    
+
     global __cublasZgetriBatched
     data["__cublasZgetriBatched"] = <intptr_t>__cublasZgetriBatched
-    
+
     global __cublasSgetrsBatched
     data["__cublasSgetrsBatched"] = <intptr_t>__cublasSgetrsBatched
-    
+
     global __cublasDgetrsBatched
     data["__cublasDgetrsBatched"] = <intptr_t>__cublasDgetrsBatched
-    
+
     global __cublasCgetrsBatched
     data["__cublasCgetrsBatched"] = <intptr_t>__cublasCgetrsBatched
-    
+
     global __cublasZgetrsBatched
     data["__cublasZgetrsBatched"] = <intptr_t>__cublasZgetrsBatched
-    
+
     global __cublasStrsmBatched
     data["__cublasStrsmBatched"] = <intptr_t>__cublasStrsmBatched
-    
+
     global __cublasDtrsmBatched
     data["__cublasDtrsmBatched"] = <intptr_t>__cublasDtrsmBatched
-    
+
     global __cublasCtrsmBatched
     data["__cublasCtrsmBatched"] = <intptr_t>__cublasCtrsmBatched
-    
+
     global __cublasZtrsmBatched
     data["__cublasZtrsmBatched"] = <intptr_t>__cublasZtrsmBatched
-    
+
     global __cublasSmatinvBatched
     data["__cublasSmatinvBatched"] = <intptr_t>__cublasSmatinvBatched
-    
+
     global __cublasDmatinvBatched
     data["__cublasDmatinvBatched"] = <intptr_t>__cublasDmatinvBatched
-    
+
     global __cublasCmatinvBatched
     data["__cublasCmatinvBatched"] = <intptr_t>__cublasCmatinvBatched
-    
+
     global __cublasZmatinvBatched
     data["__cublasZmatinvBatched"] = <intptr_t>__cublasZmatinvBatched
-    
+
     global __cublasSgeqrfBatched
     data["__cublasSgeqrfBatched"] = <intptr_t>__cublasSgeqrfBatched
-    
+
     global __cublasDgeqrfBatched
     data["__cublasDgeqrfBatched"] = <intptr_t>__cublasDgeqrfBatched
-    
+
     global __cublasCgeqrfBatched
     data["__cublasCgeqrfBatched"] = <intptr_t>__cublasCgeqrfBatched
-    
+
     global __cublasZgeqrfBatched
     data["__cublasZgeqrfBatched"] = <intptr_t>__cublasZgeqrfBatched
-    
+
     global __cublasSgelsBatched
     data["__cublasSgelsBatched"] = <intptr_t>__cublasSgelsBatched
-    
+
     global __cublasDgelsBatched
     data["__cublasDgelsBatched"] = <intptr_t>__cublasDgelsBatched
-    
+
     global __cublasCgelsBatched
     data["__cublasCgelsBatched"] = <intptr_t>__cublasCgelsBatched
-    
+
     global __cublasZgelsBatched
     data["__cublasZgelsBatched"] = <intptr_t>__cublasZgelsBatched
-    
+
     global __cublasSdgmm
     data["__cublasSdgmm"] = <intptr_t>__cublasSdgmm
-    
+
     global __cublasDdgmm
     data["__cublasDdgmm"] = <intptr_t>__cublasDdgmm
-    
+
     global __cublasCdgmm
     data["__cublasCdgmm"] = <intptr_t>__cublasCdgmm
-    
+
     global __cublasZdgmm
     data["__cublasZdgmm"] = <intptr_t>__cublasZdgmm
-    
+
     global __cublasStpttr
     data["__cublasStpttr"] = <intptr_t>__cublasStpttr
-    
+
     global __cublasDtpttr
     data["__cublasDtpttr"] = <intptr_t>__cublasDtpttr
-    
+
     global __cublasCtpttr
     data["__cublasCtpttr"] = <intptr_t>__cublasCtpttr
-    
+
     global __cublasZtpttr
     data["__cublasZtpttr"] = <intptr_t>__cublasZtpttr
-    
+
     global __cublasStrttp
     data["__cublasStrttp"] = <intptr_t>__cublasStrttp
-    
+
     global __cublasDtrttp
     data["__cublasDtrttp"] = <intptr_t>__cublasDtrttp
-    
+
     global __cublasCtrttp
     data["__cublasCtrttp"] = <intptr_t>__cublasCtrttp
-    
+
     global __cublasZtrttp
     data["__cublasZtrttp"] = <intptr_t>__cublasZtrttp
-    
+
     global __cublasGetSmCountTarget
     data["__cublasGetSmCountTarget"] = <intptr_t>__cublasGetSmCountTarget
-    
+
     global __cublasSetSmCountTarget
     data["__cublasSetSmCountTarget"] = <intptr_t>__cublasSetSmCountTarget
-    
+
     global __cublasGetStatusName
     data["__cublasGetStatusName"] = <intptr_t>__cublasGetStatusName
-    
+
     global __cublasGetStatusString
     data["__cublasGetStatusString"] = <intptr_t>__cublasGetStatusString
-    
+
     global __cublasSgemvBatched
     data["__cublasSgemvBatched"] = <intptr_t>__cublasSgemvBatched
-    
+
     global __cublasDgemvBatched
     data["__cublasDgemvBatched"] = <intptr_t>__cublasDgemvBatched
-    
+
     global __cublasCgemvBatched
     data["__cublasCgemvBatched"] = <intptr_t>__cublasCgemvBatched
-    
+
     global __cublasZgemvBatched
     data["__cublasZgemvBatched"] = <intptr_t>__cublasZgemvBatched
-    
+
     global __cublasSgemvStridedBatched
     data["__cublasSgemvStridedBatched"] = <intptr_t>__cublasSgemvStridedBatched
-    
+
     global __cublasDgemvStridedBatched
     data["__cublasDgemvStridedBatched"] = <intptr_t>__cublasDgemvStridedBatched
-    
+
     global __cublasCgemvStridedBatched
     data["__cublasCgemvStridedBatched"] = <intptr_t>__cublasCgemvStridedBatched
-    
+
     global __cublasZgemvStridedBatched
     data["__cublasZgemvStridedBatched"] = <intptr_t>__cublasZgemvStridedBatched
-    
+
     global __cublasSetVector_64
     data["__cublasSetVector_64"] = <intptr_t>__cublasSetVector_64
-    
+
     global __cublasGetVector_64
     data["__cublasGetVector_64"] = <intptr_t>__cublasGetVector_64
-    
+
     global __cublasSetMatrix_64
     data["__cublasSetMatrix_64"] = <intptr_t>__cublasSetMatrix_64
-    
+
     global __cublasGetMatrix_64
     data["__cublasGetMatrix_64"] = <intptr_t>__cublasGetMatrix_64
-    
+
     global __cublasSetVectorAsync_64
     data["__cublasSetVectorAsync_64"] = <intptr_t>__cublasSetVectorAsync_64
-    
+
     global __cublasGetVectorAsync_64
     data["__cublasGetVectorAsync_64"] = <intptr_t>__cublasGetVectorAsync_64
-    
+
     global __cublasSetMatrixAsync_64
     data["__cublasSetMatrixAsync_64"] = <intptr_t>__cublasSetMatrixAsync_64
-    
+
     global __cublasGetMatrixAsync_64
     data["__cublasGetMatrixAsync_64"] = <intptr_t>__cublasGetMatrixAsync_64
-    
+
     global __cublasNrm2Ex_64
     data["__cublasNrm2Ex_64"] = <intptr_t>__cublasNrm2Ex_64
-    
+
     global __cublasSnrm2_v2_64
     data["__cublasSnrm2_v2_64"] = <intptr_t>__cublasSnrm2_v2_64
-    
+
     global __cublasDnrm2_v2_64
     data["__cublasDnrm2_v2_64"] = <intptr_t>__cublasDnrm2_v2_64
-    
+
     global __cublasScnrm2_v2_64
     data["__cublasScnrm2_v2_64"] = <intptr_t>__cublasScnrm2_v2_64
-    
+
     global __cublasDznrm2_v2_64
     data["__cublasDznrm2_v2_64"] = <intptr_t>__cublasDznrm2_v2_64
-    
+
     global __cublasDotEx_64
     data["__cublasDotEx_64"] = <intptr_t>__cublasDotEx_64
-    
+
     global __cublasDotcEx_64
     data["__cublasDotcEx_64"] = <intptr_t>__cublasDotcEx_64
-    
+
     global __cublasSdot_v2_64
     data["__cublasSdot_v2_64"] = <intptr_t>__cublasSdot_v2_64
-    
+
     global __cublasDdot_v2_64
     data["__cublasDdot_v2_64"] = <intptr_t>__cublasDdot_v2_64
-    
+
     global __cublasCdotu_v2_64
     data["__cublasCdotu_v2_64"] = <intptr_t>__cublasCdotu_v2_64
-    
+
     global __cublasCdotc_v2_64
     data["__cublasCdotc_v2_64"] = <intptr_t>__cublasCdotc_v2_64
-    
+
     global __cublasZdotu_v2_64
     data["__cublasZdotu_v2_64"] = <intptr_t>__cublasZdotu_v2_64
-    
+
     global __cublasZdotc_v2_64
     data["__cublasZdotc_v2_64"] = <intptr_t>__cublasZdotc_v2_64
-    
+
     global __cublasScalEx_64
     data["__cublasScalEx_64"] = <intptr_t>__cublasScalEx_64
-    
+
     global __cublasSscal_v2_64
     data["__cublasSscal_v2_64"] = <intptr_t>__cublasSscal_v2_64
-    
+
     global __cublasDscal_v2_64
     data["__cublasDscal_v2_64"] = <intptr_t>__cublasDscal_v2_64
-    
+
     global __cublasCscal_v2_64
     data["__cublasCscal_v2_64"] = <intptr_t>__cublasCscal_v2_64
-    
+
     global __cublasCsscal_v2_64
     data["__cublasCsscal_v2_64"] = <intptr_t>__cublasCsscal_v2_64
-    
+
     global __cublasZscal_v2_64
     data["__cublasZscal_v2_64"] = <intptr_t>__cublasZscal_v2_64
-    
+
     global __cublasZdscal_v2_64
     data["__cublasZdscal_v2_64"] = <intptr_t>__cublasZdscal_v2_64
-    
+
     global __cublasAxpyEx_64
     data["__cublasAxpyEx_64"] = <intptr_t>__cublasAxpyEx_64
-    
+
     global __cublasSaxpy_v2_64
     data["__cublasSaxpy_v2_64"] = <intptr_t>__cublasSaxpy_v2_64
-    
+
     global __cublasDaxpy_v2_64
     data["__cublasDaxpy_v2_64"] = <intptr_t>__cublasDaxpy_v2_64
-    
+
     global __cublasCaxpy_v2_64
     data["__cublasCaxpy_v2_64"] = <intptr_t>__cublasCaxpy_v2_64
-    
+
     global __cublasZaxpy_v2_64
     data["__cublasZaxpy_v2_64"] = <intptr_t>__cublasZaxpy_v2_64
-    
+
     global __cublasCopyEx_64
     data["__cublasCopyEx_64"] = <intptr_t>__cublasCopyEx_64
-    
+
     global __cublasScopy_v2_64
     data["__cublasScopy_v2_64"] = <intptr_t>__cublasScopy_v2_64
-    
+
     global __cublasDcopy_v2_64
     data["__cublasDcopy_v2_64"] = <intptr_t>__cublasDcopy_v2_64
-    
+
     global __cublasCcopy_v2_64
     data["__cublasCcopy_v2_64"] = <intptr_t>__cublasCcopy_v2_64
-    
+
     global __cublasZcopy_v2_64
     data["__cublasZcopy_v2_64"] = <intptr_t>__cublasZcopy_v2_64
-    
+
     global __cublasSswap_v2_64
     data["__cublasSswap_v2_64"] = <intptr_t>__cublasSswap_v2_64
-    
+
     global __cublasDswap_v2_64
     data["__cublasDswap_v2_64"] = <intptr_t>__cublasDswap_v2_64
-    
+
     global __cublasCswap_v2_64
     data["__cublasCswap_v2_64"] = <intptr_t>__cublasCswap_v2_64
-    
+
     global __cublasZswap_v2_64
     data["__cublasZswap_v2_64"] = <intptr_t>__cublasZswap_v2_64
-    
+
     global __cublasSwapEx_64
     data["__cublasSwapEx_64"] = <intptr_t>__cublasSwapEx_64
-    
+
     global __cublasIsamax_v2_64
     data["__cublasIsamax_v2_64"] = <intptr_t>__cublasIsamax_v2_64
-    
+
     global __cublasIdamax_v2_64
     data["__cublasIdamax_v2_64"] = <intptr_t>__cublasIdamax_v2_64
-    
+
     global __cublasIcamax_v2_64
     data["__cublasIcamax_v2_64"] = <intptr_t>__cublasIcamax_v2_64
-    
+
     global __cublasIzamax_v2_64
     data["__cublasIzamax_v2_64"] = <intptr_t>__cublasIzamax_v2_64
-    
+
     global __cublasIamaxEx_64
     data["__cublasIamaxEx_64"] = <intptr_t>__cublasIamaxEx_64
-    
+
     global __cublasIsamin_v2_64
     data["__cublasIsamin_v2_64"] = <intptr_t>__cublasIsamin_v2_64
-    
+
     global __cublasIdamin_v2_64
     data["__cublasIdamin_v2_64"] = <intptr_t>__cublasIdamin_v2_64
-    
+
     global __cublasIcamin_v2_64
     data["__cublasIcamin_v2_64"] = <intptr_t>__cublasIcamin_v2_64
-    
+
     global __cublasIzamin_v2_64
     data["__cublasIzamin_v2_64"] = <intptr_t>__cublasIzamin_v2_64
-    
+
     global __cublasIaminEx_64
     data["__cublasIaminEx_64"] = <intptr_t>__cublasIaminEx_64
-    
+
     global __cublasAsumEx_64
     data["__cublasAsumEx_64"] = <intptr_t>__cublasAsumEx_64
-    
+
     global __cublasSasum_v2_64
     data["__cublasSasum_v2_64"] = <intptr_t>__cublasSasum_v2_64
-    
+
     global __cublasDasum_v2_64
     data["__cublasDasum_v2_64"] = <intptr_t>__cublasDasum_v2_64
-    
+
     global __cublasScasum_v2_64
     data["__cublasScasum_v2_64"] = <intptr_t>__cublasScasum_v2_64
-    
+
     global __cublasDzasum_v2_64
     data["__cublasDzasum_v2_64"] = <intptr_t>__cublasDzasum_v2_64
-    
+
     global __cublasSrot_v2_64
     data["__cublasSrot_v2_64"] = <intptr_t>__cublasSrot_v2_64
-    
+
     global __cublasDrot_v2_64
     data["__cublasDrot_v2_64"] = <intptr_t>__cublasDrot_v2_64
-    
+
     global __cublasCrot_v2_64
     data["__cublasCrot_v2_64"] = <intptr_t>__cublasCrot_v2_64
-    
+
     global __cublasCsrot_v2_64
     data["__cublasCsrot_v2_64"] = <intptr_t>__cublasCsrot_v2_64
-    
+
     global __cublasZrot_v2_64
     data["__cublasZrot_v2_64"] = <intptr_t>__cublasZrot_v2_64
-    
+
     global __cublasZdrot_v2_64
     data["__cublasZdrot_v2_64"] = <intptr_t>__cublasZdrot_v2_64
-    
+
     global __cublasRotEx_64
     data["__cublasRotEx_64"] = <intptr_t>__cublasRotEx_64
-    
+
     global __cublasSrotm_v2_64
     data["__cublasSrotm_v2_64"] = <intptr_t>__cublasSrotm_v2_64
-    
+
     global __cublasDrotm_v2_64
     data["__cublasDrotm_v2_64"] = <intptr_t>__cublasDrotm_v2_64
-    
+
     global __cublasRotmEx_64
     data["__cublasRotmEx_64"] = <intptr_t>__cublasRotmEx_64
-    
+
     global __cublasSgemv_v2_64
     data["__cublasSgemv_v2_64"] = <intptr_t>__cublasSgemv_v2_64
-    
+
     global __cublasDgemv_v2_64
     data["__cublasDgemv_v2_64"] = <intptr_t>__cublasDgemv_v2_64
-    
+
     global __cublasCgemv_v2_64
     data["__cublasCgemv_v2_64"] = <intptr_t>__cublasCgemv_v2_64
-    
+
     global __cublasZgemv_v2_64
     data["__cublasZgemv_v2_64"] = <intptr_t>__cublasZgemv_v2_64
-    
+
     global __cublasSgbmv_v2_64
     data["__cublasSgbmv_v2_64"] = <intptr_t>__cublasSgbmv_v2_64
-    
+
     global __cublasDgbmv_v2_64
     data["__cublasDgbmv_v2_64"] = <intptr_t>__cublasDgbmv_v2_64
-    
+
     global __cublasCgbmv_v2_64
     data["__cublasCgbmv_v2_64"] = <intptr_t>__cublasCgbmv_v2_64
-    
+
     global __cublasZgbmv_v2_64
     data["__cublasZgbmv_v2_64"] = <intptr_t>__cublasZgbmv_v2_64
-    
+
     global __cublasStrmv_v2_64
     data["__cublasStrmv_v2_64"] = <intptr_t>__cublasStrmv_v2_64
-    
+
     global __cublasDtrmv_v2_64
     data["__cublasDtrmv_v2_64"] = <intptr_t>__cublasDtrmv_v2_64
-    
+
     global __cublasCtrmv_v2_64
     data["__cublasCtrmv_v2_64"] = <intptr_t>__cublasCtrmv_v2_64
-    
+
     global __cublasZtrmv_v2_64
     data["__cublasZtrmv_v2_64"] = <intptr_t>__cublasZtrmv_v2_64
-    
+
     global __cublasStbmv_v2_64
     data["__cublasStbmv_v2_64"] = <intptr_t>__cublasStbmv_v2_64
-    
+
     global __cublasDtbmv_v2_64
     data["__cublasDtbmv_v2_64"] = <intptr_t>__cublasDtbmv_v2_64
-    
+
     global __cublasCtbmv_v2_64
     data["__cublasCtbmv_v2_64"] = <intptr_t>__cublasCtbmv_v2_64
-    
+
     global __cublasZtbmv_v2_64
     data["__cublasZtbmv_v2_64"] = <intptr_t>__cublasZtbmv_v2_64
-    
+
     global __cublasStpmv_v2_64
     data["__cublasStpmv_v2_64"] = <intptr_t>__cublasStpmv_v2_64
-    
+
     global __cublasDtpmv_v2_64
     data["__cublasDtpmv_v2_64"] = <intptr_t>__cublasDtpmv_v2_64
-    
+
     global __cublasCtpmv_v2_64
     data["__cublasCtpmv_v2_64"] = <intptr_t>__cublasCtpmv_v2_64
-    
+
     global __cublasZtpmv_v2_64
     data["__cublasZtpmv_v2_64"] = <intptr_t>__cublasZtpmv_v2_64
-    
+
     global __cublasStrsv_v2_64
     data["__cublasStrsv_v2_64"] = <intptr_t>__cublasStrsv_v2_64
-    
+
     global __cublasDtrsv_v2_64
     data["__cublasDtrsv_v2_64"] = <intptr_t>__cublasDtrsv_v2_64
-    
+
     global __cublasCtrsv_v2_64
     data["__cublasCtrsv_v2_64"] = <intptr_t>__cublasCtrsv_v2_64
-    
+
     global __cublasZtrsv_v2_64
     data["__cublasZtrsv_v2_64"] = <intptr_t>__cublasZtrsv_v2_64
-    
+
     global __cublasStpsv_v2_64
     data["__cublasStpsv_v2_64"] = <intptr_t>__cublasStpsv_v2_64
-    
+
     global __cublasDtpsv_v2_64
     data["__cublasDtpsv_v2_64"] = <intptr_t>__cublasDtpsv_v2_64
-    
+
     global __cublasCtpsv_v2_64
     data["__cublasCtpsv_v2_64"] = <intptr_t>__cublasCtpsv_v2_64
-    
+
     global __cublasZtpsv_v2_64
     data["__cublasZtpsv_v2_64"] = <intptr_t>__cublasZtpsv_v2_64
-    
+
     global __cublasStbsv_v2_64
     data["__cublasStbsv_v2_64"] = <intptr_t>__cublasStbsv_v2_64
-    
+
     global __cublasDtbsv_v2_64
     data["__cublasDtbsv_v2_64"] = <intptr_t>__cublasDtbsv_v2_64
-    
+
     global __cublasCtbsv_v2_64
     data["__cublasCtbsv_v2_64"] = <intptr_t>__cublasCtbsv_v2_64
-    
+
     global __cublasZtbsv_v2_64
     data["__cublasZtbsv_v2_64"] = <intptr_t>__cublasZtbsv_v2_64
-    
+
     global __cublasSsymv_v2_64
     data["__cublasSsymv_v2_64"] = <intptr_t>__cublasSsymv_v2_64
-    
+
     global __cublasDsymv_v2_64
     data["__cublasDsymv_v2_64"] = <intptr_t>__cublasDsymv_v2_64
-    
+
     global __cublasCsymv_v2_64
     data["__cublasCsymv_v2_64"] = <intptr_t>__cublasCsymv_v2_64
-    
+
     global __cublasZsymv_v2_64
     data["__cublasZsymv_v2_64"] = <intptr_t>__cublasZsymv_v2_64
-    
+
     global __cublasChemv_v2_64
     data["__cublasChemv_v2_64"] = <intptr_t>__cublasChemv_v2_64
-    
+
     global __cublasZhemv_v2_64
     data["__cublasZhemv_v2_64"] = <intptr_t>__cublasZhemv_v2_64
-    
+
     global __cublasSsbmv_v2_64
     data["__cublasSsbmv_v2_64"] = <intptr_t>__cublasSsbmv_v2_64
-    
+
     global __cublasDsbmv_v2_64
     data["__cublasDsbmv_v2_64"] = <intptr_t>__cublasDsbmv_v2_64
-    
+
     global __cublasChbmv_v2_64
     data["__cublasChbmv_v2_64"] = <intptr_t>__cublasChbmv_v2_64
-    
+
     global __cublasZhbmv_v2_64
     data["__cublasZhbmv_v2_64"] = <intptr_t>__cublasZhbmv_v2_64
-    
+
     global __cublasSspmv_v2_64
     data["__cublasSspmv_v2_64"] = <intptr_t>__cublasSspmv_v2_64
-    
+
     global __cublasDspmv_v2_64
     data["__cublasDspmv_v2_64"] = <intptr_t>__cublasDspmv_v2_64
-    
+
     global __cublasChpmv_v2_64
     data["__cublasChpmv_v2_64"] = <intptr_t>__cublasChpmv_v2_64
-    
+
     global __cublasZhpmv_v2_64
     data["__cublasZhpmv_v2_64"] = <intptr_t>__cublasZhpmv_v2_64
-    
+
     global __cublasSger_v2_64
     data["__cublasSger_v2_64"] = <intptr_t>__cublasSger_v2_64
-    
+
     global __cublasDger_v2_64
     data["__cublasDger_v2_64"] = <intptr_t>__cublasDger_v2_64
-    
+
     global __cublasCgeru_v2_64
     data["__cublasCgeru_v2_64"] = <intptr_t>__cublasCgeru_v2_64
-    
+
     global __cublasCgerc_v2_64
     data["__cublasCgerc_v2_64"] = <intptr_t>__cublasCgerc_v2_64
-    
+
     global __cublasZgeru_v2_64
     data["__cublasZgeru_v2_64"] = <intptr_t>__cublasZgeru_v2_64
-    
+
     global __cublasZgerc_v2_64
     data["__cublasZgerc_v2_64"] = <intptr_t>__cublasZgerc_v2_64
-    
+
     global __cublasSsyr_v2_64
     data["__cublasSsyr_v2_64"] = <intptr_t>__cublasSsyr_v2_64
-    
+
     global __cublasDsyr_v2_64
     data["__cublasDsyr_v2_64"] = <intptr_t>__cublasDsyr_v2_64
-    
+
     global __cublasCsyr_v2_64
     data["__cublasCsyr_v2_64"] = <intptr_t>__cublasCsyr_v2_64
-    
+
     global __cublasZsyr_v2_64
     data["__cublasZsyr_v2_64"] = <intptr_t>__cublasZsyr_v2_64
-    
+
     global __cublasCher_v2_64
     data["__cublasCher_v2_64"] = <intptr_t>__cublasCher_v2_64
-    
+
     global __cublasZher_v2_64
     data["__cublasZher_v2_64"] = <intptr_t>__cublasZher_v2_64
-    
+
     global __cublasSspr_v2_64
     data["__cublasSspr_v2_64"] = <intptr_t>__cublasSspr_v2_64
-    
+
     global __cublasDspr_v2_64
     data["__cublasDspr_v2_64"] = <intptr_t>__cublasDspr_v2_64
-    
+
     global __cublasChpr_v2_64
     data["__cublasChpr_v2_64"] = <intptr_t>__cublasChpr_v2_64
-    
+
     global __cublasZhpr_v2_64
     data["__cublasZhpr_v2_64"] = <intptr_t>__cublasZhpr_v2_64
-    
+
     global __cublasSsyr2_v2_64
     data["__cublasSsyr2_v2_64"] = <intptr_t>__cublasSsyr2_v2_64
-    
+
     global __cublasDsyr2_v2_64
     data["__cublasDsyr2_v2_64"] = <intptr_t>__cublasDsyr2_v2_64
-    
+
     global __cublasCsyr2_v2_64
     data["__cublasCsyr2_v2_64"] = <intptr_t>__cublasCsyr2_v2_64
-    
+
     global __cublasZsyr2_v2_64
     data["__cublasZsyr2_v2_64"] = <intptr_t>__cublasZsyr2_v2_64
-    
+
     global __cublasCher2_v2_64
     data["__cublasCher2_v2_64"] = <intptr_t>__cublasCher2_v2_64
-    
+
     global __cublasZher2_v2_64
     data["__cublasZher2_v2_64"] = <intptr_t>__cublasZher2_v2_64
-    
+
     global __cublasSspr2_v2_64
     data["__cublasSspr2_v2_64"] = <intptr_t>__cublasSspr2_v2_64
-    
+
     global __cublasDspr2_v2_64
     data["__cublasDspr2_v2_64"] = <intptr_t>__cublasDspr2_v2_64
-    
+
     global __cublasChpr2_v2_64
     data["__cublasChpr2_v2_64"] = <intptr_t>__cublasChpr2_v2_64
-    
+
     global __cublasZhpr2_v2_64
     data["__cublasZhpr2_v2_64"] = <intptr_t>__cublasZhpr2_v2_64
-    
+
     global __cublasSgemvBatched_64
     data["__cublasSgemvBatched_64"] = <intptr_t>__cublasSgemvBatched_64
-    
+
     global __cublasDgemvBatched_64
     data["__cublasDgemvBatched_64"] = <intptr_t>__cublasDgemvBatched_64
-    
+
     global __cublasCgemvBatched_64
     data["__cublasCgemvBatched_64"] = <intptr_t>__cublasCgemvBatched_64
-    
+
     global __cublasZgemvBatched_64
     data["__cublasZgemvBatched_64"] = <intptr_t>__cublasZgemvBatched_64
-    
+
     global __cublasSgemvStridedBatched_64
     data["__cublasSgemvStridedBatched_64"] = <intptr_t>__cublasSgemvStridedBatched_64
-    
+
     global __cublasDgemvStridedBatched_64
     data["__cublasDgemvStridedBatched_64"] = <intptr_t>__cublasDgemvStridedBatched_64
-    
+
     global __cublasCgemvStridedBatched_64
     data["__cublasCgemvStridedBatched_64"] = <intptr_t>__cublasCgemvStridedBatched_64
-    
+
     global __cublasZgemvStridedBatched_64
     data["__cublasZgemvStridedBatched_64"] = <intptr_t>__cublasZgemvStridedBatched_64
-    
+
     global __cublasSgemm_v2_64
     data["__cublasSgemm_v2_64"] = <intptr_t>__cublasSgemm_v2_64
-    
+
     global __cublasDgemm_v2_64
     data["__cublasDgemm_v2_64"] = <intptr_t>__cublasDgemm_v2_64
-    
+
     global __cublasCgemm_v2_64
     data["__cublasCgemm_v2_64"] = <intptr_t>__cublasCgemm_v2_64
-    
+
     global __cublasCgemm3m_64
     data["__cublasCgemm3m_64"] = <intptr_t>__cublasCgemm3m_64
-    
+
     global __cublasCgemm3mEx_64
     data["__cublasCgemm3mEx_64"] = <intptr_t>__cublasCgemm3mEx_64
-    
+
     global __cublasZgemm_v2_64
     data["__cublasZgemm_v2_64"] = <intptr_t>__cublasZgemm_v2_64
-    
+
     global __cublasZgemm3m_64
     data["__cublasZgemm3m_64"] = <intptr_t>__cublasZgemm3m_64
-    
+
     global __cublasSgemmEx_64
     data["__cublasSgemmEx_64"] = <intptr_t>__cublasSgemmEx_64
-    
+
     global __cublasGemmEx_64
     data["__cublasGemmEx_64"] = <intptr_t>__cublasGemmEx_64
-    
+
     global __cublasCgemmEx_64
     data["__cublasCgemmEx_64"] = <intptr_t>__cublasCgemmEx_64
-    
+
     global __cublasSsyrk_v2_64
     data["__cublasSsyrk_v2_64"] = <intptr_t>__cublasSsyrk_v2_64
-    
+
     global __cublasDsyrk_v2_64
     data["__cublasDsyrk_v2_64"] = <intptr_t>__cublasDsyrk_v2_64
-    
+
     global __cublasCsyrk_v2_64
     data["__cublasCsyrk_v2_64"] = <intptr_t>__cublasCsyrk_v2_64
-    
+
     global __cublasZsyrk_v2_64
     data["__cublasZsyrk_v2_64"] = <intptr_t>__cublasZsyrk_v2_64
-    
+
     global __cublasCsyrkEx_64
     data["__cublasCsyrkEx_64"] = <intptr_t>__cublasCsyrkEx_64
-    
+
     global __cublasCsyrk3mEx_64
     data["__cublasCsyrk3mEx_64"] = <intptr_t>__cublasCsyrk3mEx_64
-    
+
     global __cublasCherk_v2_64
     data["__cublasCherk_v2_64"] = <intptr_t>__cublasCherk_v2_64
-    
+
     global __cublasZherk_v2_64
     data["__cublasZherk_v2_64"] = <intptr_t>__cublasZherk_v2_64
-    
+
     global __cublasCherkEx_64
     data["__cublasCherkEx_64"] = <intptr_t>__cublasCherkEx_64
-    
+
     global __cublasCherk3mEx_64
     data["__cublasCherk3mEx_64"] = <intptr_t>__cublasCherk3mEx_64
-    
+
     global __cublasSsyr2k_v2_64
     data["__cublasSsyr2k_v2_64"] = <intptr_t>__cublasSsyr2k_v2_64
-    
+
     global __cublasDsyr2k_v2_64
     data["__cublasDsyr2k_v2_64"] = <intptr_t>__cublasDsyr2k_v2_64
-    
+
     global __cublasCsyr2k_v2_64
     data["__cublasCsyr2k_v2_64"] = <intptr_t>__cublasCsyr2k_v2_64
-    
+
     global __cublasZsyr2k_v2_64
     data["__cublasZsyr2k_v2_64"] = <intptr_t>__cublasZsyr2k_v2_64
-    
+
     global __cublasCher2k_v2_64
     data["__cublasCher2k_v2_64"] = <intptr_t>__cublasCher2k_v2_64
-    
+
     global __cublasZher2k_v2_64
     data["__cublasZher2k_v2_64"] = <intptr_t>__cublasZher2k_v2_64
-    
+
     global __cublasSsyrkx_64
     data["__cublasSsyrkx_64"] = <intptr_t>__cublasSsyrkx_64
-    
+
     global __cublasDsyrkx_64
     data["__cublasDsyrkx_64"] = <intptr_t>__cublasDsyrkx_64
-    
+
     global __cublasCsyrkx_64
     data["__cublasCsyrkx_64"] = <intptr_t>__cublasCsyrkx_64
-    
+
     global __cublasZsyrkx_64
     data["__cublasZsyrkx_64"] = <intptr_t>__cublasZsyrkx_64
-    
+
     global __cublasCherkx_64
     data["__cublasCherkx_64"] = <intptr_t>__cublasCherkx_64
-    
+
     global __cublasZherkx_64
     data["__cublasZherkx_64"] = <intptr_t>__cublasZherkx_64
-    
+
     global __cublasSsymm_v2_64
     data["__cublasSsymm_v2_64"] = <intptr_t>__cublasSsymm_v2_64
-    
+
     global __cublasDsymm_v2_64
     data["__cublasDsymm_v2_64"] = <intptr_t>__cublasDsymm_v2_64
-    
+
     global __cublasCsymm_v2_64
     data["__cublasCsymm_v2_64"] = <intptr_t>__cublasCsymm_v2_64
-    
+
     global __cublasZsymm_v2_64
     data["__cublasZsymm_v2_64"] = <intptr_t>__cublasZsymm_v2_64
-    
+
     global __cublasChemm_v2_64
     data["__cublasChemm_v2_64"] = <intptr_t>__cublasChemm_v2_64
-    
+
     global __cublasZhemm_v2_64
     data["__cublasZhemm_v2_64"] = <intptr_t>__cublasZhemm_v2_64
-    
+
     global __cublasStrsm_v2_64
     data["__cublasStrsm_v2_64"] = <intptr_t>__cublasStrsm_v2_64
-    
+
     global __cublasDtrsm_v2_64
     data["__cublasDtrsm_v2_64"] = <intptr_t>__cublasDtrsm_v2_64
-    
+
     global __cublasCtrsm_v2_64
     data["__cublasCtrsm_v2_64"] = <intptr_t>__cublasCtrsm_v2_64
-    
+
     global __cublasZtrsm_v2_64
     data["__cublasZtrsm_v2_64"] = <intptr_t>__cublasZtrsm_v2_64
-    
+
     global __cublasStrmm_v2_64
     data["__cublasStrmm_v2_64"] = <intptr_t>__cublasStrmm_v2_64
-    
+
     global __cublasDtrmm_v2_64
     data["__cublasDtrmm_v2_64"] = <intptr_t>__cublasDtrmm_v2_64
-    
+
     global __cublasCtrmm_v2_64
     data["__cublasCtrmm_v2_64"] = <intptr_t>__cublasCtrmm_v2_64
-    
+
     global __cublasZtrmm_v2_64
     data["__cublasZtrmm_v2_64"] = <intptr_t>__cublasZtrmm_v2_64
-    
+
     global __cublasSgemmBatched_64
     data["__cublasSgemmBatched_64"] = <intptr_t>__cublasSgemmBatched_64
-    
+
     global __cublasDgemmBatched_64
     data["__cublasDgemmBatched_64"] = <intptr_t>__cublasDgemmBatched_64
-    
+
     global __cublasCgemmBatched_64
     data["__cublasCgemmBatched_64"] = <intptr_t>__cublasCgemmBatched_64
-    
+
     global __cublasCgemm3mBatched_64
     data["__cublasCgemm3mBatched_64"] = <intptr_t>__cublasCgemm3mBatched_64
-    
+
     global __cublasZgemmBatched_64
     data["__cublasZgemmBatched_64"] = <intptr_t>__cublasZgemmBatched_64
-    
+
     global __cublasSgemmStridedBatched_64
     data["__cublasSgemmStridedBatched_64"] = <intptr_t>__cublasSgemmStridedBatched_64
-    
+
     global __cublasDgemmStridedBatched_64
     data["__cublasDgemmStridedBatched_64"] = <intptr_t>__cublasDgemmStridedBatched_64
-    
+
     global __cublasCgemmStridedBatched_64
     data["__cublasCgemmStridedBatched_64"] = <intptr_t>__cublasCgemmStridedBatched_64
-    
+
     global __cublasCgemm3mStridedBatched_64
     data["__cublasCgemm3mStridedBatched_64"] = <intptr_t>__cublasCgemm3mStridedBatched_64
-    
+
     global __cublasZgemmStridedBatched_64
     data["__cublasZgemmStridedBatched_64"] = <intptr_t>__cublasZgemmStridedBatched_64
-    
+
     global __cublasGemmBatchedEx_64
     data["__cublasGemmBatchedEx_64"] = <intptr_t>__cublasGemmBatchedEx_64
-    
+
     global __cublasGemmStridedBatchedEx_64
     data["__cublasGemmStridedBatchedEx_64"] = <intptr_t>__cublasGemmStridedBatchedEx_64
-    
+
     global __cublasSgeam_64
     data["__cublasSgeam_64"] = <intptr_t>__cublasSgeam_64
-    
+
     global __cublasDgeam_64
     data["__cublasDgeam_64"] = <intptr_t>__cublasDgeam_64
-    
+
     global __cublasCgeam_64
     data["__cublasCgeam_64"] = <intptr_t>__cublasCgeam_64
-    
+
     global __cublasZgeam_64
     data["__cublasZgeam_64"] = <intptr_t>__cublasZgeam_64
-    
+
     global __cublasStrsmBatched_64
     data["__cublasStrsmBatched_64"] = <intptr_t>__cublasStrsmBatched_64
-    
+
     global __cublasDtrsmBatched_64
     data["__cublasDtrsmBatched_64"] = <intptr_t>__cublasDtrsmBatched_64
-    
+
     global __cublasCtrsmBatched_64
     data["__cublasCtrsmBatched_64"] = <intptr_t>__cublasCtrsmBatched_64
-    
+
     global __cublasZtrsmBatched_64
     data["__cublasZtrsmBatched_64"] = <intptr_t>__cublasZtrsmBatched_64
-    
+
     global __cublasSdgmm_64
     data["__cublasSdgmm_64"] = <intptr_t>__cublasSdgmm_64
-    
+
     global __cublasDdgmm_64
     data["__cublasDdgmm_64"] = <intptr_t>__cublasDdgmm_64
-    
+
     global __cublasCdgmm_64
     data["__cublasCdgmm_64"] = <intptr_t>__cublasCdgmm_64
-    
+
     global __cublasZdgmm_64
     data["__cublasZdgmm_64"] = <intptr_t>__cublasZdgmm_64
 

@@ -2,6 +2,6 @@ cupy-cuda11x
 nvidia-cublas-cu11
 nvidia-cuda-nvrtc-cu11
 nvidia-cufft-cu11
-nvidia-cusparse-cu11
 nvidia-curand-cu11
 nvidia-cusolver-cu11
+nvidia-cusparse-cu11

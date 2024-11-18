@@ -3,20 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from cuda import cuda
-from .helpers import CHECK_CUDA, _TOLERANCE, l2error, \
-    free_array, convert_to_cuda_array, free_array, copy_to_cupy
+from .helpers import CHECK_CUDA, _TOLERANCE, l2error, free_array, convert_to_cuda_array, free_array, copy_to_cupy
 import numpy as np
 from .helpers_cpp import run_and_time, compile_cpp_kernel
 import cupy
 
+
 class MatmulLoopCpp:
-
     def __init__(self, size, precision, data_type, sm, transpose_mode, block_size, repeat):
-
-
         m, n, k = size
         assert precision == np.float32
-        assert data_type == 'real'
+        assert data_type == "real"
         assert sm[0] >= 7
         assert sm[1] >= 0
 
@@ -99,9 +96,8 @@ class MatmulLoopCpp:
         self._block_dim = (block_size, 1, 1)
 
     def run(self, a, b, reference, ncycles):
-
-        assert a.shape         == (self._size[0], self._size[2])
-        assert b.shape         == (self._size[2], self._size[1])
+        assert a.shape == (self._size[0], self._size[2])
+        assert b.shape == (self._size[2], self._size[1])
         assert reference.shape == (self._size[0], self._size[1])
         print(f"MatmulLoopCpp ncycles {ncycles}")
 
@@ -111,12 +107,7 @@ class MatmulLoopCpp:
         dB = convert_to_cuda_array(b)
         dC = convert_to_cuda_array(c)
 
-        time_ms = run_and_time(self._kernel, \
-                               (1, 1, 1), \
-                               self._block_dim, \
-                               self._shared_memory_size, \
-                               ncycles, \
-                               dA, dB, dC)
+        time_ms = run_and_time(self._kernel, (1, 1, 1), self._block_dim, self._shared_memory_size, ncycles, dA, dB, dC)
 
         copy_to_cupy(dC, c)
         free_array(dA)
@@ -128,8 +119,8 @@ class MatmulLoopCpp:
         print(f"MatmulLoopCpp CUDA C++ Time per kernel = {time_ms}")
         assert error < _TOLERANCE[np.float32]
 
-        return {'time_ms': time_ms}
+        return {"time_ms": time_ms}
 
     def __del__(self):
-        err, = cuda.cuModuleUnload(self._module)
+        (err,) = cuda.cuModuleUnload(self._module)
         CHECK_CUDA(err)

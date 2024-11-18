@@ -10,12 +10,14 @@ them separately.
 
 In this example we will multiply each of our `a` matrices with the corresponding `b` matrix.
 """
+
 import cupy as cp
 
 import nvmath
 
 # Enable logging.
 import logging
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Prepare sample input data.

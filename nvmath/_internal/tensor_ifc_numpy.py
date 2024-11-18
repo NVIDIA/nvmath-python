@@ -6,9 +6,12 @@
 Interface to seamlessly use Numpy ndarray objects.
 """
 
-__all__ = ['NumpyTensor']
+__all__ = ["NumpyTensor"]
 
-import cupy
+try:
+    import cupy
+except ImportError:
+    cupy = None
 import numpy
 
 from . import utils
@@ -20,9 +23,12 @@ class NumpyTensor(Tensor):
     """
     Tensor wrapper for numpy ndarrays.
     """
-    name = 'numpy'
+
+    name = "numpy"
     module = numpy
-    name_to_dtype = Tensor.create_name_dtype_map(conversion_function=lambda name: numpy.dtype(name), exception_type=TypeError)
+    name_to_dtype = Tensor.create_name_dtype_map(
+        conversion_function=lambda name: numpy.dtype(name), exception_type=TypeError
+    )
 
     def __init__(self, tensor):
         super().__init__(tensor)
@@ -33,7 +39,7 @@ class NumpyTensor(Tensor):
 
     @property
     def device(self):
-        return 'cpu'
+        return "cpu"
 
     @property
     def device_id(self):
@@ -56,23 +62,26 @@ class NumpyTensor(Tensor):
         return self.tensor
 
     @classmethod
-    def empty(cls, shape, **context):
+    def empty(cls, shape, *, dtype="float32", strides=None, device_id=None):
         """
         Create an empty tensor of the specified shape and data type.
         """
-        name = context.get('dtype', 'float32')
-        dtype = NumpyTensor.name_to_dtype[name]
-        strides = context.get('strides', None)
+        assert device_id is None
+        dtype = NumpyTensor.name_to_dtype[dtype]
         # when strides is not None, it should be of unit counts not bytes
-        return cls(module.ndarray(shape, dtype=dtype, strides=(tuple(s * dtype.itemsize for s in strides) if strides else None)))
+        return cls(
+            cls.module.ndarray(
+                shape, dtype=dtype, strides=(tuple(s * dtype.itemsize for s in strides) if strides else None)
+            )
+        )
 
-    def to(self, device='cpu', stream_holder=StreamHolder()):
+    def to(self, device="cpu", stream_holder=StreamHolder()):
         """
         Create a copy of the tensor on the specified device (integer or
           'cpu'). Copy to  Cupy ndarray on the specified device if it
           is not CPU. Otherwise, return self.
         """
-        if device == 'cpu':
+        if device == "cpu":
             return self.tensor
 
         if not isinstance(device, int):
@@ -86,7 +95,7 @@ class NumpyTensor(Tensor):
     def copy_(self, src, stream_holder=StreamHolder()):
         package = utils.infer_object_package(src)
         # Handle NumPy <=> CuPy CPU-GPU ndarray asymmetry.
-        if package == 'cupy':
+        if package == "cupy":
             stream = stream_holder.obj
             with stream:
                 out = src.get(stream=stream, out=self.tensor)
@@ -95,6 +104,8 @@ class NumpyTensor(Tensor):
                 stream.synchronize()
 
             return out
+        elif package == "numpy":
+            numpy.copyto(self.tensor, src)
         else:
             raise NotImplementedError
 
@@ -105,5 +116,5 @@ class NumpyTensor(Tensor):
         return isinstance(self.tensor, numpy.ndarray)
 
     def reshape_to_match_tensor_descriptor(self, handle, desc_tensor):
-        #NOTE: this method is only called for CupyTensor and TorchTensor
+        # NOTE: this method is only called for CupyTensor and TorchTensor
         raise NotImplementedError

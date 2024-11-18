@@ -2,17 +2,25 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ['MatmulEpilog', 'MatmulInnerShape','MatmulNumericalImplFlags', 'MatmulOptions', 'MatmulPlanPreferences', 'MatmulReductionScheme', 'matrix_qualifiers_dtype']
+__all__ = [
+    "MatmulEpilog",
+    "MatmulInnerShape",
+    "MatmulNumericalImplFlags",
+    "MatmulOptions",
+    "MatmulPlanPreferences",
+    "MatmulReductionScheme",
+    "matrix_qualifiers_dtype",
+]
 
 import dataclasses
 from enum import IntEnum
 from logging import Logger
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as _np
 
-from nvmath.bindings import cublas
-from nvmath.bindings import cublasLt as cublaslt
+from nvmath.bindings import cublas  # type: ignore
+from nvmath.bindings import cublasLt as cublaslt  # type: ignore
 from nvmath._internal import enum_utils
 from nvmath._internal.mem_limit import check_memory_str
 from nvmath._internal.mem_limit import MEM_LIMIT_RE_PCT, MEM_LIMIT_RE_VAL, MEM_LIMIT_DOC
@@ -22,6 +30,7 @@ from nvmath._utils import CudaDataType
 MatmulEpilog = cublaslt.Epilogue
 MatmulInnerShape = cublaslt.MatmulInnerShape
 MatmulReductionScheme = cublaslt.ReductionScheme
+
 
 @dataclasses.dataclass
 class MatmulOptions:
@@ -50,16 +59,17 @@ class MatmulOptions:
     See Also:
        :class:`Matmul`, :func:`matmul`
     """
-    compute_type : Optional[int] = None
-    scale_type : Optional[int] = None
-    sm_count_target : Optional[int] = 0
-    fast_accumulation : Optional[bool] = False
-    device_id : Optional[int] = None
-    handle : Optional[int] = None
-    logger : Optional[Logger] = None
-    memory_limit : Optional[Union[int, str]] = r'80%'
-    blocking : Literal[True, "auto"] = "auto"
-    allocator : Optional[BaseCUDAMemoryManager] = None
+
+    compute_type: int | None = None
+    scale_type: int | None = None
+    sm_count_target: int | None = 0
+    fast_accumulation: bool | None = False
+    device_id: int | None = None
+    handle: int | None = None
+    logger: Logger | None = None
+    memory_limit: int | str | None = r"80%"
+    blocking: Literal[True, "auto"] = "auto"
+    allocator: BaseCUDAMemoryManager | None = None
 
     def __post_init__(self):
         #  Defer computing the memory limit till we know the device the network is on.
@@ -70,47 +80,62 @@ class MatmulOptions:
         if self.scale_type is not None:
             self.scale_type = CudaDataType(self.scale_type)
 
+        if self.sm_count_target is None:
+            self.sm_count_target = MatmulOptions.sm_count_target
+
+        if self.fast_accumulation is None:
+            self.fast_accumulation = MatmulOptions.fast_accumulation
+
         if self.device_id is None:
             self.device_id = 0
 
+        if self.memory_limit is None:
+            self.memory_limit = MatmulOptions.memory_limit
+
         check_memory_str(self.memory_limit, "memory limit")
 
-        if self.blocking != True and self.blocking != "auto":
+        if self.blocking not in (True, "auto"):
             raise ValueError("The value specified for blocking must be either True or 'auto'.")
 
         if self.allocator is not None and not isinstance(self.allocator, BaseCUDAMemoryManager):
             raise TypeError("The allocator must be an object of type that fulfils the BaseCUDAMemoryManager protocol.")
 
+
 matrix_qualifiers_dtype = _np.dtype([("structure", object), ("is_conjugate", "<i4")])
+
 
 class MatmulNumericalImplFlags(IntEnum):
     """
     These flags can be combined with the | operator: OP_TYPE_FMA | OP_TYPE_TENSOR_HMMA ...
     """
-    OP_TYPE_FMA         = 0x01 << 0
+
+    OP_TYPE_FMA = 0x01 << 0
     OP_TYPE_TENSOR_HMMA = 0x02 << 0
     OP_TYPE_TENSOR_IMMA = 0x04 << 0
     OP_TYPE_TENSOR_DMMA = 0x08 << 0
-    OP_TYPE_TENSOR_MASK = 0xfe << 0
-    OP_TYPE_MASK        = 0xff << 0
+    OP_TYPE_TENSOR_MASK = 0xFE << 0
+    OP_TYPE_MASK = 0xFF << 0
 
-    ACCUMULATOR_16F       = 0x01 << 8
-    ACCUMULATOR_32F       = 0x02 << 8
-    ACCUMULATOR_64F       = 0x04 << 8
-    ACCUMULATOR_32I       = 0x08 << 8
-    ACCUMULATOR_TYPE_MASK = 0xff << 8
+    ACCUMULATOR_16F = 0x01 << 8
+    ACCUMULATOR_32F = 0x02 << 8
+    ACCUMULATOR_64F = 0x04 << 8
+    ACCUMULATOR_32I = 0x08 << 8
+    ACCUMULATOR_TYPE_MASK = 0xFF << 8
 
-    INPUT_TYPE_16F     = 0x01 << 16
-    INPUT_TYPE_16BF    = 0x02 << 16
-    INPUT_TYPE_TF32    = 0x04 << 16
-    INPUT_TYPE_32F     = 0x08 << 16
-    INPUT_TYPE_64F     = 0x10 << 16
-    INPUT_TYPE_8I      = 0x20 << 16
+    INPUT_TYPE_16F = 0x01 << 16
+    INPUT_TYPE_16BF = 0x02 << 16
+    INPUT_TYPE_TF32 = 0x04 << 16
+    INPUT_TYPE_32F = 0x08 << 16
+    INPUT_TYPE_64F = 0x10 << 16
+    INPUT_TYPE_8I = 0x20 << 16
     INPUT_TYPE_8F_E4M3 = 0x40 << 16
     INPUT_TYPE_8F_E5M2 = 0x80 << 16
-    INPUT_TYPE_MASK    = 0xff << 16
+    INPUT_TYPE_MASK = 0xFF << 16
 
     GAUSSIAN = 0x01 << 32
+
+    ALL = (1 << 64) - 1
+
 
 @dataclasses.dataclass
 class MatmulPlanPreferences:
@@ -129,29 +154,46 @@ class MatmulPlanPreferences:
        :meth:`Matmul.plan`, :func:`matmul`
     """
 
-    reduction_scheme_mask : Optional[cublaslt.ReductionScheme] = cublaslt.ReductionScheme.MASK
-    max_waves_count : Optional[float] = 0.
-    numerical_impl_mask : Optional[MatmulNumericalImplFlags] = (1 << 64) - 1
-    limit : int = 8
+    reduction_scheme_mask: cublaslt.ReductionScheme | None = cublaslt.ReductionScheme.MASK
+    max_waves_count: float | None = 0.0
+    numerical_impl_mask: MatmulNumericalImplFlags | None = MatmulNumericalImplFlags.ALL
+    limit: int = 8
 
     def __post_init__(self):
-        if self.reduction_scheme_mask is not None:
+        if self.reduction_scheme_mask is None:
+            self.reduction_scheme_mask = MatmulPlanPreferences.reduction_scheme_mask
+        else:
             self.reduction_scheme_mask = cublaslt.ReductionScheme(self.reduction_scheme_mask)
+
+        if self.max_waves_count is None:
+            self.max_waves_count = MatmulPlanPreferences.max_waves_count
+
+        if self.numerical_impl_mask is None:
+            self.numerical_impl_mask = MatmulPlanPreferences.numerical_impl_mask
+
+        if self.limit is None:
+            self.limit = MatmulPlanPreferences.limit
 
 
 _create_options = enum_utils.create_options_class_from_enum
 _algo_cap_enum = cublaslt.MatmulAlgoCapAttribute
 _get_dtype = cublaslt.get_matmul_algo_cap_attribute_dtype
 
-AlgorithmCapabilities = _create_options('AlgorithmCapabilities', _algo_cap_enum, _get_dtype, "algorithm capabilities", '(?P<option_name>.*)')
+AlgorithmCapabilities = _create_options(
+    "AlgorithmCapabilities", _algo_cap_enum, _get_dtype, "algorithm capabilities", "(?P<option_name>.*)"
+)
+
+
 def algorithm_capabilities_str(self):
     names = [field.name for field in dataclasses.fields(self)]
     width = max(len(n) for n in names)
-    s = f"""Algorithm Capabilities (refer to `MatmulAlgoCapAttribute` for documentation):
+    s = """Algorithm Capabilities (refer to `MatmulAlgoCapAttribute` for documentation):
 """
     for name in names:
         s += f"    {name:{width}} = {getattr(self, name)}\n"
     return s
+
+
 AlgorithmCapabilities.__str__ = algorithm_capabilities_str
 
 del _create_options, _algo_cap_enum, _get_dtype

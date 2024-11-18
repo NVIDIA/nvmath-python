@@ -46,36 +46,37 @@ cdef void* get_buffer_pointer(buf, Py_ssize_t size, readonly=True) except*:
     return bufPtr
 
 
-# Cython can't infer the overload by return type alone, so we need a dummy
-# input argument to help it
-cdef nullable_unique_ptr[ vector[ResT] ] get_resource_ptr(object obj, ResT* __unused):
-    cdef nullable_unique_ptr[ vector[ResT] ] ptr
+# Cython can't infer the ResT overload when it is wrapped in nullable_unique_ptr,
+# so we need a dummy (__unused) input argument to help it
+cdef int get_resource_ptr(nullable_unique_ptr[vector[ResT]] &in_out_ptr, object obj, ResT* __unused) except 1:
     cdef vector[ResT]* vec
     if cpython.PySequence_Check(obj):
         vec = new vector[ResT](len(obj))
+        # set the ownership immediately to avoid leaking the `vec` memory in
+        # case of exception in the following loop
+        in_out_ptr.reset(vec, True)
         for i in range(len(obj)):
             deref(vec)[i] = obj[i]
-        ptr.reset(vec, True)
     else:
-        ptr.reset(<vector[ResT]*><intptr_t>obj, False)
-    return move(ptr)
+        in_out_ptr.reset(<vector[ResT]*><intptr_t>obj, False)
+    return 0
 
 
-cdef nullable_unique_ptr[ vector[PtrT*] ] get_resource_ptrs(object obj, PtrT* __unused):
-    cdef nullable_unique_ptr[ vector[PtrT*] ] ptr
+cdef int get_resource_ptrs(nullable_unique_ptr[ vector[PtrT*] ] &in_out_ptr, object obj, PtrT* __unused) except 1:
     cdef vector[PtrT*]* vec
     if cpython.PySequence_Check(obj):
         vec = new vector[PtrT*](len(obj))
+        # set the ownership immediately to avoid leaking the `vec` memory in
+        # case of exception in the following loop
+        in_out_ptr.reset(vec, True)
         for i in range(len(obj)):
             deref(vec)[i] = <PtrT*><intptr_t>(obj[i])
-        ptr.reset(vec, True)
     else:
-        ptr.reset(<vector[PtrT*]*><intptr_t>obj, False)
-    return move(ptr)
+        in_out_ptr.reset(<vector[PtrT*]*><intptr_t>obj, False)
+    return 0
 
 
-cdef nested_resource[ResT] get_nested_resource_ptr(object obj, ResT* __unused):
-    cdef nested_resource[ResT] res
+cdef int get_nested_resource_ptr(nested_resource[ResT] &in_out_ptr, object obj, ResT* __unused) except 1:
     cdef nullable_unique_ptr[ vector[intptr_t] ] nested_ptr
     cdef nullable_unique_ptr[ vector[vector[ResT]] ] nested_res_ptr
     cdef vector[intptr_t]* nested_vec = NULL
@@ -87,26 +88,28 @@ cdef nested_resource[ResT] get_nested_resource_ptr(object obj, ResT* __unused):
         length = len(obj)
         nested_res_vec = new vector[vector[ResT]](length)
         nested_vec = new vector[intptr_t](length)
+        # set the ownership immediately to avoid leaking memory in case of
+        # exception in the following loop
+        nested_res_ptr.reset(nested_res_vec, True)
+        nested_ptr.reset(nested_vec, True)
         for i, obj_i in enumerate(obj):
             deref(nested_res_vec)[i] = obj_i
             deref(nested_vec)[i] = <intptr_t>(deref(nested_res_vec)[i].data())
-        nested_res_ptr.reset(nested_res_vec, True)
-        nested_ptr.reset(nested_vec, True)
     elif cpython.PySequence_Check(obj):
         length = len(obj)
         nested_vec = new vector[intptr_t](length)
+        nested_ptr.reset(nested_vec, True)
         for i, addr in enumerate(obj):
             deref(nested_vec)[i] = addr
         nested_res_ptr.reset(NULL, False)
-        nested_ptr.reset(nested_vec, True)
     else:
         # obj is an int (ResT**)
         nested_res_ptr.reset(NULL, False)
         nested_ptr.reset(<vector[intptr_t]*><intptr_t>obj, False)
 
-    res.ptrs = move(nested_ptr)
-    res.nested_resource_ptr = move(nested_res_ptr)
-    return move(res)
+    in_out_ptr.ptrs = move(nested_ptr)
+    in_out_ptr.nested_resource_ptr = move(nested_res_ptr)
+    return 0
 
 
 class FunctionNotFoundError(RuntimeError): pass

@@ -7,6 +7,7 @@ Example showing how to reuse cached objects for repeated computation on the same
 
 The cached implementation is provided in `caching.py`.
 """
+
 import logging
 
 import cupy as cp
@@ -14,19 +15,19 @@ import cupy as cp
 from caching import fft as cached_fft, FFTCache
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M:%S')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 shape = 512, 256, 512
-axes  = 0, 1
+axes = 0, 1
 
-# Explictly managing the FFT cache
+# Explicitly managing the FFT cache
 cache = FFTCache()
 
 a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
 r = cached_fft(a, axes=axes, cache=cache)
 
-a[:] = 2*a
+a[:] = 2 * a
 
 # Use cached object from previous run here.
 r = cached_fft(a, axes=axes, cache=cache)

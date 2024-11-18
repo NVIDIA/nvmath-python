@@ -4,11 +4,12 @@
 
 """
 This example illustrates how to reset operands in stateful matrix multiplication APIs, and reuse the object for multiple executions. This is
-needed when the memory space of the operands is not accesible from the execution space, or if it's desired to bind new (compatible) operands
+needed when the memory space of the operands is not accessible from the execution space, or if it's desired to bind new (compatible) operands
 to the stateful object.
 
 The inputs as well as the result are NumPy ndarrays.
 """
+
 import numpy as np
 
 import nvmath
@@ -21,11 +22,11 @@ b = np.random.rand(k, n)
 
 # Turn on logging to see what's happening.
 import logging
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Use the stateful object as a context manager to automatically release resources.
 with nvmath.linalg.advanced.Matmul(a, b) as mm:
-
     # Plan the matrix multiplication. Planning returns a sequence of algorithms that can be configured as we'll see in a later example.
     mm.plan()
 

@@ -1,2 +1,4 @@
+# Older versions of pytorch are not compatible with numpy 2
+numpy>=1.24,<2
+# torch wheels depend on nvidia wheels; do not add if testing system ctk
 torch<2.1; platform_system!="Windows"
-

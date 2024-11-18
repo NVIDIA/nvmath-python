@@ -7,12 +7,13 @@ This example illustrates how different data layouts are implicitly handled in nv
 
 The input as well as the result from the FFT operations are CuPy ndarrays.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 512, 256, 512
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 

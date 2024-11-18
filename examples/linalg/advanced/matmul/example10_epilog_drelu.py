@@ -13,6 +13,7 @@ a compatible epilog.
 Here we generate the auxiliary output in a forward pass using RELU, and provide it as epilog input in the corresponding
 backward pass using the DRELU epilog.
 """
+
 import cupy as cp
 
 import nvmath
@@ -32,4 +33,6 @@ result = nvmath.linalg.advanced.matmul(a, b, epilog=epilog, epilog_inputs=auxili
 
 # Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
 cp.cuda.get_current_stream().synchronize()
-print(f"Inputs were of types {type(a)} and {type(b)}, and the result type is {type(result)}, and the auxiliary output is of type {type(auxiliary)}.")
+print(
+    f"Inputs were of types {type(a)} and {type(b)}, and the result type is {type(result)}, and the auxiliary output is of type {type(auxiliary)}."
+)

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -149,241 +149,241 @@ cdef int _check_or_init_cublasLt() except -1 nogil:
             __cublasLtCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtCreate')
         except:
             pass
-    
+
         global __cublasLtDestroy
         try:
             __cublasLtDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtDestroy')
         except:
             pass
-    
+
         global __cublasLtGetVersion
         try:
             __cublasLtGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetVersion')
         except:
             pass
-    
+
         global __cublasLtGetCudartVersion
         try:
             __cublasLtGetCudartVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetCudartVersion')
         except:
             pass
-    
+
         global __cublasLtGetProperty
         try:
             __cublasLtGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetProperty')
         except:
             pass
-    
+
         global __cublasLtMatmul
         try:
             __cublasLtMatmul = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmul')
         except:
             pass
-    
+
         global __cublasLtMatrixTransform
         try:
             __cublasLtMatrixTransform = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransform')
         except:
             pass
-    
+
         global __cublasLtMatrixLayoutCreate
         try:
             __cublasLtMatrixLayoutCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutCreate')
         except:
             pass
-    
+
         global __cublasLtMatrixLayoutDestroy
         try:
             __cublasLtMatrixLayoutDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutDestroy')
         except:
             pass
-    
+
         global __cublasLtMatrixLayoutSetAttribute
         try:
             __cublasLtMatrixLayoutSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutSetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatrixLayoutGetAttribute
         try:
             __cublasLtMatrixLayoutGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutGetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatmulDescCreate
         try:
             __cublasLtMatmulDescCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescCreate')
         except:
             pass
-    
+
         global __cublasLtMatmulDescDestroy
         try:
             __cublasLtMatmulDescDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescDestroy')
         except:
             pass
-    
+
         global __cublasLtMatmulDescSetAttribute
         try:
             __cublasLtMatmulDescSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescSetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatmulDescGetAttribute
         try:
             __cublasLtMatmulDescGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescGetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatrixTransformDescCreate
         try:
             __cublasLtMatrixTransformDescCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescCreate')
         except:
             pass
-    
+
         global __cublasLtMatrixTransformDescDestroy
         try:
             __cublasLtMatrixTransformDescDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescDestroy')
         except:
             pass
-    
+
         global __cublasLtMatrixTransformDescSetAttribute
         try:
             __cublasLtMatrixTransformDescSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescSetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatrixTransformDescGetAttribute
         try:
             __cublasLtMatrixTransformDescGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescGetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatmulPreferenceCreate
         try:
             __cublasLtMatmulPreferenceCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceCreate')
         except:
             pass
-    
+
         global __cublasLtMatmulPreferenceDestroy
         try:
             __cublasLtMatmulPreferenceDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceDestroy')
         except:
             pass
-    
+
         global __cublasLtMatmulPreferenceSetAttribute
         try:
             __cublasLtMatmulPreferenceSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceSetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatmulPreferenceGetAttribute
         try:
             __cublasLtMatmulPreferenceGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceGetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatmulAlgoGetHeuristic
         try:
             __cublasLtMatmulAlgoGetHeuristic = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoGetHeuristic')
         except:
             pass
-    
+
         global __cublasLtMatmulAlgoGetIds
         try:
             __cublasLtMatmulAlgoGetIds = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoGetIds')
         except:
             pass
-    
+
         global __cublasLtMatmulAlgoInit
         try:
             __cublasLtMatmulAlgoInit = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoInit')
         except:
             pass
-    
+
         global __cublasLtMatmulAlgoCheck
         try:
             __cublasLtMatmulAlgoCheck = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoCheck')
         except:
             pass
-    
+
         global __cublasLtMatmulAlgoCapGetAttribute
         try:
             __cublasLtMatmulAlgoCapGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoCapGetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatmulAlgoConfigSetAttribute
         try:
             __cublasLtMatmulAlgoConfigSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoConfigSetAttribute')
         except:
             pass
-    
+
         global __cublasLtMatmulAlgoConfigGetAttribute
         try:
             __cublasLtMatmulAlgoConfigGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoConfigGetAttribute')
         except:
             pass
-    
+
         global __cublasLtLoggerSetCallback
         try:
             __cublasLtLoggerSetCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetCallback')
         except:
             pass
-    
+
         global __cublasLtLoggerSetFile
         try:
             __cublasLtLoggerSetFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetFile')
         except:
             pass
-    
+
         global __cublasLtLoggerOpenFile
         try:
             __cublasLtLoggerOpenFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerOpenFile')
         except:
             pass
-    
+
         global __cublasLtLoggerSetLevel
         try:
             __cublasLtLoggerSetLevel = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetLevel')
         except:
             pass
-    
+
         global __cublasLtLoggerSetMask
         try:
             __cublasLtLoggerSetMask = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetMask')
         except:
             pass
-    
+
         global __cublasLtLoggerForceDisable
         try:
             __cublasLtLoggerForceDisable = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerForceDisable')
         except:
             pass
-    
+
         global __cublasLtGetStatusName
         try:
             __cublasLtGetStatusName = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetStatusName')
         except:
             pass
-    
+
         global __cublasLtGetStatusString
         try:
             __cublasLtGetStatusString = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetStatusString')
         except:
             pass
-    
+
         global __cublasLtHeuristicsCacheGetCapacity
         try:
             __cublasLtHeuristicsCacheGetCapacity = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtHeuristicsCacheGetCapacity')
         except:
             pass
-    
+
         global __cublasLtHeuristicsCacheSetCapacity
         try:
             __cublasLtHeuristicsCacheSetCapacity = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtHeuristicsCacheSetCapacity')
         except:
             pass
-    
+
         global __cublasLtDisableCpuInstructionsSetMask
         try:
             __cublasLtDisableCpuInstructionsSetMask = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtDisableCpuInstructionsSetMask')
@@ -407,124 +407,124 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasLtCreate
     data["__cublasLtCreate"] = <intptr_t>__cublasLtCreate
-    
+
     global __cublasLtDestroy
     data["__cublasLtDestroy"] = <intptr_t>__cublasLtDestroy
-    
+
     global __cublasLtGetVersion
     data["__cublasLtGetVersion"] = <intptr_t>__cublasLtGetVersion
-    
+
     global __cublasLtGetCudartVersion
     data["__cublasLtGetCudartVersion"] = <intptr_t>__cublasLtGetCudartVersion
-    
+
     global __cublasLtGetProperty
     data["__cublasLtGetProperty"] = <intptr_t>__cublasLtGetProperty
-    
+
     global __cublasLtMatmul
     data["__cublasLtMatmul"] = <intptr_t>__cublasLtMatmul
-    
+
     global __cublasLtMatrixTransform
     data["__cublasLtMatrixTransform"] = <intptr_t>__cublasLtMatrixTransform
-    
+
     global __cublasLtMatrixLayoutCreate
     data["__cublasLtMatrixLayoutCreate"] = <intptr_t>__cublasLtMatrixLayoutCreate
-    
+
     global __cublasLtMatrixLayoutDestroy
     data["__cublasLtMatrixLayoutDestroy"] = <intptr_t>__cublasLtMatrixLayoutDestroy
-    
+
     global __cublasLtMatrixLayoutSetAttribute
     data["__cublasLtMatrixLayoutSetAttribute"] = <intptr_t>__cublasLtMatrixLayoutSetAttribute
-    
+
     global __cublasLtMatrixLayoutGetAttribute
     data["__cublasLtMatrixLayoutGetAttribute"] = <intptr_t>__cublasLtMatrixLayoutGetAttribute
-    
+
     global __cublasLtMatmulDescCreate
     data["__cublasLtMatmulDescCreate"] = <intptr_t>__cublasLtMatmulDescCreate
-    
+
     global __cublasLtMatmulDescDestroy
     data["__cublasLtMatmulDescDestroy"] = <intptr_t>__cublasLtMatmulDescDestroy
-    
+
     global __cublasLtMatmulDescSetAttribute
     data["__cublasLtMatmulDescSetAttribute"] = <intptr_t>__cublasLtMatmulDescSetAttribute
-    
+
     global __cublasLtMatmulDescGetAttribute
     data["__cublasLtMatmulDescGetAttribute"] = <intptr_t>__cublasLtMatmulDescGetAttribute
-    
+
     global __cublasLtMatrixTransformDescCreate
     data["__cublasLtMatrixTransformDescCreate"] = <intptr_t>__cublasLtMatrixTransformDescCreate
-    
+
     global __cublasLtMatrixTransformDescDestroy
     data["__cublasLtMatrixTransformDescDestroy"] = <intptr_t>__cublasLtMatrixTransformDescDestroy
-    
+
     global __cublasLtMatrixTransformDescSetAttribute
     data["__cublasLtMatrixTransformDescSetAttribute"] = <intptr_t>__cublasLtMatrixTransformDescSetAttribute
-    
+
     global __cublasLtMatrixTransformDescGetAttribute
     data["__cublasLtMatrixTransformDescGetAttribute"] = <intptr_t>__cublasLtMatrixTransformDescGetAttribute
-    
+
     global __cublasLtMatmulPreferenceCreate
     data["__cublasLtMatmulPreferenceCreate"] = <intptr_t>__cublasLtMatmulPreferenceCreate
-    
+
     global __cublasLtMatmulPreferenceDestroy
     data["__cublasLtMatmulPreferenceDestroy"] = <intptr_t>__cublasLtMatmulPreferenceDestroy
-    
+
     global __cublasLtMatmulPreferenceSetAttribute
     data["__cublasLtMatmulPreferenceSetAttribute"] = <intptr_t>__cublasLtMatmulPreferenceSetAttribute
-    
+
     global __cublasLtMatmulPreferenceGetAttribute
     data["__cublasLtMatmulPreferenceGetAttribute"] = <intptr_t>__cublasLtMatmulPreferenceGetAttribute
-    
+
     global __cublasLtMatmulAlgoGetHeuristic
     data["__cublasLtMatmulAlgoGetHeuristic"] = <intptr_t>__cublasLtMatmulAlgoGetHeuristic
-    
+
     global __cublasLtMatmulAlgoGetIds
     data["__cublasLtMatmulAlgoGetIds"] = <intptr_t>__cublasLtMatmulAlgoGetIds
-    
+
     global __cublasLtMatmulAlgoInit
     data["__cublasLtMatmulAlgoInit"] = <intptr_t>__cublasLtMatmulAlgoInit
-    
+
     global __cublasLtMatmulAlgoCheck
     data["__cublasLtMatmulAlgoCheck"] = <intptr_t>__cublasLtMatmulAlgoCheck
-    
+
     global __cublasLtMatmulAlgoCapGetAttribute
     data["__cublasLtMatmulAlgoCapGetAttribute"] = <intptr_t>__cublasLtMatmulAlgoCapGetAttribute
-    
+
     global __cublasLtMatmulAlgoConfigSetAttribute
     data["__cublasLtMatmulAlgoConfigSetAttribute"] = <intptr_t>__cublasLtMatmulAlgoConfigSetAttribute
-    
+
     global __cublasLtMatmulAlgoConfigGetAttribute
     data["__cublasLtMatmulAlgoConfigGetAttribute"] = <intptr_t>__cublasLtMatmulAlgoConfigGetAttribute
-    
+
     global __cublasLtLoggerSetCallback
     data["__cublasLtLoggerSetCallback"] = <intptr_t>__cublasLtLoggerSetCallback
-    
+
     global __cublasLtLoggerSetFile
     data["__cublasLtLoggerSetFile"] = <intptr_t>__cublasLtLoggerSetFile
-    
+
     global __cublasLtLoggerOpenFile
     data["__cublasLtLoggerOpenFile"] = <intptr_t>__cublasLtLoggerOpenFile
-    
+
     global __cublasLtLoggerSetLevel
     data["__cublasLtLoggerSetLevel"] = <intptr_t>__cublasLtLoggerSetLevel
-    
+
     global __cublasLtLoggerSetMask
     data["__cublasLtLoggerSetMask"] = <intptr_t>__cublasLtLoggerSetMask
-    
+
     global __cublasLtLoggerForceDisable
     data["__cublasLtLoggerForceDisable"] = <intptr_t>__cublasLtLoggerForceDisable
-    
+
     global __cublasLtGetStatusName
     data["__cublasLtGetStatusName"] = <intptr_t>__cublasLtGetStatusName
-    
+
     global __cublasLtGetStatusString
     data["__cublasLtGetStatusString"] = <intptr_t>__cublasLtGetStatusString
-    
+
     global __cublasLtHeuristicsCacheGetCapacity
     data["__cublasLtHeuristicsCacheGetCapacity"] = <intptr_t>__cublasLtHeuristicsCacheGetCapacity
-    
+
     global __cublasLtHeuristicsCacheSetCapacity
     data["__cublasLtHeuristicsCacheSetCapacity"] = <intptr_t>__cublasLtHeuristicsCacheSetCapacity
-    
+
     global __cublasLtDisableCpuInstructionsSetMask
     data["__cublasLtDisableCpuInstructionsSetMask"] = <intptr_t>__cublasLtDisableCpuInstructionsSetMask
 

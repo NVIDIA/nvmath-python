@@ -5,12 +5,13 @@
 """
 Example on using multiple CUDA streams in FFT APIs.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 512, 256, 256
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
@@ -18,13 +19,12 @@ a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype
 s1 = cp.cuda.Stream()
 
 # Create a stateful FFT object 'f' on stream s1.
-with nvmath.fft.FFT(a, axes=axes, options={'blocking': 'auto'}, stream=s1) as f:
-
+with nvmath.fft.FFT(a, axes=axes, options={"blocking": "auto"}, stream=s1) as f:
     # Plan the FFT on stream s1.
     f.plan(stream=s1)
 
     # Execute the FFT on stream s1.
-    b  = f.execute(stream=s1)
+    b = f.execute(stream=s1)
 
     # Record an event on s1 for use later.
     e1 = s1.record()

@@ -1,0 +1,114 @@
+# Copyright (c) 2024, NVIDIA CORPORATION.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+    - id: check-added-large-files
+    - id: check-ast
+    - id: check-json
+    - id: check-merge-conflict
+    - id: check-symlinks
+    - id: check-toml
+    - id: check-yaml
+    #FIXME
+    #- id: debug-statements
+    - id: end-of-file-fixer
+    - id: requirements-txt-fixer
+    - id: trailing-whitespace
+    - id: mixed-line-ending
+      args: ['--fix=lf']
+
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: v0.19
+    hooks:
+      - id: validate-pyproject
+        additional_dependencies: ["validate-pyproject-schema-store[all]"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # FIXME
+  # Mypy: static type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.13.0"
+    hooks:
+      - id: mypy
+        args: ["--config-file", "pyproject.toml"]
+        files: ^nvmath(.*)\.py$
+        additional_dependencies:
+          - cuda-python
+          - cupy-cuda12x
+          - mpi4py-mpich
+          - numba
+          - numpy
+          - pytest
+          - scipy
+          - torch
+          - types-cffi
+          - types-pywin32
+
+  # FIXME: Prettier pre-commit plugin is no longer supported
+  # Autoformat: YAML, JSON, Markdown, etc.
+  # - repo: https://github.com/pre-commit/mirrors-prettier
+  #   rev: v4.0.0-alpha.8
+  #   hooks:
+  #     - id: prettier
+
+  # Spellcheck
+  - repo: https://github.com/codespell-project/codespell
+    rev: "v2.3.0"
+    hooks:
+      - id: codespell
+        additional_dependencies:
+          - tomli
+
+  # FIXME: Types is very agressive and would require setting lots of ignore patterns
+  # Typos
+  # - repo: https://github.com/crate-ci/typos
+  #   rev: v1.24.5
+  #   hooks:
+  #     - id: typos
+
+  # Security: secrets
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # FIXME
+  # Security: secrets
+  - repo: https://github.com/thoughtworks/talisman
+    rev: "v1.32.0"
+    hooks:
+      - id: talisman-commit
+        entry: cmd --githook pre-commit
+
+  # FIXME
+  # Bash linter
+  # - repo: https://github.com/openstack/bashate
+  #   rev: 2.1.1
+  #   hooks:
+  #     - id: bashate
+  #       args: ["--ignore=E006,E010,E020"]
+
+  # FIXME
+  # Shell script linter
+  # - repo: https://github.com/shellcheck-py/shellcheck-py
+  #   rev: "v0.10.0.1"
+  #   hooks:
+  #     - id: shellcheck
+
+  # Lint: Markdown
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.41.0
+    hooks:
+      - id: markdownlint
+        args: ["--fix"]
+
+default_language_version:
+      python: python3

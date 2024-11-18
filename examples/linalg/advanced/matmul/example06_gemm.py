@@ -9,6 +9,7 @@ GEMM (General Matrix Multiply) is defined as:
 alpha * A @ B + beta * C
 where `@` denotes matrix multiplication.
 """
+
 import cupy as cp
 
 import nvmath

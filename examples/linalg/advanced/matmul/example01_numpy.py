@@ -8,6 +8,7 @@ This example demonstrates basic matrix multiplication of numpy arrays.
 nvmath-python supports multiple frameworks. The result of each operation is a tensor of the same
 framework that was used to pass the inputs. It is also located on the CPU like the inputs.
 """
+
 import numpy as np
 
 import nvmath

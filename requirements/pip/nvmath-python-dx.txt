@@ -1,9 +1,9 @@
 cuda-python >= 12 # NVRTC Python APIs
 cupy-cuda12x
-numba == 0.59
+numba == 0.60
+nvidia-cuda-cccl-cu12 > 12.4.127 # Earlier versions have missing header files
+nvidia-cuda-nvcc-cu12     # For numba use of libnvvm.so
+nvidia-cuda-nvrtc-cu12 !=12.4.*, !=12.5.0   # For nvmath.device use of NVRTC. [Known bugs exist for 12.4.0, 12.4.1, 12.5.0]
+nvidia-cuda-runtime-cu12  # CUDA headers
 nvidia-mathdx ~= 24.4.0
-nvidia-cuda-cccl-cu12 ~= 12.5.39 ; platform_machine == "x86_64"  # aarch64 wheel is not currently published by nvidia
-nvidia-cuda-nvcc-cu12 < 12.4    # For numba use of libnvvm.so
-nvidia-cuda-nvrtc-cu12 < 12.4   # For nvmath.device use of NVRTC
-nvidia-cuda-runtime-cu12 < 12.4 # CUDA headers
-pynvjitlink-cu12 == 0.1.14        # For numba use of nvJitLink
+pynvjitlink-cu12 >= 0.2

@@ -7,18 +7,18 @@ This example illustrates the use of stateful class-form FFT APIs with Torch tens
 
 The input as well as the result from the FFT operations are Torch tensors on GPU.
 """
+
 import torch
 
 import nvmath
 
 shape = 512, 512, 512
-axes  = 0, 1
+axes = 0, 1
 
-a = torch.ones(shape, dtype=torch.complex64, device='cuda') # gpu tensor
+a = torch.ones(shape, dtype=torch.complex64, device="cuda")  # gpu tensor
 
 # Create a stateful FFT object 'f'.
 with nvmath.fft.FFT(a, axes=axes) as f:
-
     # Plan the FFT.
     f.plan()
 

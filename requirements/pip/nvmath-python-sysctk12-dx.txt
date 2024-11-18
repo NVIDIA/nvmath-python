@@ -1,0 +1,5 @@
+cuda-python >= 12 # NVRTC Python APIs
+cupy-cuda12x
+numba == 0.60
+nvidia-mathdx ~= 24.4.0
+pynvjitlink-cu12 >= 0.2

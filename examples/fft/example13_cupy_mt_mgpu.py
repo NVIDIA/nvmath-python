@@ -5,6 +5,7 @@
 """
 Example using a thread pool to launch multiple independent FFT operations in parallel on multiple GPUs.
 """
+
 from functools import partial
 import multiprocessing.dummy
 
@@ -14,7 +15,7 @@ import nvmath
 
 if __name__ == "__main__":
     shape = 256, 512, 512
-    axes  = 0, 1
+    axes = 0, 1
 
     # Creating two input operands on two different devices
     with cp.cuda.Device(0):
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     with multiprocessing.dummy.Pool(processes=min(len(args), 4)) as pool:
         r = pool.map(fft, args, chunksize=1)
 
-        for i, (fft_input, fft_output) in enumerate(zip(args, r)):
+        for i, (fft_input, fft_output) in enumerate(zip(args, r, strict=True)):
             # Synchronize the default stream
             cp.cuda.get_current_stream(i).synchronize()
             print(f"Input {i} type = {type(fft_input)}, device = {fft_input.device}")

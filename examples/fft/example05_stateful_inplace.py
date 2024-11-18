@@ -11,18 +11,18 @@ For the following cases, inplace updating the input operands will not affect the
     - The input operand reside on CPU.
     - The input operand reside on GPU but the operation amounts to a C2R FFT.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 512, 512, 512
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.ones(shape, dtype=cp.complex64)
 
 # Create a stateful FFT object 'f'.
 with nvmath.fft.FFT(a, axes=axes) as f:
-
     # Plan the FFT.
     f.plan()
 

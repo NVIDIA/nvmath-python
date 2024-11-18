@@ -6,7 +6,7 @@
 An abstract interface to certain package-provided operations.
 """
 
-__all__ = ['Package']
+__all__ = ["Package"]
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -15,7 +15,6 @@ from typing import Any
 
 
 class Package(ABC):
-
     @staticmethod
     @abstractmethod
     def get_current_stream(device_id):
@@ -84,6 +83,7 @@ class StreamHolder:
         package (str):
         ptr (int): The address of the underlying ``cudaStream_t`` object.
     """
+
     ctx: Any = nullcontext()
     device_id: int = -2
     obj: Any = None

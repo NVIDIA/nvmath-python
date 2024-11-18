@@ -10,6 +10,7 @@ operations (including another FFT) also requiring a lot of memory.
 In this example, two FFT operations are performed in a loop in an interleaved manner.
 We assume that the available device memory is large enough for only one FFT at a time.
 """
+
 import logging
 
 import cupy as cp
@@ -18,13 +19,13 @@ import nvmath
 
 
 shape = 256, 512, 512
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 b = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
 # Turn on logging and set the level to DEBUG to print memory management messages.
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M:%S')
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Create and prepare two FFT objects.
 f1 = nvmath.fft.FFT(a, axes=axes)
@@ -36,7 +37,6 @@ f2.plan()
 num_iter = 3
 # Use the FFT objects as context managers so that internal library resources are properly cleaned up.
 with f1, f2:
-
     for i in range(num_iter):
         print(f"Iteration {i}")
         # Perform the first contraction, and request that the workspace be released at the end of the operation so that there is enough
@@ -44,7 +44,7 @@ with f1, f2:
         r = f1.execute(release_workspace=True)
 
         # Update f1's operands for the next iteration.
-        if i < num_iter-1:
+        if i < num_iter - 1:
             a[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
         # Perform the second FFT, and request that the workspace be released at the end of the operation so that there is enough
@@ -52,7 +52,7 @@ with f1, f2:
         r = f2.execute(release_workspace=True)
 
         # Update f2's operands for the next iteration.
-        if i < num_iter-1:
+        if i < num_iter - 1:
             b[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
         # Synchronize the default stream

@@ -7,30 +7,44 @@ from numba import cuda
 from nvmath.device import fft, float32x2_type
 from common import random_real
 
+
 def main():
+    FFT_r2c = fft(
+        fft_type="r2c",
+        size=64,
+        precision=np.float32,
+        ffts_per_block=2,
+        elements_per_thread=4,
+        real_fft_options={"complex_layout": "packed", "real_mode": "folded"},
+        execution="Block",
+        compiler="numba",
+    )
 
-    FFT_r2c = fft(fft_type='r2c', size=64, precision=np.float32, ffts_per_block=2, \
-                elements_per_thread=4, real_fft_options={'complex_layout': 'packed', 'real_mode': 'folded'}, \
-                execution='Block', compiler='numba')
+    FFT_c2r = fft(
+        fft_type="c2r",
+        size=64,
+        precision=np.float32,
+        ffts_per_block=2,
+        elements_per_thread=4,
+        real_fft_options={"complex_layout": "packed", "real_mode": "folded"},
+        execution="Block",
+        compiler="numba",
+    )
 
-    FFT_c2r = fft(fft_type='c2r', size=64, precision=np.float32, ffts_per_block=2, \
-                elements_per_thread=4, real_fft_options={'complex_layout': 'packed', 'real_mode': 'folded'}, \
-                execution='Block', compiler='numba')
-
-    complex_type        = FFT_r2c.value_type
-    real_type           = FFT_r2c.precision
-    storage_size        = FFT_r2c.storage_size
-    shared_memory_size  = FFT_r2c.shared_memory_size
-    ffts_per_block      = FFT_r2c.ffts_per_block
-    stride              = FFT_r2c.stride
-    size                = FFT_r2c.size
+    complex_type = FFT_r2c.value_type
+    real_type = FFT_r2c.precision
+    storage_size = FFT_r2c.storage_size
+    shared_memory_size = FFT_r2c.shared_memory_size
+    ffts_per_block = FFT_r2c.ffts_per_block
+    stride = FFT_r2c.stride
+    size = FFT_r2c.size
     elements_per_thread = FFT_r2c.elements_per_thread
-    block_dim           = FFT_r2c.block_dim
+    block_dim = FFT_r2c.block_dim
 
     assert complex_type == float32x2_type
     assert storage_size == 2
     assert ffts_per_block == 2
-    assert all([file.endswith('.ltoir') for file in FFT_r2c.files])
+    assert all([file.endswith(".ltoir") for file in FFT_r2c.files])
     assert stride == 16
     assert size == 64
     assert elements_per_thread == 4
@@ -48,7 +62,6 @@ def main():
 
     @cuda.jit(link=FFT_r2c.files + FFT_c2r.files)
     def f(inout):
-
         # Registers
         complex_thread_data = cuda.local.array(shape=(storage_size,), dtype=complex_type)
         real_thread_data = complex_thread_data.view(np.float32)
@@ -99,6 +112,7 @@ def main():
     error = np.linalg.norm(output_test - output_ref) / np.linalg.norm(output_ref)
     print(f"L2 error {error}")
     assert error < 1e-5
+
 
 if __name__ == "__main__":
     main()

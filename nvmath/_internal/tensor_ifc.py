@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 
 from . import typemaps
 
+
 class Tensor(ABC):
     """
     A simple wrapper type for tensors to make the API package-agnostic.
@@ -57,13 +58,8 @@ class Tensor(ABC):
     def strides(self):
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def empty(cls, shape, **context):
-        raise NotImplementedError
-
-    @abstractmethod
-    def to(self, device='cpu', stream_holder=None):
+    def to(self, device="cpu", stream_holder=None):
         raise NotImplementedError
 
     @abstractmethod
@@ -83,4 +79,3 @@ class Tensor(ABC):
             except exception_type:
                 pass
         return name_to_dtype
-

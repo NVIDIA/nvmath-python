@@ -5,12 +5,13 @@
 """
 Example showing the fallback path for an unsupported layout error using the class-form FFT APIs.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 256, 256, 512
-axes  = 0, 2
+axes = 0, 2
 
 a = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
@@ -30,7 +31,6 @@ except nvmath.fft.UnsupportedLayoutError as e:
 
 # Use context manager to free resources automatically.
 with f:
-
     # Plan the FFT.
     f.plan()
 

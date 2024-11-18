@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 cimport cython  # NOQA
 from libc.stdint cimport int64_t
@@ -100,6 +100,7 @@ class XtCallbackType(_IntEnum):
 class Property(_IntEnum):
     """See `cufftProperty`."""
     NVFFT_PLAN_INT64_PATIENT_JIT = NVFFT_PLAN_PROPERTY_INT64_PATIENT_JIT
+    NVFFT_PLAN_INT64_MAX_NUM_HOST_THREADS = NVFFT_PLAN_PROPERTY_INT64_MAX_NUM_HOST_THREADS
 
 
 ###############################################################################
@@ -171,12 +172,12 @@ cpdef plan3d(intptr_t plan, int nx, int ny, int nz, int type):
 
 cpdef plan_many(intptr_t plan, int rank, n, inembed, int istride, int idist, onembed, int ostride, int odist, int type, int batch):
     """See `cufftPlanMany`."""
-    cdef nullable_unique_ptr[ vector[int] ] _n_ = \
-        get_resource_ptr[int](n, <int*>NULL)
-    cdef nullable_unique_ptr[ vector[int] ] _inembed_ = \
-        get_resource_ptr[int](inembed, <int*>NULL)
-    cdef nullable_unique_ptr[ vector[int] ] _onembed_ = \
-        get_resource_ptr[int](onembed, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _n_
+    get_resource_ptr[int](_n_, n, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _inembed_
+    get_resource_ptr[int](_inembed_, inembed, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _onembed_
+    get_resource_ptr[int](_onembed_, onembed, <int*>NULL)
     with nogil:
         status = cufftPlanMany(<cufftHandle*>plan, rank, <int*>(_n_.data()), <int*>(_inembed_.data()), istride, idist, <int*>(_onembed_.data()), ostride, odist, <_Type>type, batch)
     check_status(status)
@@ -211,12 +212,12 @@ cpdef size_t make_plan3d(int plan, int nx, int ny, int nz, int type) except? -1:
 
 cpdef size_t make_plan_many(int plan, int rank, n, inembed, int istride, int idist, onembed, int ostride, int odist, int type, int batch) except? -1:
     """See `cufftMakePlanMany`."""
-    cdef nullable_unique_ptr[ vector[int] ] _n_ = \
-        get_resource_ptr[int](n, <int*>NULL)
-    cdef nullable_unique_ptr[ vector[int] ] _inembed_ = \
-        get_resource_ptr[int](inembed, <int*>NULL)
-    cdef nullable_unique_ptr[ vector[int] ] _onembed_ = \
-        get_resource_ptr[int](onembed, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _n_
+    get_resource_ptr[int](_n_, n, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _inembed_
+    get_resource_ptr[int](_inembed_, inembed, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _onembed_
+    get_resource_ptr[int](_onembed_, onembed, <int*>NULL)
     cdef size_t work_size
     with nogil:
         status = cufftMakePlanMany(<cufftHandle>plan, rank, <int*>(_n_.data()), <int*>(_inembed_.data()), istride, idist, <int*>(_onembed_.data()), ostride, odist, <_Type>type, batch, &work_size)
@@ -226,12 +227,12 @@ cpdef size_t make_plan_many(int plan, int rank, n, inembed, int istride, int idi
 
 cpdef size_t make_plan_many64(int plan, int rank, n, inembed, long long int istride, long long int idist, onembed, long long int ostride, long long int odist, int type, long long int batch) except? -1:
     """See `cufftMakePlanMany64`."""
-    cdef nullable_unique_ptr[ vector[int64_t] ] _n_ = \
-        get_resource_ptr[int64_t](n, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_ = \
-        get_resource_ptr[int64_t](inembed, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_ = \
-        get_resource_ptr[int64_t](onembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _n_
+    get_resource_ptr[int64_t](_n_, n, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_
+    get_resource_ptr[int64_t](_inembed_, inembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_
+    get_resource_ptr[int64_t](_onembed_, onembed, <int64_t*>NULL)
     cdef size_t work_size
     with nogil:
         status = cufftMakePlanMany64(<cufftHandle>plan, rank, <long long int*>(_n_.data()), <long long int*>(_inembed_.data()), istride, idist, <long long int*>(_onembed_.data()), ostride, odist, <_Type>type, batch, &work_size)
@@ -241,12 +242,12 @@ cpdef size_t make_plan_many64(int plan, int rank, n, inembed, long long int istr
 
 cpdef size_t get_size_many64(int plan, int rank, n, inembed, long long int istride, long long int idist, onembed, long long int ostride, long long int odist, int type, long long int batch) except? -1:
     """See `cufftGetSizeMany64`."""
-    cdef nullable_unique_ptr[ vector[int64_t] ] _n_ = \
-        get_resource_ptr[int64_t](n, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_ = \
-        get_resource_ptr[int64_t](inembed, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_ = \
-        get_resource_ptr[int64_t](onembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _n_
+    get_resource_ptr[int64_t](_n_, n, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_
+    get_resource_ptr[int64_t](_inembed_, inembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_
+    get_resource_ptr[int64_t](_onembed_, onembed, <int64_t*>NULL)
     cdef size_t work_size
     with nogil:
         status = cufftGetSizeMany64(<cufftHandle>plan, rank, <long long int*>(_n_.data()), <long long int*>(_inembed_.data()), istride, idist, <long long int*>(_onembed_.data()), ostride, odist, <_Type>type, batch, &work_size)
@@ -283,12 +284,12 @@ cpdef size_t estimate3d(int nx, int ny, int nz, int type) except? -1:
 
 cpdef size_t estimate_many(int rank, n, inembed, int istride, int idist, onembed, int ostride, int odist, int type, int batch) except? -1:
     """See `cufftEstimateMany`."""
-    cdef nullable_unique_ptr[ vector[int] ] _n_ = \
-        get_resource_ptr[int](n, <int*>NULL)
-    cdef nullable_unique_ptr[ vector[int] ] _inembed_ = \
-        get_resource_ptr[int](inembed, <int*>NULL)
-    cdef nullable_unique_ptr[ vector[int] ] _onembed_ = \
-        get_resource_ptr[int](onembed, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _n_
+    get_resource_ptr[int](_n_, n, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _inembed_
+    get_resource_ptr[int](_inembed_, inembed, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _onembed_
+    get_resource_ptr[int](_onembed_, onembed, <int*>NULL)
     cdef size_t work_size
     with nogil:
         status = cufftEstimateMany(rank, <int*>(_n_.data()), <int*>(_inembed_.data()), istride, idist, <int*>(_onembed_.data()), ostride, odist, <_Type>type, batch, &work_size)
@@ -440,8 +441,8 @@ cpdef int get_property(int type) except? -1:
 
 cpdef xt_set_gpus(int handle, int n_gpus, which_gpus):
     """See `cufftXtSetGPUs`."""
-    cdef nullable_unique_ptr[ vector[int] ] _which_gpus_ = \
-        get_resource_ptr[int](which_gpus, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _which_gpus_
+    get_resource_ptr[int](_which_gpus_, which_gpus, <int*>NULL)
     with nogil:
         status = cufftXtSetGPUs(<cufftHandle>handle, n_gpus, <int*>(_which_gpus_.data()))
     check_status(status)
@@ -542,12 +543,12 @@ cpdef xt_set_callback_shared_size(int plan, int cb_type, size_t shared_size):
 
 cpdef size_t xt_make_plan_many(int plan, int rank, n, inembed, long long int istride, long long int idist, int inputtype, onembed, long long int ostride, long long int odist, int outputtype, long long int batch, int executiontype) except? 0:
     """See `cufftXtMakePlanMany`."""
-    cdef nullable_unique_ptr[ vector[int64_t] ] _n_ = \
-        get_resource_ptr[int64_t](n, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_ = \
-        get_resource_ptr[int64_t](inembed, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_ = \
-        get_resource_ptr[int64_t](onembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _n_
+    get_resource_ptr[int64_t](_n_, n, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_
+    get_resource_ptr[int64_t](_inembed_, inembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_
+    get_resource_ptr[int64_t](_onembed_, onembed, <int64_t*>NULL)
     cdef size_t work_size
     with nogil:
         status = cufftXtMakePlanMany(<cufftHandle>plan, rank, <long long int*>(_n_.data()), <long long int*>(_inembed_.data()), istride, idist, <DataType>inputtype, <long long int*>(_onembed_.data()), ostride, odist, <DataType>outputtype, batch, &work_size, <DataType>executiontype)
@@ -557,12 +558,12 @@ cpdef size_t xt_make_plan_many(int plan, int rank, n, inembed, long long int ist
 
 cpdef size_t xt_get_size_many(int plan, int rank, n, inembed, long long int istride, long long int idist, int inputtype, onembed, long long int ostride, long long int odist, int outputtype, long long int batch, int executiontype) except? 0:
     """See `cufftXtGetSizeMany`."""
-    cdef nullable_unique_ptr[ vector[int64_t] ] _n_ = \
-        get_resource_ptr[int64_t](n, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_ = \
-        get_resource_ptr[int64_t](inembed, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_ = \
-        get_resource_ptr[int64_t](onembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _n_
+    get_resource_ptr[int64_t](_n_, n, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _inembed_
+    get_resource_ptr[int64_t](_inembed_, inembed, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _onembed_
+    get_resource_ptr[int64_t](_onembed_, onembed, <int64_t*>NULL)
     cdef size_t work_size
     with nogil:
         status = cufftXtGetSizeMany(<cufftHandle>plan, rank, <long long int*>(_n_.data()), <long long int*>(_inembed_.data()), istride, idist, <DataType>inputtype, <long long int*>(_onembed_.data()), ostride, odist, <DataType>outputtype, batch, &work_size, <DataType>executiontype)
@@ -594,8 +595,8 @@ cpdef xt_set_work_area_policy(int plan, int policy, intptr_t work_size):
 cpdef xt_set_jit_callback(int plan, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info):
     """See `cufftXtSetJITCallback`."""
     cdef void* _lto_callback_fatbin_ = get_buffer_pointer(lto_callback_fatbin, lto_callback_fatbin_size, readonly=True)
-    cdef nullable_unique_ptr[ vector[void*] ] _caller_info_ = \
-        get_resource_ptrs[void](caller_info, <void*>NULL)
+    cdef nullable_unique_ptr[ vector[void*] ] _caller_info_
+    get_resource_ptrs[void](_caller_info_, caller_info, <void*>NULL)
     with nogil:
         status = cufftXtSetJITCallback(<cufftHandle>plan, <const void*>_lto_callback_fatbin_, lto_callback_fatbin_size, <_XtCallbackType>type, <void**>(_caller_info_.data()))
     check_status(status)

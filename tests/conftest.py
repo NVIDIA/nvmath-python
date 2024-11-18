@@ -7,12 +7,25 @@
 # is borrowed from https://github.com/pytest-dev/pytest/issues/3730#issuecomment-567142496.
 
 from collections.abc import Iterable
+import datetime
 import os
+
+import hypothesis
+
+hypothesis.settings.register_profile(
+    "nvmath",
+    derandomize=False,
+    deadline=datetime.timedelta(minutes=5),
+    verbosity=hypothesis.Verbosity.normal,
+    print_blob=True,
+)
+hypothesis.settings.load_profile("nvmath")
 
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "uncollect_if(*, func): function to unselect tests from parametrization"
+        "markers",
+        "uncollect_if(*, func): function to unselect tests from parametrization",
     )
 
 
@@ -21,9 +34,9 @@ def pytest_collection_modifyitems(config, items):
     kept = []
     for item in items:
         is_removed = False
-        m = item.get_closest_marker('uncollect_if')
+        m = item.get_closest_marker("uncollect_if")
         if m:
-            funcs = m.kwargs['func']
+            funcs = m.kwargs["func"]
             if not isinstance(funcs, Iterable):
                 funcs = (funcs,)
             # loops over all deselect requirements

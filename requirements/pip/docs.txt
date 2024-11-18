@@ -2,7 +2,8 @@ breathe
 enum-tools
 grip
 myst-parser
+nvidia-sphinx-theme
 sphinx
-sphinx-rtd-theme
+sphinx-favicon
 sphinx-toolbox
 sphinxcontrib-programoutput

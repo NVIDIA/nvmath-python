@@ -13,7 +13,6 @@ Enums and constants
 
    RngType
    Ordering
-   DirectionVectorSet
    Method
    Status
    cuRANDError
@@ -49,7 +48,3 @@ Functions
    generate_binomial
    generate_binomial_method
    generate_seeds
-   get_scramble_constants32
-   get_scramble_constants64
-   get_direction_vectors32
-   get_direction_vectors64

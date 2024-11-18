@@ -5,6 +5,7 @@
 """
 This set of tests checks reset_operands
 """
+
 import nvmath
 import pytest
 from .utils import *
@@ -26,9 +27,7 @@ from .utils import *
         False,
     ),
 )
-@pytest.mark.parametrize(
-    "with_alpha, reset_alpha", ((False, False), (True, False), (True, True))
-)
+@pytest.mark.parametrize("with_alpha, reset_alpha", ((False, False), (True, False), (True, True)))
 @pytest.mark.parametrize(
     "with_c, reset_c, reset_beta, with_epilog, reset_epilog",
     (
@@ -128,12 +127,7 @@ def test_reset(
         if reset_epilog:
             reset_kwargs["epilog_inputs"] = new_epilog_inputs
 
-        all_operands_reset = (
-            reset_a
-            and reset_b
-            and (reset_c or not with_c)
-            and (reset_epilog or not with_epilog)
-        )
+        all_operands_reset = reset_a and reset_b and (reset_c or not with_c) and (reset_epilog or not with_epilog)
         if reset_to_none and not all_operands_reset:
             with pytest.raises(ValueError):
                 mm.reset_operands(**reset_kwargs)
@@ -143,13 +137,9 @@ def test_reset(
             reference2 = (new_a if reset_a else a) @ (new_b if reset_b else b)
             reference2 *= new_alpha if reset_alpha else alpha if with_alpha else 1
             if with_c:
-                reference2 += (new_c if reset_c else c) * (
-                    new_beta if reset_beta else beta
-                )
+                reference2 += (new_c if reset_c else c) * (new_beta if reset_beta else beta)
             if with_epilog:
-                reference2 += (
-                    new_epilog_inputs["bias"] if reset_epilog else epilog_inputs["bias"]
-                )
+                reference2 += new_epilog_inputs["bias"] if reset_epilog else epilog_inputs["bias"]
 
             result2 = mm.execute()
             assert_tensors_equal(result2, reference2)
@@ -203,42 +193,24 @@ def test_shape_mismatch(
             mm.plan()
         mm.execute()
 
-        new_a = sample_matrix(
-            framework, dtype, (m, k + 1) if a_mismatch else (m, k), use_cuda
-        )
-        new_b = sample_matrix(
-            framework, dtype, (k, n + 3) if b_mismatch else (k, n), use_cuda
-        )
-        new_c = (
-            sample_matrix(
-                framework, dtype, (m + 9, n - 3) if c_mismatch else (m, n), use_cuda
-            )
-            if with_c
-            else None
-        )
+        new_a = sample_matrix(framework, dtype, (m, k + 1) if a_mismatch else (m, k), use_cuda)
+        new_b = sample_matrix(framework, dtype, (k, n + 3) if b_mismatch else (k, n), use_cuda)
+        new_c = sample_matrix(framework, dtype, (m + 9, n - 3) if c_mismatch else (m, n), use_cuda) if with_c else None
         new_epilog_inputs = (
-            {
-                "bias": sample_matrix(
-                    framework, dtype, (m - 1, 1) if bias_mismatch else (m, 1), use_cuda
-                )
-            }
+            {"bias": sample_matrix(framework, dtype, (m - 1, 1) if bias_mismatch else (m, 1), use_cuda)}
             if with_epilog
             else None
         )
 
         if any((a_mismatch, b_mismatch, c_mismatch, bias_mismatch)):
             with pytest.raises(ValueError, match="The extents .* must match"):
-                mm.reset_operands(
-                    a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs
-                )
+                mm.reset_operands(a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs)
         else:
             pytest.skip("All shapes match")
 
 
 @pytest.mark.parametrize("framework", ("numpy/cupy",))
-@pytest.mark.parametrize(
-    "dtype, bad_dtype", (("float64", "float32"), ("float32", "float64"))
-)
+@pytest.mark.parametrize("dtype, bad_dtype", (("float64", "float32"), ("float32", "float64")))
 @pytest.mark.parametrize("a_mismatch", (True, False))
 @pytest.mark.parametrize("b_mismatch", (True, False))
 @pytest.mark.parametrize(
@@ -287,25 +259,11 @@ def test_dtype_mismatch(
             mm.plan()
         mm.execute()
 
-        new_a = sample_matrix(
-            framework, bad_dtype if a_mismatch else dtype, (m, k), use_cuda
-        )
-        new_b = sample_matrix(
-            framework, bad_dtype if b_mismatch else dtype, (k, n), use_cuda
-        )
-        new_c = (
-            sample_matrix(
-                framework, bad_dtype if c_mismatch else dtype, (m, n), use_cuda
-            )
-            if with_c
-            else None
-        )
+        new_a = sample_matrix(framework, bad_dtype if a_mismatch else dtype, (m, k), use_cuda)
+        new_b = sample_matrix(framework, bad_dtype if b_mismatch else dtype, (k, n), use_cuda)
+        new_c = sample_matrix(framework, bad_dtype if c_mismatch else dtype, (m, n), use_cuda) if with_c else None
         new_epilog_inputs = (
-            {
-                "bias": sample_matrix(
-                    framework, bad_dtype if bias_mismatch else dtype, (m, 1), use_cuda
-                )
-            }
+            {"bias": sample_matrix(framework, bad_dtype if bias_mismatch else dtype, (m, 1), use_cuda)}
             if with_epilog
             else None
         )
@@ -315,20 +273,14 @@ def test_dtype_mismatch(
                 ValueError,
                 match="The data type of the new operand must match the data type of the original operand.",
             ):
-                mm.reset_operands(
-                    a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs
-                )
+                mm.reset_operands(a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs)
         else:
             # All shapes match, just check if nothing explodes here
-            mm.reset_operands(
-                a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs
-            )
+            mm.reset_operands(a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs)
             mm.execute()
 
 
-@pytest.mark.parametrize(
-    "framework, bad_framework", (("numpy/cupy", "torch"), ("torch", "numpy/cupy"))
-)
+@pytest.mark.parametrize("framework, bad_framework", (("numpy/cupy", "torch"), ("torch", "numpy/cupy")))
 @pytest.mark.parametrize("dtype", ("float64",))
 @pytest.mark.parametrize("a_mismatch", (True, False))
 @pytest.mark.parametrize("b_mismatch", (True, False))
@@ -378,19 +330,9 @@ def test_framework_mismatch(
             mm.plan()
         mm.execute()
 
-        new_a = sample_matrix(
-            bad_framework if a_mismatch else framework, dtype, (m, k), use_cuda
-        )
-        new_b = sample_matrix(
-            bad_framework if b_mismatch else framework, dtype, (k, n), use_cuda
-        )
-        new_c = (
-            sample_matrix(
-                bad_framework if c_mismatch else framework, dtype, (m, n), use_cuda
-            )
-            if with_c
-            else None
-        )
+        new_a = sample_matrix(bad_framework if a_mismatch else framework, dtype, (m, k), use_cuda)
+        new_b = sample_matrix(bad_framework if b_mismatch else framework, dtype, (k, n), use_cuda)
+        new_c = sample_matrix(bad_framework if c_mismatch else framework, dtype, (m, n), use_cuda) if with_c else None
         new_epilog_inputs = (
             {
                 "bias": sample_matrix(
@@ -406,14 +348,10 @@ def test_framework_mismatch(
 
         if any((a_mismatch, b_mismatch, c_mismatch, bias_mismatch)):
             with pytest.raises(TypeError, match="Library package mismatch"):
-                mm.reset_operands(
-                    a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs
-                )
+                mm.reset_operands(a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs)
         else:
             # All dtypes match, just check if nothing explodes here
-            mm.reset_operands(
-                a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs
-            )
+            mm.reset_operands(a=new_a, b=new_b, c=new_c, epilog_inputs=new_epilog_inputs)
             mm.execute()
 
 

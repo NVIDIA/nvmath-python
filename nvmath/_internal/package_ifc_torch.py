@@ -6,7 +6,7 @@
 Interface to Torch operations.
 """
 
-__all__ = ['TorchPackage']
+__all__ = ["TorchPackage"]
 
 import torch
 
@@ -14,7 +14,6 @@ from .package_ifc import Package
 
 
 class TorchPackage(Package):
-
     @staticmethod
     def get_current_stream(device_id):
         return torch.cuda.current_stream(device=device_id)

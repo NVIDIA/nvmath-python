@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -116,6 +116,7 @@ ctypedef enum cusparseSpMMAlg_t "cusparseSpMMAlg_t":
     CUSPARSE_SPMM_CSR_ALG2 "CUSPARSE_SPMM_CSR_ALG2" = 6
     CUSPARSE_SPMM_CSR_ALG3 "CUSPARSE_SPMM_CSR_ALG3" = 12
     CUSPARSE_SPMM_BLOCKED_ELL_ALG1 "CUSPARSE_SPMM_BLOCKED_ELL_ALG1" = 13
+    CUSPARSE_SPMM_BSR_ALG1 "CUSPARSE_SPMM_BSR_ALG1" = 14
     CUSPARSE_MM_ALG_DEFAULT "CUSPARSE_MM_ALG_DEFAULT" = 0
     CUSPARSE_COOMM_ALG1 "CUSPARSE_COOMM_ALG1" = 1
     CUSPARSE_COOMM_ALG2 "CUSPARSE_COOMM_ALG2" = 2
@@ -466,3 +467,4 @@ cdef cusparseStatus_t cusparseCreateConstBsr(cusparseConstSpMatDescr_t* spMatDes
 cdef cusparseStatus_t cusparseCreateSlicedEll(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, int64_t sellValuesSize, int64_t sliceSize, void* sellSliceOffsets, void* sellColInd, void* sellValues, cusparseIndexType_t sellSliceOffsetsType, cusparseIndexType_t sellColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil
 cdef cusparseStatus_t cusparseCreateConstSlicedEll(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, int64_t sellValuesSize, int64_t sliceSize, const void* sellSliceOffsets, const void* sellColInd, const void* sellValues, cusparseIndexType_t sellSliceOffsetsType, cusparseIndexType_t sellColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil
 cdef cusparseStatus_t cusparseSpSV_updateMatrix(cusparseHandle_t handle, cusparseSpSVDescr_t spsvDescr, void* newValues, cusparseSpSVUpdate_t updatePart) except* nogil
+cdef cusparseStatus_t cusparseSpMV_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except* nogil

@@ -17,15 +17,17 @@ from fftn2 import fftn
 from truncation import fft as truncated_fft
 
 shape = 64, 128, 16, 48, 32
-axes  = 0, 1, 2, 3, 4
+axes = 0, 1, 2, 3, 4
 extents = tuple(s // 2 for s in shape)
 
 a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
 r = truncated_fft(a, axes=axes, extents=extents, engine=fftn)
 
-nvtime = benchmark(truncated_fft, args=(a,), kwargs={'axes': axes, 'extents': extents, 'engine': fftn}, n_repeat=10)
-print(f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (non-caching engine):\n{nvtime}\n")
+nvtime = benchmark(truncated_fft, args=(a,), kwargs={"axes": axes, "extents": extents, "engine": fftn}, n_repeat=10)
+print(
+    f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (non-caching engine):\n{nvtime}\n"
+)
 
 # Create a cached FFTN version to use in truncated FFT to create truncated FFTN.
 with FFTCache() as cache:
@@ -34,8 +36,12 @@ with FFTCache() as cache:
 
     r = truncated_fft(a, axes=axes, extents=extents, engine=cached_fftn)
 
-    nvtime = benchmark(truncated_fft, args=(a,), kwargs={'axes': axes, 'extents': extents, 'engine': cached_fftn}, n_repeat=10)
-    print(f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (caching engine):\n{nvtime}\n")
+    nvtime = benchmark(
+        truncated_fft, args=(a,), kwargs={"axes": axes, "extents": extents, "engine": cached_fftn}, n_repeat=10
+    )
+    print(
+        f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (caching engine):\n{nvtime}\n"
+    )
 
-cptime = benchmark(cp.fft.fftn, args=(a,), kwargs={'axes': axes, 's': extents}, n_repeat=10)
+cptime = benchmark(cp.fft.fftn, args=(a,), kwargs={"axes": axes, "s": extents}, n_repeat=10)
 print(f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on CuPy:\n{cptime}\n")

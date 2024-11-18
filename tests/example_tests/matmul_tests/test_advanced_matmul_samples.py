@@ -8,13 +8,17 @@ import re
 
 import pytest
 
+try:
+    import cupy
+except ModuleNotFoundError:
+    pytest.skip("cupy required for matmul tests", allow_module_level=True)
+
 from nvmath import bindings
 from ..test_utils import run_sample
 
 
-samples_path = os.path.join(
-    os.path.dirname(__file__), '..', '..', '..', 'examples', 'linalg', 'advanced', 'matmul')
-sample_files = glob.glob(samples_path+'**/*.py', recursive=True)
+samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "linalg", "advanced", "matmul")
+sample_files = glob.glob(samples_path + "**/*.py", recursive=True)
 
 # Handle MPI tests separately.
 mpi_re = r".*_mpi[_]?.*\.py"
@@ -26,22 +30,19 @@ min_cublas_version = {
     "example10_epilog_relu_aux.py": 111103,
     "example10_epilog_drelu.py": 111103,
     "example10_epilog_dgelu.py": 111103,
-    "example10_epilog_drelu.py": 111103,
     "example11_epilog_drelu_bgrad.py": 111103,
     "example12_epilog_bgrada.py": 111103,
     "example12_epilog_bgradb.py": 111103,
-    "example13_epilog_stateful_reset.py":  11501,
+    "example13_epilog_stateful_reset.py": 11501,
     "example14_autotune.py": 11501,
     "example16_reuse_algorithms.py": 11501,
 }
 
 cublas_version = bindings.cublasLt.get_version()
 
-@pytest.mark.parametrize(
-    'sample', sample_files
-)
-class TestMatmulSamples:
 
+@pytest.mark.parametrize("sample", sample_files)
+class TestMatmulSamples:
     def test_sample(self, sample):
         filename = os.path.basename(sample)
         required_cublas_version = min_cublas_version.get(filename, 0)

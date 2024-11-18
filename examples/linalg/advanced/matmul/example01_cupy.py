@@ -8,6 +8,7 @@ This example demonstrates basic matrix multiplication of CuPy arrays.
 nvmath-python supports multiple frameworks. The result of each operation is a tensor of the same
 framework that was used to pass the inputs. It is also located on the same device as the inputs.
 """
+
 import cupy as cp
 
 import nvmath

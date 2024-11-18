@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -161,313 +161,313 @@ cdef int _check_or_init_cufft() except -1 nogil:
             __cufftPlan1d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftPlan1d')
         except:
             pass
-    
+
         global __cufftPlan2d
         try:
             __cufftPlan2d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftPlan2d')
         except:
             pass
-    
+
         global __cufftPlan3d
         try:
             __cufftPlan3d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftPlan3d')
         except:
             pass
-    
+
         global __cufftPlanMany
         try:
             __cufftPlanMany = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftPlanMany')
         except:
             pass
-    
+
         global __cufftMakePlan1d
         try:
             __cufftMakePlan1d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftMakePlan1d')
         except:
             pass
-    
+
         global __cufftMakePlan2d
         try:
             __cufftMakePlan2d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftMakePlan2d')
         except:
             pass
-    
+
         global __cufftMakePlan3d
         try:
             __cufftMakePlan3d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftMakePlan3d')
         except:
             pass
-    
+
         global __cufftMakePlanMany
         try:
             __cufftMakePlanMany = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftMakePlanMany')
         except:
             pass
-    
+
         global __cufftMakePlanMany64
         try:
             __cufftMakePlanMany64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftMakePlanMany64')
         except:
             pass
-    
+
         global __cufftGetSizeMany64
         try:
             __cufftGetSizeMany64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetSizeMany64')
         except:
             pass
-    
+
         global __cufftEstimate1d
         try:
             __cufftEstimate1d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftEstimate1d')
         except:
             pass
-    
+
         global __cufftEstimate2d
         try:
             __cufftEstimate2d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftEstimate2d')
         except:
             pass
-    
+
         global __cufftEstimate3d
         try:
             __cufftEstimate3d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftEstimate3d')
         except:
             pass
-    
+
         global __cufftEstimateMany
         try:
             __cufftEstimateMany = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftEstimateMany')
         except:
             pass
-    
+
         global __cufftCreate
         try:
             __cufftCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftCreate')
         except:
             pass
-    
+
         global __cufftGetSize1d
         try:
             __cufftGetSize1d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetSize1d')
         except:
             pass
-    
+
         global __cufftGetSize2d
         try:
             __cufftGetSize2d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetSize2d')
         except:
             pass
-    
+
         global __cufftGetSize3d
         try:
             __cufftGetSize3d = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetSize3d')
         except:
             pass
-    
+
         global __cufftGetSizeMany
         try:
             __cufftGetSizeMany = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetSizeMany')
         except:
             pass
-    
+
         global __cufftGetSize
         try:
             __cufftGetSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetSize')
         except:
             pass
-    
+
         global __cufftSetWorkArea
         try:
             __cufftSetWorkArea = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftSetWorkArea')
         except:
             pass
-    
+
         global __cufftSetAutoAllocation
         try:
             __cufftSetAutoAllocation = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftSetAutoAllocation')
         except:
             pass
-    
+
         global __cufftExecC2C
         try:
             __cufftExecC2C = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftExecC2C')
         except:
             pass
-    
+
         global __cufftExecR2C
         try:
             __cufftExecR2C = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftExecR2C')
         except:
             pass
-    
+
         global __cufftExecC2R
         try:
             __cufftExecC2R = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftExecC2R')
         except:
             pass
-    
+
         global __cufftExecZ2Z
         try:
             __cufftExecZ2Z = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftExecZ2Z')
         except:
             pass
-    
+
         global __cufftExecD2Z
         try:
             __cufftExecD2Z = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftExecD2Z')
         except:
             pass
-    
+
         global __cufftExecZ2D
         try:
             __cufftExecZ2D = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftExecZ2D')
         except:
             pass
-    
+
         global __cufftSetStream
         try:
             __cufftSetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftSetStream')
         except:
             pass
-    
+
         global __cufftDestroy
         try:
             __cufftDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftDestroy')
         except:
             pass
-    
+
         global __cufftGetVersion
         try:
             __cufftGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetVersion')
         except:
             pass
-    
+
         global __cufftGetProperty
         try:
             __cufftGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetProperty')
         except:
             pass
-    
+
         global __cufftXtSetGPUs
         try:
             __cufftXtSetGPUs = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtSetGPUs')
         except:
             pass
-    
+
         global __cufftXtMalloc
         try:
             __cufftXtMalloc = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtMalloc')
         except:
             pass
-    
+
         global __cufftXtMemcpy
         try:
             __cufftXtMemcpy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtMemcpy')
         except:
             pass
-    
+
         global __cufftXtFree
         try:
             __cufftXtFree = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtFree')
         except:
             pass
-    
+
         global __cufftXtSetWorkArea
         try:
             __cufftXtSetWorkArea = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtSetWorkArea')
         except:
             pass
-    
+
         global __cufftXtExecDescriptorC2C
         try:
             __cufftXtExecDescriptorC2C = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExecDescriptorC2C')
         except:
             pass
-    
+
         global __cufftXtExecDescriptorR2C
         try:
             __cufftXtExecDescriptorR2C = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExecDescriptorR2C')
         except:
             pass
-    
+
         global __cufftXtExecDescriptorC2R
         try:
             __cufftXtExecDescriptorC2R = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExecDescriptorC2R')
         except:
             pass
-    
+
         global __cufftXtExecDescriptorZ2Z
         try:
             __cufftXtExecDescriptorZ2Z = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExecDescriptorZ2Z')
         except:
             pass
-    
+
         global __cufftXtExecDescriptorD2Z
         try:
             __cufftXtExecDescriptorD2Z = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExecDescriptorD2Z')
         except:
             pass
-    
+
         global __cufftXtExecDescriptorZ2D
         try:
             __cufftXtExecDescriptorZ2D = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExecDescriptorZ2D')
         except:
             pass
-    
+
         global __cufftXtQueryPlan
         try:
             __cufftXtQueryPlan = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtQueryPlan')
         except:
             pass
-    
+
         global __cufftXtClearCallback
         try:
             __cufftXtClearCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtClearCallback')
         except:
             pass
-    
+
         global __cufftXtSetCallbackSharedSize
         try:
             __cufftXtSetCallbackSharedSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtSetCallbackSharedSize')
         except:
             pass
-    
+
         global __cufftXtMakePlanMany
         try:
             __cufftXtMakePlanMany = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtMakePlanMany')
         except:
             pass
-    
+
         global __cufftXtGetSizeMany
         try:
             __cufftXtGetSizeMany = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtGetSizeMany')
         except:
             pass
-    
+
         global __cufftXtExec
         try:
             __cufftXtExec = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExec')
         except:
             pass
-    
+
         global __cufftXtExecDescriptor
         try:
             __cufftXtExecDescriptor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtExecDescriptor')
         except:
             pass
-    
+
         global __cufftXtSetWorkAreaPolicy
         try:
             __cufftXtSetWorkAreaPolicy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtSetWorkAreaPolicy')
         except:
             pass
-    
+
         global __cufftXtSetJITCallback
         try:
             __cufftXtSetJITCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtSetJITCallback')
         except:
             pass
-    
+
         global __cufftXtSetSubformatDefault
         try:
             __cufftXtSetSubformatDefault = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftXtSetSubformatDefault')
@@ -491,160 +491,160 @@ cpdef dict _inspect_function_pointers():
 
     global __cufftPlan1d
     data["__cufftPlan1d"] = <intptr_t>__cufftPlan1d
-    
+
     global __cufftPlan2d
     data["__cufftPlan2d"] = <intptr_t>__cufftPlan2d
-    
+
     global __cufftPlan3d
     data["__cufftPlan3d"] = <intptr_t>__cufftPlan3d
-    
+
     global __cufftPlanMany
     data["__cufftPlanMany"] = <intptr_t>__cufftPlanMany
-    
+
     global __cufftMakePlan1d
     data["__cufftMakePlan1d"] = <intptr_t>__cufftMakePlan1d
-    
+
     global __cufftMakePlan2d
     data["__cufftMakePlan2d"] = <intptr_t>__cufftMakePlan2d
-    
+
     global __cufftMakePlan3d
     data["__cufftMakePlan3d"] = <intptr_t>__cufftMakePlan3d
-    
+
     global __cufftMakePlanMany
     data["__cufftMakePlanMany"] = <intptr_t>__cufftMakePlanMany
-    
+
     global __cufftMakePlanMany64
     data["__cufftMakePlanMany64"] = <intptr_t>__cufftMakePlanMany64
-    
+
     global __cufftGetSizeMany64
     data["__cufftGetSizeMany64"] = <intptr_t>__cufftGetSizeMany64
-    
+
     global __cufftEstimate1d
     data["__cufftEstimate1d"] = <intptr_t>__cufftEstimate1d
-    
+
     global __cufftEstimate2d
     data["__cufftEstimate2d"] = <intptr_t>__cufftEstimate2d
-    
+
     global __cufftEstimate3d
     data["__cufftEstimate3d"] = <intptr_t>__cufftEstimate3d
-    
+
     global __cufftEstimateMany
     data["__cufftEstimateMany"] = <intptr_t>__cufftEstimateMany
-    
+
     global __cufftCreate
     data["__cufftCreate"] = <intptr_t>__cufftCreate
-    
+
     global __cufftGetSize1d
     data["__cufftGetSize1d"] = <intptr_t>__cufftGetSize1d
-    
+
     global __cufftGetSize2d
     data["__cufftGetSize2d"] = <intptr_t>__cufftGetSize2d
-    
+
     global __cufftGetSize3d
     data["__cufftGetSize3d"] = <intptr_t>__cufftGetSize3d
-    
+
     global __cufftGetSizeMany
     data["__cufftGetSizeMany"] = <intptr_t>__cufftGetSizeMany
-    
+
     global __cufftGetSize
     data["__cufftGetSize"] = <intptr_t>__cufftGetSize
-    
+
     global __cufftSetWorkArea
     data["__cufftSetWorkArea"] = <intptr_t>__cufftSetWorkArea
-    
+
     global __cufftSetAutoAllocation
     data["__cufftSetAutoAllocation"] = <intptr_t>__cufftSetAutoAllocation
-    
+
     global __cufftExecC2C
     data["__cufftExecC2C"] = <intptr_t>__cufftExecC2C
-    
+
     global __cufftExecR2C
     data["__cufftExecR2C"] = <intptr_t>__cufftExecR2C
-    
+
     global __cufftExecC2R
     data["__cufftExecC2R"] = <intptr_t>__cufftExecC2R
-    
+
     global __cufftExecZ2Z
     data["__cufftExecZ2Z"] = <intptr_t>__cufftExecZ2Z
-    
+
     global __cufftExecD2Z
     data["__cufftExecD2Z"] = <intptr_t>__cufftExecD2Z
-    
+
     global __cufftExecZ2D
     data["__cufftExecZ2D"] = <intptr_t>__cufftExecZ2D
-    
+
     global __cufftSetStream
     data["__cufftSetStream"] = <intptr_t>__cufftSetStream
-    
+
     global __cufftDestroy
     data["__cufftDestroy"] = <intptr_t>__cufftDestroy
-    
+
     global __cufftGetVersion
     data["__cufftGetVersion"] = <intptr_t>__cufftGetVersion
-    
+
     global __cufftGetProperty
     data["__cufftGetProperty"] = <intptr_t>__cufftGetProperty
-    
+
     global __cufftXtSetGPUs
     data["__cufftXtSetGPUs"] = <intptr_t>__cufftXtSetGPUs
-    
+
     global __cufftXtMalloc
     data["__cufftXtMalloc"] = <intptr_t>__cufftXtMalloc
-    
+
     global __cufftXtMemcpy
     data["__cufftXtMemcpy"] = <intptr_t>__cufftXtMemcpy
-    
+
     global __cufftXtFree
     data["__cufftXtFree"] = <intptr_t>__cufftXtFree
-    
+
     global __cufftXtSetWorkArea
     data["__cufftXtSetWorkArea"] = <intptr_t>__cufftXtSetWorkArea
-    
+
     global __cufftXtExecDescriptorC2C
     data["__cufftXtExecDescriptorC2C"] = <intptr_t>__cufftXtExecDescriptorC2C
-    
+
     global __cufftXtExecDescriptorR2C
     data["__cufftXtExecDescriptorR2C"] = <intptr_t>__cufftXtExecDescriptorR2C
-    
+
     global __cufftXtExecDescriptorC2R
     data["__cufftXtExecDescriptorC2R"] = <intptr_t>__cufftXtExecDescriptorC2R
-    
+
     global __cufftXtExecDescriptorZ2Z
     data["__cufftXtExecDescriptorZ2Z"] = <intptr_t>__cufftXtExecDescriptorZ2Z
-    
+
     global __cufftXtExecDescriptorD2Z
     data["__cufftXtExecDescriptorD2Z"] = <intptr_t>__cufftXtExecDescriptorD2Z
-    
+
     global __cufftXtExecDescriptorZ2D
     data["__cufftXtExecDescriptorZ2D"] = <intptr_t>__cufftXtExecDescriptorZ2D
-    
+
     global __cufftXtQueryPlan
     data["__cufftXtQueryPlan"] = <intptr_t>__cufftXtQueryPlan
-    
+
     global __cufftXtClearCallback
     data["__cufftXtClearCallback"] = <intptr_t>__cufftXtClearCallback
-    
+
     global __cufftXtSetCallbackSharedSize
     data["__cufftXtSetCallbackSharedSize"] = <intptr_t>__cufftXtSetCallbackSharedSize
-    
+
     global __cufftXtMakePlanMany
     data["__cufftXtMakePlanMany"] = <intptr_t>__cufftXtMakePlanMany
-    
+
     global __cufftXtGetSizeMany
     data["__cufftXtGetSizeMany"] = <intptr_t>__cufftXtGetSizeMany
-    
+
     global __cufftXtExec
     data["__cufftXtExec"] = <intptr_t>__cufftXtExec
-    
+
     global __cufftXtExecDescriptor
     data["__cufftXtExecDescriptor"] = <intptr_t>__cufftXtExecDescriptor
-    
+
     global __cufftXtSetWorkAreaPolicy
     data["__cufftXtSetWorkAreaPolicy"] = <intptr_t>__cufftXtSetWorkAreaPolicy
-    
+
     global __cufftXtSetJITCallback
     data["__cufftXtSetJITCallback"] = <intptr_t>__cufftXtSetJITCallback
-    
+
     global __cufftXtSetSubformatDefault
     data["__cufftXtSetSubformatDefault"] = <intptr_t>__cufftXtSetSubformatDefault
 

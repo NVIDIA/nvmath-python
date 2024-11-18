@@ -8,7 +8,7 @@ import json
 import logging
 import pickle
 
-_ENABLE_CACHE = 'NVMATH_ENABLE_CACHE' in os.environ
+_ENABLE_CACHE = "NVMATH_ENABLE_CACHE" in os.environ
 if _ENABLE_CACHE:
     logging.warning("nvmath: NVMATH_ENABLE_CACHE is set in the environment, cache is enabled")
     _CACHE_LOCATION = os.path.join(os.path.expanduser("~"), ".cache", "nvmath-device")
@@ -16,13 +16,15 @@ if _ENABLE_CACHE:
         logging.debug(f"pymathdx: creating directory {_CACHE_LOCATION}")
         os.makedirs(_CACHE_LOCATION)
 
+
 # We use
 # json.dumps to serialize args/kwargs to a string
 # hashlib to compute the hash
 def json_hash(*args, **kwargs):
     hasher = hashlib.sha1()
-    hasher.update(json.dumps([args, kwargs]).encode('utf-8'))
+    hasher.update(json.dumps([args, kwargs]).encode("utf-8"))
     return hasher.hexdigest()
+
 
 def disk_cache(func):
     def cacher(*args, **kwargs):
@@ -32,7 +34,7 @@ def disk_cache(func):
             # if file exist...
             if os.path.isfile(os.path.join(_CACHE_LOCATION, h)):
                 # open it
-                with open(os.path.join(_CACHE_LOCATION, h), 'rb') as f:
+                with open(os.path.join(_CACHE_LOCATION, h), "rb") as f:
                     out = pickle.load(f)
                 # return cache
                 return out
@@ -40,7 +42,7 @@ def disk_cache(func):
                 # compute output
                 out = func(*args, **kwargs)
                 # store to file
-                with open(os.path.join(_CACHE_LOCATION, h), 'wb') as f:
+                with open(os.path.join(_CACHE_LOCATION, h), "wb") as f:
                     pickle.dump(out, f)
                 return out
         else:

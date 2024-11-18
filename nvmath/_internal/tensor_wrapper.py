@@ -6,7 +6,7 @@
 Entry point to using tensors from different libraries seamlessly.
 """
 
-__all__ = [ 'infer_tensor_package', 'wrap_operand', 'wrap_operands', 'to', 'copy_']
+__all__ = ["infer_tensor_package", "wrap_operand", "wrap_operands", "to", "copy_"]
 
 from collections.abc import Sequence
 import functools
@@ -18,31 +18,31 @@ from .tensor_ifc_cupy import CupyTensor
 from .tensor_ifc_numpy import NumpyTensor
 
 
-_TENSOR_TYPES = {
-    'cupy': CupyTensor,
-    'numpy': NumpyTensor
-}
+_TENSOR_TYPES = {"cupy": CupyTensor, "numpy": NumpyTensor}
 
 # Optional modules
 try:
     import torch
     from .tensor_ifc_torch import TorchTensor
-    _TENSOR_TYPES['torch']  = TorchTensor
-    torch_asarray = functools.partial(torch.as_tensor, device='cuda')
+
+    _TENSOR_TYPES["torch"] = TorchTensor
+    torch_asarray = functools.partial(torch.as_tensor, device="cuda")
 except ImportError as e:
-    torch = None
-    torch_asarray = None
+    torch = None  # type: ignore
+    torch_asarray = None  # type: ignore
 
 _SUPPORTED_PACKAGES = tuple(_TENSOR_TYPES.keys())
+
 
 def infer_tensor_package(tensor):
     """
     Infer the package that defines this tensor.
     """
     if issubclass(tensor.__class__, np.ndarray):
-        return 'numpy'
+        return "numpy"
     module = tensor.__class__.__module__
-    return module.split('.')[0]
+    return module.split(".")[0]
+
 
 def _get_backend_asarray_func(backend):
     """
@@ -52,6 +52,7 @@ def _get_backend_asarray_func(backend):
         return torch_asarray
     else:
         return backend.asarray
+
 
 def wrap_operand(native_operand):
     """
@@ -68,7 +69,9 @@ def check_valid_package(native_operands):
     operands_pkg = [infer_tensor_package(o) for o in native_operands]
     checks = [p in _SUPPORTED_PACKAGES for p in operands_pkg]
     if not all(checks):
-        unknown = [f"{location}: {operands_pkg[location]}" for location, predicate in enumerate(checks) if predicate is False]
+        unknown = [
+            f"{location}: {operands_pkg[location]}" for location, predicate in enumerate(checks) if predicate is False
+        ]
         unknown = formatters.array2string(unknown)
         message = f"""The operands should be ndarray-like objects from one of {_SUPPORTED_PACKAGES} packages.
 The unsupported operands as a sequence of "position: package" is: \n{unknown}"""
@@ -76,14 +79,18 @@ The unsupported operands as a sequence of "position: package" is: \n{unknown}"""
 
     return operands_pkg
 
+
 def check_valid_operand_type(wrapped_operands):
     """
     Check if the wrapped operands are ndarray-like.
     """
     istensor = [o.istensor() for o in wrapped_operands]
     if not all(istensor):
-        unknown = [f"{location}: {type(wrapped_operands[location].tensor)}"
-                    for location, predicate in enumerate(istensor) if predicate is False]
+        unknown = [
+            f"{location}: {type(wrapped_operands[location].tensor)}"
+            for location, predicate in enumerate(istensor)
+            if predicate is False
+        ]
         unknown = formatters.array2string(unknown)
         message = f"""The operands should be ndarray-like objects from one of {_SUPPORTED_PACKAGES} packages.
 The unsupported operands as a sequence of "position: type" is: \n{unknown}"""
@@ -121,7 +128,7 @@ def copy_(src, dest, stream_holder):
     """
     Copy the wrapped operands in dest to the corresponding wrapped operands in src.
     """
-    for s, d in zip(src, dest):
+    for s, d in zip(src, dest, strict=True):
         if s.device_id is None:
             s = wrap_operand(s.to(d.device_id, stream_holder=stream_holder))
         d.copy_(s.tensor, stream_holder=stream_holder)

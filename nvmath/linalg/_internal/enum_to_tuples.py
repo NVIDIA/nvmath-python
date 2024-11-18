@@ -3,14 +3,25 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Utilties to convert tuple like enumerators to tuples, along with forward and inverse maps.
+Utilities to convert tuple like enumerators to tuples, along with forward and inverse maps.
 """
 
-__all__ = ["CLUSTER_SHAPES", "CLUSTER_SHAPE_TO_ENUM", "ENUM_TO_CLUSTER_SHAPE", "MATMUL_STAGES", "MATMUL_STAGE_TO_ENUM", "ENUM_TO_MATMUL_STAGE", "MATMUL_TILES", "MATMUL_TILE_TO_ENUM", "ENUM_TO_MATMUL_TILE"]
+__all__ = [
+    "CLUSTER_SHAPES",
+    "CLUSTER_SHAPE_TO_ENUM",
+    "ENUM_TO_CLUSTER_SHAPE",
+    "MATMUL_STAGES",
+    "MATMUL_STAGE_TO_ENUM",
+    "ENUM_TO_MATMUL_STAGE",
+    "MATMUL_TILES",
+    "MATMUL_TILE_TO_ENUM",
+    "ENUM_TO_MATMUL_TILE",
+]
 
 import re
 
 from nvmath.bindings import cublasLt as cublaslt
+
 
 def integer_or_string(value):
     try:
@@ -18,6 +29,7 @@ def integer_or_string(value):
     except ValueError:
         ...
     return value
+
 
 def create_valid_tuples_from_enum(enum, prefix, *, expr=r"(?:(\d+)x(\d+|\w+)(?:x(\d+))?|(AUTO|UNDEFINED))"):
     """
@@ -31,11 +43,11 @@ def create_valid_tuples_from_enum(enum, prefix, *, expr=r"(?:(\d+)x(\d+|\w+)(?:x
     for e in enum:
         m = re.match(expr, e.name)
         if m:
-            #print(m.groups())
+            # print(m.groups())
             if m.group(4):
                 v = m.group(4)
             else:
-                groups = m.groups()[:m.groups().index(None)]
+                groups = m.groups()[: m.groups().index(None)]
                 v = tuple(map(integer_or_string, (g for g in groups)))
             combinations.append(v)
             value_to_enumerator[v] = e
@@ -43,8 +55,13 @@ def create_valid_tuples_from_enum(enum, prefix, *, expr=r"(?:(\d+)x(\d+|\w+)(?:x
 
     return tuple(combinations), value_to_enumerator, enumerator_to_value
 
-CLUSTER_SHAPES, CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE = create_valid_tuples_from_enum(cublaslt.ClusterShape, "SHAPE_")
 
-MATMUL_STAGES, MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE    = create_valid_tuples_from_enum(cublaslt.MatmulStages, "STAGES_")
+CLUSTER_SHAPES, CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE = create_valid_tuples_from_enum(
+    cublaslt.ClusterShape, "SHAPE_"
+)
 
-MATMUL_TILES, MATMUL_TILE_TO_ENUM, ENUM_TO_MATMUL_TILE       = create_valid_tuples_from_enum(cublaslt.MatmulTile, "TILE_")
+MATMUL_STAGES, MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE = create_valid_tuples_from_enum(
+    cublaslt.MatmulStages, "STAGES_"
+)
+
+MATMUL_TILES, MATMUL_TILE_TO_ENUM, ENUM_TO_MATMUL_TILE = create_valid_tuples_from_enum(cublaslt.MatmulTile, "TILE_")

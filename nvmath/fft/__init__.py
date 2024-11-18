@@ -2,6 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .configuration import *
+from ._configuration import *
+from ._helpers import *
 from .fft import *
-del configuration

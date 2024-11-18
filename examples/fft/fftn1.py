@@ -4,9 +4,10 @@
 
 """Reference implementation for N-D FFT as a composition of the 1D, 2D or 3D batched FFTs"""
 
-__all__ = ['fftn']
+__all__ = ["fftn"]
 
 import nvmath
+
 
 def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None, stream=None, engine=nvmath.fft.fft):
     """
@@ -31,7 +32,7 @@ def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None
 
         permutation = list(d for d in range(rank) if d not in chunk) + chunk
 
-        ipermutation = {v : p for p, v in enumerate(permutation)}
+        ipermutation = {v: p for p, v in enumerate(permutation)}
         axes = list(ipermutation[a] for a in axes)
 
         a = a.transpose(*permutation).copy()
@@ -41,6 +42,6 @@ def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None
 
         composition = list(composition[p] for p in permutation)
 
-    icomposition = {v : c for c, v in enumerate(composition)}
+    icomposition = {v: c for c, v in enumerate(composition)}
     a = a.transpose(tuple(icomposition[c] for c in range(rank)))
     return a

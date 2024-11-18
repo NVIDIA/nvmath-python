@@ -19,12 +19,13 @@ b = cp.random.rand(k, n)
 
 # Use the stateful object as a context manager to automatically release resources.
 with nvmath.linalg.advanced.Matmul(a, b) as mm:
-
     # Plan.
     mm.plan()
 
     # Inspect the algorithms proposed.
-    print(f"Planning returned {len(mm.algorithms)} algorithms. The capabilities of the best one are:",)
+    print(
+        f"Planning returned {len(mm.algorithms)} algorithms. The capabilities of the best one are:",
+    )
     best = mm.algorithms[0]
     print(best.capabilities)
 

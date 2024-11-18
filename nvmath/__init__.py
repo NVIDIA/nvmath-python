@@ -10,9 +10,12 @@ from nvmath._utils import LibraryPropertyType
 from nvmath import fft, linalg
 from nvmath.memory import *
 
+
 # Attempt to preload libraries.  Fail silently if preload fails.
 def _force_lib_load():
     from nvmath._utils import module_init_force_cupy_lib_load
+
     module_init_force_cupy_lib_load()
+
 
 _force_lib_load()

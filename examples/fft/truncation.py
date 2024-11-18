@@ -3,13 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Reference implementation of FFT with support on truncation and padding"""
-__all__ = ['fft']
+
+__all__ = ["fft"]
 
 import nvmath
 
-def create(shape, dtype, device_id, package, *, stream=None, creator='zeros'):
-    if package == 'torch':
+
+def create(shape, dtype, device_id, package, *, stream=None, creator="zeros"):
+    if package == "torch":
         import torch
+
         if device_id is None:
             return getattr(torch, creator)(*shape, dtype=dtype, device=device_id)
         if stream is None:
@@ -19,8 +22,9 @@ def create(shape, dtype, device_id, package, *, stream=None, creator='zeros'):
         with torch.cuda.stream(stream):
             return getattr(torch, creator)(*shape, dtype=dtype, device=device_id)
 
-    if package == 'cupy':
+    if package == "cupy":
         import cupy as cp
+
         if stream is None:
             stream = cp.cuda.get_current_stream()
         elif isinstance(stream, int):
@@ -28,14 +32,26 @@ def create(shape, dtype, device_id, package, *, stream=None, creator='zeros'):
         with cp.cuda.Device(device_id), stream:
             return getattr(cp, creator)(shape, dtype=dtype)
 
-    if package == 'numpy':
+    if package == "numpy":
         import numpy as np
+
         return getattr(np, creator)(shape, dtype=dtype)
 
-    assert False, "Unsupported package."
+    raise AssertionError("Unsupported package.")
 
 
-def fft(a, *, axes=None, extents=None, direction=None, options=None, prolog=None, epilog=None, stream=None, engine=nvmath.fft.fft):
+def fft(
+    a,
+    *,
+    axes=None,
+    extents=None,
+    direction=None,
+    options=None,
+    prolog=None,
+    epilog=None,
+    stream=None,
+    engine=nvmath.fft.fft,
+):
     """
     This version supports truncation and padding of the operand, to match the functionality of NumPy FFT.
 
@@ -48,9 +64,9 @@ def fft(a, *, axes=None, extents=None, direction=None, options=None, prolog=None
     if extents is None:
         return engine(a, axes=axes, direction=direction, options=options, prolog=prolog, epilog=epilog, stream=stream)
 
-    package = a.__class__.__module__.split('.')[0]
+    package = a.__class__.__module__.split(".")[0]
 
-    rank     = a.ndim
+    rank = a.ndim
     num_axes = len(extents)
 
     if axes is not None and len(extents) != len(axes):
@@ -65,18 +81,18 @@ def fft(a, *, axes=None, extents=None, direction=None, options=None, prolog=None
         # No need to pad or truncate if the transform axes extents already match the extents.
         return engine(a, axes=axes, direction=direction, options=options, prolog=prolog, epilog=epilog, stream=stream)
 
-    if all(extents[i] < shape[axes[i]] for i in range(num_axes)):    # All axes truncated.
-        creator = 'empty'
-    else:    # Some axes padded.
-        creator = 'zeros'
+    if all(extents[i] < shape[axes[i]] for i in range(num_axes)):  # All axes truncated.
+        creator = "empty"
+    else:  # Some axes padded.
+        creator = "zeros"
 
     new_shape = list(shape)
     for i, axis in enumerate(axes):
         new_shape[axis] = extents[i]
 
-    device_id = a.device.id if package == 'cupy' else a.device.index if package == 'torch' else None
+    device_id = a.device.id if package == "cupy" else a.device.index if package == "torch" else None
     b = create(new_shape, dtype=a.dtype, device_id=device_id, package=package, stream=stream, creator=creator)
 
-    z = tuple(slice(0, min(s, t)) for s, t in zip(new_shape, shape))
+    z = tuple(slice(0, min(s, t)) for s, t in zip(new_shape, shape, strict=True))
     b[z] = a[z]
     return engine(b, axes=axes, direction=direction, options=options, prolog=prolog, epilog=epilog, stream=stream)

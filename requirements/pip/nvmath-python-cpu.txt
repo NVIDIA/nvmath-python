@@ -1,0 +1,2 @@
+mkl; platform_machine=="x86_64"
+nvpl-fft ~= 0.3; platform_system=="Linux" and platform_machine=="aarch64"

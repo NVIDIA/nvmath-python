@@ -13,6 +13,7 @@ In this example we will multiply each of our `a` matrices with the same `b` matr
 the `c` (m, 1) matrices to the result. Since each `c` is a column matrix, it's also broadcast across
 the columns of each result in the batch.
 """
+
 import cupy as cp
 
 import nvmath

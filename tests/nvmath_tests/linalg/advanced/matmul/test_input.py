@@ -12,9 +12,7 @@ from .utils import *
 
 
 @pytest.mark.parametrize("framework", ("torch", "numpy/cupy"))
-@pytest.mark.parametrize(
-    "dtype", ("bfloat16", "float16", "float32", "float64", "complex64", "complex128")
-)
+@pytest.mark.parametrize("dtype", ("bfloat16", "float16", "float32", "float64", "complex64", "complex128"))
 @pytest.mark.parametrize("with_c", (True, False))
 @pytest.mark.parametrize(
     "n,m,k",
@@ -78,9 +76,7 @@ def test_framework_mixing():
     """
     a = sample_matrix("torch", "float32", (7, 7), True)
     b = sample_matrix("cupy", "float32", (7, 7), True)
-    with pytest.raises(
-        TypeError, match="All tensors in the network must be from the same library"
-    ):
+    with pytest.raises(TypeError, match="All tensors in the network must be from the same library"):
         matmul(a, b)
 
 
@@ -133,9 +129,7 @@ def test_batching(a_batch, b_batch, c_batch, out_batch):
     matrix_shape = (7, 7)
 
     def sample_batch(batch_shape):
-        return sample_matrix(
-            "numpy/cupy", "float32", (*batch_shape, *matrix_shape), True
-        )
+        return sample_matrix("numpy/cupy", "float32", (*batch_shape, *matrix_shape), True)
 
     a = sample_batch(a_batch)
     b = sample_batch(b_batch)
@@ -163,15 +157,9 @@ def test_sliced_unsupported(slices):
     """
     (a_step_x, a_step_y), (b_step_x, b_step_y), (c_step_x, c_step_y) = slices
 
-    a = sample_matrix("numpy/cupy", "float32", (a_step_x * 3, a_step_y * 4), True)[
-        ::a_step_x, ::a_step_y
-    ]
-    b = sample_matrix("numpy/cupy", "float32", (b_step_x * 4, b_step_y * 5), True)[
-        ::b_step_x, ::b_step_y
-    ]
-    c = sample_matrix("numpy/cupy", "float32", (c_step_x * 3, c_step_y * 5), True)[
-        ::c_step_x, ::c_step_y
-    ]
+    a = sample_matrix("numpy/cupy", "float32", (a_step_x * 3, a_step_y * 4), True)[::a_step_x, ::a_step_y]
+    b = sample_matrix("numpy/cupy", "float32", (b_step_x * 4, b_step_y * 5), True)[::b_step_x, ::b_step_y]
+    c = sample_matrix("numpy/cupy", "float32", (c_step_x * 3, c_step_y * 5), True)[::c_step_x, ::c_step_y]
 
     with pytest.raises(ValueError, match="Unsupported layout."):
         matmul(a, b, c, beta=0.2)
@@ -194,15 +182,9 @@ def test_sliced(slices, framework, use_cuda):
     """
     (a_step_x, a_step_y), (b_step_x, b_step_y), (c_step_x, c_step_y) = slices
 
-    a = sample_matrix(framework, "float32", (a_step_x * 3, a_step_y * 4), use_cuda)[
-        ::a_step_x, ::a_step_y
-    ]
-    b = sample_matrix(framework, "float32", (b_step_x * 4, b_step_y * 5), use_cuda)[
-        ::b_step_x, ::b_step_y
-    ]
-    c = sample_matrix(framework, "float32", (c_step_x * 3, c_step_y * 5), use_cuda)[
-        ::c_step_x, ::c_step_y
-    ]
+    a = sample_matrix(framework, "float32", (a_step_x * 3, a_step_y * 4), use_cuda)[::a_step_x, ::a_step_y]
+    b = sample_matrix(framework, "float32", (b_step_x * 4, b_step_y * 5), use_cuda)[::b_step_x, ::b_step_y]
+    c = sample_matrix(framework, "float32", (c_step_x * 3, c_step_y * 5), use_cuda)[::c_step_x, ::c_step_y]
 
     assert_tensors_equal(matmul(a, b, c, beta=0.2), a @ b + 0.2 * c)
 
@@ -225,15 +207,9 @@ def test_sliced_batched(slices, framework, use_cuda):
     (a_step_x, a_step_y), (b_step_x, b_step_y), (c_step_x, c_step_y) = slices
     batch = 8
 
-    a = sample_matrix(
-        framework, "float32", (batch, a_step_x * 3, a_step_y * 4), use_cuda
-    )[1::2, ::a_step_x, ::a_step_y]
-    b = sample_matrix(
-        framework, "float32", (batch, b_step_x * 4, b_step_y * 5), use_cuda
-    )[1::2, ::b_step_x, ::b_step_y]
-    c = sample_matrix(
-        framework, "float32", (batch, c_step_x * 3, c_step_y * 5), use_cuda
-    )[1::2, ::c_step_x, ::c_step_y]
+    a = sample_matrix(framework, "float32", (batch, a_step_x * 3, a_step_y * 4), use_cuda)[1::2, ::a_step_x, ::a_step_y]
+    b = sample_matrix(framework, "float32", (batch, b_step_x * 4, b_step_y * 5), use_cuda)[1::2, ::b_step_x, ::b_step_y]
+    c = sample_matrix(framework, "float32", (batch, c_step_x * 3, c_step_y * 5), use_cuda)[1::2, ::c_step_x, ::c_step_y]
 
     assert_tensors_equal(matmul(a, b, c, beta=0.2), a @ b + 0.2 * c)
 
@@ -357,9 +333,7 @@ def test_missing_beta():
     Tests if a proper error is reported C is provided, but beta is not.
     """
     a = b = c = np.ones((3, 3))
-    with pytest.raises(
-        ValueError, match=r"A value for beta must be provided if operand C is provided"
-    ):
+    with pytest.raises(ValueError, match=r"A value for beta must be provided if operand C is provided"):
         matmul(a, b, c)
 
 

@@ -12,8 +12,8 @@ from nvmath.device import matmul
 from common import random_complex
 from common_numba import set_max_dynamic_shared_size_bytes, load_to_shared, store_from_shared, time_numba
 
-def main():
 
+def main():
     m1 = 32
     n1 = 32
     k1 = 32
@@ -25,39 +25,43 @@ def main():
     precision = np.float32
 
     kwargs = {
-        'precision':precision, 'data_type':'complex', 'transpose_mode':('non_transposed', 'non_transposed'),
-        'execution':'Block', 'block_size':block_size, 'compiler':'numba',
+        "precision": precision,
+        "data_type": "complex",
+        "transpose_mode": ("non_transposed", "non_transposed"),
+        "execution": "Block",
+        "block_size": block_size,
+        "compiler": "numba",
     }
 
     MM1 = matmul(size=(m1, n1, k1), **kwargs)
 
     MM2 = matmul(size=(m2, n2, k2), **kwargs)
 
-    value_type          = MM1.value_type
+    value_type = MM1.value_type
 
-    a_size              = MM1.a_size
-    b_size              = MM1.b_size
-    c_size              = MM1.c_size
+    a_size = MM1.a_size
+    b_size = MM1.b_size
+    c_size = MM1.c_size
 
-    d_size              = MM2.b_size
-    f_size              = MM2.c_size
+    d_size = MM2.b_size
+    f_size = MM2.c_size
 
-    a_dim               = MM1.a_dim
-    b_dim               = MM1.b_dim
-    c_dim               = MM1.c_dim
+    a_dim = MM1.a_dim
+    b_dim = MM1.b_dim
+    c_dim = MM1.c_dim
 
-    d_dim               = MM2.b_dim
-    f_dim               = MM2.c_dim
+    d_dim = MM2.b_dim
+    f_dim = MM2.c_dim
 
-    lda                 = MM1.leading_dimension.a
-    ldb                 = MM1.leading_dimension.b
-    ldc                 = MM1.leading_dimension.c
+    lda = MM1.leading_dimension.a
+    ldb = MM1.leading_dimension.b
+    ldc = MM1.leading_dimension.c
 
-    ldd                 = MM1.leading_dimension.b
-    ldf                 = MM1.leading_dimension.c
+    ldd = MM1.leading_dimension.b
+    ldf = MM1.leading_dimension.c
 
-    block_dim           = MM1.block_dim
-    shared_memory_size  = max(MM1.shared_memory_size, MM2.shared_memory_size)
+    block_dim = MM1.block_dim
+    shared_memory_size = max(MM1.shared_memory_size, MM2.shared_memory_size)
 
     assert MM2.a_dim == MM1.c_dim
     assert MM2.block_dim == MM1.block_dim
@@ -65,19 +69,18 @@ def main():
 
     @cuda.jit(link=MM1.files)
     def kernel(alpha1, a, b, beta1, c, alpha2, d, beta2, f, output):
-
         smem = cuda.shared.array(shape=(0,), dtype=value_type)
 
         # MM1 takes (a, b, c) --> c
         # smem = [ c c c c c c c | a a a a a a a | b b b b b b ]
         smem_c = smem[0:]
         smem_a = smem[c_size:]
-        smem_b = smem[c_size+a_size:]
+        smem_b = smem[c_size + a_size :]
 
         # MM2 takes (c, d, f) --> f
         # smem = [ c c c c c c c | d d d d d | f f f f f f f f f f f]
         smem_d = smem[c_size:]
-        smem_f = smem[c_size+d_size:]
+        smem_f = smem[c_size + d_size :]
 
         # Load MM1's A (a)
         load_to_shared(a, smem_a, a_dim, lda)
@@ -123,14 +126,18 @@ def main():
     f_d = cuda.to_device(f)
     o_d = cuda.to_device(o)
 
-    alpha1 = 1+2j
-    beta1 = 0+0j
-    alpha2 = 3+4j
-    beta2 = 0+0j
+    alpha1 = 1 + 2j
+    beta1 = 0 + 0j
+    alpha2 = 3 + 4j
+    beta2 = 0 + 0j
 
-    set_max_dynamic_shared_size_bytes(kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d)
+    set_max_dynamic_shared_size_bytes(
+        kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d
+    )
 
-    time_ms = time_numba(kernel, 1, block_dim, shared_memory_size, 100, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d)
+    time_ms = time_numba(
+        kernel, 1, block_dim, shared_memory_size, 100, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d
+    )
 
     print("m1, n1, k1: ", m1, n1, k1)
     print("m2, n2, k2: ", m2, n2, k2)
@@ -142,6 +149,7 @@ def main():
     data_ref = alpha2 * ((alpha1 * (a @ b) + beta1 * c) @ d) + beta2 * f
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-5
+
 
 if __name__ == "__main__":
     main()

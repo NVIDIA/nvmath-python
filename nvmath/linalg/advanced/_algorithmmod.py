@@ -6,28 +6,29 @@
 An interface class to query algorithm capabilities and configure it.
 """
 
-__all__ = ['Algorithm']
+__all__ = ["Algorithm"]
 
 import dataclasses
 
 import numpy as np
 
-from nvmath.linalg.advanced.configuration import AlgorithmCapabilities
+from nvmath.linalg.advanced._configuration import AlgorithmCapabilities
 from nvmath.linalg._internal.algo_cap_ifc import AlgoCapInterface
 from nvmath.linalg._internal.algo_config_ifc import AlgoConfigInterface
-from nvmath.linalg._internal.algo_utils import algorithm_dtype
+from nvmath.bindings.cublasLt import MatmulHeuristicResult  # type: ignore
+
 
 class Algorithm:
     """
     An interface class to query algorithm capabilities and configure the algorithm.
 
-    Note that this objects of this type this should not be constructed directly by the user.
+    Note that objects of this type should not be constructed directly by the user.
     """
 
     def __init__(self, algorithm):
-        assert algorithm.dtype == algorithm_dtype, "Internal error."
-        self.algorithm  = algorithm
-        self.cap_ifc    = AlgoCapInterface(algorithm)
+        assert isinstance(algorithm, MatmulHeuristicResult), "Internal error."
+        self.algorithm = algorithm
+        self.cap_ifc = AlgoCapInterface(algorithm)
         self.config_ifc = AlgoConfigInterface(algorithm)
 
     @property
@@ -44,7 +45,6 @@ class Algorithm:
             except:
                 pass
         return AlgorithmCapabilities(**_capabilities)
-        ...
 
     @property
     def algorithm_id(self):
@@ -54,7 +54,7 @@ class Algorithm:
     @property
     def tile(self):
         """A tuple representing the tile (see MatmulAlgoConfigAttribute.TILE_ID).
-           The value provided must be one of the `tile_ids` in the algorithm capabilities."""
+        The value provided must be one of the `tile_ids` in the algorithm capabilities."""
         return self.config_ifc.tile_id
 
     @tile.setter
@@ -63,8 +63,8 @@ class Algorithm:
 
     @property
     def stages(self):
-        """"A tuple representing the stages (see MatmulAlgoConfigAttribute.STAGES_ID).
-            The value provided must be one of the `stages_ids` in the algorithm capabilities."""
+        """A tuple representing the stages (see MatmulAlgoConfigAttribute.STAGES_ID).
+        The value provided must be one of the `stages_ids` in the algorithm capabilities."""
         return self.config_ifc.stages_id
 
     @stages.setter
@@ -83,7 +83,7 @@ class Algorithm:
     @property
     def reduction_scheme(self):
         """The reduction scheme used (see MatmulAlgoConfigAttribute.REDUCTION_SCHEME).
-           The value provided must be consistent with the `reduction_scheme_mask` in the algorithm capabilities."""
+        The value provided must be consistent with the `reduction_scheme_mask` in the algorithm capabilities."""
         return self.config_ifc.reduction_scheme
 
     @reduction_scheme.setter
@@ -102,7 +102,7 @@ class Algorithm:
     @property
     def custom_option(self):
         """A value indicating the custom option (see MatmulAlgoConfigAttribute.CUSTOM_OPTION). The value provided must be
-         less than `custom_option_max` in the algorithm capabilities."""
+        less than `custom_option_max` in the algorithm capabilities."""
         return self.config_ifc.custom_option
 
     @custom_option.setter
@@ -121,7 +121,7 @@ class Algorithm:
     @property
     def cluster_shape(self):
         """A tuple representing the cluster shape (see MatmulAlgoConfigAttribute.CLUSTER_SHAPE_ID).
-           The value provided must be one of the `cluster_shape_ids` in the algorithm capabilities."""
+        The value provided must be one of the `cluster_shape_ids` in the algorithm capabilities."""
         return self.config_ifc.cluster_shape_id
 
     @cluster_shape.setter

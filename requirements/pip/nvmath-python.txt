@@ -1,2 +1,2 @@
-numpy >=1.23,<2
+numpy >=1.24,<3
 pywin32; platform_system=="Windows"

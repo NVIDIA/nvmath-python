@@ -1,3 +1,5 @@
-flake8
+cffi
 hypothesis
 pytest
+pytest-repeat
+scipy

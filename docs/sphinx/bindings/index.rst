@@ -7,8 +7,8 @@ Overview
 
 .. warning:: All Python bindings documented in this section are *experimental* and subject to future changes. Use it at your own risk.
 
-Low-level Python bindings for C APIs from NVIDIA Math Libraries are exposed under the corresponding modules in :mod:`nvmath.bindings`. 
-To access the Python bindings, use the modules for the corrsponding libraries.
+Low-level Python bindings for C APIs from NVIDIA Math Libraries are exposed under the corresponding modules in :mod:`nvmath.bindings`.
+To access the Python bindings, use the modules for the corresponding libraries.
 Under the hood, nvmath-python handles the run-time linking to the libraries for you lazily.
 
 The currently supported libraries along with the corresponding module names are listed as follows:
@@ -141,6 +141,14 @@ users' burden. For example, in functions that require a sequence or a nested seq
     my_func(..., buf, ...)  # the underlying data type is determined by the C API
 
 which is particularly useful when users need to pass multiple sequences or nested sequences to C (ex: :func:`nvmath.bindings.cufft.plan_many`).
+
+.. note::
+
+    Some functions require their arguments to be in the device memory.
+    You need to pass device memory (for example, `cupy.ndarray`) to such arguments.
+    nvmath-python does not validate the memory pointers passed and does not implicitly transfer the data.
+    Passing host memory where device memory is expected (and vice versa) results in undefined behavior.
+
 
 .. _CUDA Python: https://nvidia.github.io/cuda-python/index.html
 

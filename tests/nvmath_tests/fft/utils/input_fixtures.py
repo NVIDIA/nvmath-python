@@ -2,25 +2,28 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Union, Tuple
 import random
 
 import numpy as np
-import cupy as cp
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 try:
     import torch
-except:
+except ImportError:
     torch = None
 
-from .common_axes import Backend, Framework, DType, ShapeKind
+from .common_axes import MemBackend, Framework, DType, ShapeKind
 from .axes_utils import get_framework_dtype, is_complex
 
 
 def get_random_input_data(
     framework: Framework,
-    shape: Union[int, Tuple[int]],
+    shape: int | tuple[int],
     dtype: DType,
-    backend: Backend,
+    mem_backend: MemBackend,
     seed: int,
     lo: float = -0.5,
     hi: float = 0.5,
@@ -32,10 +35,10 @@ def get_random_input_data(
 
         def _create_array():
             if framework == Framework.numpy:
-                assert backend == Backend.cpu
+                assert mem_backend == MemBackend.cpu
                 rng = np.random.default_rng(seed)
             else:
-                assert backend == Backend.gpu
+                assert mem_backend == MemBackend.cuda
                 rng = cp.random.default_rng(seed)
             if not is_complex(dtype):
                 a = rng.uniform(lo, hi, size=shape).astype(framework_dtype)
@@ -46,14 +49,14 @@ def get_random_input_data(
             assert a.dtype == framework_dtype
             return a
 
-        if backend == Backend.gpu and device_id is not None:
+        if mem_backend == MemBackend.cuda and device_id is not None:
             with cp.cuda.Device(device_id):
                 return _create_array()
         else:
             return _create_array()
 
     elif framework == Framework.torch:
-        if backend == Backend.cpu:
+        if mem_backend == MemBackend.cpu:
             device = "cpu"
         elif device_id is not None:
             device = f"cuda:{device_id}"
@@ -74,9 +77,7 @@ def get_random_input_data(
         raise ValueError(f"Unknown framework {framework}")
 
 
-def get_1d_shape_cases(
-    shape_kinds: List[ShapeKind], rng: random.Random, incl_1: bool = True
-):
+def get_1d_shape_cases(shape_kinds: list[ShapeKind], rng: random.Random, incl_1: bool = True):
     """
     Sample concrete shapes to test according to shape_kinds
     """
@@ -103,9 +104,7 @@ def get_1d_shape_cases(
     return list(shape_gen())
 
 
-def get_random_1d_shape(
-    shape_kinds: List[ShapeKind], rng: random.Random, incl_1: bool = False
-):
+def get_random_1d_shape(shape_kinds: list[ShapeKind], rng: random.Random, incl_1: bool = False):
     assert len(shape_kinds), f"{shape_kinds}"
     return rng.choice(get_1d_shape_cases(shape_kinds, rng=rng, incl_1=incl_1))
 
@@ -118,6 +117,36 @@ def get_custom_stream(framework: Framework, device_id=None):
             with cp.cuda.Device(device_id):
                 return cp.cuda.Stream(non_blocking=True)
     elif framework == Framework.torch:
-        return torch.cuda.Stream()
+        device = None if device_id is None else f"cuda:{device_id}"
+        return torch.cuda.Stream(device=device)
     else:
         raise ValueError(f"Unknown GPU framework {framework}")
+
+
+def init_assert_exec_backend_specified():
+    import pytest
+    import nvmath
+
+    @pytest.fixture(autouse=True)
+    def assert_exec_backend_specified(monkeypatch):
+        """Make sure the tests pass the execution explicitly"""
+        _actual_init = nvmath.fft.FFT.__init__
+
+        def fft_init(self, *args, **kwargs):
+            assert kwargs.get("execution", None) is not None, "The test must explicitly specify execution backend"
+            _actual_init(self, *args, **kwargs)
+
+        monkeypatch.setattr(nvmath.fft.FFT, "__init__", fft_init)
+
+    return assert_exec_backend_specified
+
+
+def get_primes_up_to(up_to):
+    is_prime = [False, False] + [True] * (up_to - 1)
+    for k in range(2, up_to + 1):
+        if is_prime[k]:
+            yield k
+        c = k * k
+        while c <= up_to:
+            is_prime[c] = False
+            c += k

@@ -7,18 +7,18 @@ This example illustrates the use of stateful class-form FFT APIs with CuPy ndarr
 
 The input as well as the result from the FFT operations are CuPy ndarrays.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 512, 512, 512
-axes  = 0, 1
+axes = 0, 1
 
 a = cp.ones(shape, dtype=cp.complex64)
 
 # Create a stateful FFT object 'f'.
 with nvmath.fft.FFT(a, axes=axes) as f:
-
     # Plan the FFT.
     f.plan()
 

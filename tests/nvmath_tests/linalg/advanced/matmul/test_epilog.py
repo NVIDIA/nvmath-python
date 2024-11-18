@@ -10,7 +10,11 @@ from nvmath.linalg.advanced import matmul, MatmulEpilog as Epilog
 from nvmath.bindings import cublasLt as cublaslt
 import pytest
 from .utils import *
-from cupy import tanh, sqrt, pi, cosh
+
+try:
+    from cupy import tanh, sqrt, pi, cosh
+except ModuleNotFoundError:
+    pytest.skip("cupy required for matmul tests", allow_module_level=True)
 
 
 def relu(x):
@@ -45,7 +49,6 @@ def verify_relu_bitmask(x, bitmask):
     Verifies if the ReLU bitmask for x is correct.
     """
     n, m = x.shape
-    print(n, m)
     for i in range(n):
         for j in range(m):
             if abs(x[i][j]) <= get_tolerance(x):
@@ -53,7 +56,7 @@ def verify_relu_bitmask(x, bitmask):
                 # be incorrect due to precision issues.
                 continue
             expected = (x[i][j] >= 0).item()
-            actual = bool(bitmask[i // 8][j] & (1 << i % 8))
+            actual = bool(bitmask[i // 8][j].astype(int) & (1 << i % 8))
             if expected != actual:
                 return False
     return True
@@ -64,7 +67,7 @@ def unpack_bitmask(bitmask, shape):
     n, m = shape
     for i in range(n):
         for j in range(m):
-            result[i][j] = bool(bitmask[i // 8][j] & (1 << i % 8))
+            result[i][j] = bool(bitmask[i // 8][j].astype(int) & (1 << i % 8))
     return result
 
 
@@ -100,8 +103,7 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
         sech = lambda x: 1 / cosh(x)
         return (
             0.5 * tanh(0.0356774 * x**3 + 0.797885 * x)
-            + (0.0535161 * x**3 + 0.398942 * x)
-            * (sech(0.0356774 * x**3 + 0.797885 * x)) ** 2
+            + (0.0535161 * x**3 + 0.398942 * x) * (sech(0.0356774 * x**3 + 0.797885 * x)) ** 2
             + 0.5
         )
 
@@ -123,8 +125,7 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
         }
     elif epilog == Epilog.GELU_AUX:
         return gelu(x), {
-            "gelu_aux": lambda y: compare_tensors(y[: x.shape[0]], x)
-            and y.shape[0] == round_up(x.shape[0], 8)
+            "gelu_aux": lambda y: compare_tensors(y[: x.shape[0]], x) and y.shape[0] == round_up(x.shape[0], 8)
         }
     elif epilog == Epilog.BGRADA:
         return x, {"bgrada": lambda y: compare_tensors(y, a.sum(axis=1))}
@@ -157,23 +158,35 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
         }
     elif epilog == Epilog.GELU_AUX_BIAS:
         return gelu(x + b), {
-            "gelu_aux": lambda y: compare_tensors(y[: x.shape[0]], x + b)
-            and y.shape[0] == round_up(x.shape[0], 8)
+            "gelu_aux": lambda y: compare_tensors(y[: x.shape[0]], x + b) and y.shape[0] == round_up(x.shape[0], 8)
         }
     else:
-        assert False
+        raise AssertionError()
 
 
 @pytest.mark.parametrize("epilog", (*simple_epilogs, *epilogs_with_bias))
 @pytest.mark.parametrize("bias_shape", (lambda m: (m,), lambda m: (m, 1)))
 @pytest.mark.parametrize("framework", ("torch", "numpy/cupy"))
 @pytest.mark.parametrize("use_cuda", (True, False))
-@pytest.mark.parametrize("n,m,k", ((40, 50, 60), (1, 1, 1), (8, 16, 32), (65, 43, 21)))
+@pytest.mark.parametrize("n,m,k", ((40, 50, 60), (1, 1, 1), (8, 16, 32), (65, 43, 21), (1, 2, 3), (3, 2, 1), (2, 1, 3)))
 def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
     if epilog == Epilog.BGRADB and m == 1:
         pytest.skip("BGRADB doesn't support m=1")
+    if epilog == Epilog.BGRADA and n == 1:
+        # TODO: This is a temporary fix. If A has a singleton dimension we change it to COL order
+        # (see get_matrix_layout_traits), and COL order is not supported by BGRADA.
+        pytest.skip("BGRADA doesn't support n=1")
 
-    if epilog in (Epilog.GELU, Epilog.BIAS, Epilog.RELU_BIAS, Epilog.GELU_BIAS, Epilog.RELU_AUX, Epilog.GELU_AUX, Epilog.RELU_AUX_BIAS, Epilog.GELU_AUX_BIAS):
+    if epilog in (
+        Epilog.GELU,
+        Epilog.BIAS,
+        Epilog.RELU_BIAS,
+        Epilog.GELU_BIAS,
+        Epilog.RELU_AUX,
+        Epilog.GELU_AUX,
+        Epilog.RELU_AUX_BIAS,
+        Epilog.GELU_AUX_BIAS,
+    ):
         skip_if_cublas_before(11501)
 
     if epilog in (Epilog.BGRADA, Epilog.BGRADB):
@@ -181,9 +194,7 @@ def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
 
     def make_matrix(shape, transposed):
         if transposed:
-            return sample_matrix(
-                framework, "float32", tuple(reversed(shape)), use_cuda=use_cuda
-            ).T
+            return sample_matrix(framework, "float32", tuple(reversed(shape)), use_cuda=use_cuda).T
         else:
             return sample_matrix(framework, "float32", shape, use_cuda=use_cuda)
 
@@ -208,7 +219,7 @@ def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
         result, aux = matmul(a, b, epilog=epilog, epilog_inputs=inputs)
         assert_tensors_equal(result, result)
         assert aux.keys() == aux_checkers.keys()
-        for k in aux.keys():
+        for k in aux:
             res, checker = aux[k], aux_checkers[k]
             assert checker(to_numpy(res))
     else:
@@ -226,7 +237,9 @@ def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
     ),
 )
 @pytest.mark.parametrize("use_cuda", (True, False))
-@pytest.mark.parametrize("n,m,k", ((41, 33, 29), (2, 2, 2), (64, 32, 16), (65, 43, 21)))
+@pytest.mark.parametrize(
+    "n,m,k", ((41, 33, 29), (2, 2, 2), (64, 32, 16), (65, 43, 21), (4, 1, 2), (1, 1, 1), (9, 2, 1), (1, 2, 3))
+)
 def test_d_epilogs(d_epilog, epilog, n, m, k, use_cuda):
     skip_if_cublas_before(111103, message="DRELU/DGELU not supported")
 
@@ -237,12 +250,17 @@ def test_d_epilogs(d_epilog, epilog, n, m, k, use_cuda):
     ab, aux = matmul(a, b, epilog=epilog, epilog_inputs={"bias": bias_value})
     reference, aux_checkers = simulate_epilog(a, b, epilog=d_epilog, epilog_inputs=aux)
 
+    if k == 1:
+        with pytest.raises(ValueError, match="not supported"):
+            result, aux = matmul(a, b, epilog=d_epilog, epilog_inputs=aux)
+        return
+
     if not aux_checkers:
         result = matmul(a, b, epilog=d_epilog, epilog_inputs=aux)
     else:
         result, aux = matmul(a, b, epilog=d_epilog, epilog_inputs=aux)
         assert aux.keys() == aux_checkers.keys()
-        for k in aux.keys():
+        for k in aux:
             assert aux_checkers[k](to_numpy(aux[k]))
     assert_tensors_equal(result, reference)
 
@@ -251,23 +269,25 @@ def test_d_epilogs(d_epilog, epilog, n, m, k, use_cuda):
 @pytest.mark.parametrize(
     "bias",
     (
-        lambda m, n: cupy.full((m, n), 0.8),
-        lambda m, n: cupy.full((n, m), 0.8),
-        lambda m, n: cupy.full((1, 1), 0.8),
-        lambda m, n: cupy.full((1,), 0.8),
+        lambda m, n: cupy.full((m, n), np.float32(0.8)),
+        lambda m, n: cupy.full((n, m), np.float32(0.8)),
+        lambda m, n: cupy.full((1, 1), np.float32(0.8)),
+        lambda m, n: cupy.full((1,), np.float32(0.8)),
     ),
 )
 def test_invalid_bias_shapes(epilog, bias):
     with pytest.raises(ValueError):
         a, b = sample_float_tensor((4, 5)), sample_float_tensor((5, 8))
-        matmul(
-            a,
-            b,
-            epilog=epilog,
-            epilog_inputs={
-                "bias": bias(a.shape[0], b.shape[1]),
-            },
-        ),
+        (
+            matmul(
+                a,
+                b,
+                epilog=epilog,
+                epilog_inputs={
+                    "bias": bias(a.shape[0], b.shape[1]),
+                },
+            ),
+        )
 
 
 @pytest.mark.parametrize("epilog", epilogs_with_bias)
@@ -275,14 +295,16 @@ def test_bias_package_mismatch(epilog):
     with pytest.raises(TypeError):
         a = sample_matrix("torch", "float32", (4, 5), use_cuda=True)
         b = sample_matrix("torch", "float32", (5, 8), use_cuda=True)
-        matmul(
-            a,
-            b,
-            epilog=epilog,
-            epilog_inputs={
-                "bias": np.full((4, 1), 0.7),
-            },
-        ),
+        (
+            matmul(
+                a,
+                b,
+                epilog=epilog,
+                epilog_inputs={
+                    "bias": np.full((4, 1), np.float32(0.7)),
+                },
+            ),
+        )
 
 
 @pytest.mark.parametrize(
@@ -303,7 +325,7 @@ def test_missing_epilog_inputs(epilog):
 
     with pytest.raises(ValueError):
         a, b = sample_float_tensor((4, 5)), sample_float_tensor((5, 8))
-        matmul(a, b, epilog=epilog, epilog_inputs={}),
+        (matmul(a, b, epilog=epilog, epilog_inputs={}),)
 
 
 @pytest.mark.parametrize(
@@ -324,17 +346,19 @@ def test_extra_epilog_inputs(epilog):
 
     with pytest.raises(ValueError):
         a, b = sample_float_tensor((4, 5)), sample_float_tensor((5, 8))
-        matmul(
-            a,
-            b,
-            epilog=epilog,
-            epilog_inputs={
-                "bias": cupy.full((4, 1), 0.8),
-                "drelu_aux": cupy.zeros((12, 34)),
-                "dgelu_aux": cupy.zeros((12, 34)),
-                "extra": cupy.zeros((12, 34)),
-            },
-        ),
+        (
+            matmul(
+                a,
+                b,
+                epilog=epilog,
+                epilog_inputs={
+                    "bias": cupy.full((4, 1), np.float32(0.8)),
+                    "drelu_aux": cupy.zeros((12, 34)),
+                    "dgelu_aux": cupy.zeros((12, 34)),
+                    "extra": cupy.zeros((12, 34)),
+                },
+            ),
+        )
 
 
 def test_renamed_epilog_inputs():
@@ -343,9 +367,11 @@ def test_renamed_epilog_inputs():
     """
     with pytest.raises(ValueError):
         a, b = sample_float_tensor((4, 5)), sample_float_tensor((5, 8))
-        matmul(
-            a,
-            b,
-            epilog=Epilog.BIAS,
-            epilog_inputs={"not_a_bias": cupy.full((4, 1), 0.8)},
-        ),
+        (
+            matmul(
+                a,
+                b,
+                epilog=Epilog.BIAS,
+                epilog_inputs={"not_a_bias": cupy.full((4, 1), np.float32(0.8))},
+            ),
+        )

@@ -1,0 +1,22 @@
+scopeconfig:
+  - scope: python
+
+allowed_patterns:
+  - key
+  - plan
+  - passed
+  - pass
+  - passing
+  - Pass
+
+fileignoreconfig:
+- filename: internal/gtc2024/start.sh
+  checksum: da4ab3ead154a948599cd89aa8a378b05e2e7d9cb9f2bf631ce5bb1eca1a8411
+- filename: examples/fft/example02_stateful_torch_cpu_execution.py
+  checksum: 03689ecaa669cab79478715c70bd13305020283b445b52cdc9d68a341b431b91
+- filename: SECURITY.md
+  checksum: 01022d56aafb7c98d5af05a3e9e87ce4d267781def6f1844470fd4cd59d6b26b
+- filename: nvmath/device/random.py
+  checksum: c534d9a475521cfcbfa6b048904f8495ff70e2a9ccdf3f2710e050cf75fafa35
+- filename: .ci/pipenv/manylinux_2_28_x86_64-py311-docs-Pipfile.lock
+  checksum: 50417e87baee9d7aa17765525d21c48ea99f9d3c0b2a2b25d401102b5c5bb32a

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from ._internal cimport cusparse as _cusparse
 
@@ -1025,3 +1025,7 @@ cdef cusparseStatus_t cusparseCreateConstSlicedEll(cusparseConstSpMatDescr_t* sp
 
 cdef cusparseStatus_t cusparseSpSV_updateMatrix(cusparseHandle_t handle, cusparseSpSVDescr_t spsvDescr, void* newValues, cusparseSpSVUpdate_t updatePart) except* nogil:
     return _cusparse._cusparseSpSV_updateMatrix(handle, spsvDescr, newValues, updatePart)
+
+
+cdef cusparseStatus_t cusparseSpMV_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except* nogil:
+    return _cusparse._cusparseSpMV_preprocess(handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, externalBuffer)

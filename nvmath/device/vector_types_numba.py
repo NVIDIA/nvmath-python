@@ -2,26 +2,37 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ['float16x2', 'float16x4', 'float32x2', 'float64x2', 
-    'float16x2_type', 'float16x4_type', 'float32x2_type', 'float64x2_type']
+__all__ = [
+    "float16x2",
+    "float16x4",
+    "float32x2",
+    "float64x2",
+    "float16x2_type",
+    "float16x4_type",
+    "float32x2_type",
+    "float64x2_type",
+]
+
+import typing
+
 from numba.core import types
 
-from numba.extending import (overload, models, register_model,
-                             lower_builtin, as_numba_type, type_callable,
-                             lower_cast)
+from numba.extending import overload, models, register_model, lower_builtin, as_numba_type, type_callable, lower_cast
 from numba.core.typeconv import Conversion
 from llvmlite import ir
 from numba.core.typing.templates import AttributeTemplate
 from numba.cuda.cudadecl import registry as cuda_registry
 from numba.cuda.cudaimpl import lower_attr as cuda_lower_attr
 
-def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length):
 
+def make_vector(
+    float_bitwidth: int, numba_float_type: types.scalars.Float, llvm_float_type, vector_length: typing.Literal[2, 4]
+):
     assert vector_length == 2 or vector_length == 4
     vector_bitwidth = vector_length * float_bitwidth
 
     # User visible types and functions
-    class vector(object):
+    class vector:
         def __init__(self, *args):
             pass
 
@@ -31,7 +42,7 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
     # FE types
     class vectorType(types.Number):
         def __init__(self):
-            super(vectorType, self).__init__(name=f'vector({numba_float_type.name}x{vector_length})')
+            super().__init__(name=f"vector({numba_float_type.name}x{vector_length})")
             self.dtype = numba_float_type
             self.count = vector_length
             self.bitwidth = vector_bitwidth
@@ -54,9 +65,9 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
                     return Conversion.unsafe
                 elif other.bitwidth > vector_bitwidth:
                     return Conversion.safe
-        
+
         def __name__(self):
-            return f'vector({numba_float_type.name}x{vector_length})'
+            return f"vector({numba_float_type.name}x{vector_length})"
 
     vector_type = vectorType()
 
@@ -75,8 +86,8 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
                 return vector_type
             elif vector_length == 4 and all(isinstance(v, types.Float) for v in [x, y, z, w]):
                 return vector_type
-        return typer
 
+        return typer
 
     # How to represent vectorType in Memory?
     @register_model(vectorType)
@@ -85,11 +96,9 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
             be_type = ir.IntType(vector_bitwidth)
             super().__init__(dmm, fe_type, be_type)
 
-
     # How to build a vectorType from individual float values?
-    @lower_builtin(vector, *(vector_length * [types.Float])) # FIXME
+    @lower_builtin(vector, *(vector_length * [types.Float]))  # FIXME
     def vector_ctor(context, builder, sig, args):
-
         typ = sig.return_type
         args = list(args)
         assert len(args) == vector_length
@@ -104,17 +113,20 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
 
         return builder.bitcast(val, context.get_value_type(typ))
 
-
     # How to access .x, .y, .z, .w
     @cuda_registry.register_attr
     class complex_attrs(AttributeTemplate):
         key = vectorType
+
         def resolve_x(self, mod):
             return numba_float_type
+
         def resolve_y(self, mod):
             return numba_float_type
+
         def resolve_z(self, mod):
             return numba_float_type
+
         def resolve_w(self, mod):
             return numba_float_type
 
@@ -125,21 +137,22 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
         return builder.extract_element(vec, index)
 
     # This cannot be done with a loop
-    @cuda_lower_attr(vectorType, 'x')
-    def complex_get_xyzw(context, builder, typ, val):
+    @cuda_lower_attr(vectorType, "x")
+    def complex_get_x(context, builder, typ, val):
         return complex_get(context, builder, typ, val, 0)
 
-    @cuda_lower_attr(vectorType, 'y')
-    def complex_get_xyzw(context, builder, typ, val):
+    @cuda_lower_attr(vectorType, "y")
+    def complex_get_y(context, builder, typ, val):
         return complex_get(context, builder, typ, val, 1)
 
     if vector_length == 4:
-        @cuda_lower_attr(vectorType, 'z')
-        def complex_get_xyzw(context, builder, typ, val):
+
+        @cuda_lower_attr(vectorType, "z")
+        def complex_get_z(context, builder, typ, val):
             return complex_get(context, builder, typ, val, 2)
 
-        @cuda_lower_attr(vectorType, 'w')
-        def complex_get_xyzw(context, builder, typ, val):
+        @cuda_lower_attr(vectorType, "w")
+        def complex_get_w(context, builder, typ, val):
             return complex_get(context, builder, typ, val, 3)
 
     # Conversions from types.Complex
@@ -148,8 +161,10 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
         @overload(create)
         def make_complex(cplx):
             if isinstance(cplx, types.Complex):
+
                 def impl(cplx):
                     return vector(cplx.real, cplx.imag)
+
                 return impl
 
         @lower_cast(types.Complex, vector_type)
@@ -173,7 +188,7 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
             val = builder.insert_value(val, y, [1])
             return val
 
-    vector.__name__ = f'float{float_bitwidth}x{vector_length}'
+    vector.__name__ = f"float{float_bitwidth}x{vector_length}"
     vector.__doc__ = f"""
     float{float_bitwidth}x{vector_length}({'x, y' if vector_length==2 else 'x, y, z, w'})
 
@@ -181,7 +196,8 @@ def make_vector(float_bitwidth, numba_float_type, llvm_float_type, vector_length
     """
     return vector, vector_type
 
-float16x2,  float16x2_type  = make_vector(16, types.float16, ir.IntType(16),  2)
-float16x4,  float16x4_type  = make_vector(16, types.float16, ir.IntType(16),  4)
-float32x2,  float32x2_type  = make_vector(32, types.float32, ir.FloatType(),  2)
-float64x2,  float64x2_type  = make_vector(64, types.float64, ir.DoubleType(), 2)
+
+float16x2, float16x2_type = make_vector(16, types.float16, ir.IntType(16), 2)
+float16x4, float16x4_type = make_vector(16, types.float16, ir.IntType(16), 4)
+float32x2, float32x2_type = make_vector(32, types.float32, ir.FloatType(), 2)
+float64x2, float64x2_type = make_vector(64, types.float64, ir.DoubleType(), 2)

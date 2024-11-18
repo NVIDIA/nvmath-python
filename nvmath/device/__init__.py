@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .patch import patch_codegen; patch_codegen();
+from .patch import patch_codegen
 
+patch_codegen()
 from .common_cuda import *
 from .cufftdx import *
 from .cublasdx import *

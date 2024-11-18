@@ -12,8 +12,8 @@ from nvmath.device import matmul, Dim3
 from common import random_real
 from common_numba import load_to_shared, store_from_shared
 
-def main():
 
+def main():
     m, n, k = 64, 64, 64
     precision = np.float16
 
@@ -26,40 +26,39 @@ def main():
         Dim3(32, 4),
     ]
 
-    kernel_block_dims = [
-        Dim3(128),
-        Dim3(255),
-        Dim3(196, 2),
-        Dim3(32, 4, 2)
-    ]
+    kernel_block_dims = [Dim3(128), Dim3(255), Dim3(196, 2), Dim3(32, 4, 2)]
 
-    for scenario, (blas_block_dim, kernel_block_dim) in enumerate(zip(blas_block_dims, kernel_block_dims)):
-
+    for scenario, (blas_block_dim, kernel_block_dim) in enumerate(zip(blas_block_dims, kernel_block_dims, strict=True)):
         print(f"Scenario with BLAS dim {blas_block_dim} and kernel dim {kernel_block_dim}")
 
-        MM = matmul(size=(m, n, k), precision=precision, data_type='real',
-                    transpose_mode=('non_transposed', 'transposed'),
-                    execution='Block', compiler='numba', block_dim=blas_block_dim)
+        MM = matmul(
+            size=(m, n, k),
+            precision=precision,
+            data_type="real",
+            transpose_mode=("non_transposed", "transposed"),
+            execution="Block",
+            compiler="numba",
+            block_dim=blas_block_dim,
+        )
 
-        value_type          = MM.value_type
-        a_size              = MM.a_size
-        b_size              = MM.b_size
-        c_size              = MM.c_size
-        a_dim               = MM.a_dim
-        b_dim               = MM.b_dim
-        c_dim               = MM.c_dim
-        shared_memory_size  = MM.shared_memory_size
-        ld                  = MM.leading_dimension
-        lda, ldb, ldc       = (ld.a, ld.b, ld.c)
+        value_type = MM.value_type
+        a_size = MM.a_size
+        b_size = MM.b_size
+        c_size = MM.c_size
+        a_dim = MM.a_dim
+        b_dim = MM.b_dim
+        c_dim = MM.c_dim
+        shared_memory_size = MM.shared_memory_size
+        ld = MM.leading_dimension
+        lda, ldb, ldc = (ld.a, ld.b, ld.c)
 
         @cuda.jit(link=MM.files)
         def f(a, b, c, alpha, beta, output):
-
             smem = cuda.shared.array(shape=(0,), dtype=value_type)
 
             smem_a = smem[0:]
             smem_b = smem[a_size:]
-            smem_c = smem[a_size+b_size:]
+            smem_c = smem[a_size + b_size :]
 
             load_to_shared(a, smem_a, a_dim, lda)
             load_to_shared(b, smem_b, b_dim, ldb)
@@ -105,6 +104,7 @@ def main():
         data_ref = alpha * (a @ b.T) + beta * c
         error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
         assert error < 1e-2
+
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.4.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -137,169 +137,169 @@ cdef int _check_or_init_curand() except -1 nogil:
             __curandCreateGenerator = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandCreateGenerator')
         except:
             pass
-    
+
         global __curandCreateGeneratorHost
         try:
             __curandCreateGeneratorHost = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandCreateGeneratorHost')
         except:
             pass
-    
+
         global __curandDestroyGenerator
         try:
             __curandDestroyGenerator = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandDestroyGenerator')
         except:
             pass
-    
+
         global __curandGetVersion
         try:
             __curandGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetVersion')
         except:
             pass
-    
+
         global __curandGetProperty
         try:
             __curandGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetProperty')
         except:
             pass
-    
+
         global __curandSetStream
         try:
             __curandSetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetStream')
         except:
             pass
-    
+
         global __curandSetPseudoRandomGeneratorSeed
         try:
             __curandSetPseudoRandomGeneratorSeed = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetPseudoRandomGeneratorSeed')
         except:
             pass
-    
+
         global __curandSetGeneratorOffset
         try:
             __curandSetGeneratorOffset = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetGeneratorOffset')
         except:
             pass
-    
+
         global __curandSetGeneratorOrdering
         try:
             __curandSetGeneratorOrdering = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetGeneratorOrdering')
         except:
             pass
-    
+
         global __curandSetQuasiRandomGeneratorDimensions
         try:
             __curandSetQuasiRandomGeneratorDimensions = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetQuasiRandomGeneratorDimensions')
         except:
             pass
-    
+
         global __curandGenerate
         try:
             __curandGenerate = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerate')
         except:
             pass
-    
+
         global __curandGenerateLongLong
         try:
             __curandGenerateLongLong = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateLongLong')
         except:
             pass
-    
+
         global __curandGenerateUniform
         try:
             __curandGenerateUniform = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateUniform')
         except:
             pass
-    
+
         global __curandGenerateUniformDouble
         try:
             __curandGenerateUniformDouble = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateUniformDouble')
         except:
             pass
-    
+
         global __curandGenerateNormal
         try:
             __curandGenerateNormal = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateNormal')
         except:
             pass
-    
+
         global __curandGenerateNormalDouble
         try:
             __curandGenerateNormalDouble = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateNormalDouble')
         except:
             pass
-    
+
         global __curandGenerateLogNormal
         try:
             __curandGenerateLogNormal = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateLogNormal')
         except:
             pass
-    
+
         global __curandGenerateLogNormalDouble
         try:
             __curandGenerateLogNormalDouble = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateLogNormalDouble')
         except:
             pass
-    
+
         global __curandCreatePoissonDistribution
         try:
             __curandCreatePoissonDistribution = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandCreatePoissonDistribution')
         except:
             pass
-    
+
         global __curandDestroyDistribution
         try:
             __curandDestroyDistribution = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandDestroyDistribution')
         except:
             pass
-    
+
         global __curandGeneratePoisson
         try:
             __curandGeneratePoisson = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGeneratePoisson')
         except:
             pass
-    
+
         global __curandGeneratePoissonMethod
         try:
             __curandGeneratePoissonMethod = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGeneratePoissonMethod')
         except:
             pass
-    
+
         global __curandGenerateBinomial
         try:
             __curandGenerateBinomial = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateBinomial')
         except:
             pass
-    
+
         global __curandGenerateBinomialMethod
         try:
             __curandGenerateBinomialMethod = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateBinomialMethod')
         except:
             pass
-    
+
         global __curandGenerateSeeds
         try:
             __curandGenerateSeeds = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateSeeds')
         except:
             pass
-    
+
         global __curandGetDirectionVectors32
         try:
             __curandGetDirectionVectors32 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetDirectionVectors32')
         except:
             pass
-    
+
         global __curandGetScrambleConstants32
         try:
             __curandGetScrambleConstants32 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetScrambleConstants32')
         except:
             pass
-    
+
         global __curandGetDirectionVectors64
         try:
             __curandGetDirectionVectors64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetDirectionVectors64')
         except:
             pass
-    
+
         global __curandGetScrambleConstants64
         try:
             __curandGetScrambleConstants64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetScrambleConstants64')
@@ -323,88 +323,88 @@ cpdef dict _inspect_function_pointers():
 
     global __curandCreateGenerator
     data["__curandCreateGenerator"] = <intptr_t>__curandCreateGenerator
-    
+
     global __curandCreateGeneratorHost
     data["__curandCreateGeneratorHost"] = <intptr_t>__curandCreateGeneratorHost
-    
+
     global __curandDestroyGenerator
     data["__curandDestroyGenerator"] = <intptr_t>__curandDestroyGenerator
-    
+
     global __curandGetVersion
     data["__curandGetVersion"] = <intptr_t>__curandGetVersion
-    
+
     global __curandGetProperty
     data["__curandGetProperty"] = <intptr_t>__curandGetProperty
-    
+
     global __curandSetStream
     data["__curandSetStream"] = <intptr_t>__curandSetStream
-    
+
     global __curandSetPseudoRandomGeneratorSeed
     data["__curandSetPseudoRandomGeneratorSeed"] = <intptr_t>__curandSetPseudoRandomGeneratorSeed
-    
+
     global __curandSetGeneratorOffset
     data["__curandSetGeneratorOffset"] = <intptr_t>__curandSetGeneratorOffset
-    
+
     global __curandSetGeneratorOrdering
     data["__curandSetGeneratorOrdering"] = <intptr_t>__curandSetGeneratorOrdering
-    
+
     global __curandSetQuasiRandomGeneratorDimensions
     data["__curandSetQuasiRandomGeneratorDimensions"] = <intptr_t>__curandSetQuasiRandomGeneratorDimensions
-    
+
     global __curandGenerate
     data["__curandGenerate"] = <intptr_t>__curandGenerate
-    
+
     global __curandGenerateLongLong
     data["__curandGenerateLongLong"] = <intptr_t>__curandGenerateLongLong
-    
+
     global __curandGenerateUniform
     data["__curandGenerateUniform"] = <intptr_t>__curandGenerateUniform
-    
+
     global __curandGenerateUniformDouble
     data["__curandGenerateUniformDouble"] = <intptr_t>__curandGenerateUniformDouble
-    
+
     global __curandGenerateNormal
     data["__curandGenerateNormal"] = <intptr_t>__curandGenerateNormal
-    
+
     global __curandGenerateNormalDouble
     data["__curandGenerateNormalDouble"] = <intptr_t>__curandGenerateNormalDouble
-    
+
     global __curandGenerateLogNormal
     data["__curandGenerateLogNormal"] = <intptr_t>__curandGenerateLogNormal
-    
+
     global __curandGenerateLogNormalDouble
     data["__curandGenerateLogNormalDouble"] = <intptr_t>__curandGenerateLogNormalDouble
-    
+
     global __curandCreatePoissonDistribution
     data["__curandCreatePoissonDistribution"] = <intptr_t>__curandCreatePoissonDistribution
-    
+
     global __curandDestroyDistribution
     data["__curandDestroyDistribution"] = <intptr_t>__curandDestroyDistribution
-    
+
     global __curandGeneratePoisson
     data["__curandGeneratePoisson"] = <intptr_t>__curandGeneratePoisson
-    
+
     global __curandGeneratePoissonMethod
     data["__curandGeneratePoissonMethod"] = <intptr_t>__curandGeneratePoissonMethod
-    
+
     global __curandGenerateBinomial
     data["__curandGenerateBinomial"] = <intptr_t>__curandGenerateBinomial
-    
+
     global __curandGenerateBinomialMethod
     data["__curandGenerateBinomialMethod"] = <intptr_t>__curandGenerateBinomialMethod
-    
+
     global __curandGenerateSeeds
     data["__curandGenerateSeeds"] = <intptr_t>__curandGenerateSeeds
-    
+
     global __curandGetDirectionVectors32
     data["__curandGetDirectionVectors32"] = <intptr_t>__curandGetDirectionVectors32
-    
+
     global __curandGetScrambleConstants32
     data["__curandGetScrambleConstants32"] = <intptr_t>__curandGetScrambleConstants32
-    
+
     global __curandGetDirectionVectors64
     data["__curandGetDirectionVectors64"] = <intptr_t>__curandGetDirectionVectors64
-    
+
     global __curandGetScrambleConstants64
     data["__curandGetScrambleConstants64"] = <intptr_t>__curandGetScrambleConstants64
 

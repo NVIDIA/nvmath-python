@@ -1,23 +1,30 @@
 # Minimal makefile for Sphinx documentation
-#
+SHELL=/bin/bash
 
-# You can set these variables from the command line, and also
-# from the environment for the first two.
+# You can set these variables from the command line or environment
+SPHINX_NVMATH_PYTHON_VER ?= $(shell [[ $$(< ../nvmath/_version.py) =~ __version__[^0-9.]*([0-9.]*) ]] && echo $${BASH_REMATCH[1]})
 SPHINXOPTS    ?= -j auto
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = sphinx
-BUILDDIR      ?= _build/html/${SPHINX_NVMATH_PYTHON_VER}
+BUILDDIR      ?= _build/html
 
-# Put it first so that "make" without argument is like "make help".
 help:
-	@$(SPHINXBUILD) -b help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	@$(SPHINXBUILD) -b help "$(SOURCEDIR)" "$(BUILDDIR)/${SPHINX_NVMATH_PYTHON_VER}" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile
+clean:
+	rm -rf $(BUILDDIR)
+	rm -rf ${SOURCEDIR}/_xml/
+	rm -rf ${SOURCEDIR}/bindings/generated/
+	rm -rf ${SOURCEDIR}/fft/generated
+	rm -rf ${SOURCEDIR}/linalg/generated
+	rm -rf ${SOURCEDIR}/device-apis/generated
 
-# Catch-all target: route all unknown targets to Sphinx using the new
-# "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
+html: Makefile
 	@echo BUILDDIR=${BUILDDIR}
-	mkdir -p ${BUILDDIR}
-	@$(SPHINXBUILD) -b $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	mkdir -p ${BUILDDIR}/latest
+	$(SPHINXBUILD) -b $@ "$(SOURCEDIR)" "$(BUILDDIR)/${SPHINX_NVMATH_PYTHON_VER}" $(SPHINXOPTS) $(O)
+	cp ${SOURCEDIR}/_templates/main.html $(BUILDDIR)/index.html
+	cd $(BUILDDIR) && cp -a ${SPHINX_NVMATH_PYTHON_VER}/* latest/
+	cp $(BUILDDIR)/latest/objects.inv $(BUILDDIR)
 
+.PHONY: help Makefile clean html

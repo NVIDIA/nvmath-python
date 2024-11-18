@@ -12,8 +12,8 @@ from nvmath.device import fft
 from common import random_complex
 import functools
 
-def main():
 
+def main():
     fft_size_y = 256
     fft_size_x = 128
 
@@ -22,16 +22,17 @@ def main():
     ept_x = 8
     fpb_x = fpb_y
 
-    FFT_base = functools.partial(fft, fft_type='c2c', direction='forward', precision=np.float32, execution='Block', compiler='numba')
+    FFT_base = functools.partial(
+        fft, fft_type="c2c", direction="forward", precision=np.float32, execution="Block", compiler="numba"
+    )
     FFT_y = FFT_base(size=fft_size_y, elements_per_thread=ept_y, ffts_per_block=fpb_y)
     FFT_x = FFT_base(size=fft_size_x, elements_per_thread=ept_x, ffts_per_block=fpb_x)
 
-    value_type           = FFT_y.value_type
-    storage_size         = max(FFT_x.storage_size, FFT_y.storage_size)
-    shared_memory_size   = max(FFT_x.shared_memory_size, \
-                               FFT_y.shared_memory_size)
-    stride_x             = FFT_x.stride
-    stride_y             = FFT_y.stride
+    value_type = FFT_y.value_type
+    storage_size = max(FFT_x.storage_size, FFT_y.storage_size)
+    shared_memory_size = max(FFT_x.shared_memory_size, FFT_y.shared_memory_size)
+    stride_x = FFT_x.stride
+    stride_y = FFT_y.stride
 
     assert FFT_x.block_dim == FFT_y.block_dim
     block_dim = FFT_x.block_dim
@@ -39,7 +40,6 @@ def main():
 
     @cuda.jit(link=FFT_x.files + FFT_y.files)
     def f(input, output):
-
         thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
         shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
 
@@ -48,7 +48,6 @@ def main():
         fft_id = cuda.blockIdx.x * fpb_x + cuda.threadIdx.y
 
         if fft_id < fft_size_x:
-
             index = cuda.threadIdx.x
             for i in range(ept_y):
                 thread_data[i] = input[fft_id, index]
@@ -72,7 +71,6 @@ def main():
         fft_id = cuda.blockIdx.x * fpb_y + cuda.threadIdx.y
 
         if fft_id < fft_size_y:
-
             index = cuda.threadIdx.x
             for i in range(ept_x):
                 thread_data[i] = output[index, fft_id]
@@ -98,19 +96,22 @@ def main():
         f[grid_dim, block_dim, 0, shared_memory_size](input_d, output_d)
     except cuda.cudadrv.driver.LinkerError as e:
         if str(e) == "libcudadevrt.a not found":
-            print(f"\n=== Numba linker error: {e}. Please use the System CTK option (see Getting Started in the documentation) to run this example. ===\n")
+            print(
+                f"\n=== Numba linker error: {e}. Please use the System CTK option (see Getting Started in the documentation) to run this example. ===\n"
+            )
         raise e
     cuda.synchronize()
 
     output_test = output_d.copy_to_host()
 
-    print("input [:10,:10]:", input[:10,:10])
+    print("input [:10,:10]:", input[:10, :10])
 
-    print("output [:10,:10]:", output_test[:10,:10])
+    print("output [:10,:10]:", output_test[:10, :10])
 
     output_ref = np.fft.fftn(input)
     error = np.linalg.norm(output_test - output_ref) / np.linalg.norm(output_ref)
     assert error < 1e-5
+
 
 if __name__ == "__main__":
     main()

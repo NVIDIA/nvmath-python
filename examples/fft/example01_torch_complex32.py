@@ -5,12 +5,13 @@
 """
 This example describes how to perform FFT on PyTorch tensors with low precision using function-form FFT APIs.
 """
+
 import torch
 
 import nvmath
 
 shape = 16, 16, 16
-axes  = 0, 1
+axes = 0, 1
 
 a = torch.rand(shape, dtype=torch.complex32, device=0)
 

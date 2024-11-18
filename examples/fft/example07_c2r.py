@@ -5,12 +5,13 @@
 """
 Example showing how to perform N-dimensional complex-to-real (C2R) FFT computation with function-form FFT APIs.
 """
+
 import cupy as cp
 
 import nvmath
 
 shape = 256, 512, 512
-axes  = 0, 1
+axes = 0, 1
 
 # Create a real type input operand and then use Real-to-complex FFT
 # to get complex operand with Hermitian symmetry as input for C2R FFT

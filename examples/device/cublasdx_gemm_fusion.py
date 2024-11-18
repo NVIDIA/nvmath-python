@@ -12,8 +12,8 @@ from nvmath.device import matmul
 from common import random_real
 from common_numba import set_max_dynamic_shared_size_bytes, load_to_shared, store_from_shared
 
-def main():
 
+def main():
     m1 = 64
     n1 = 64
     k1 = 64
@@ -23,35 +23,49 @@ def main():
 
     block_size = 128
 
-    MM1 = matmul(size=(m1, n1, k1), precision=np.float16, data_type='real', transpose_mode=('non_transposed', 'non_transposed'),
-                 execution='Block', block_size=block_size, compiler='numba')
+    MM1 = matmul(
+        size=(m1, n1, k1),
+        precision=np.float16,
+        data_type="real",
+        transpose_mode=("non_transposed", "non_transposed"),
+        execution="Block",
+        block_size=block_size,
+        compiler="numba",
+    )
 
-    MM2 = matmul(size=(m2, n2, k2), precision=np.float16, data_type='real', transpose_mode=('non_transposed', 'non_transposed'),
-                 execution='Block', block_size=block_size, compiler='numba')
+    MM2 = matmul(
+        size=(m2, n2, k2),
+        precision=np.float16,
+        data_type="real",
+        transpose_mode=("non_transposed", "non_transposed"),
+        execution="Block",
+        block_size=block_size,
+        compiler="numba",
+    )
 
-    a_size              = MM1.a_size
-    b_size              = MM1.b_size
-    c_size              = MM1.c_size
+    a_size = MM1.a_size
+    b_size = MM1.b_size
+    c_size = MM1.c_size
 
-    d_size              = MM2.b_size
-    f_size              = MM2.c_size
+    d_size = MM2.b_size
+    f_size = MM2.c_size
 
-    a_dim               = MM1.a_dim
-    b_dim               = MM1.b_dim
-    c_dim               = MM1.c_dim
+    a_dim = MM1.a_dim
+    b_dim = MM1.b_dim
+    c_dim = MM1.c_dim
 
-    d_dim               = MM2.b_dim
-    f_dim               = MM2.c_dim
+    d_dim = MM2.b_dim
+    f_dim = MM2.c_dim
 
-    lda                 = MM1.leading_dimension.a
-    ldb                 = MM1.leading_dimension.b
-    ldc                 = MM1.leading_dimension.c
+    lda = MM1.leading_dimension.a
+    ldb = MM1.leading_dimension.b
+    ldc = MM1.leading_dimension.c
 
-    ldd                 = MM1.leading_dimension.b
-    ldf                 = MM1.leading_dimension.c
+    ldd = MM1.leading_dimension.b
+    ldf = MM1.leading_dimension.c
 
-    block_dim           = MM1.block_dim
-    shared_memory_size  = max(MM1.shared_memory_size, MM2.shared_memory_size)
+    block_dim = MM1.block_dim
+    shared_memory_size = max(MM1.shared_memory_size, MM2.shared_memory_size)
 
     assert MM2.a_dim == MM1.c_dim
     assert MM2.block_dim == MM1.block_dim
@@ -59,19 +73,18 @@ def main():
 
     @cuda.jit(link=MM1.files + MM2.files)
     def kernel(alpha1, a, b, beta1, c, alpha2, d, beta2, f, output):
-
         smem = cuda.shared.array(shape=(0,), dtype=np.float16)
 
         # MM1 takes (a, b, c) --> c
         # smem = [ c c c c c c c | a a a a a a a | b b b b b b ]
         smem_c = smem[0:]
         smem_a = smem[c_size:]
-        smem_b = smem[c_size+a_size:]
+        smem_b = smem[c_size + a_size :]
 
         # MM2 takes (c, d, f) --> f
         # smem = [ c c c c c c c | d d d d d | f f f f f f f f f f f]
-        smem_d = smem[c_size:] # MM2.a_size
-        smem_f = smem[c_size+d_size:]
+        smem_d = smem[c_size:]  # MM2.a_size
+        smem_f = smem[c_size + d_size :]
 
         # Load MM1's A (a)
         load_to_shared(a, smem_a, a_dim, lda)
@@ -122,7 +135,9 @@ def main():
     alpha2 = 1.0
     beta2 = 1.0
 
-    set_max_dynamic_shared_size_bytes(kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d)
+    set_max_dynamic_shared_size_bytes(
+        kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d
+    )
 
     kernel[1, block_dim, 0, shared_memory_size](alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d)
     cuda.synchronize()
@@ -131,6 +146,7 @@ def main():
     data_ref = alpha2 * ((alpha1 * (a @ b) + beta1 * c) @ d) + beta2 * f
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-5
+
 
 if __name__ == "__main__":
     main()

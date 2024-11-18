@@ -5,9 +5,15 @@
 from enum import Enum
 
 try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
+try:
     import torch
-except:
+except ImportError:
     torch = None
+
 
 class Framework(Enum):
     numpy = 1
@@ -17,14 +23,32 @@ class Framework(Enum):
     @classmethod
     def enabled(cls):
         yield cls.numpy
-        yield cls.cupy
+        if cp is not None:
+            yield cls.cupy
         if torch is not None:
             yield cls.torch
 
 
-class Backend(Enum):
-    cpu = 1
-    gpu = 2
+class ExecBackend(Enum):
+    cufft = 1
+    fftw = 2
+
+    @property
+    def nvname(self):
+        return "cuda" if self == ExecBackend.cufft else "cpu"
+
+    @property
+    def mem(self):
+        return MemBackend.cuda if self == ExecBackend.cufft else MemBackend.cpu
+
+
+class MemBackend(Enum):
+    cuda = 1
+    cpu = 2
+
+    @property
+    def exec(self):
+        return ExecBackend.cufft if self == MemBackend.cuda else ExecBackend.fftw
 
 
 class DType(Enum):
@@ -73,3 +97,37 @@ class OptFftBlocking(Enum):
 class OptFftLayout(Enum):
     natural = "natural"
     optimized = "optimized"
+
+
+class OptFftInplace(Enum):
+    false = False
+    true = True
+
+    def __bool__(self):
+        return self.value
+
+
+class LtoCallback(Enum):
+    prolog = 1
+    epilog = 2
+    prolog_and_epilog = 3
+
+    def has_prolog(self):
+        return self.value % 2 == 1
+
+    def has_epilog(self):
+        return self.value >= 2
+
+    def __xor__(self, other):
+        value = self.value ^ other.value
+        if value == 0:
+            return None
+        return LtoCallback(value)
+
+
+class AllowToFail(Enum):
+    false = False
+    true = True
+
+    def __bool__(self):
+        return self.value
