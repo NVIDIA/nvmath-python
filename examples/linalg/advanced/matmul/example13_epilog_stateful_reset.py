@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example illustrates how to reset operands and epilog inputs in stateful matrix multiplication APIs, and reuse the object
-for multiple executions. This is needed when the memory space of the operands is not accessible from the execution space, or if
+This example illustrates how to reset operands and epilog inputs in stateful matrix
+multiplication APIs, and reuse the object for multiple executions. This is needed when the
+memory space of the operands is not accessible from the execution space, or if
  it's desired to bind new (compatible) operands to the stateful object.
 
 The inputs as well as the result are NumPy ndarrays.

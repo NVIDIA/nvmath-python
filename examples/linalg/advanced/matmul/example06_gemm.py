@@ -25,5 +25,6 @@ beta = 0.67
 # Perform the GEMM.
 result = nvmath.linalg.advanced.matmul(a, b, c=c, alpha=alpha, beta=beta)
 
-# Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
+# Synchronize the default stream, since by default the execution is non-blocking for GPU
+# operands.
 cp.cuda.get_current_stream().synchronize()

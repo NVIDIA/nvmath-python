@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This program uses the device CURAND API to calculate what proportion of quasi-random 3D points fall within a sphere
-of radius 1, and to derive the volume of the sphere.
+This program uses the device CURAND API to calculate what proportion of quasi-random 3D
+points fall within a sphere of radius 1, and to derive the volume of the sphere.
 
-In particular it uses 64 bit scrambled Sobol direction vectors returned by the host helper API `get_direction_vectors64`
-to generate double-precision uniform samples. The host helper APIs can be accessed from the
-`nvmath.device.random.random_helpers` module.
+In particular it uses 64 bit scrambled Sobol direction vectors returned by the host helper
+API `get_direction_vectors64` to generate double-precision uniform samples. The host helper
+APIs can be accessed from the `nvmath.device.random.random_helpers` module.
 
-See https://docs.nvidia.com/cuda/curand/device-api-overview.html#device-api-example for the corresponding C example.
+See https://docs.nvidia.com/cuda/curand/device-api-overview.html#device-api-example for the
+corresponding C example.
 """
 
 import cffi
@@ -69,8 +70,8 @@ def test_sobol_scramble():
 
         result[id] += count
 
-    # The direction vectors and scramble constants are initialized on the host, using the helper
-    # functions in the `nvmath.device.random.random_helpers` module.
+    # The direction vectors and scramble constants are initialized on the host, using the
+    # helper functions in the `nvmath.device.random.random_helpers` module.
     hostVectors = random.random_helpers.get_direction_vectors64(
         random.random_helpers.DirectionVectorSet.SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6,
         nthreads * ndim,

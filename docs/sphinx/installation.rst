@@ -1,21 +1,28 @@
-Getting Started
+Installation
 ***************
 
 Install nvmath-python
 =====================
 
-nvmath-python, like most modern Python packages, provides pre-built binaries (wheels and later conda packages) to the end users.
-The full source code is hosted in the `NVIDIA/nvmath-python <https://github.com/NVIDIA/nvmath-python>`_ repository.
+nvmath-python, like most modern Python packages, provides pre-built binaries (wheels and
+later conda packages) to the end users. The full source code is hosted in the
+`NVIDIA/nvmath-python <https://github.com/NVIDIA/nvmath-python>`_ repository.
 
-In terms of CUDA Toolkit (CTK) choices, nvmath-python is designed and implemented to allow building and running against 1. ``pip``-wheel, 2. ``conda``, or 3. system installation of CTK. Having a full CTK installation at either build- or run- time is not necessary; just a small fraction as explained below is enough.
+In terms of CUDA Toolkit (CTK) choices, nvmath-python is designed and implemented to allow
+building and running against 1. ``pip``-wheel, 2. ``conda``, or 3. system installation of
+CTK. Having a full CTK installation at either build- or run- time is not necessary; just a
+small fraction as explained below is enough.
 
-Host & device APIs (see :ref:`nvmath overview`) have different run-time dependencies and requirements. Even among
-host APIs the needed underlying libraries are different (for example, :func:`~nvmath.fft.fft` on GPUs only needs cuFFT and not cuBLAS). Libraries
-are loaded when only needed. Therefore, nvmath-python is designed to have most of its dependencies *optional*, but provides
-convenient installation commands for users to quickly spin up a working Python environment.
+Host & device APIs (see :ref:`nvmath overview`) have different run-time dependencies and
+requirements. Even among host APIs the needed underlying libraries are different (for
+example, :func:`~nvmath.fft.fft` on GPUs only needs cuFFT and not cuBLAS). Libraries are
+loaded when only needed. Therefore, nvmath-python is designed to have most of its
+dependencies *optional*, but provides convenient installation commands for users to quickly
+spin up a working Python environment.
 
-The :ref:`cheatsheet <cheatsheet>` below captures nvmath-python's required/optional, build-/run- time dependencies.
-Using the installation commands from the sections below should support most of your needs.
+The :ref:`cheatsheet <cheatsheet>` below captures nvmath-python's required/optional,
+build-/run- time dependencies. Using the installation commands from the sections below
+should support most of your needs.
 
 
 .. _install from pypi:
@@ -23,7 +30,10 @@ Using the installation commands from the sections below should support most of y
 Install from PyPI
 -----------------
 
-The pre-built wheels can be ``pip``-installed from the public PyPI. There are several optional dependencies expressible in the standard "extras" bracket notation. The following assumes that **CTK components are also installed via pip** (so no extra step from users is needed; the dependencies are pulled via extras).
+The pre-built wheels can be ``pip``-installed from the public PyPI. There are several
+optional dependencies expressible in the standard "extras" bracket notation. The following
+assumes that **CTK components are also installed via pip** (so no extra step from users is
+needed; the dependencies are pulled via extras).
 
 .. list-table::
    :widths: 25 50
@@ -57,7 +67,8 @@ The pre-built wheels can be ``pip``-installed from the public PyPI. There are se
           FFTW3 (non-guru) API. ``LD_LIBRARY_PATH`` should be set properly to
           include this library if it is not already in the PATH.
 
-The options below are for adventurous users who want to manage most of the dependencies themselves. The following assumes that **system CTK is installed**.
+The options below are for adventurous users who want to manage most of the dependencies
+themselves. The following assumes that **system CTK is installed**.
 
 .. list-table::
    :widths: 25 50
@@ -89,7 +100,8 @@ The options below are for adventurous users who want to manage most of the depen
        2. For using :mod:`nvmath.device` APIs, ``CUDA_HOME`` (or ``CUDA_PATH``) should be
           set to point to the system CTK.
 
-For system admins or expert users, ``pip install nvmath-python`` would be a bare minimal installation (very lightweight). This allows fully explicit control of all dependencies.
+For system admins or expert users, ``pip install nvmath-python`` would be a bare minimal
+installation (very lightweight). This allows fully explicit control of all dependencies.
 
 
 Install from conda
@@ -111,7 +123,8 @@ Conda packages can be installed from the `conda-forge <https://conda-forge.org>`
      - Install nvmath-python along with all CUDA 12 optional
        dependencies (wheels for cuBLAS/cuFFT/... and CuPy) to support
        nvmath host APIs.
-   * - ``conda install -c conda-forge -c rapidsai nvmath-python-dx "pynvjitlink>=0.2" cuda-version=12``
+   * - ``conda install -c conda-forge -c rapidsai nvmath-python-dx "pynvjitlink>=0.2"
+       cuda-version=12``
      - Install nvmath-python along with all CUDA 12 optional
        dependencies (wheels for cuBLAS/cuFFT/..., CuPy, Numba,
        pynvjitlink, ...) to support nvmath host & device APIs (which
@@ -140,14 +153,19 @@ Conda packages can be installed from the `conda-forge <https://conda-forge.org>`
 
 **Notes**:
 
-- For expert users, ``conda install -c conda-forge nvmath-python=*=core*`` would be a bare minimal installation (very lightweight). This allows fully explicit control of all dependencies.
-- If you installed ``conda`` from `miniforge <https://github.com/conda-forge/miniforge>`_, most likely the conda-forge channel is already set as the default, then the ``-c conda-forge`` part in the above instruction can be omitted.
+- For expert users, ``conda install -c conda-forge nvmath-python=*=core*`` would be a bare
+  minimal installation (very lightweight). This allows fully explicit control of all
+  dependencies.
+- If you installed ``conda`` from `miniforge <https://github.com/conda-forge/miniforge>`_,
+  most likely the conda-forge channel is already set as the default, then the ``-c
+  conda-forge`` part in the above instruction can be omitted.
 
 
 Build from source
 -----------------
 
-Once you clone the repository and go into the root directory, you can build the project from source. There are several ways to build it since we need some CUDA headers at build time.
+Once you clone the repository and go into the root directory, you can build the project from
+source. There are several ways to build it since we need some CUDA headers at build time.
 
 .. list-table::
    :widths: 25 50
@@ -169,7 +187,8 @@ Once you clone the repository and go into the root directory, you can build the 
        instead), build the project, and install it to the current
        user environment together with the run-time dependencies. One can use:
 
-       - conda: After installing CUDA 12 conda packages, set the environment variable ``CUDA_PATH``
+       - conda: After installing CUDA 12 conda packages, set the environment variable
+         ``CUDA_PATH``
 
          * linux-64: ``CUDA_PATH=$CONDA_PREFIX/targets/x86_64-linux/``
          * linux-aarch64: ``CUDA_PATH=$CONDA_PREFIX/targets/sbsa-linux/``
@@ -179,14 +198,18 @@ Once you clone the repository and go into the root directory, you can build the 
 
 **Notes**:
 
-- If you add the "extras" notation after the dot ``.``, e.g., ``.[cu11]``, ``.[cu12,dx]``, ..., it has the same meaning
-  as explained in the :ref:`previous section <install from pypi>`.
-- If you don't want the run-time dependencies to be automatically handled, add ``--no-deps`` after the ``pip install``
-  command above; in this case, however, it's your responsibility to make sure that all the run-time requirements are met.
-- By replacing ``install`` by ``wheel``, a wheel can be built targeting the current OS and CPython version.
-- If you want inplace/editable install, add the ``-e`` flag to the command above (before the dot ``.``).
-  This is suitable for local development with a system-installed CTK. However, our wheels rely on *non-editable builds* so that the RPATH
-  hack can kick in. DO NOT pass the ``-e`` flag when building wheels!
+- If you add the "extras" notation after the dot ``.`` (for example ``.[cu11]``, ``.[cu12,dx]``,
+  ...), it has the same meaning as explained in the :ref:`previous section <install from
+  pypi>`.
+- If you don't want the run-time dependencies to be automatically handled, add ``--no-deps``
+  after the ``pip install`` command above; in this case, however, it's your responsibility
+  to make sure that all the run-time requirements are met.
+- By replacing ``install`` by ``wheel``, a wheel can be built targeting the current OS and
+  CPython version.
+- If you want inplace/editable install, add the ``-e`` flag to the command above (before the
+  dot ``.``). This is suitable for local development with a system-installed CTK. However,
+  our wheels rely on *non-editable builds* so that the RPATH hack can kick in. DO NOT pass
+  the ``-e`` flag when building wheels!
 - All optional run-time dependencies as listed below need to be manually installed.
 
 
@@ -195,8 +218,8 @@ Once you clone the repository and go into the root directory, you can build the 
 Cheatsheet
 ----------
 
-Below we provide a summary of requirements to support all nvmath-python functionalities.
-A dependency is *required* unless stated otherwise.
+Below we provide a summary of requirements to support all nvmath-python functionalities. A
+dependency is *required* unless stated otherwise.
 
 .. list-table::
    :widths: 25 25 25 25 25
@@ -334,14 +357,19 @@ nvmath-python is tested in the following environments:
 Run nvmath-python
 =================
 
-As mentioned earlier, nvmath-python can be run with all methods of CUDA installation, including wheels, conda packages, and system CTK. As a result, there is detection logic to discover shared libraries (for host APIs) and headers (for device APIs to do JIT compilation).
+As mentioned earlier, nvmath-python can be run with all methods of CUDA installation,
+including wheels, conda packages, and system CTK. As a result, there is detection logic to
+discover shared libraries (for host APIs) and headers (for device APIs to do JIT
+compilation).
 
 Shared libraries
 ----------------
 
 - pip wheels: Will be auto-discovered if installed
 - conda packages: Will be auto-discovered if installed, after wheel
-- system CTK: On Linux, the users needs to ensure the shared libraries are discoverable by the dynamic linker, say by setting ``LD_LIBRARY_PATH`` or updating system search paths to include the DSO locations.
+- system CTK: On Linux, the users needs to ensure the shared libraries are discoverable by
+  the dynamic linker, say by setting ``LD_LIBRARY_PATH`` or updating system search paths to
+  include the DSO locations.
 
 
 Headers 
@@ -351,13 +379,14 @@ This includes libraries such as CCCL and MathDx.
 
 - pip wheels: Will be auto-discovered if installed
 - conda packages: Will be auto-discovered if installed, after wheel
-- system CTK: Need to set ``CUDA_HOME`` (or ``CUDA_PATH``) and ``MATHDX_HOME`` (for MathDx headers)
+- system CTK: Need to set ``CUDA_HOME`` (or ``CUDA_PATH``) and ``MATHDX_HOME`` (for MathDx
+  headers)
 
 
 Host APIs
 ---------
 
-This terminlogy is explained in the :ref:`host api section`.
+This terminology is explained in the :ref:`host api section`.
 
 Examples
 ........
@@ -371,7 +400,9 @@ See the ``examples`` directory in the repo. Currently we have:
 Tests
 .....
 
-The ``requirements/pip/tests.txt`` file lists dependencies required for ``pip``-controlled environments to run tests. These requirements are installed via the main ``requirements/pip-dev-<name>.txt`` files.
+The ``requirements/pip/tests.txt`` file lists dependencies required for ``pip``-controlled
+environments to run tests. These requirements are installed via the main
+``requirements/pip-dev-<name>.txt`` files.
 
 
 Running functionality tests
@@ -426,11 +457,13 @@ Troubleshooting
 ===============
 
 For ``pip``-users, there are known limitations (many of which are nicely captured in the
-`pypackaging community project <https://pypackaging-native.github.io>`_) in Python packaging tools.
-For a complex library such as nvmath-python that interacts with many native libraries, there are user-visible caveats.
+`pypackaging community project <https://pypackaging-native.github.io>`_) in Python packaging
+tools. For a complex library such as nvmath-python that interacts with many native
+libraries, there are user-visible caveats.
 
-1. Be sure that there are no packages with both ``-cu11`` (for CUDA 11) and ``-cu12`` (for CUDA 12) suffices coexisting
-   in your Python environment. For example, this is a corrupted environment:
+1. Be sure that there are no packages with both ``-cu11`` (for CUDA 11) and ``-cu12`` (for
+   CUDA 12) suffices coexisting in your Python environment. For example, this is a corrupted
+   environment:
 
    .. code-block:: bash
 
@@ -443,30 +476,38 @@ For a complex library such as nvmath-python that interacts with many native libr
       setuptools         70.0.0
       wheel              0.43.0
 
-   Some times such conflicts could come from a dependency of the libraries that you use, so pay extra attention to what's
-   installed.
-2. ``pip`` does not attempt to check if the installed packages can actually be run against the installed GPU driver (CUDA GPU
-   driver cannot be installed by ``pip``), so make sure your GPU driver is new enough to support the installed ``-cuXX``
-   packages [2]_. The driver version can be checked by executing ``nvidia-smi`` and inspecting the ``Driver Version`` field on the
-   output table.
-3. CuPy installed from ``pip`` currently (as of v13.3.0) only supports conda and system CTK, and not ``pip``-installed CUDA wheels.
-   nvmath-python can help CuPy use the CUDA libraries installed to ``site-packages`` (where wheels are installed to) if ``nvmath``
-   is imported. As of beta 2 (v0.2.0) the libraries are "soft-loaded" (no error is raised if a library is not installed) when
-   ``import nvmath`` happens. This behavior may change in a future release.
-4. Numba installed from ``pip`` currently (as of v0.60.0) only supports conda and system CTK, and not ``pip``-installed CUDA wheels.
-   nvmath-python can also help Numba use the CUDA compilers installed to ``site-packages`` if ``nvmath`` is imported.
-   Same as above, this behavior may change in a future release.
+   Sometimes such conflicts could come from a dependency of the libraries that you use, so
+   pay extra attention to what's installed.
+2. ``pip`` does not attempt to check if the installed packages can actually be run against
+   the installed GPU driver (CUDA GPU driver cannot be installed by ``pip``), so make sure
+   your GPU driver is new enough to support the installed ``-cuXX`` packages [2]_. The
+   driver version can be checked by executing ``nvidia-smi`` and inspecting the ``Driver
+   Version`` field on the output table.
+3. CuPy installed from ``pip`` currently (as of v13.3.0) only supports conda and system CTK,
+   and not ``pip``-installed CUDA wheels. nvmath-python can help CuPy use the CUDA libraries
+   installed to ``site-packages`` (where wheels are installed to) if ``nvmath`` is imported.
+   From beta 2 (v0.2.0) onwards the libraries are "soft-loaded" (no error is raised if a library is
+   not installed) when ``import nvmath`` happens. This behavior may change in a future
+   release.
+4. Numba installed from ``pip`` currently (as of v0.60.0) only supports conda and system
+   CTK, and not ``pip``-installed CUDA wheels. nvmath-python can also help Numba use the
+   CUDA compilers installed to ``site-packages`` if ``nvmath`` is imported. Same as above,
+   this behavior may change in a future release.
 
-In general, mixing-and-matching CTK packages from ``pip``, ``conda``, and the system is possible but can be very fragile, so
-please understand what you're doing.
-The nvmath-python internals are designed to work with everything installed either via ``pip``, ``conda``, or local system
-(system CTK, including `tarball extractions <https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#tarball-and-zip-archive-deliverables>`_, are the fallback solution in the detection logic), but mix-n-match makes the detection logic
-impossible to get right.
+In general, mixing-and-matching CTK packages from ``pip``, ``conda``, and the system is
+possible but can be very fragile, so it's important to understand what you're doing. The nvmath-python
+internals are designed to work with everything installed either via ``pip``, ``conda``, or
+local system (system CTK, including `tarball extractions
+<https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
+#tarball-and-zip-archive-deliverables>`_, are the fallback solution in the detection logic),
+but mix-n-match makes the detection logic impossible to get right.
 
-To help you perform an integrity check, the rule of thumb is that every single package should only come from one place (either
-``pip``, or ``conda``, or local system). For example, if both ``nvidia-cufft-cu11`` (which is from ``pip``) and ``libcufft`` (from
-``conda``) appear in the output of ``conda list``, something is almost certainly wrong. Below is the package name mapping between
-``pip`` and ``conda``, with ``XX={11,12}`` denoting CUDA's major version:
+To help you perform an integrity check, the rule of thumb is that every single package
+should only come from one place (either ``pip``, or ``conda``, or local system). For
+example, if both ``nvidia-cufft-cu11`` (which is from ``pip``) and ``libcufft`` (from
+``conda``) appear in the output of ``conda list``, something is almost certainly wrong.
+Below is the package name mapping between ``pip`` and ``conda``, with ``XX={11,12}``
+denoting CUDA's major version:
 
 .. list-table::
    :widths: 50 50 50
@@ -506,22 +547,32 @@ To help you perform an integrity check, the rule of thumb is that every single p
      - ``libcurand``
      - ``cudatoolkit``
 
-Note that system packages (by design) do not show up in the output of ``conda list`` or ``pip list``. Linux users should check
-the installation list from your distro package manager (``apt``, ``yum``, ``dnf``, ...). See also the `Linux Package Manager
-Installation Guide <https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#package-manager-installation>`_ for
-additional information.
+Note that system packages (by design) do not show up in the output of ``conda list`` or
+``pip list``. Linux users should check the installation list from your distro package
+manager (``apt``, ``yum``, ``dnf``, ...). See also the `Linux Package Manager Installation
+Guide <https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
+#package-manager-installation>`_ for additional information.
 
-For more information with regard to the new CUDA 12+ package layout on conda-forge, see the `CUDA recipe README
-<https://github.com/conda-forge/cuda-feedstock/tree/main/recipe>`_.
+For more information with regard to the new CUDA 12+ package layout on conda-forge, see the
+`CUDA recipe README <https://github.com/conda-forge/cuda-feedstock/tree/main/recipe>`_.
 
 
 .. rubric:: Footnotes
 
 .. [1] Windows support will be added in a future release.
-.. [2] nvmath-python relies on `CUDA minor version compatibility <https://docs.nvidia.com/deploy/cuda-compatibility/index.html#minor-version-comaptibility>`_.
-.. [4] As of beta 2 (v0.2.0), CuPy is a required run-time dependency. In a future release it will be turned into an optional run-time dependency.
-.. [5] For example, Hopper GPUs are supported starting CUDA 11.8, so they would not work with libraries from CUDA 11.7 or below.
-.. [6] While we need some CUDA headers at build time, there is no limitation in the CUDA version seen at build time.
-.. [7] These versions are not supported due to a known compiler bug; the ``[dx]`` extras already takes care of this.
-.. [8] If CCCL is installed via ``pip`` manually it needs to be constrained with ``"nvidia-cuda-cccl-cu12>=12.4.127"`` due to a packaging issue; the ``[dx]`` extras already takes care of this.
-.. [9] The library must ship FFTW3 symbols for single and double precision transforms in a single ``so`` file.
+.. [2] nvmath-python relies on `CUDA minor version compatibility
+    <https://docs.nvidia.com/deploy/cuda-compatibility/index.html
+    #minor-version-compatibility>`_.
+.. [4] As of beta 2.1 (v0.2.1), CuPy is a required run-time dependency except for CPU-only
+    execution. In a future release it will be turned into an optional run-time dependency.
+.. [5] For example, Hopper GPUs are supported starting CUDA 11.8, so they would not work
+    with libraries from CUDA 11.7 or below.
+.. [6] While we need some CUDA headers at build time, there is no limitation in the CUDA
+    version seen at build time.
+.. [7] These versions are not supported due to a known compiler bug; the ``[dx]`` extras
+    already takes care of this.
+.. [8] If CCCL is installed via ``pip`` manually it needs to be constrained with
+    ``"nvidia-cuda-cccl-cu12>=12.4.127"`` due to a packaging issue; the ``[dx]`` extras
+    already takes care of this.
+.. [9] The library must ship FFTW3 symbols for single and double precision transforms in a
+    single ``so`` file.

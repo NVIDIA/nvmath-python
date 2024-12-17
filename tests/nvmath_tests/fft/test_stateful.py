@@ -7,6 +7,7 @@ import logging
 import random
 import math
 import time
+import functools
 from ast import literal_eval
 
 import pytest
@@ -30,7 +31,6 @@ from .utils.common_axes import (
     Framework,
     DType,
     OptFftLayout,
-    Direction,
     ShapeKind,
     OptFftBlocking,
     OptFftType,
@@ -40,6 +40,8 @@ from .utils.axes_utils import (
     is_complex,
     is_half,
     get_fft_dtype,
+    size_of,
+    get_ifft_dtype,
 )
 from .utils.support_matrix import (
     framework_exec_type_support,
@@ -47,23 +49,30 @@ from .utils.support_matrix import (
     type_shape_support,
     multi_gpu_only,
     opt_fft_type_input_type_support,
+    opt_fft_type_direction_support,
 )
 from .utils.input_fixtures import (
+    align_up,
     get_random_input_data,
     get_custom_stream,
+    get_overaligned_view,
     init_assert_exec_backend_specified,
 )
 from .utils.check_helpers import (
     get_fft_ref,
+    get_ifft_ref,
     get_scaled,
+    get_raw_ptr,
     record_event,
     use_stream,
     assert_norm_close,
     assert_array_type,
+    assert_array_equal,
     assert_eq,
     get_array_device_id,
     get_array_strides,
     is_decreasing,
+    is_pow_2,
     intercept_default_allocations,
     add_in_place,
     free_cupy_pool,
@@ -173,17 +182,13 @@ def test_stateful_nd_default_allocator(
         fft_0 = f.execute()
 
         assert allocations[expected_key] == expected_allocations, f"{allocations}, {expected_key}"
-        assert all(
-            allocations[key] == 0 for key in allocations if key != expected_key
-        ), f"{allocations}, {expected_key}"
+        assert all(allocations[key] == 0 for key in allocations if key != expected_key), f"{allocations}, {expected_key}"
 
         f.reset_operand(signal_1)
         fft_1 = f.execute()
 
         assert allocations[expected_key] == expected_allocations, f"{allocations}, {expected_key}"
-        assert all(
-            allocations[key] == 0 for key in allocations if key != expected_key
-        ), f"{allocations}, {expected_key}"
+        assert all(allocations[key] == 0 for key in allocations if key != expected_key), f"{allocations}, {expected_key}"
 
         assert_array_type(fft_0, framework, mem_backend, get_fft_dtype(dtype))
         assert_array_type(fft_1, framework, mem_backend, get_fft_dtype(dtype))
@@ -247,9 +252,7 @@ def test_stateful_nd_custom_allocator(monkeypatch, framework, exec_backend, mem_
         ifft = f.execute(direction=Direction.inverse.value)
 
         assert allocations[expected_key] == expected_allocations, f"{allocations}, {expected_key}"
-        assert all(
-            allocations[key] == 0 for key in allocations if key != expected_key
-        ), f"{allocations}, {expected_key}"
+        assert all(allocations[key] == 0 for key in allocations if key != expected_key), f"{allocations}, {expected_key}"
 
         assert_array_type(fft, framework, mem_backend, dtype)
         assert_array_type(ifft, framework, mem_backend, dtype)
@@ -300,9 +303,7 @@ def test_stateful_release_workspace(monkeypatch, framework, exec_backend, mem_ba
         fft_1 = f.execute(direction=Direction.forward.value, release_workspace=release_workspace)
 
         assert allocations[expected_key] == num_allocs_2 if release_workspace else 1, f"{allocations}, {expected_key}"
-        assert all(
-            allocations[key] == 0 for key in allocations if key != expected_key
-        ), f"{allocations}, {expected_key}"
+        assert all(allocations[key] == 0 for key in allocations if key != expected_key), f"{allocations}, {expected_key}"
 
         assert_array_type(fft_0, framework, mem_backend, get_fft_dtype(dtype))
         assert_array_type(fft_1, framework, mem_backend, get_fft_dtype(dtype))
@@ -1193,3 +1194,242 @@ def test_direction_planning_stateful_vs_statless(monkeypatch, framework, exec_ba
             plan_forward, plan_backward = rets[-1]
             assert plan_forward == 0
             assert plan_backward != 0
+
+
+@pytest.mark.parametrize(
+    (
+        "framework",
+        "exec_backend",
+        "mem_backend",
+        "fft_type",
+        "direction",
+        "dtype",
+        "shape",
+        "axes",
+        "inplace",
+        "layout",
+        "required_alignment",
+    ),
+    [
+        (
+            framework,
+            exec_backend,
+            exec_backend.mem,
+            fft_type,
+            direction,
+            dtype,
+            repr(shape),
+            repr(axes),
+            inplace,
+            OptFftLayout.natural if not inplace else rng.choice(list(OptFftLayout)),
+            size_of(get_fft_dtype(dtype)),
+        )
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        if exec_backend.mem in supported_backends.framework_mem[framework]
+        for fft_type in OptFftType
+        for direction in opt_fft_type_direction_support[fft_type]
+        for dtype in opt_fft_type_input_type_support[fft_type]
+        if dtype in framework_exec_type_support[framework][exec_backend]
+        for shape, axes in [
+            ((1,), (0,)),
+            ((5413, 13), (0,)),
+            ((17, 1024), (1,)),
+            ((13, 99), (0, 1)),
+            ((32, 32, 11), (0, 1)),
+            ((11, 32, 32), (1, 2)),
+            ((2999, 6, 7), (0, 1, 2)),
+            ((8, 16, 8, 31), (0, 1, 2)),
+            ((31, 16, 16, 8), (1, 2, 3)),
+        ]
+        for inplace in [False, True]
+        if not inplace or fft_type == OptFftType.c2c
+    ],
+)
+def test_reset_operand_decreasing_alignment(
+    framework,
+    exec_backend,
+    mem_backend,
+    fft_type,
+    direction,
+    dtype,
+    inplace,
+    shape,
+    axes,
+    required_alignment,
+    layout,
+):
+    """
+    The test checks if the plan does not depend on the initial data alignment,
+    especially host execution libs, which take the pointers to data
+    during the planning.
+    """
+    shape = literal_eval(shape)
+    axes = literal_eval(axes)
+    fft_dim = len(shape)
+    if fft_type != OptFftType.c2r:
+        problem_shape = shape
+    else:
+        # assume last_axis_parity = odd
+        problem_shape = tuple(e if axes[-1] != i else 2 * (e - 1) + 1 for i, e in enumerate(shape))
+
+    if should_skip_3d_unsupported(exec_backend, problem_shape, axes):
+        pytest.skip("Older CTK does not support 3D FFT")
+
+    # we will create the plan with the tensor starting at
+    # the address aligned to exactly 512 bytes and then reset_operand
+    # to tensors starting at the 256, 128, 64...-byte alignments,
+    # stopping at the minimal required alignment, i.e. size_of(complex_dtype)
+    # to make sure we are aligned to 512 and no more, we start with
+    # tensor aligned to 1024 and set the 512 offset
+    overalignment_lg2 = 10
+    overalignment_bytes = 2**overalignment_lg2
+    dtype_size = size_of(dtype)
+    overalignment_elements = overalignment_bytes // dtype_size
+    complex_dtype = get_fft_dtype(dtype)
+    assert required_alignment == size_of(complex_dtype)
+    assert overalignment_bytes % required_alignment == 0
+
+    max_offset = overalignment_elements - 1
+    last_extent = shape[-1]
+    last_extent_sample_stride = dtype_size * (last_extent + max_offset)
+    last_extent_sample_stride = align_up(last_extent_sample_stride, overalignment_bytes) // dtype_size
+    assert last_extent_sample_stride >= last_extent + max_offset
+    assert (dtype_size * last_extent_sample_stride) % overalignment_bytes == 0
+
+    alignment_cases = tuple(
+        (
+            i,
+            alignment,
+            # Move to a new sample - to preserve input chracterictis for inplace cases.
+            # Move by overaligned offset to preserve the overlignment.
+            # Then shift from overaligned position to get exactly pointer
+            # aligned to the ``alignment``
+            offset := i * last_extent_sample_stride + (alignment // dtype_size),
+            offset + last_extent,
+        )
+        for i, a_lg2 in enumerate(range(overalignment_lg2 - 1, -1, -1))
+        if (alignment := 2**a_lg2) >= required_alignment
+    )
+    assert alignment_cases[0][1] == overalignment_bytes // 2
+    assert alignment_cases[-1][1] == required_alignment
+
+    all_samples_last_extent = len(alignment_cases) * last_extent_sample_stride
+    all_view_shape = list(shape)
+    all_view_shape[-1] = all_samples_last_extent
+    all_view_shape = tuple(all_view_shape)
+    signal_base, signal_overaligned = get_overaligned_view(
+        overalignment_bytes, framework, all_view_shape, dtype, mem_backend, seed=177
+    )
+    base_ptr = get_raw_ptr(signal_base)
+    overaligned_ptr = get_raw_ptr(signal_overaligned)
+    assert overaligned_ptr % overalignment_bytes == 0, f"{base_ptr}, {overaligned_ptr}"
+    assert signal_overaligned.shape == all_view_shape
+    assert 0 <= overaligned_ptr - base_ptr <= max_offset * dtype_size
+    assert_array_type(signal_overaligned, framework, mem_backend, dtype)
+    overaligned_copy = signal_overaligned if not inplace else copy_array(signal_overaligned)
+    assert_array_equal(signal_overaligned, overaligned_copy)
+
+    def decreasingly_aligned_signals():
+        prev_end = 0
+        for i, alignment, offset_start, offset_end in alignment_cases:
+            assert offset_start < offset_end
+            assert prev_end <= offset_start
+            prev_end = offset_end
+            slices = (slice(None),) * (fft_dim - 1) + (slice(offset_start, offset_end),)
+            sample = signal_overaligned[slices]
+            sample_copy = overaligned_copy[slices]
+            assert sample.shape == shape
+            assert sample_copy.shape == shape
+
+            if fft_type == OptFftType.c2r:
+                real_dtype = get_ifft_dtype(dtype, fft_type=fft_type)
+                real_sample = get_random_input_data(framework, problem_shape, real_dtype, mem_backend, seed=444 + i)
+                complex_sample = get_fft_ref(real_sample, axes=axes)
+                assert complex_sample.shape == shape
+                sample[:] = complex_sample[:]
+
+            sample_ptr = get_raw_ptr(sample)
+            assert sample_ptr % alignment == 0, f"{i}, {alignment}, {sample_ptr}, {overaligned_ptr}, {base_ptr}"
+            assert sample_ptr % (2 * alignment) == alignment, f"{i}, {alignment}, {sample_ptr}, {overaligned_ptr}, {base_ptr}"
+            assert_array_type(sample, framework, mem_backend, dtype)
+            try:
+                assert_array_equal(sample, sample_copy)
+            except AssertionError as e:
+                raise AssertionError(f"The copied sample is not equal for {alignment} (i={i})") from e
+
+            yield i, alignment, sample, sample_copy
+
+    samples = decreasingly_aligned_signals()
+    i, alignment, sample, sample_copy = next(samples)
+    assert i == 0
+    assert 2 * alignment == overalignment_bytes
+
+    if direction == Direction.forward:
+        ref_fn = functools.partial(get_fft_ref, axes=axes)
+    else:
+        ref_fn = functools.partial(
+            get_ifft_ref,
+            axes=axes,
+            is_c2c=fft_type == OptFftType.c2c,
+            last_axis_parity="odd",
+        )
+
+    try:
+        with nvmath.fft.FFT(
+            sample,
+            execution=exec_backend.nvname,
+            options={
+                "fft_type": fft_type.value,
+                "inplace": inplace,
+                "result_layout": layout.value,
+                "last_axis_size": "odd",
+            },
+            axes=axes,
+        ) as fft:
+            fft.plan()
+            res = fft.execute(direction=direction.value.lower())
+            ref = ref_fn(sample_copy)
+            assert_norm_close(res, ref, exec_backend=exec_backend, axes=axes)
+            for i, alignment, sample, sample_copy in samples:
+                assert i > 0 and 2 * alignment < overalignment_bytes
+                fft.reset_operand(sample)
+                res = fft.execute(direction=direction.value.lower())
+                ref = ref_fn(sample_copy)
+                try:
+                    assert_norm_close(res, ref, exec_backend=exec_backend, axes=axes)
+                except AssertionError as e:
+                    raise AssertionError(
+                        f"The output and reference are not close for " f"tesnor aligned to {alignment} (i={i})"
+                    ) from e
+    except ValueError as e:
+        if (
+            is_half(dtype)
+            and exec_backend == ExecBackend.cufft
+            and max(axes) < len(shape) - 1
+            and (
+                ("The R2C FFT of half-precision tensor" in str(e) and not is_complex(dtype) and fft_type == OptFftType.r2c)
+                or ("The C2R FFT of half-precision tensor" in str(e) and is_complex(dtype) and fft_type == OptFftType.c2r)
+            )
+        ) or (
+            "incompatible with that of the original" in str(e)
+            and fft_type == OptFftType.c2r
+            and direction == Direction.inverse
+            and len(shape) > 1
+        ):
+            # reset_operand will reject the operand as non-compatible
+            # because the operand layout is non-contiguous
+            # so the internal copy changes it
+            pass
+        else:
+            raise
+    except nvmath.bindings.cufft.cuFFTError as e:
+        if (
+            ("CUFFT_NOT_SUPPORTED" in str(e) or "CUFFT_SETUP_FAILED" in str(e))
+            and is_half(dtype)
+            and exec_backend == ExecBackend.cufft
+            and any(not is_pow_2(problem_shape[a]) for a in axes)
+        ):
+            pass
+        else:
+            raise

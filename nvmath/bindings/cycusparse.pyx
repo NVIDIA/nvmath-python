@@ -1029,3 +1029,7 @@ cdef cusparseStatus_t cusparseSpSV_updateMatrix(cusparseHandle_t handle, cuspars
 
 cdef cusparseStatus_t cusparseSpMV_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except* nogil:
     return _cusparse._cusparseSpMV_preprocess(handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, externalBuffer)
+
+
+cdef cusparseStatus_t cusparseSpSM_updateMatrix(cusparseHandle_t handle, cusparseSpSMDescr_t spsmDescr, void* newValues, cusparseSpSMUpdate_t updatePart) except* nogil:
+    return _cusparse._cusparseSpSM_updateMatrix(handle, spsmDescr, newValues, updatePart)

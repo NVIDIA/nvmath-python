@@ -13,15 +13,13 @@ dist
 build
 wheelhouse
 
-#Pytest
+#Test
 .pytest_cache
+*.pickle
+.hypothesis/*
 
 #Pipenv
 .env*
 Pipfile*
 .venv*
 .pipenv-cache
-
-#Test outputs
-*.pickle
-.hypothesis/*

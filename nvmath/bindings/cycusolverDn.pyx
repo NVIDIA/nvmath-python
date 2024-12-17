@@ -1477,3 +1477,27 @@ cdef cusolverStatus_t cusolverDnSetDeterministicMode(cusolverDnHandle_t handle, 
 
 cdef cusolverStatus_t cusolverDnGetDeterministicMode(cusolverDnHandle_t handle, cusolverDeterministicMode_t* mode) except* nogil:
     return _cusolverDn._cusolverDnGetDeterministicMode(handle, mode)
+
+
+cdef cusolverStatus_t cusolverDnXlarft_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+    return _cusolverDn._cusolverDnXlarft_bufferSize(handle, params, direct, storev, n, k, dataTypeV, V, ldv, dataTypeTau, tau, dataTypeT, T, ldt, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t cusolverDnXlarft(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost) except* nogil:
+    return _cusolverDn._cusolverDnXlarft(handle, params, direct, storev, n, k, dataTypeV, V, ldv, dataTypeTau, tau, dataTypeT, T, ldt, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t cusolverDnXsyevBatched_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost, int64_t batchSize) except* nogil:
+    return _cusolverDn._cusolverDnXsyevBatched_bufferSize(handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost, batchSize)
+
+
+cdef cusolverStatus_t cusolverDnXsyevBatched(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info, int64_t batchSize) except* nogil:
+    return _cusolverDn._cusolverDnXsyevBatched(handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info, batchSize)
+
+
+cdef cusolverStatus_t cusolverDnXgeev_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType dataTypeVL, const void* VL, int64_t ldvl, cudaDataType dataTypeVR, const void* VR, int64_t ldvr, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+    return _cusolverDn._cusolverDnXgeev_bufferSize(handle, params, jobvl, jobvr, n, dataTypeA, A, lda, dataTypeW, W, dataTypeVL, VL, ldvl, dataTypeVR, VR, ldvr, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t cusolverDnXgeev(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType dataTypeVL, void* VL, int64_t ldvl, cudaDataType dataTypeVR, void* VR, int64_t ldvr, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+    return _cusolverDn._cusolverDnXgeev(handle, params, jobvl, jobvr, n, dataTypeA, A, lda, dataTypeW, W, dataTypeVL, VL, ldvl, dataTypeVR, VR, ldvr, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)

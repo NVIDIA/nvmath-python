@@ -3,9 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from numba import types
-from numba.core.extending import make_attribute_wrapper, register_model, typeof_impl, intrinsic, overload, models
 from numba.core.typing import signature
-from numba.extending import typeof_impl, models, register_model, make_attribute_wrapper
+from numba.extending import typeof_impl, models, register_model, make_attribute_wrapper, intrinsic, overload
 from .common_numba import NUMBA_FE_TYPES_TO_NUMBA_IR, make_function_call
 from .common import check_in
 from .cufftdx_workspace import Workspace
@@ -57,7 +56,8 @@ class WorkspaceArgHandler:
 # Lowering down to function call to cuFFTDx
 # io = 'thread' or 'smem'
 # execution = 'Thread' or 'Block'
-# value_type = real or complex numpy type of the input/output thread-private and shared memory
+# value_type = real or complex numpy type of the input/output thread-private and shared
+# memory
 # symbols = name of the function, as a string
 # requires_workspace whether we require workspace, or not, as a bool.
 #
@@ -78,10 +78,10 @@ def make_codegen(io, execution, value_type, symbol, requires_workspace):
         return signature(return_type, array_type), make_function_call(symbol)
 
     # Block() APIs have four variants
-    # (void) ( (value_type*)thread array,         (value_type*)shared memory array               )
-    # (void) ( (value_type*)shared memory array                                                  )
-    # (void) ( (value_type*)thread array,         (value_type*)shared memory array,    workspace )
-    # (void) ( (value_type*)shared memory array,                                       workspace )
+    # (void) ( (value_type*)thread array,         (value_type*)shared memory array               )  # noqa: W505
+    # (void) ( (value_type*)shared memory array                                                  )  # noqa: W505
+    # (void) ( (value_type*)thread array,         (value_type*)shared memory array,    workspace )  # noqa: W505
+    # (void) ( (value_type*)shared memory array,                                       workspace )  # noqa: W505
     # In all cases we pass 3 arguments, with appropriate nullptrs or 0's where needed
 
     elif execution == "Block" and io == "thread":

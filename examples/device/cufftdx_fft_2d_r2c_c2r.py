@@ -23,7 +23,7 @@ def main():
     fpb_x = 8
 
     FFT_base = functools.partial(fft, precision=np.float32, execution="Block", compiler="numba")
-    # R2C along Y (fft_size_x batches, logical FFT size is fft_size_y, complex size is fft_size_y//2+1)
+    # R2C along Y (fft_size_x batches, logical FFT size is fft_size_y, complex size is fft_size_y//2+1)  # noqa: W505
     FFT_y_r2c = FFT_base(fft_type="r2c", size=fft_size_y, elements_per_thread=ept_y, ffts_per_block=fpb_y)
     # C2Cf along X (fft_size_y//2+1 batches, logical FFT size is fft_size_x)
     FFT_x_c2c_f = FFT_base(
@@ -33,7 +33,7 @@ def main():
     FFT_x_c2c_i = FFT_base(
         fft_type="c2c", direction="forward", size=fft_size_x, elements_per_thread=ept_x, ffts_per_block=fpb_x
     )
-    # C2R along Y (fft_size_x batches, logical FFT size is fft_size_y, complex size is fft_size_y//2+1)
+    # C2R along Y (fft_size_x batches, logical FFT size is fft_size_y, complex size is fft_size_y//2+1)  # noqa: W505
     FFT_y_c2r = FFT_base(fft_type="c2r", size=fft_size_y, elements_per_thread=ept_y, ffts_per_block=fpb_y)
 
     complex_type = FFT_y_r2c.value_type

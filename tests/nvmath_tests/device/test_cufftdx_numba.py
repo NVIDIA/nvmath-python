@@ -141,12 +141,8 @@ TEST_CASES.append(("c2r", 64, np.float32, "inverse", "thread", 32, None))
 TEST_CASES.append(("r2c", 32, np.float64, "forward", "thread", 16, None))
 
 # real_mode Normal
-TEST_CASES.append(
-    ("r2c", 4, np.float16, "forward", "thread", None, {"complex_layout": "packed", "real_mode": "normal"})
-)
-TEST_CASES.append(
-    ("r2c", 8, np.float16, "forward", "thread", None, {"complex_layout": "packed", "real_mode": "normal"})
-)
+TEST_CASES.append(("r2c", 4, np.float16, "forward", "thread", None, {"complex_layout": "packed", "real_mode": "normal"}))
+TEST_CASES.append(("r2c", 8, np.float16, "forward", "thread", None, {"complex_layout": "packed", "real_mode": "normal"}))
 TEST_CASES.append(("r2c", 16, np.float16, "forward", "smem", None, {"complex_layout": "packed", "real_mode": "normal"}))
 TEST_CASES.append(("r2c", 32, np.float16, "forward", "smem", None, {"complex_layout": "packed", "real_mode": "normal"}))
 
@@ -155,18 +151,10 @@ TEST_CASES.append(("r2c", 9, np.float32, "forward", "thread", None, {"complex_la
 TEST_CASES.append(("r2c", 17, np.float32, "forward", "smem", None, {"complex_layout": "full", "real_mode": "normal"}))
 TEST_CASES.append(("r2c", 33, np.float32, "forward", "smem", None, {"complex_layout": "full", "real_mode": "normal"}))
 
-TEST_CASES.append(
-    ("c2r", 64, np.float16, "inverse", "thread", None, {"complex_layout": "packed", "real_mode": "normal"})
-)
-TEST_CASES.append(
-    ("c2r", 128, np.float16, "inverse", "thread", None, {"complex_layout": "packed", "real_mode": "normal"})
-)
-TEST_CASES.append(
-    ("c2r", 256, np.float16, "inverse", "smem", None, {"complex_layout": "packed", "real_mode": "normal"})
-)
-TEST_CASES.append(
-    ("c2r", 512, np.float16, "inverse", "smem", None, {"complex_layout": "packed", "real_mode": "normal"})
-)
+TEST_CASES.append(("c2r", 64, np.float16, "inverse", "thread", None, {"complex_layout": "packed", "real_mode": "normal"}))
+TEST_CASES.append(("c2r", 128, np.float16, "inverse", "thread", None, {"complex_layout": "packed", "real_mode": "normal"}))
+TEST_CASES.append(("c2r", 256, np.float16, "inverse", "smem", None, {"complex_layout": "packed", "real_mode": "normal"}))
+TEST_CASES.append(("c2r", 512, np.float16, "inverse", "smem", None, {"complex_layout": "packed", "real_mode": "normal"}))
 
 TEST_CASES.append(("c2r", 9, np.float64, "inverse", "thread", None, {"complex_layout": "full", "real_mode": "normal"}))
 TEST_CASES.append(("c2r", 13, np.float64, "inverse", "thread", None, {"complex_layout": "full", "real_mode": "normal"}))
@@ -178,37 +166,21 @@ TEST_CASES.append(("c2r", 4, np.float32, "inverse", "thread", None, {"complex_la
 TEST_CASES.append(("c2r", 8, np.float64, "inverse", "smem", None, {"complex_layout": "natural", "real_mode": "folded"}))
 TEST_CASES.append(("c2r", 16, np.float16, "inverse", "smem", None, {"complex_layout": "packed", "real_mode": "folded"}))
 TEST_CASES.append(("c2r", 32, np.float32, "inverse", "thread", None, {"complex_layout": "full", "real_mode": "folded"}))
-TEST_CASES.append(
-    ("c2r", 64, np.float64, "inverse", "thread", None, {"complex_layout": "natural", "real_mode": "folded"})
-)
-TEST_CASES.append(
-    ("c2r", 128, np.float16, "inverse", "smem", None, {"complex_layout": "packed", "real_mode": "folded"})
-)
+TEST_CASES.append(("c2r", 64, np.float64, "inverse", "thread", None, {"complex_layout": "natural", "real_mode": "folded"}))
+TEST_CASES.append(("c2r", 128, np.float16, "inverse", "smem", None, {"complex_layout": "packed", "real_mode": "folded"}))
 TEST_CASES.append(("c2r", 256, np.float32, "inverse", "smem", None, {"complex_layout": "full", "real_mode": "folded"}))
-TEST_CASES.append(
-    ("c2r", 512, np.float64, "inverse", "thread", None, {"complex_layout": "natural", "real_mode": "folded"})
-)
-TEST_CASES.append(
-    ("c2r", 1024, np.float16, "inverse", "thread", None, {"complex_layout": "full", "real_mode": "folded"})
-)
+TEST_CASES.append(("c2r", 512, np.float64, "inverse", "thread", None, {"complex_layout": "natural", "real_mode": "folded"}))
+TEST_CASES.append(("c2r", 1024, np.float16, "inverse", "thread", None, {"complex_layout": "full", "real_mode": "folded"}))
 
 TEST_CASES.append(("r2c", 4, np.float32, "forward", "thread", None, {"complex_layout": "full", "real_mode": "folded"}))
 TEST_CASES.append(("r2c", 8, np.float64, "forward", "smem", None, {"complex_layout": "natural", "real_mode": "folded"}))
 TEST_CASES.append(("r2c", 16, np.float16, "forward", "smem", None, {"complex_layout": "packed", "real_mode": "folded"}))
 TEST_CASES.append(("r2c", 32, np.float32, "forward", "thread", None, {"complex_layout": "full", "real_mode": "folded"}))
-TEST_CASES.append(
-    ("r2c", 64, np.float64, "forward", "thread", None, {"complex_layout": "natural", "real_mode": "folded"})
-)
-TEST_CASES.append(
-    ("r2c", 128, np.float16, "forward", "smem", None, {"complex_layout": "packed", "real_mode": "folded"})
-)
+TEST_CASES.append(("r2c", 64, np.float64, "forward", "thread", None, {"complex_layout": "natural", "real_mode": "folded"}))
+TEST_CASES.append(("r2c", 128, np.float16, "forward", "smem", None, {"complex_layout": "packed", "real_mode": "folded"}))
 TEST_CASES.append(("r2c", 256, np.float32, "forward", "smem", None, {"complex_layout": "full", "real_mode": "folded"}))
-TEST_CASES.append(
-    ("r2c", 512, np.float64, "forward", "thread", None, {"complex_layout": "natural", "real_mode": "folded"})
-)
-TEST_CASES.append(
-    ("r2c", 1024, np.float16, "forward", "thread", None, {"complex_layout": "full", "real_mode": "folded"})
-)
+TEST_CASES.append(("r2c", 512, np.float64, "forward", "thread", None, {"complex_layout": "natural", "real_mode": "folded"}))
+TEST_CASES.append(("r2c", 1024, np.float16, "forward", "thread", None, {"complex_layout": "full", "real_mode": "folded"}))
 
 
 # Supports: Block APIs, C2R/R2C/C2C, all precision, all real_fft_options

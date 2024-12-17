@@ -10,8 +10,13 @@ from .common_cuda import CodeType
 
 SHARED_DEVICE_DOCSTRINGS = {
     "compiler": "A string to specify the compiler for the device code, currently supports ``None`` (default) and ``'Numba'``",
-    "precision": "The computation precision specified as a numpy float dtype, currently supports ``numpy.float16``, ``numpy.float32`` and ``numpy.float64``.",
+    #
+    "precision": """\
+The computation precision specified as a numpy float dtype, currently supports ``numpy.float16``, ``numpy.float32`` and
+``numpy.float64``.""".replace("\n", " "),
+    #
     "code_type": "The target GPU code and compute-capability.",
+    #
     "execution": "A string specifying the execution method, can be ``'Block'`` or ``'Thread'``.",
 }
 

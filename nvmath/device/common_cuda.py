@@ -126,9 +126,11 @@ def get_default_code_type():
 
 def current_device_lto():
     """
-    A helper function to get the default code type for link time optimization (LTO) on the current device.
+    A helper function to get the default code type for link time optimization (LTO) on the
+    current device.
 
     Returns:
-        A :class:`CodeType` object representing the default LTO code type for the current device.
+        A :class:`CodeType` object representing the default LTO code type for the current
+        device.
     """
     return get_default_code_type()

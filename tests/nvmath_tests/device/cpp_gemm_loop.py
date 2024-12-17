@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from cuda import cuda
-from .helpers import CHECK_CUDA, _TOLERANCE, l2error, free_array, convert_to_cuda_array, free_array, copy_to_cupy
+from .helpers import CHECK_CUDA, _TOLERANCE, l2error, convert_to_cuda_array, free_array, copy_to_cupy
 import numpy as np
 from .helpers_cpp import run_and_time, compile_cpp_kernel
 import cupy

@@ -53,7 +53,7 @@ def main():
         # threadIdx.x  --> Z
         if tidy < fft_size_y and tidx < fft_size_z:
             for i in range(eptx):
-                # fast_copy(input, i * stride_x + tidy * stride_y + tidx * stride_z, thread_data, i)
+                # fast_copy(input, i * stride_x + tidy * stride_y + tidx * stride_z, thread_data, i)  # noqa: W505
                 thread_data[i] = input[i, tidy, tidx]
 
             FFT_x(thread_data)
@@ -118,7 +118,7 @@ def main():
                 index += stride_x
 
             for i in range(eptx):
-                # fast_copy(thread_data, i, output, i * stride_x + tidy * stride_y + tidx * stride_z)
+                # fast_copy(thread_data, i, output, i * stride_x + tidy * stride_y + tidx * stride_z)  # noqa: W505
                 output[i, tidy, tidx] = thread_data[i]
 
     input = random_complex((fft_size_x, fft_size_y, fft_size_z), real_dtype=np.float32)

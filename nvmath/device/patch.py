@@ -9,6 +9,7 @@
 #
 
 import os
+import functools
 
 import numba
 from numba.cuda.cudadrv import libs
@@ -70,9 +71,7 @@ def patch_codegen():
     required_numba_ver = (0, 60)
     numba_ver = numba.version_info.short
     if numba_ver != required_numba_ver:
-        raise RuntimeError(
-            f"numba version {required_numba_ver} is required, but got {numba.__version__} (aka {numba_ver})"
-        )
+        raise RuntimeError(f"numba version {required_numba_ver} is required, but got {numba.__version__} (aka {numba_ver})")
 
     # Add new LTO-IR linker to Numba (from pynvjitlink)
     pynvjitlink.patch.patch_numba_linker(lto=True)

@@ -11,10 +11,12 @@ import nvmath
 
 def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None, stream=None, engine=nvmath.fft.fft):
     """
-    Perform an N-D FFT as a composition of the 1D, 2D, or 3D batched FFTs supported by cuFFT. This is version 1.
+    Perform an N-D FFT as a composition of the 1D, 2D, or 3D batched FFTs supported by
+    cuFFT. This is version 1.
 
     Args:
-        engine: a callable to execute the FFT operation. The engine can be `fft` from the nvmath.fft package, or `caching.fft` from the examples.
+        engine: a callable to execute the FFT operation. The engine can be `fft` from the
+            nvmath.fft package, or `caching.fft` from the examples.
     """
 
     rank = a.ndim

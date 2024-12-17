@@ -32,6 +32,9 @@ cdef extern from *:
     #define FFTW_DESTROY_INPUT      0x08
     #define FFTW_PRESERVE_INPUT     0x0C
     #define FFTW_UNALIGNED          0x10
+
+    typedef double fftw_complex[2] __attribute__ ((aligned (16)));
+    typedef float fftwf_complex[2] __attribute__ ((aligned (8)));
     """
 
     cdef const int FFTW_FORWARD
@@ -47,9 +50,9 @@ cdef extern from *:
     cdef const int FFTW_PRESERVE_INPUT
     cdef const int FFTW_UNALIGNED
 
+    ctypedef double fftw_complex[2]
+    ctypedef float fftwf_complex[2]
 
-ctypedef double fftw_complex[2];
-ctypedef float fftwf_complex[2];
 
 ctypedef void* fftw_plan 'fftw_plan'
 ctypedef void* fftwf_plan 'fftwf_plan'

@@ -72,6 +72,17 @@ def to_numpy(tensor):
         raise AssertionError()
 
 
+def get_framework(tensor):
+    if torch is not None and isinstance(tensor, torch.Tensor):
+        return torch
+    elif isinstance(tensor, cupy.ndarray):
+        return cupy
+    elif isinstance(tensor, np.ndarray):
+        return np
+    else:
+        raise AssertionError()
+
+
 def get_tolerance(value):
     eps = np.finfo(to_numpy(value).dtype).eps
     if torch is not None and value.dtype == torch.bfloat16:
@@ -79,15 +90,18 @@ def get_tolerance(value):
     return eps**0.5
 
 
-def compare_tensors(result, reference):
-    return np.allclose(to_numpy(result), to_numpy(reference), atol=get_tolerance(result))
+def compare_tensors(result, reference, atol=None):
+    if atol is None:
+        atol = get_tolerance(result)
+    return np.allclose(to_numpy(result), to_numpy(reference), atol=atol)
 
 
-def assert_tensors_equal(result, reference):
+def assert_tensors_equal(result, reference, atol=None):
     """
     Checks if result is close to the provided numpy reference.
     """
-    ok = compare_tensors(result, reference)
+    assert result is not reference, "same object passed as `result` and `reference`!"
+    ok = compare_tensors(result, reference, atol=atol)
     if not ok:
         print("Result:\n", result)
         print("Reference:\n", reference)
@@ -127,7 +141,6 @@ class allow_cublas_unsupported:
         pass
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        if exc_type is nvmath.bindings.cublasLt.cuBLASLtError:
-            if re.search(self.regex, str(exc_value)):
-                return skip_if_cublas_before(self.unsupported_before, self.message)
+        if exc_type is nvmath.bindings.cublasLt.cuBLASLtError and re.search(self.regex, str(exc_value)):
+            return skip_if_cublas_before(self.unsupported_before, self.message)
         return False

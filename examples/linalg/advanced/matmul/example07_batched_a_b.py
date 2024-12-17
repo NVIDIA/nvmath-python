@@ -5,8 +5,8 @@
 """
 This example demonstrates nvmath-python's capability to execute batched multiplications.
 
-Executing multiple multiplications together (in a batch) yields better performance than executing
-them separately.
+Executing multiple multiplications together (in a batch) yields better performance than
+executing them separately.
 
 In this example we will multiply each of our `a` matrices with the corresponding `b` matrix.
 """
@@ -30,7 +30,8 @@ print(f"a shape is: {a_batch.shape}, b shape is: {b_batch.shape}")
 # Execute the multiplication.
 result = nvmath.linalg.advanced.matmul(a_batch, b_batch)
 
-# Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
+# Synchronize the default stream, since by default the execution is non-blocking for GPU
+# operands.
 cp.cuda.get_current_stream().synchronize()
 print(f"Input types = {type(a_batch), type(b_batch)}, device = {a_batch.device, b_batch.device}")
 print(f"Result type = {type(result)}, device = {result.device}")

@@ -1,6 +1,7 @@
 import collections
 import logging
 import re
+import typing
 
 from hypothesis import given, settings, reproduce_failure, assume
 from hypothesis.extra.numpy import arrays, from_dtype
@@ -123,6 +124,20 @@ def drelu(x, bitmask):
 def verify_result(a, b, c, result_c, alpha, beta, epilog, epilog_inputs):
     possible_dtype = CUBLAS_COMPUTE_TYPE_TO_NAME[NAME_TO_DEFAULT_COMPUTE_TYPE[str(a.dtype)]]
     compute_dtype = possible_dtype[1] if np.iscomplexobj(a) else possible_dtype[0]
+
+    added_singleton_dimensions: list[int] = []
+    if a.ndim == 1:
+        a = a[None, ...]
+        added_singleton_dimensions.append(0)
+    if b.ndim == 1:
+        b = b[..., None]
+        added_singleton_dimensions.append(1)
+    if c is not None and c.ndim == 1:
+        # nvmath and numpy have different broadcasting for `c`. nvmath assumes that a 1D `c`
+        # has length `M`. numpy assumes 1D `c` has length `N` to be consistent with
+        # broadcasting behavior where singleton dimensions are always prepended.
+        c = c[..., None]
+
     ab = (
         np.matmul(a, b, dtype=compute_dtype)
         if alpha is None
@@ -160,9 +175,10 @@ def verify_result(a, b, c, result_c, alpha, beta, epilog, epilog_inputs):
         if epilog == MatmulEpilog.RELU_AUX:
             assert verify_bitmask(abc >= 0, result_c[1]["relu_aux"])
         if epilog == MatmulEpilog.RELU_AUX_BIAS:
-            assert verify_bitmask(
-                (abc + cp.asnumpy(epilog_inputs["bias"].astype(compute_dtype))) >= 0, result_c[1]["relu_aux"]
-            )
+            assert verify_bitmask((abc + cp.asnumpy(epilog_inputs["bias"].astype(compute_dtype))) >= 0, result_c[1]["relu_aux"])
+
+    if added_singleton_dimensions:
+        ref_c = np.squeeze(ref_c, axis=tuple(added_singleton_dimensions))
 
     result_c_ = result_c[0] if isinstance(result_c, tuple) else result_c
     compare_result(ref_c.astype(a.dtype), result_c_)
@@ -205,13 +221,13 @@ MatmulInputs = collections.namedtuple(
 
 @composite
 def matrix_multiply_arrays(draw):
-    m = draw(problem_size_mnk)
-    n = draw(problem_size_mnk)
+    m = draw(one_of(none(), problem_size_mnk))
+    n = draw(one_of(none(), problem_size_mnk))
     k = draw(problem_size_mnk)
     ab_type = draw(sampled_from(ab_type_values))
     # Generate data in range [0, 5] to match sample_matrix() from utils
     # Only non-negative reals to avoid catastrophic cancellation
-    element_properties = dict(
+    element_properties: dict[str, typing.Any] = dict(
         allow_infinity=False,
         allow_nan=False,
         allow_subnormal=False,
@@ -223,14 +239,29 @@ def matrix_multiply_arrays(draw):
     # NOTE: It is unfeasible for hypothesis to explore a parameter space where
     # all elements of the input arrays are unique, so most of the time, arrays
     # contain just a few unique values
-    a = draw(arrays(dtype=ab_type, shape=(m, k), elements=element_properties))
-    b = draw(arrays(dtype=ab_type, shape=(k, n), elements=element_properties))
-    c = draw(one_of(none(), arrays(dtype=ab_type, shape=(m, draw(sampled_from([1, n]))), elements=element_properties)))
+    a = draw(arrays(dtype=ab_type, shape=(k,) if m is None else (m, k), elements=element_properties))
+    b = draw(arrays(dtype=ab_type, shape=(k,) if n is None else (k, n), elements=element_properties))
+    m_for_c = 1 if m is None else m
+    c = draw(
+        one_of(
+            none(),
+            arrays(
+                dtype=ab_type,
+                shape=(m_for_c,)
+                if n is None
+                else (
+                    m_for_c,
+                    draw(sampled_from([1, n])),
+                ),
+                elements=element_properties,
+            ),
+        )
+    )
     beta = None if c is None else draw(from_dtype(dtype=np.dtype(ab_type), **element_properties))
     alpha = draw(one_of(none(), from_dtype(dtype=np.dtype(ab_type), **element_properties)))
     epilogs = draw(sampled_from(MatmulEpilog_valid_pairs_list))
     bias = (
-        draw(arrays(dtype=ab_type, shape=(m, 1), elements=element_properties))
+        draw(arrays(dtype=ab_type, shape=(m_for_c, 1), elements=element_properties))
         if epilogs[0] in MatmulEpilog_BIAS_list
         else None
     )
@@ -241,10 +272,8 @@ def matrix_multiply_arrays(draw):
     # FIXME: We should also test broadcasting of c. i.e. when the shape of c is
     # (m, 1), but currently we are avoiding a bug where broadcasting doesn't
     # work on V100 and double precision
-    assume(ab_type != np.float64 or c is None or c.shape != (m, 1))
-    return MatmulInputs(
-        a=a, b=b, c=c, m=m, n=n, k=k, ab_type=ab_type, bias=bias, beta=beta, alpha=alpha, epilogs=epilogs
-    )
+    assume(ab_type != np.float64 or c is None or c.shape != (m_for_c, 1))
+    return MatmulInputs(a=a, b=b, c=c, m=m, n=n, k=k, ab_type=ab_type, bias=bias, beta=beta, alpha=alpha, epilogs=epilogs)
 
 
 @nvmath_seed()
@@ -287,9 +316,8 @@ def test_matmul(input_arrays, order, options, preferences):
 
         epilog_inputs = None if epilog is None else {}
 
-        if epilog is not None:
-            if epilog in MatmulEpilog_BIAS_list:
-                epilog_inputs["bias"] = cp.asarray(bias, order=order)
+        if epilog is not None and epilog in MatmulEpilog_BIAS_list:
+            epilog_inputs["bias"] = cp.asarray(bias, order=order)
 
         result_c = matmul(
             d_a,
@@ -331,33 +359,23 @@ def test_matmul(input_arrays, order, options, preferences):
             raise e
     except ValueError as e:
         # FIXME: Check for CUDA toolkit version 11
-        if re.search("K=1 is not supported for (BGRAD(A|B)|D(R|G)ELU) epilog", str(e)):
-            pass
-        elif "requires cublaslt >=" in str(e):
+        if re.search("K=1 is not supported for (BGRAD(A|B)|D(R|G)ELU) epilog", str(e)) or "requires cublaslt >=" in str(e):
             pass
         else:
             raise e
 
 
 problem_size = integers(min_value=0, max_value=256)
-f32_strategy = arrays(
-    np.float32, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=32)
-)
-f64_strategy = arrays(
-    np.float64, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=32)
-)
+f32_strategy = arrays(np.float32, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=32))
+f64_strategy = arrays(np.float64, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=32))
 c32_strategy = arrays(
     np.complex64, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=32)
 )
 c64_strategy = arrays(
     np.complex128, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=32)
 )
-f64_strategy = arrays(
-    np.float64, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=64)
-)
-f16_strategy = arrays(
-    np.float16, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=16)
-)
+f64_strategy = arrays(np.float64, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=64))
+f16_strategy = arrays(np.float16, shape=tuples(problem_size, problem_size), elements=floats(min_value=1, max_value=2, width=16))
 
 options_blocking_values_negative = [True, False, "auto", "none"]
 
@@ -411,7 +429,8 @@ def generate_alpha_beta(value_type, value):
     ),
 )
 def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs, options, preferences):
-    """Call nvmath.linalg.advanced.matmul() with invalid inputs; catch expected exceptions."""
+    """Call nvmath.linalg.advanced.matmul() with invalid inputs; catch expected
+    exceptions."""
     try:
         if c is not None and ((a.dtype != c.dtype) or (a.shape[0] != c.shape[0]) or (c.shape[1] != b.shape[1])):
             return
@@ -450,8 +469,8 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
         elif f"The dtype of operands A {a.dtype} and B {b.dtype} must be the same." in str(e):
             assert a.dtype != b.dtype
         elif (
-            f"The 'K' extent must match for the operands: K={a.shape[1]} in operand A is not equal to K={b.shape[0]} in operand B."
-            in str(e)
+            f"The 'K' extent must match for the operands: K={a.shape[1]} in operand A is not equal to K={b.shape[0]} "
+            "in operand B." in str(e)
         ):
             assert a.shape[1] != b.shape[0]
         elif re.search(
@@ -472,9 +491,7 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
             assert a.shape[0] == 0 or a.shape[1] == 0 or b.shape[0] == 0 or b.shape[1] == 0
         elif "The extents must be strictly positive" in str(e):
             assert (
-                any(e <= 0 for e in a.shape)
-                or any(e <= 0 for e in b.shape)
-                or (c is not None and any(e <= 0 for e in c.shape))
+                any(e <= 0 for e in a.shape) or any(e <= 0 for e in b.shape) or (c is not None and any(e <= 0 for e in c.shape))
             )
         elif "requires cublaslt >=" in str(e):
             from nvmath.bindings import cublasLt
@@ -486,8 +503,8 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
         if "an integer is required" in str(e):
             pass  # ignore error in nvmath.bindings.cublasLt.matrix_layout_destroy
         elif (
-            "The Matrix multiplication plan preferences must be provided as an object of type MatmulPlanPreferences or as a dict with valid Matrix multiplication plan preferences."
-            in str(e)
+            "The Matrix multiplication plan preferences must be provided as an object of type MatmulPlanPreferences "
+            "or as a dict with valid Matrix multiplication plan preferences." in str(e)
         ):
             assert not isinstance(preferences, MatmulPlanPreferences)
         elif "The allocator must be an object of type that fulfils the BaseCUDAMemoryManager protocol" in str(e):
@@ -497,7 +514,10 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
         else:
             raise e
     except cuBLASLtError as e:
-        if "CUBLAS_STATUS_NOT_SUPPORTED" in str(e):
+        if "NOT_SUPPORTED" in str(e) or "CUBLAS_STATUS_INVALID_VALUE" in str(e):
+            # Catch both not_supported and invalid value because some features
+            # which are only unsupported on certain devices are raised as invalid
+            # value in older libraries
             pass
         else:
             raise e

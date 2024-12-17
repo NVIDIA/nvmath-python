@@ -41,7 +41,8 @@ def destroy_handle(handle: int):
 
 def get_handle(device_id: int) -> int:
     """
-    Retrieve the BLAS library handle for the specified device. If one doesn't exist, create, cache, and return the handle.
+    Retrieve the BLAS library handle for the specified device. If one doesn't exist, create,
+    cache, and return the handle.
     """
     return HANDLES.setdefault(device_id, create_handle(device_id))
 

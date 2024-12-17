@@ -3,9 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Example on benchmarking an N-D FFT implementation as a composition of the 1D, 2D, or 3D batched FFTs.
+Example on benchmarking an N-D FFT implementation as a composition of the 1D, 2D, or 3D
+batched FFTs.
 
-The reference implementation is provided in `fftn2.py` with optimizations to reduce the number of copies compared with `fftn1.py`.
+The reference implementation is provided in `fftn2.py` with optimizations to reduce the
+number of copies compared with `fftn1.py`.
 """
 
 import functools

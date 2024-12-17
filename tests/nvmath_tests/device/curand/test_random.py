@@ -13,9 +13,10 @@ from .utils import *
 """
 This set of tests checks random device APIs.
 
-Running the tests requires compiling a setup kernel for every generator, and random number generation kernel for all
-combinations of generator, distribution, dtype and group size. As a result, due to lazy jit compilation, the tests will
-be running slower at the beginning and then become much faster.
+Running the tests requires compiling a setup kernel for every generator, and random number
+generation kernel for all combinations of generator, distribution, dtype and group size. As
+a result, due to lazy jit compilation, the tests will be running slower at the beginning and
+then become much faster.
 """
 
 
@@ -84,7 +85,8 @@ def test_distribution(distribution, dtype_name, generator, nsamples, threads, bl
 )
 def test_seeds(distribution, dtype_name, generator, nsamples, threads, blocks, group_size):
     """
-    Tests if seeding works, i.e. same seeds results in same sequences and different seeds result in different sequences.
+    Tests if seeding works, i.e. same seeds results in same sequences and different seeds
+    result in different sequences.
     """
 
     def generate_with_seed(seed):
@@ -124,7 +126,8 @@ def test_seeds(distribution, dtype_name, generator, nsamples, threads, blocks, g
 )
 def test_skipahead(generator, threads, blocks):
     """
-    Tests if seeding works, i.e. same seeds results in same sequences and different seeds result in different sequences.
+    Tests if seeding works, i.e. same seeds results in same sequences and different seeds
+    result in different sequences.
     """
 
     seed = 765
@@ -196,7 +199,8 @@ def test_skipahead(generator, threads, blocks):
 )
 def test_skipahead_sequence(generator, threads, blocks):
     """
-    Tests if seeding works, i.e. same seeds results in same sequences and different seeds result in different sequences.
+    Tests if seeding works, i.e. same seeds results in same sequences and different seeds
+    result in different sequences.
     """
 
     seed = 100

@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example illustrates how to perform inplace FFT for CuPy ndarrays using function-form FFT APIs.
+This example illustrates how to perform inplace FFT for CuPy ndarrays using function-form
+FFT APIs.
 """
 
 import cupy as cp

@@ -28,12 +28,10 @@ def main():
     value_type = MM.value_type
     a_size = MM.a_size
     b_size = MM.b_size
-    c_size = MM.c_size
     a_dim = MM.a_dim
     b_dim = MM.b_dim
     c_dim = MM.c_dim
     block_dim = MM.block_dim
-    block_size = block_dim[0]
     ld = MM.leading_dimension
     lda, ldb, ldc = ld.a, ld.b, ld.c
     shared_memory_size = MM.shared_memory_size

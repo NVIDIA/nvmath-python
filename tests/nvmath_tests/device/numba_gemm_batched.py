@@ -16,7 +16,6 @@ class NumbaGemmBatched:
         assert precision == np.float32
         assert data_type == "real"
 
-        start = time.time()
         MM = matmul(
             size=size,
             data_type="real",
@@ -26,8 +25,6 @@ class NumbaGemmBatched:
             execution="Block",
             compiler="numba",
         )
-        stop = time.time()
-        t_numba_jit_s = stop - start
 
         (m, n, k) = size
 

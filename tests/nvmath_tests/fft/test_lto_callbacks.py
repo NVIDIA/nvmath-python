@@ -43,12 +43,16 @@ from .utils.axes_utils import (
 from .utils.support_matrix import (
     lto_callback_supperted_types,
     supported_backends,
+    opt_fft_type_direction_support,
+    opt_fft_type_input_type_support,
+    inplace_opt_ftt_type_support,
 )
 from .utils.input_fixtures import (
     get_random_input_data,
     get_custom_stream,
     get_primes_up_to,
     init_assert_exec_backend_specified,
+    fx_last_operand_layout,
 )
 from .utils.check_helpers import (
     add_in_place,
@@ -446,7 +450,7 @@ def test_operand_shape_fft_ifft(
             options={
                 "result_layout": result_layout.value,
                 "inplace": inplace.value,
-                "last_axis_size": "odd" if last_extent % 2 == 1 else "even",
+                "last_axis_parity": "odd" if last_extent % 2 == 1 else "even",
             },
         )
     except (nvmath.bindings.cufft.cuFFTError, ValueError) as e:
@@ -547,7 +551,7 @@ def test_operand_shape_ifft_c2r(
             **cb_kwargs,
             options={
                 "result_layout": result_layout.value,
-                "last_axis_size": "odd" if shape[axes[-1]] % 2 == 1 else "even",
+                "last_axis_parity": "odd" if shape[axes[-1]] % 2 == 1 else "even",
             },
         )
     except (nvmath.bindings.cufft.cuFFTError, ValueError) as e:
@@ -830,30 +834,38 @@ def test_overlapping_stride_operand(
         "exec_backend",
         "mem_backend",
         "allow_to_fail",
-        "shape",
-        "axes",
+        "base_shape",
+        "base_axes",
         "permutation",
         "inplace",
+        "fft_type",
+        "direction",
         "dtype",
         "result_layout",
         "callbacks",
     ),
     [
         (
-            rng.choice([f for f in Framework.enabled() if MemBackend.cuda in supported_backends.framework_mem[f]]),
+            rng.choice(avail_frameworks),
             ExecBackend.cufft,
             MemBackend.cuda,  # cpu -> gpu may make the layout dense, no point to check it here
             AllowToFail(allow_to_fail),
-            repr(shape),
-            repr(axes),
+            repr(base_shape),
+            repr(base_axes),
             repr(permutation),
             inplace,
+            fft_type,
+            rng.choice(opt_fft_type_direction_support[fft_type]),
             dtype,
-            rng.choice(list(OptFftLayout)),
-            rng.choice(list(LtoCallback)),
+            OptFftLayout.natural if inplace else rng.choice(list(OptFftLayout)),
+            rng.choice(
+                list(LtoCallback),
+            ),
         )
+        for avail_frameworks in [[f for f in Framework.enabled() if MemBackend.cuda in supported_backends.framework_mem[f]]]
+        if avail_frameworks
         # fmt: off
-        for allow_to_fail, shape, axes, permutation in [
+        for allow_to_fail, base_shape, base_axes, permutation in [
             (False, (128, 1), (0,), (0, 1)),  # 1D batched, pow2
             (False, (128, 1), (0,), (1, 0)),  # 1D batched, pow2
             (False, (1, 128), (1,), (1, 0)),  # 1D batched, pow2
@@ -889,87 +901,163 @@ def test_overlapping_stride_operand(
         ]
         # fmt: on
         for inplace in OptFftInplace
-        for dtype in [
-            DType.complex128,  # it is the "hardest" case, plus one more for coverage
-            rng.choice(
-                [
-                    dt
-                    for dt in lto_callback_supperted_types
-                    if dt != DType.complex128 and (not inplace or is_complex(dt))
-                ]
-            ),
-        ]
-        if ExecBackend.cufft in supported_backends.exec
+        for fft_type in inplace_opt_ftt_type_support[inplace.value]
+        for dtype in opt_fft_type_input_type_support[fft_type]
+        if dtype in lto_callback_supperted_types
     ],
 )
 def test_permuted_stride_operand(
+    fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
     mem_backend,
     allow_to_fail,
-    shape,
-    axes,
+    base_shape,
+    base_axes,
     permutation,
     inplace,
+    fft_type,
+    direction,
     dtype,
     result_layout,
     callbacks,
 ):
     free_framework_pools(framework, mem_backend)
 
-    shape = literal_eval(shape)
-    axes = literal_eval(axes)
+    base_shape = literal_eval(base_shape)
+    base_axes = literal_eval(base_axes)
     permutation = literal_eval(permutation)
-    assert len(shape) == len(permutation)
+    axes = tuple(permutation.index(a) for a in base_axes)
+    assert len(base_shape) == len(permutation)
 
-    fft_shape = [shape[a] for a in axes]
+    if fft_type != OptFftType.c2r:
+        signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+        signal = get_permuted(signal_base, permutation)
+        signal_shape = tuple(base_shape[p] for p in permutation)
+        if fft_type == OptFftType.c2c:
+            output_shape = signal_shape
+        else:
+            output_shape = r2c_shape(signal_shape, axes)
+    else:
+        real_type = get_ifft_dtype(dtype, fft_type)
+        assert not is_complex(real_type)
+        signal_base = get_random_input_data(framework, base_shape, real_type, mem_backend, seed=105)
+        signal_base = copy_array(get_fft_ref(signal_base, axes=base_axes))
+        signal = get_permuted(signal_base, permutation)
+        signal_shape = list(base_shape)
+        signal_shape[base_axes[-1]] = signal_shape[base_axes[-1]] // 2 + 1
+        signal_shape = tuple(signal_shape[p] for p in permutation)
+        output_shape = tuple(base_shape[p] for p in permutation)
 
-    signal_base = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
-    signal = get_permuted(signal_base, permutation)
+    signal_copy = copy_array(signal) if inplace else signal
+    assert signal.shape == signal_shape
+    last_axis_parity = "odd" if output_shape[axes[-1]] % 2 else "even"
 
-    axes = tuple(permutation.index(a) for a in axes)
+    check_layouts, *_ = fx_last_operand_layout
 
-    permuted_fft_shape = [signal.shape[a] for a in axes]
-    assert fft_shape == permuted_fft_shape
+    if fft_type != OptFftType.c2r:
+        prolog_filter = get_random_input_data(framework, signal_shape, dtype, MemBackend.cuda, seed=243)
+    else:
+        # assure the required symmetry in the input
+        prolog_filter = get_random_input_data(framework, output_shape, real_type, mem_backend, seed=243)
+        prolog_filter = copy_array(get_fft_ref(prolog_filter, axes=axes))
+    assert get_dtype_from_array(prolog_filter) == dtype
+    assert prolog_filter.shape == signal_shape
+
+    if direction == Direction.forward:
+        epilog_dtype = get_fft_dtype(dtype)
+    else:
+        epilog_dtype = get_ifft_dtype(dtype, fft_type)
+    epilog_filter = get_random_input_data(framework, output_shape, epilog_dtype, MemBackend.cuda, seed=143)
 
     def prolog_cb(data, offset, filter_data, unused):
-        return data[offset] * 5
+        return data[offset] * filter_data[offset]
 
     def epilog_cb(data_out, offset, value, filter_data, unused):
-        data_out[offset] = value * 8
+        data_out[offset] = value * filter_data[offset] + 7
 
-    scaling = 1
     cb_kwargs = {}
     if callbacks.has_prolog():
         prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name)
         cb_kwargs["prolog"] = {"ltoir": prolog_ltoir}
-        scaling *= 5
 
     if callbacks.has_epilog():
-        epilog_dtype = get_fft_dtype(dtype)
         epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, epilog_dtype.name, epilog_dtype.name)
         cb_kwargs["epilog"] = {"ltoir": epilog_ltoir}
-        scaling *= 8
 
-    ref = get_fft_ref(get_scaled(signal, scaling), axes=axes)
+    with nvmath.fft.FFT(
+        signal,
+        axes=axes,
+        execution=exec_backend.nvname,
+        options={
+            "fft_type": fft_type.value,
+            "result_layout": result_layout.value,
+            "inplace": inplace.value,
+            "last_axis_parity": last_axis_parity,
+        },
+    ) as fft:
+        if callbacks.has_prolog():
+            signal_strides = get_array_element_strides(signal)
+            prolog_strides = get_array_element_strides(prolog_filter)
+            operand_shape, operand_strides = fft.get_input_layout()
+            assert operand_shape == signal.shape
+            # even for c2r internal copy should keep the strides here
+            assert operand_strides == signal_strides
+            assert prolog_filter.shape == signal.shape
+            if prolog_strides != operand_strides:
+                prolog_data = permute_copy_like(prolog_filter, operand_shape, operand_strides)
+                assert get_array_element_strides(prolog_data) == operand_strides
+            else:
+                assert all(s == 1 for s in base_shape[1:])
+                prolog_data = prolog_filter
+            cb_kwargs["prolog"]["data"] = get_raw_ptr(prolog_data)
 
-    fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
+        if callbacks.has_epilog():
+            epilog_strides = get_array_element_strides(epilog_filter)
+            res_shape, res_strides = fft.get_output_layout()
+            assert res_shape == epilog_filter.shape
+            if res_strides != epilog_strides:
+                epilog_data = permute_copy_like(epilog_filter, res_shape, res_strides)
+                assert get_array_element_strides(epilog_data) == res_strides
+            else:
+                epilog_data = epilog_filter
+            cb_kwargs["epilog"]["data"] = get_raw_ptr(epilog_data)
 
-    try:
-        out = fft_fn(
-            signal,
-            axes=axes,
-            execution=exec_backend.nvname,
-            **cb_kwargs,
-            options={"result_layout": result_layout.value, "inplace": inplace.value},
+        try:
+            fft.plan(**cb_kwargs)
+        except (nvmath.bindings.cufft.cuFFTError, ValueError) as e:
+            if not allow_to_fail:
+                raise
+            problem_shape = signal_shape if fft_type != OptFftType.c2r else output_shape
+            allow_to_fail_compund_shape(e, problem_shape, axes=axes)
+
+        out = fft.execute(direction=direction.value)
+        check_layouts(
+            exec_backend,
+            mem_backend,
+            axes,
+            result_layout,
+            fft_type,
+            is_dense=True,
+            inplace=inplace.value,
         )
-    except (nvmath.bindings.cufft.cuFFTError, ValueError) as e:
-        if allow_to_fail:
-            allow_to_fail_compund_shape(e, signal.shape, axes=axes)
+        fft_ref = signal_copy
+        if callbacks.has_prolog():
+            fft_ref = as_type(fft_ref * prolog_filter, dtype)
+        if direction == Direction.forward:
+            fft_ref = get_fft_ref(fft_ref, axes)
         else:
-            raise
-
-    assert_norm_close_check_constant(out, ref, axes=axes)
+            fft_ref = get_ifft_ref(
+                fft_ref,
+                axes,
+                is_c2c=fft_type == OptFftType.c2c,
+                last_axis_parity=last_axis_parity,
+            )
+        if callbacks.has_epilog():
+            fft_ref = as_type(fft_ref * epilog_filter + 7, epilog_dtype)
+        if inplace:
+            assert signal is out
+        assert_norm_close_check_constant(out, fft_ref, axes=axes)
 
 
 def _operand_filter_dtype_shape_fft_ifft_case(
@@ -999,9 +1087,7 @@ def _operand_filter_dtype_shape_fft_ifft_case(
         # make sure the data we multiply in the forward epilog/
         # inverse prolog have the required hermitian symmetry
         epilog_real_dtype = (
-            epilog_filter_dtype
-            if not is_complex(epilog_filter_dtype)
-            else get_ifft_dtype(epilog_filter_dtype, OptFftType.c2r)
+            epilog_filter_dtype if not is_complex(epilog_filter_dtype) else get_ifft_dtype(epilog_filter_dtype, OptFftType.c2r)
         )
         epilog_filter_base = get_random_input_data(framework, shape, epilog_real_dtype, mem_backend, seed=143)
         # copy array to make sure it is dense
@@ -1130,11 +1216,13 @@ def _operand_filter_dtype_shape_fft_ifft_case(
             "fft_type": "C2C" if is_complex(dtype) else "C2R",
             "result_layout": result_layout.value,
             "inplace": inplace.value,
-            "last_axis_size": last_axis_parity,
+            "last_axis_parity": last_axis_parity,
         },
     ) as f:
         in_shape, in_strides = f.get_input_layout()
         out_shape, out_strides = f.get_output_layout()
+        if exec_backend.mem == mem_backend:
+            assert_eq(in_strides, get_array_element_strides(fft_out))
         assert_eq(in_shape, epilog_filter_dev.shape)
         assert_eq(out_shape, prolog_filter_dev.shape)
         if in_strides == get_array_element_strides(epilog_filter_dev):
@@ -2079,9 +2167,7 @@ def test_unsupported_type(element, exec_backend, dtype, callback):
         for framework in Framework.enabled()
         if ExecBackend.cufft in supported_backends.exec
         for callback in (LtoCallback.prolog, LtoCallback.epilog)
-        for actual_dtype in [
-            dt for dt in lto_callback_supperted_types if callback == LtoCallback.prolog or is_complex(dt)
-        ]
+        for actual_dtype in [dt for dt in lto_callback_supperted_types if callback == LtoCallback.prolog or is_complex(dt)]
     ],
 )
 def test_mismatched_operand_type(framework, exec_backend, mem_backend, callback, actual_dtype, declared_dtype):

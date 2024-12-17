@@ -14,13 +14,19 @@ from .types import REAL_NP_TYPES
 
 
 class LeadingDimension(namedtuple("LeadingDimension", ["a", "b", "c"])):
-    r"""
-    A namedtuple class that encapsulates the three leading dimensions in matrix multiplication :math:`C = \alpha Op(A) Op(B) + \beta C`.
+    """
+    A namedtuple class that encapsulates the three leading dimensions in matrix
+    multiplication :math:`C = \\alpha Op(A) Op(B) + \\beta C`.
 
     Attributes:
-        a (int): The leading dimension of two-dimensional array used to store the matrix ``A``.
-        b (int): The leading dimension of two-dimensional array used to store the matrix ``B``.
-        c (int): The leading dimension of two-dimensional array used to store the matrix ``C``.
+        a (int): The leading dimension of two-dimensional array used to store the matrix
+            ``A``.
+
+        b (int): The leading dimension of two-dimensional array used to store the matrix
+            ``B``.
+
+        c (int): The leading dimension of two-dimensional array used to store the matrix
+            ``C``.
     """
 
     pass
@@ -28,11 +34,15 @@ class LeadingDimension(namedtuple("LeadingDimension", ["a", "b", "c"])):
 
 class TransposeMode(namedtuple("TransposeMode", ["a", "b"])):
     """
-    A namedtuple class that encapsulates the transpose mode for input matrices ``A`` and ``B`` in matrix multiplication.
+    A namedtuple class that encapsulates the transpose mode for input matrices ``A`` and
+    ``B`` in matrix multiplication.
 
     Attributes:
-        a: The operation that needs to be performed with input matrix ``A``, currently supports ``'non_transposed'``, ``'transposed'`` and ``'conj_transposed'``.
-        b: The operation that needs to be performed with input matrix ``B``, currently supports ``'non_transposed'``, ``'transposed'`` and ``'conj_transposed'``.
+        a: The operation that needs to be performed with input matrix ``A``, currently
+            supports ``'non_transposed'``, ``'transposed'`` and ``'conj_transposed'``.
+
+        b: The operation that needs to be performed with input matrix ``B``, currently
+            supports ``'non_transposed'``, ``'transposed'`` and ``'conj_transposed'``.
     """
 
     pass
@@ -53,11 +63,10 @@ def validate(size, data_type, precision, execution, transpose_mode, block_dim, c
             check_in("transpose_mode.b", transpose_mode.b, allowed_values)
         else:
             raise ValueError(
-                f"transpose_mode should be an instance of {TransposeMode} or a 2-tuple, and individual fields should be one of {allowed_values}. Instead got transpose_mode = {transpose_mode}"
+                f"transpose_mode should be an instance of {TransposeMode} or a 2-tuple, and individual fields "
+                f"should be one of {allowed_values}. Instead got transpose_mode = {transpose_mode}"
             )
-    if block_dim is None:
-        pass
-    elif block_dim == "suggested":
+    if block_dim in (None, "suggested"):
         pass
     elif isinstance(block_dim, Dim3):
         prod = block_dim[0] * block_dim[1] * block_dim[2]
@@ -69,21 +78,16 @@ def validate(size, data_type, precision, execution, transpose_mode, block_dim, c
         raise ValueError(f"block_dim should be None, a Dim3 instance or 'suggested'; got block_dim = {block_dim}")
     if code_type is not None:
         check_code_type(code_type)
-    if leading_dimension is None:
-        pass
-    elif leading_dimension == "suggested":
-        pass
-    elif isinstance(leading_dimension, LeadingDimension):
+    if leading_dimension in (None, "suggested") or isinstance(leading_dimension, LeadingDimension):
         pass
     else:
         raise ValueError(
-            f"leading_dimension should be None, a LeadingDimension instance or 'suggested'; got leading_dimension = {leading_dimension}"
+            f"leading_dimension should be None, a LeadingDimension instance or 'suggested'; "
+            f"got leading_dimension = {leading_dimension}"
         )
 
 
-def generate_MM(
-    size, precision, data_type, function, transpose_mode, code_type, block_dim, execution, leading_dimension
-):
+def generate_MM(size, precision, data_type, function, transpose_mode, code_type, block_dim, execution, leading_dimension):
     if block_dim is not None:
         block_dim = f"+ BlockDim<{ block_dim[0] }, { block_dim[1] }, { block_dim[2] }>()"
     else:
@@ -95,9 +99,7 @@ def generate_MM(
         sm = ""
 
     if leading_dimension is not None:
-        leading_dimension = (
-            f"+ LeadingDimension<{ leading_dimension.a }, { leading_dimension.b }, { leading_dimension.c }>()"
-        )
+        leading_dimension = f"+ LeadingDimension<{ leading_dimension.a }, { leading_dimension.b }, { leading_dimension.c }>()"
     else:
         leading_dimension = ""
 
@@ -135,9 +137,7 @@ def generate_MM(
     return cpp, hash
 
 
-def generate_block(
-    size, precision, data_type, function, transpose_mode, code_type, block_dim, execution, leading_dimension
-):
+def generate_block(size, precision, data_type, function, transpose_mode, code_type, block_dim, execution, leading_dimension):
     MM, name = generate_MM(
         size=size,
         precision=precision,
@@ -222,9 +222,7 @@ def generate_block(
     return {"cpp": cpp, "names": {"smem_basic": api_name_basic, "smem_ldabc": api_name_ldabc}}
 
 
-def generate_block_ld(
-    size, precision, data_type, function, transpose_mode, code_type, block_dim, leading_dimension, execution
-):
+def generate_block_ld(size, precision, data_type, function, transpose_mode, code_type, block_dim, leading_dimension, execution):
     MM_str, _ = generate_MM(
         size=size,
         precision=precision,

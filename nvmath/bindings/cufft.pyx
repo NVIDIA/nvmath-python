@@ -99,8 +99,8 @@ class XtCallbackType(_IntEnum):
 
 class Property(_IntEnum):
     """See `cufftProperty`."""
-    NVFFT_PLAN_INT64_PATIENT_JIT = NVFFT_PLAN_PROPERTY_INT64_PATIENT_JIT
-    NVFFT_PLAN_INT64_MAX_NUM_HOST_THREADS = NVFFT_PLAN_PROPERTY_INT64_MAX_NUM_HOST_THREADS
+    PATIENT_JIT = NVFFT_PLAN_PROPERTY_INT64_PATIENT_JIT
+    MAX_NUM_HOST_THREADS = NVFFT_PLAN_PROPERTY_INT64_MAX_NUM_HOST_THREADS
 
 
 ###############################################################################
@@ -606,4 +606,27 @@ cpdef xt_set_subformat_default(int plan, int subformat_forward, int subformat_in
     """See `cufftXtSetSubformatDefault`."""
     with nogil:
         status = cufftXtSetSubformatDefault(<cufftHandle>plan, <_XtSubFormat>subformat_forward, <_XtSubFormat>subformat_inverse)
+    check_status(status)
+
+
+cpdef set_plan_property_int64(int plan, int property, long long int input_value_int):
+    """See `cufftSetPlanPropertyInt64`."""
+    with nogil:
+        status = cufftSetPlanPropertyInt64(<cufftHandle>plan, <_Property>property, <const long long int>input_value_int)
+    check_status(status)
+
+
+cpdef long long int get_plan_property_int64(int plan, int property) except? -1:
+    """See `cufftGetPlanPropertyInt64`."""
+    cdef long long int return_ptr_value
+    with nogil:
+        status = cufftGetPlanPropertyInt64(<cufftHandle>plan, <_Property>property, &return_ptr_value)
+    check_status(status)
+    return return_ptr_value
+
+
+cpdef reset_plan_property(int plan, int property):
+    """See `cufftResetPlanProperty`."""
+    with nogil:
+        status = cufftResetPlanProperty(<cufftHandle>plan, <_Property>property)
     check_status(status)

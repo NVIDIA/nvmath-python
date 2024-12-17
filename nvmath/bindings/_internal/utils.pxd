@@ -147,6 +147,8 @@ ctypedef fused ResT:
     int
     int32_t
     int64_t
+    float
+    double
 
 
 ctypedef fused PtrT:

@@ -5,8 +5,8 @@
 """
 This example demonstrates usage of epilogs.
 
-Epilogs allow you to execute extra computations after the matrix multiplication in a single fused kernel.
-In this example we'll use the BIAS epilog, which adds bias to the result.
+Epilogs allow you to execute extra computations after the matrix multiplication in a single
+fused kernel. In this example we'll use the BIAS epilog, which adds bias to the result.
 """
 
 import cupy as cp
@@ -23,8 +23,7 @@ bias = cp.random.rand(m, 1)
 epilog = nvmath.linalg.advanced.MatmulEpilog.BIAS
 result = nvmath.linalg.advanced.matmul(a, b, epilog=epilog, epilog_inputs={"bias": bias})
 
-# Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
+# Synchronize the default stream, since by default the execution is non-blocking for GPU
+# operands.
 cp.cuda.get_current_stream().synchronize()
-print(
-    f"Inputs were of types {type(a)} and {type(b)}, the bias type is {type(bias)}, and the result is of type {type(result)}."
-)
+print(f"Inputs were of types {type(a)} and {type(b)}, the bias type is {type(bias)}, and the result is of type {type(result)}.")

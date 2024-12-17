@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""N-D FFT as a composition of the 1D, 2D or 3D batched FFTs with the number of copies minimized."""
+"""N-D FFT as a composition of the 1D, 2D or 3D batched FFTs with the number of copies
+minimized."""
 
 __all__ = ["fftn"]
 
@@ -25,11 +26,7 @@ def upto_three_contiguous_axes(ordered_axes, ordered_all_axes):
             right, e, f = right + 1, e - 1, f - 1
 
     d = max(left, right)
-    if (
-        d == 0
-        or (d < 3 and min(left, right) == 0 and len(ordered_axes) > d)
-        or (d < 3 and d + 1 < len(ordered_axes) - d)
-    ):
+    if d == 0 or (d < 3 and min(left, right) == 0 and len(ordered_axes) > d) or (d < 3 and d + 1 < len(ordered_axes) - d):
         return True, slice(None, -4, -1), slice(-4, None, -1)
 
     if left > right:
@@ -44,10 +41,12 @@ def upto_three_contiguous_axes(ordered_axes, ordered_all_axes):
 
 def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None, stream=None, engine=nvmath.fft.fft):
     """
-    Perform an N-D FFT as a composition of the 1D, 2D, or 3D batched FFTs supported by cuFFT, minimizing the number of copies needed. This is version 2.
+    Perform an N-D FFT as a composition of the 1D, 2D, or 3D batched FFTs supported by
+    cuFFT, minimizing the number of copies needed. This is version 2.
 
     Args:
-        engine: a callable to execute the FFT operation. The engine can be `fft` from the nvmath.fft package, or `caching.fft` from the examples.
+        engine: a callable to execute the FFT operation. The engine can be `fft` from the
+            nvmath.fft package, or `caching.fft` from the examples.
     """
 
     rank = a.ndim

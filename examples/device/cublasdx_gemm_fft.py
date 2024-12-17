@@ -45,7 +45,6 @@ def main():
 
     a_size = MM.a_size
     b_size = MM.b_size
-    c_size = MM.c_size
 
     a_dim = MM.a_dim
     b_dim = MM.b_dim

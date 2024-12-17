@@ -40,11 +40,9 @@ def main():
     value_type = MM1.value_type
 
     a_size = MM1.a_size
-    b_size = MM1.b_size
     c_size = MM1.c_size
 
     d_size = MM2.b_size
-    f_size = MM2.c_size
 
     a_dim = MM1.a_dim
     b_dim = MM1.b_dim
@@ -131,9 +129,7 @@ def main():
     alpha2 = 3 + 4j
     beta2 = 0 + 0j
 
-    set_max_dynamic_shared_size_bytes(
-        kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d
-    )
+    set_max_dynamic_shared_size_bytes(kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d)
 
     time_ms = time_numba(
         kernel, 1, block_dim, shared_memory_size, 100, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d

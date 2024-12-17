@@ -10,7 +10,7 @@ __all__ = ["Package"]
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from contextlib import nullcontext
+from contextlib import nullcontext, AbstractContextManager
 from typing import Any
 
 
@@ -84,7 +84,7 @@ class StreamHolder:
         ptr (int): The address of the underlying ``cudaStream_t`` object.
     """
 
-    ctx: Any = nullcontext()
+    ctx: AbstractContextManager[Any] = nullcontext()
     device_id: int = -2
     obj: Any = None
     package: str = ""

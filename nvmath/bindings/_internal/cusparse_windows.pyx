@@ -281,6 +281,7 @@ cdef void* __cusparseCreateSlicedEll = NULL
 cdef void* __cusparseCreateConstSlicedEll = NULL
 cdef void* __cusparseSpSV_updateMatrix = NULL
 cdef void* __cusparseSpMV_preprocess = NULL
+cdef void* __cusparseSpSM_updateMatrix = NULL
 
 
 cdef inline list get_site_packages():
@@ -1891,6 +1892,12 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         except:
             pass
 
+        global __cusparseSpSM_updateMatrix
+        try:
+            __cusparseSpSM_updateMatrix = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSM_updateMatrix')
+        except:
+            pass
+
     __py_cusparse_init = True
     return 0
 
@@ -2670,6 +2677,9 @@ cpdef dict _inspect_function_pointers():
 
     global __cusparseSpMV_preprocess
     data["__cusparseSpMV_preprocess"] = <intptr_t>__cusparseSpMV_preprocess
+
+    global __cusparseSpSM_updateMatrix
+    data["__cusparseSpSM_updateMatrix"] = <intptr_t>__cusparseSpSM_updateMatrix
 
     func_ptrs = data
     return data
@@ -5234,3 +5244,13 @@ cdef cusparseStatus_t _cusparseSpMV_preprocess(cusparseHandle_t handle, cusparse
             raise FunctionNotFoundError("function cusparseSpMV_preprocess is not found")
     return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, void*) nogil>__cusparseSpMV_preprocess)(
         handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, externalBuffer)
+
+
+cdef cusparseStatus_t _cusparseSpSM_updateMatrix(cusparseHandle_t handle, cusparseSpSMDescr_t spsmDescr, void* newValues, cusparseSpSMUpdate_t updatePart) except* nogil:
+    global __cusparseSpSM_updateMatrix
+    _check_or_init_cusparse()
+    if __cusparseSpSM_updateMatrix == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpSM_updateMatrix is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpSMDescr_t, void*, cusparseSpSMUpdate_t) nogil>__cusparseSpSM_updateMatrix)(
+        handle, spsmDescr, newValues, updatePart)

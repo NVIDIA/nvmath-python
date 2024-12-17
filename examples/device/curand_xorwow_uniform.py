@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example shows how to use the XORWOW bit generator to sample double-precision values from a uniform distribution.
+This example shows how to use the XORWOW bit generator to sample double-precision values
+from a uniform distribution.
 
-Following recommended practice, the implementation is split into a state initialization kernel and a sample
-generation kernel.
+Following recommended practice, the implementation is split into a state initialization
+kernel and a sample generation kernel.
 """
 
 import numpy as np

@@ -55,7 +55,8 @@ def main():
 
         FFT_fwd(thread_data, shared_mem)
 
-        # After the first transform, the data is complex, so we have fft_size//2+1 complex elements per batch
+        # After the first transform, the data is complex, so we have fft_size//2+1 complex
+        # elements per batch
         index = cuda.threadIdx.x
         for i in range(elements_per_thread):
             if index < (fft_size // 2 + 1):
@@ -64,7 +65,8 @@ def main():
 
         FFT_inv(thread_data, shared_mem)
 
-        # After the second transform, the data is real again, so we store fft_size real elements per batch
+        # After the second transform, the data is real again, so we store fft_size real
+        # elements per batch
         index = cuda.threadIdx.x
         for i in range(elements_per_thread):
             if index < fft_size:

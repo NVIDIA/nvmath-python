@@ -15,8 +15,8 @@ import nvmath
 shape = 512, 512, 256
 axes = 0, 1
 
-# Turn on logging. Here we use the global logger, set the level to "debug", and use a custom format for the log.
-# Any of the features provided by the logging module can be used.
+# Turn on logging. Here we use the global logger, set the level to "debug", and use a custom
+# format for the log. Any of the features provided by the logging module can be used.
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)

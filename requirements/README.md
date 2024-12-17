@@ -1,13 +1,14 @@
 # nvmath-python requirements
 
-Dependencies are organized with requirements.txt files which can be use to set up virtualenvs with all required
-development tools to build docs, run tests, and build redistributable wheels.  Different requirements are necessary for
-installation with [pip](https://pip.pypa.io/en/stable/) vs [conda](https://docs.conda.io/en/latest/).
+Dependencies are organized with requirements.txt files which can be use to set up
+virtualenvs with all required development tools to build docs, run tests, and build
+redistributable wheels.  Different requirements are necessary for installation with
+[pip](https://pip.pypa.io/en/stable/) vs [conda](https://docs.conda.io/en/latest/).
 
 ## Pip: Top-level package requirements files
 
-Prefer using these `requirements/pip-<name>.txt` files for development in pip managed virtualenvs.  These include all
-relevant requirements sets and package extras.
+Prefer using these `requirements/pip-<name>.txt` files for development in pip managed
+virtualenvs.  These include all relevant requirements sets and package extras.
 
 ### Pip: Supported configurations for wheels
 
@@ -22,11 +23,13 @@ relevant requirements sets and package extras.
 
 ### Pip: Development usage
 
-The requirements files provide dependencies only.  The nvmath-python package itself must also be installed, typically in
-editable mode for development.  Extras are not required to be specified on the editable install assuming the right
-requirements.txt has been installed in virtualenv.
+The requirements files provide dependencies only.  The nvmath-python package itself must
+also be installed, typically in editable mode for development.  Extras are not required to
+be specified on the editable install assuming the right requirements.txt has been installed
+in virtualenv.
 
-*Note*: For testing wheel/RPATH support locally, currently it requires to build in the non-editable mode (no `-e` flag).
+*Note*: For testing wheel/RPATH support locally, currently it requires to build in the
+non-editable mode (no `-e` flag).
 
 #### Install with pip
 
@@ -49,8 +52,8 @@ $ pipenv shell
 
 ### Pip: Fine-grained requirements
 
-Requirements for specific functionality are broken out into subsets.  These fine-grained requirements are included by
-the top-level requirements sets.
+Requirements for specific functionality are broken out into subsets.  These fine-grained
+requirements are included by the top-level requirements sets.
 
 | requirements.txt | Functionality |
 | ---------------- | ------- |

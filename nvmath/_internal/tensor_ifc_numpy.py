@@ -26,9 +26,7 @@ class NumpyTensor(Tensor):
 
     name = "numpy"
     module = numpy
-    name_to_dtype = Tensor.create_name_dtype_map(
-        conversion_function=lambda name: numpy.dtype(name), exception_type=TypeError
-    )
+    name_to_dtype = Tensor.create_name_dtype_map(conversion_function=lambda name: numpy.dtype(name), exception_type=TypeError)
 
     def __init__(self, tensor):
         super().__init__(tensor)
@@ -70,9 +68,7 @@ class NumpyTensor(Tensor):
         dtype = NumpyTensor.name_to_dtype[dtype]
         # when strides is not None, it should be of unit counts not bytes
         return cls(
-            cls.module.ndarray(
-                shape, dtype=dtype, strides=(tuple(s * dtype.itemsize for s in strides) if strides else None)
-            )
+            cls.module.ndarray(shape, dtype=dtype, strides=(tuple(s * dtype.itemsize for s in strides) if strides else None))
         )
 
     def to(self, device="cpu", stream_holder=StreamHolder()):
@@ -92,22 +88,47 @@ class NumpyTensor(Tensor):
 
         return tensor_device
 
+    def n2n_copy_(self, src):
+        """
+        Inplace copy of src (copy the data from src into self).
+        The src must by numpy ndarray
+        """
+        numpy.copyto(self.tensor, src)
+
+    def c2n_copy_(self, src, stream_holder):
+        """
+        Inplace copy of src (copy the data from src into self).
+        The src must by cupy ndarray
+        """
+        stream = stream_holder.obj
+        try:
+            with stream:
+                src.get(stream=stream, out=self.tensor)
+        except RuntimeError as e:
+            # If self is a strided tensor (neither c nor f layout)
+            # cupy refuses to copy to numpy array
+            if "copying to non-contiguous ndarray" not in str(e):
+                raise
+            else:
+                # we cannot simply use blocking=True, as it is
+                # not supported by older cupy releases (<13)
+                src_cpu = cupy.asnumpy(src, stream=stream)
+                self.n2n_copy_(src_cpu)
+        # cupy/cupy#7820
+        if stream is not None:
+            stream.synchronize()
+
     def copy_(self, src, stream_holder=StreamHolder()):
         package = utils.infer_object_package(src)
         # Handle NumPy <=> CuPy CPU-GPU ndarray asymmetry.
         if package == "cupy":
-            stream = stream_holder.obj
-            with stream:
-                out = src.get(stream=stream, out=self.tensor)
-            # cupy/cupy#7820
-            if stream is not None:
-                stream.synchronize()
-
-            return out
+            self.c2n_copy_(src, stream_holder)
         elif package == "numpy":
-            numpy.copyto(self.tensor, src)
+            self.n2n_copy_(src)
         else:
             raise NotImplementedError
+
+        return self.tensor
 
     def istensor(self):
         """

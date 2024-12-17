@@ -5,8 +5,9 @@
 """
 This example demonstrates the possibility to tweak algorithm's configuration manually.
 
-You are free to modify algorithm configuration as long as it's consistent with its capabilities.
-As an alternative to manual fine-tuning, you might want to try autotuning - see `autotune` example.
+You are free to modify algorithm configuration as long as it's consistent with its
+capabilities. As an alternative to manual fine-tuning, you might want to try autotuning -
+see `autotune` example.
 """
 
 import nvmath
@@ -29,14 +30,16 @@ with nvmath.linalg.advanced.Matmul(a, b) as mm:
     best = mm.algorithms[0]
     print(best.capabilities)
 
-    # Modify the tiling configuration of the algorithm. Note that the valid tile configuration depends on
-    # the hardware, and not all combinations of the configuration are supported, so we leave it as an exercise.
+    # Modify the tiling configuration of the algorithm. Note that the valid tile
+    # configuration depends on the hardware, and not all combinations of the configuration
+    # are supported, so we leave it as an exercise.
     best.tile = best.tile
     print(f"Modified the tile to be {best.tile}")
     # Execute the multiplication.
     result = mm.execute()
 
-    # Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
+    # Synchronize the default stream, since by default the execution is non-blocking for GPU
+    # operands.
     cp.cuda.get_current_stream().synchronize()
     print(f"Input types = {type(a), type(b)}, device = {a.device, b.device}")
     print(f"Result type = {type(result)}, device = {result.device}")

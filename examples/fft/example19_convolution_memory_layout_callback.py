@@ -43,11 +43,11 @@ def convolve(data_out, offset, element, filter_data, unused):
     data_out[offset] = element * filter_data[offset] / (N1 * N2)
 
 
-# Compile the epilog to LTO-IR.
-# In a system with GPUs that have different compute capability, the `compute_capability` option must be specified to the
-# `compile_prolog` or `compile_epilog` helpers. Alternatively, the epilog can be compiled in the context of the device
-# where the FFT to which the epilog is provided is executed. In this case we use the current device context, where the
-# operands have been created.
+# Compile the epilog to LTO-IR. In a system with GPUs that have different compute
+# capability, the `compute_capability` option must be specified to the `compile_prolog` or
+# `compile_epilog` helpers. Alternatively, the epilog can be compiled in the context of the
+# device where the FFT to which the epilog is provided is executed. In this case we use the
+# current device context, where the operands have been created.
 with cp.cuda.Device():
     epilog = nvmath.fft.compile_epilog(convolve, "complex128", "complex128")
 

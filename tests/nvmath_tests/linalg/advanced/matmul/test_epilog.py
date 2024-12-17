@@ -6,15 +6,19 @@
 This set of tests verifies the correctness of the epilog handling.
 """
 
-from nvmath.linalg.advanced import matmul, MatmulEpilog as Epilog
+from nvmath.linalg.advanced import matmul, Matmul, MatmulEpilog as Epilog
 from nvmath.bindings import cublasLt as cublaslt
 import pytest
+import random
 from .utils import *
+import numpy as np
 
 try:
     from cupy import tanh, sqrt, pi, cosh
 except ModuleNotFoundError:
     pytest.skip("cupy required for matmul tests", allow_module_level=True)
+
+rng = np.random.default_rng(12345)
 
 
 def relu(x):
@@ -88,6 +92,38 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
 
     a = cupy.asarray(a)
     b = cupy.asarray(b)
+
+    a_batched, b_batched = len(a.shape) > 2, len(b.shape) > 2
+    if a_batched or b_batched:
+        # For batched input, simulate on each batch element separately and then combine
+        results = []
+        aux_checkers = {}
+        batch_size = a.shape[0] if a_batched else b.shape[0]
+        for i in range(batch_size):
+            a_slice = a[i] if a_batched else a
+            b_slice = b[i] if b_batched else b
+            epilog_inputs_slice = {k: v[i] if len(v.shape) > 2 else v for k, v in epilog_inputs.items()}
+            r, ac = simulate_epilog(a_slice, b_slice, epilog, epilog_inputs_slice)
+            results.append(r)
+            if ac:
+                for k, v in ac.items():
+                    aux_checkers[k] = aux_checkers.get(k, [])
+                    aux_checkers[k].append(v)
+
+        def check_all_aux(key):
+            checkers = aux_checkers[key]
+
+            def check(aux):
+                if epilog in (Epilog.BGRADA, Epilog.BGRADB, Epilog.DRELU_BGRAD, Epilog.DGELU_BGRAD):
+                    # Aux outputs of BGRAD were promoted to 3-D
+                    assert len(aux.shape) == 3 and aux.shape[-1] == 1
+                    aux = aux[:, :, 0]  # Remove the extra dimension
+                return all(checker(aux[i]) for i, checker in enumerate(checkers))
+
+            return check
+
+        return cupy.stack(results), {k: check_all_aux(k) for k in aux_checkers}
+
     epilog_inputs = {k: cupy.asarray(v) for k, v in epilog_inputs.items()}
 
     def drelu(mask):
@@ -113,7 +149,7 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
     def simulate_dgelu(a, b, x):
         return (a @ b) * dgelu(x[: a.shape[0], : b.shape[1]])
 
-    x = matmul(a, b)
+    x = cupy.matmul(a, b)
     if epilog == Epilog.RELU:
         return relu(x), None
     elif epilog == Epilog.GELU:
@@ -124,9 +160,7 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
             and y.shape == (round_up(np.ceil(x.shape[0] / 8), 16), x.shape[1])
         }
     elif epilog == Epilog.GELU_AUX:
-        return gelu(x), {
-            "gelu_aux": lambda y: compare_tensors(y[: x.shape[0]], x) and y.shape[0] == round_up(x.shape[0], 8)
-        }
+        return gelu(x), {"gelu_aux": lambda y: compare_tensors(y[: x.shape[0]], x) and y.shape[0] == round_up(x.shape[0], 8)}
     elif epilog == Epilog.BGRADA:
         return x, {"bgrada": lambda y: compare_tensors(y, a.sum(axis=1))}
     elif epilog == Epilog.BGRADB:
@@ -164,18 +198,59 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
         raise AssertionError()
 
 
+def execute_matmul(a, b, *, epilog=None, epilog_inputs=None, stateful=True, autotune=False):
+    if not stateful:
+        assert not autotune, "autotune=True requires stateful=True"
+        return matmul(a, b, epilog=epilog, epilog_inputs=epilog_inputs)
+    with Matmul(a, b) as mm:
+        mm.plan(epilog=epilog, epilog_inputs=epilog_inputs)
+        if autotune:
+            mm.autotune()
+        return mm.execute()
+
+
+def make_matrix(shape, framework, use_cuda, transposed=False):
+    if transposed:
+        m = sample_matrix(framework, "float32", (*shape[:-2], shape[-1], shape[-2]), use_cuda=use_cuda)
+        m = get_framework(m).swapaxes(m, -1, -2)
+        return m
+    else:
+        return sample_matrix(framework, "float32", shape, use_cuda=use_cuda)
+
+
 @pytest.mark.parametrize("epilog", (*simple_epilogs, *epilogs_with_bias))
-@pytest.mark.parametrize("bias_shape", (lambda m: (m,), lambda m: (m, 1)))
+@pytest.mark.parametrize("bias_extra_dim", (False, True))
 @pytest.mark.parametrize("framework", ("torch", "numpy/cupy"))
 @pytest.mark.parametrize("use_cuda", (True, False))
 @pytest.mark.parametrize("n,m,k", ((40, 50, 60), (1, 1, 1), (8, 16, 32), (65, 43, 21), (1, 2, 3), (3, 2, 1), (2, 1, 3)))
-def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
+@pytest.mark.parametrize(
+    "a_batch,b_batch",
+    (
+        (None, 3),
+        (5, None),
+        (4, 4),
+        (None, None),
+        (1, 1),
+    ),
+)
+def test_epilogs(epilog, bias_extra_dim, framework, n, m, k, use_cuda, a_batch, b_batch):
+    autotune = rng.choice((True, False))
     if epilog == Epilog.BGRADB and m == 1:
         pytest.skip("BGRADB doesn't support m=1")
     if epilog == Epilog.BGRADA and n == 1:
-        # TODO: This is a temporary fix. If A has a singleton dimension we change it to COL order
-        # (see get_matrix_layout_traits), and COL order is not supported by BGRADA.
+        # TODO: This is a temporary fix. If A has a singleton dimension we change it to COL
+        # order (see get_matrix_layout_traits), and COL order is not supported by BGRADA.
         pytest.skip("BGRADA doesn't support n=1")
+    if epilog == Epilog.BGRADA and framework == "numpy/cupy" and not use_cuda and (a_batch is not None or b_batch is not None):
+        # BGRADA requires COL layout of each matrix in the batch.
+        # Also, one of the matrix dimensions needs to have stride one.
+        # Transfer to the GPU (which uses cupy.asarray under the hood)
+        # won't preserve such layout.
+        pytest.skip("It's not possible to create batched COL layout with numpy")
+    if bias_extra_dim and epilog not in epilogs_with_bias:
+        pytest.skip("bias_extra_dim=False is irrelevant for epilog without bias")
+
+    bias_shape = (lambda m: (m, 1)) if bias_extra_dim else (lambda m: (m,))
 
     if epilog in (
         Epilog.GELU,
@@ -192,15 +267,19 @@ def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
     if epilog in (Epilog.BGRADA, Epilog.BGRADB):
         skip_if_cublas_before(111103)
 
-    def make_matrix(shape, transposed):
-        if transposed:
-            return sample_matrix(framework, "float32", tuple(reversed(shape)), use_cuda=use_cuda).T
-        else:
-            return sample_matrix(framework, "float32", shape, use_cuda=use_cuda)
-
     a, b = (
-        make_matrix((n, k), transposed=(epilog == Epilog.BGRADA)),
-        make_matrix((k, m), transposed=(epilog == Epilog.BGRADA)),
+        make_matrix(
+            (n, k) if a_batch is None else (a_batch, n, k),
+            transposed=(epilog == Epilog.BGRADA),
+            framework=framework,
+            use_cuda=use_cuda,
+        ),
+        make_matrix(
+            (k, m) if b_batch is None else (b_batch, k, m),
+            transposed=(epilog == Epilog.BGRADA),
+            framework=framework,
+            use_cuda=use_cuda,
+        ),
     )
     bias_value = sample_matrix(framework, "float32", bias_shape(n), use_cuda=use_cuda)
     inputs = (
@@ -211,19 +290,29 @@ def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
         else {}
     )
     reference, aux_checkers = simulate_epilog(a, b, epilog, inputs)
+
+    if (
+        cublaslt.get_version() < 11703
+        and epilog in (Epilog.RELU_AUX, Epilog.GELU_AUX, Epilog.RELU_AUX_BIAS, Epilog.GELU_AUX_BIAS)
+        and (a_batch is not None or b_batch is not None)
+    ):
+        with pytest.raises(ValueError, match="supports batching in cublaslt >= 11703"):
+            execute_matmul(a, b, epilog=epilog, epilog_inputs=inputs, stateful=autotune, autotune=autotune)
+        return
+
     if aux_checkers:
         if k == 1 and epilog in [Epilog.BGRADA, Epilog.BGRADB] and cublaslt.get_version() < 120304:
             with pytest.raises(ValueError, match="not supported"):
-                matmul(a, b, epilog=epilog, epilog_inputs=inputs)
+                execute_matmul(a, b, epilog=epilog, epilog_inputs=inputs, stateful=autotune, autotune=autotune)
             return
-        result, aux = matmul(a, b, epilog=epilog, epilog_inputs=inputs)
-        assert_tensors_equal(result, result)
+        result, aux = execute_matmul(a, b, epilog=epilog, epilog_inputs=inputs, stateful=autotune, autotune=autotune)
+        assert_tensors_equal(result, reference)
         assert aux.keys() == aux_checkers.keys()
         for k in aux:
             res, checker = aux[k], aux_checkers[k]
             assert checker(to_numpy(res))
     else:
-        result = matmul(a, b, epilog=epilog, epilog_inputs=inputs)
+        result = execute_matmul(a, b, epilog=epilog, epilog_inputs=inputs, stateful=autotune, autotune=autotune)
         assert_tensors_equal(result, reference)
 
 
@@ -240,25 +329,44 @@ def test_epilogs(epilog, bias_shape, framework, n, m, k, use_cuda):
 @pytest.mark.parametrize(
     "n,m,k", ((41, 33, 29), (2, 2, 2), (64, 32, 16), (65, 43, 21), (4, 1, 2), (1, 1, 1), (9, 2, 1), (1, 2, 3))
 )
-def test_d_epilogs(d_epilog, epilog, n, m, k, use_cuda):
+@pytest.mark.parametrize("framework", ("numpy/cupy", "torch"))
+@pytest.mark.parametrize(
+    "a_batch,b_batch",
+    (
+        (None, 2),
+        (2, None),
+        (5, 5),
+        (None, None),
+        (1, 1),
+    ),
+)
+def test_d_epilogs(d_epilog, epilog, n, m, k, framework, use_cuda, a_batch, b_batch):
+    autotune = rng.choice((True, False))
     skip_if_cublas_before(111103, message="DRELU/DGELU not supported")
 
-    a = sample_matrix("torch", "float32", (k, n), use_cuda=use_cuda).T
-    b = sample_matrix("torch", "float32", (m, k), use_cuda=use_cuda).T
-    bias_value = torch.rand((a.shape[0], 1)) - 0.5
-    bias_value = bias_value.cuda() if use_cuda else bias_value
-    ab, aux = matmul(a, b, epilog=epilog, epilog_inputs={"bias": bias_value})
+    a_shape = (a_batch, n, k) if a_batch is not None else (n, k)
+    b_shape = (b_batch, k, m) if b_batch is not None else (k, m)
+
+    if "numpy" in framework and not use_cuda:
+        # Transfer to the GPU (which uses cupy.asarray under the hood)
+        # won't preserve such layout.
+        pytest.skip("It's not possible to create COL-order matrix with numpy")
+
+    a = make_matrix(a_shape, use_cuda=use_cuda, framework=framework, transposed=True)
+    b = make_matrix(b_shape, use_cuda=use_cuda, framework=framework, transposed=True)
+    bias_value = make_matrix((a.shape[-2], 1), use_cuda=use_cuda, framework=framework)
+    ab, aux = execute_matmul(a, b, epilog=epilog, epilog_inputs={"bias": bias_value}, stateful=autotune, autotune=autotune)
     reference, aux_checkers = simulate_epilog(a, b, epilog=d_epilog, epilog_inputs=aux)
 
     if k == 1:
         with pytest.raises(ValueError, match="not supported"):
-            result, aux = matmul(a, b, epilog=d_epilog, epilog_inputs=aux)
+            result, aux = execute_matmul(a, b, epilog=d_epilog, epilog_inputs=aux, stateful=autotune, autotune=autotune)
         return
 
     if not aux_checkers:
-        result = matmul(a, b, epilog=d_epilog, epilog_inputs=aux)
+        result = execute_matmul(a, b, epilog=d_epilog, epilog_inputs=aux, stateful=autotune, autotune=autotune)
     else:
-        result, aux = matmul(a, b, epilog=d_epilog, epilog_inputs=aux)
+        result, aux = execute_matmul(a, b, epilog=d_epilog, epilog_inputs=aux, stateful=autotune, autotune=autotune)
         assert aux.keys() == aux_checkers.keys()
         for k in aux:
             assert aux_checkers[k](to_numpy(aux[k]))

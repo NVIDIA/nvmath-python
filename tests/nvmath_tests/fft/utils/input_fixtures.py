@@ -15,8 +15,10 @@ try:
 except ImportError:
     torch = None
 
-from .common_axes import MemBackend, Framework, DType, ShapeKind
-from .axes_utils import get_framework_dtype, is_complex
+import pytest
+
+from .common_axes import MemBackend, Framework, DType, ShapeKind, OptFftType, OptFftLayout
+from .axes_utils import get_framework_dtype, is_complex, c2r_dtype, size_of, get_fft_dtype
 
 
 def get_random_input_data(
@@ -43,10 +45,22 @@ def get_random_input_data(
             if not is_complex(dtype):
                 a = rng.uniform(lo, hi, size=shape).astype(framework_dtype)
             else:
-                real = rng.uniform(lo, hi, size=shape)
-                imag = rng.uniform(lo, hi, size=shape)
-                a = (real + 1j * imag).astype(framework_dtype)
-            assert a.dtype == framework_dtype
+                if len(shape) >= 32:  # we can't go over the max supported dimension
+                    real = rng.uniform(lo, hi, size=shape)
+                    imag = rng.uniform(lo, hi, size=shape)
+                    a = (real + 1j * imag).astype(framework_dtype)
+                else:
+                    # add and squeeze the extra dimension to get the scalar case right
+                    real_size = shape + (2,)
+                    real_framework_dtype = get_framework_dtype(framework, c2r_dtype[dtype])
+                    a = (
+                        rng.uniform(lo, hi, size=real_size)
+                        .astype(real_framework_dtype)
+                        .view(dtype=framework_dtype)
+                        .reshape(shape)
+                    )
+            assert a.dtype == framework_dtype, f"{a.dtype} vs {framework_dtype}"
+            assert a.shape == shape, f"{a.shape} vs {shape}"
             return a
 
         if mem_backend == MemBackend.cuda and device_id is not None:
@@ -70,7 +84,7 @@ def get_random_input_data(
             shift = torch.tensor(lo, dtype=framework_dtype)
         else:
             shift = torch.tensor(lo + 1j * lo, dtype=framework_dtype)
-        t = t * scale + shift
+        t = t.mul_(scale).add_(shift)
         assert t.dtype == framework_dtype
         return t
     else:
@@ -150,3 +164,112 @@ def get_primes_up_to(up_to):
         while c <= up_to:
             is_prime[c] = False
             c += k
+
+
+@pytest.fixture
+def fx_last_operand_layout(monkeypatch):
+    import nvmath
+    from .check_helpers import get_array_element_strides, get_raw_ptr
+
+    _actual_init = nvmath.fft.FFT.__init__
+    _actual_exec = nvmath.fft.FFT.execute
+    layouts = {}
+    ptrs = {}
+
+    def wrapped_init(self, initial_operand, *args, **kwargs):
+        nonlocal layouts, ptrs
+        layouts["initial_operand"] = (tuple(initial_operand.shape), get_array_element_strides(initial_operand))
+        ptrs["initial_operand"] = get_raw_ptr(initial_operand)
+        ret = _actual_init(self, initial_operand, *args, **kwargs)
+        layouts["operand"] = (self.operand.shape, self.operand.strides)
+        ptrs["operand"] = get_raw_ptr(self.operand.tensor)
+        assert self.operand_layout.shape == self.operand.shape
+        assert self.operand_layout.strides == self.operand.strides
+        if self.operand_backup is not None:
+            layouts["operand_backup"] = (self.operand_backup.shape, self.operand_backup.strides)
+            ptrs["operand_backup"] = get_raw_ptr(self.operand_backup.tensor)
+        return ret
+
+    monkeypatch.setattr(nvmath.fft.FFT, "__init__", wrapped_init)
+
+    def wrapped_exec(self, *args, **kwargs):
+        ret = _actual_exec(self, *args, **kwargs)
+        layouts["result"] = (tuple(ret.shape), get_array_element_strides(ret))
+        ptrs["result"] = get_raw_ptr(ret)
+        return ret
+
+    monkeypatch.setattr(nvmath.fft.FFT, "execute", wrapped_exec)
+
+    def stride_order(shape, stride):
+        return tuple(i for _, _, i in sorted(zip(stride, shape, range(len(shape)), strict=True)))
+
+    def check_layouts(exec_backend, mem_backend, axes, result_layout, fft_type, is_dense, inplace):
+        initial_shape, initial_strides = layouts["initial_operand"]
+        if mem_backend == exec_backend.mem:
+            assert "operand_backup" not in layouts
+        else:
+            assert ptrs["initial_operand"] == ptrs["operand_backup"]
+            assert layouts["operand_backup"][0] == initial_shape
+            assert layouts["operand_backup"][1] == initial_strides
+
+        assert layouts["operand"][0] == initial_shape
+        if fft_type != OptFftType.c2r and mem_backend == exec_backend.mem:
+            assert ptrs["initial_operand"] == ptrs["operand"]
+        else:
+            assert ptrs["initial_operand"] != ptrs["operand"]
+        if mem_backend == exec_backend.mem and (fft_type != OptFftType.c2r or is_dense):
+            # nvmath should keep the strides for dense (possibly permuted) tensors
+            assert layouts["operand"][1] == initial_strides
+
+        if inplace:
+            assert ptrs["result"] == ptrs["initial_operand"]
+            assert layouts["result"] == layouts["initial_operand"]
+        else:
+            assert ptrs["result"] != ptrs["initial_operand"]
+            # the frameworks gpu<->cpu copy does not necessarily keep the layout
+            if mem_backend == exec_backend.mem:
+                if result_layout == OptFftLayout.natural:
+                    initial_order = stride_order(*layouts["initial_operand"])
+                    res_order = stride_order(*layouts["result"])
+                    assert initial_order == res_order
+                else:
+                    assert result_layout == OptFftLayout.optimized
+                    res_layout = layouts["result"]
+                    res_order = stride_order(*res_layout)
+                    least_strided = res_order[: len(axes)]
+                    assert sorted(axes) == sorted(
+                        least_strided
+                    ), f"{sorted(axes)} vs {sorted(least_strided)}: result_layout={res_layout}"
+
+    return check_layouts, layouts, ptrs
+
+
+def align_up(num_bytes, alignment):
+    return ((num_bytes + alignment - 1) // alignment) * alignment
+
+
+def get_overaligned_view(alignment, framework, shape, dtype, mem_backend, seed):
+    from .check_helpers import get_raw_ptr, assert_array_type
+
+    dtype_size = size_of(dtype)
+    assert alignment % dtype_size == 0
+    innermost_extent = shape[-1]
+    offset_upperbound = alignment // dtype_size
+    base_innermost = innermost_extent + offset_upperbound
+    base_shape = list(shape)
+    base_shape[-1] = base_innermost
+    base_shape = tuple(base_shape)
+    a = get_random_input_data(framework, base_shape, dtype, mem_backend, seed)
+    base_ptr = get_raw_ptr(a)
+    complex_dtype = get_fft_dtype(dtype)
+    required_alignment = size_of(complex_dtype)
+    assert required_alignment % dtype_size == 0
+    assert base_ptr % required_alignment == 0
+    overaligned_offset = (-(base_ptr % -alignment)) // dtype_size
+    assert 0 <= overaligned_offset < offset_upperbound
+    slices = (slice(None),) * (len(shape) - 1) + (slice(overaligned_offset, overaligned_offset + innermost_extent),)
+    aligned_view = a[slices]
+    view_ptr = get_raw_ptr(aligned_view)
+    assert view_ptr % alignment == 0
+    assert_array_type(aligned_view, framework, mem_backend, dtype)
+    return a, aligned_view

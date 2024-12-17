@@ -404,6 +404,12 @@ cdef void* __cusolverDnLoggerSetMask = NULL
 cdef void* __cusolverDnLoggerForceDisable = NULL
 cdef void* __cusolverDnSetDeterministicMode = NULL
 cdef void* __cusolverDnGetDeterministicMode = NULL
+cdef void* __cusolverDnXlarft_bufferSize = NULL
+cdef void* __cusolverDnXlarft = NULL
+cdef void* __cusolverDnXsyevBatched_bufferSize = NULL
+cdef void* __cusolverDnXsyevBatched = NULL
+cdef void* __cusolverDnXgeev_bufferSize = NULL
+cdef void* __cusolverDnXgeev = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
@@ -3015,6 +3021,48 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
             handle = load_library(driver_ver)
         __cusolverDnGetDeterministicMode = dlsym(handle, 'cusolverDnGetDeterministicMode')
 
+    global __cusolverDnXlarft_bufferSize
+    __cusolverDnXlarft_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXlarft_bufferSize')
+    if __cusolverDnXlarft_bufferSize == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cusolverDnXlarft_bufferSize = dlsym(handle, 'cusolverDnXlarft_bufferSize')
+
+    global __cusolverDnXlarft
+    __cusolverDnXlarft = dlsym(RTLD_DEFAULT, 'cusolverDnXlarft')
+    if __cusolverDnXlarft == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cusolverDnXlarft = dlsym(handle, 'cusolverDnXlarft')
+
+    global __cusolverDnXsyevBatched_bufferSize
+    __cusolverDnXsyevBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevBatched_bufferSize')
+    if __cusolverDnXsyevBatched_bufferSize == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cusolverDnXsyevBatched_bufferSize = dlsym(handle, 'cusolverDnXsyevBatched_bufferSize')
+
+    global __cusolverDnXsyevBatched
+    __cusolverDnXsyevBatched = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevBatched')
+    if __cusolverDnXsyevBatched == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cusolverDnXsyevBatched = dlsym(handle, 'cusolverDnXsyevBatched')
+
+    global __cusolverDnXgeev_bufferSize
+    __cusolverDnXgeev_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgeev_bufferSize')
+    if __cusolverDnXgeev_bufferSize == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cusolverDnXgeev_bufferSize = dlsym(handle, 'cusolverDnXgeev_bufferSize')
+
+    global __cusolverDnXgeev
+    __cusolverDnXgeev = dlsym(RTLD_DEFAULT, 'cusolverDnXgeev')
+    if __cusolverDnXgeev == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cusolverDnXgeev = dlsym(handle, 'cusolverDnXgeev')
+
     __py_cusolverDn_init = True
     return 0
 
@@ -4130,6 +4178,24 @@ cpdef dict _inspect_function_pointers():
 
     global __cusolverDnGetDeterministicMode
     data["__cusolverDnGetDeterministicMode"] = <intptr_t>__cusolverDnGetDeterministicMode
+
+    global __cusolverDnXlarft_bufferSize
+    data["__cusolverDnXlarft_bufferSize"] = <intptr_t>__cusolverDnXlarft_bufferSize
+
+    global __cusolverDnXlarft
+    data["__cusolverDnXlarft"] = <intptr_t>__cusolverDnXlarft
+
+    global __cusolverDnXsyevBatched_bufferSize
+    data["__cusolverDnXsyevBatched_bufferSize"] = <intptr_t>__cusolverDnXsyevBatched_bufferSize
+
+    global __cusolverDnXsyevBatched
+    data["__cusolverDnXsyevBatched"] = <intptr_t>__cusolverDnXsyevBatched
+
+    global __cusolverDnXgeev_bufferSize
+    data["__cusolverDnXgeev_bufferSize"] = <intptr_t>__cusolverDnXgeev_bufferSize
+
+    global __cusolverDnXgeev
+    data["__cusolverDnXgeev"] = <intptr_t>__cusolverDnXgeev
 
     func_ptrs = data
     return data
@@ -7814,3 +7880,63 @@ cdef cusolverStatus_t _cusolverDnGetDeterministicMode(cusolverDnHandle_t handle,
             raise FunctionNotFoundError("function cusolverDnGetDeterministicMode is not found")
     return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDeterministicMode_t*) nogil>__cusolverDnGetDeterministicMode)(
         handle, mode)
+
+
+cdef cusolverStatus_t _cusolverDnXlarft_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+    global __cusolverDnXlarft_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXlarft_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXlarft_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverDirectMode_t, cusolverStorevMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXlarft_bufferSize)(
+        handle, params, direct, storev, n, k, dataTypeV, V, ldv, dataTypeTau, tau, dataTypeT, T, ldt, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXlarft(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost) except* nogil:
+    global __cusolverDnXlarft
+    _check_or_init_cusolverDn()
+    if __cusolverDnXlarft == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXlarft is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverDirectMode_t, cusolverStorevMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t) nogil>__cusolverDnXlarft)(
+        handle, params, direct, storev, n, k, dataTypeV, V, ldv, dataTypeTau, tau, dataTypeT, T, ldt, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXsyevBatched_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost, int64_t batchSize) except* nogil:
+    global __cusolverDnXsyevBatched_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsyevBatched_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsyevBatched_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*, int64_t) nogil>__cusolverDnXsyevBatched_bufferSize)(
+        handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost, batchSize)
+
+
+cdef cusolverStatus_t _cusolverDnXsyevBatched(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info, int64_t batchSize) except* nogil:
+    global __cusolverDnXsyevBatched
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsyevBatched == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsyevBatched is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*, int64_t) nogil>__cusolverDnXsyevBatched)(
+        handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info, batchSize)
+
+
+cdef cusolverStatus_t _cusolverDnXgeev_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType dataTypeVL, const void* VL, int64_t ldvl, cudaDataType dataTypeVR, const void* VR, int64_t ldvr, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+    global __cusolverDnXgeev_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXgeev_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXgeev_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXgeev_bufferSize)(
+        handle, params, jobvl, jobvr, n, dataTypeA, A, lda, dataTypeW, W, dataTypeVL, VL, ldvl, dataTypeVR, VR, ldvr, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXgeev(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType dataTypeVL, void* VL, int64_t ldvl, cudaDataType dataTypeVR, void* VR, int64_t ldvr, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+    global __cusolverDnXgeev
+    _check_or_init_cusolverDn()
+    if __cusolverDnXgeev == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXgeev is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXgeev)(
+        handle, params, jobvl, jobvr, n, dataTypeA, A, lda, dataTypeW, W, dataTypeVL, VL, ldvl, dataTypeVR, VR, ldvr, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)

@@ -27,16 +27,32 @@ from .._internal.utils import docstring_decorator
 CUBLASDX_DOCSTRING = SHARED_DEVICE_DOCSTRINGS.copy()
 CUBLASDX_DOCSTRING.update(
     {
-        "size": "A sequence of integers denoting the three dimensions ``(m, n, k)`` for the matrix multiplication problem.",
-        "data_type": "The data type of the input matrices, can be either ``'real'`` or ``'complex'``.",
-        "block_size": "The total block size, optional. If not provided or set to ``'suggested'``, "
-        "will be set to a suggested value for 1D block dim. ",
-        "block_dim": "The block dimension for launching the CUDA kernel, optional. If not provided or set to ``'suggested'``, "
-        "will be set to a suggested value. Can't not be used when `block_size` is explicitly specified.",
-        "leading_dimension": "The leading dimensions for the input matrices, optional. If not provided, will be set to match the matrix row/column dimension. "
-        "Alternatively, if provided as ``'suggested'``, will be set to a suggested value for optimal performance. ",
-        "transpose_mode": "The transpose mode for all input matrices. If not provided, no transposition by default.",
-        "function": "A string specifying the name of the function. Currently supports ``'MM'`` (default) for matrix multiplication.",
+        "size": """\
+A sequence of integers denoting the three dimensions ``(m, n, k)`` for the matrix multiplication
+problem.""".replace("\n", " "),
+        #
+        "data_type": """\
+The data type of the input matrices, can be either ``'real'`` or ``'complex'``.""".replace("\n", " "),
+        #
+        "block_size": """\
+The total block size, optional. If not provided or set to ``'suggested'``, will be set to a suggested value for 1D block
+dim. """.replace("\n", " "),
+        #
+        "block_dim": """\
+The block dimension for launching the CUDA kernel, optional. If not provided or set to ``'suggested'``, will be set to a
+suggested value. Can't not be used when `block_size` is explicitly specified.""".replace("\n", " "),
+        #
+        "leading_dimension": """\
+The leading dimensions for the input matrices, optional. If not provided, will be set to match the matrix row/column
+dimension. Alternatively, if provided as ``'suggested'``, will be set to a suggested value for optimal performance.
+""".replace("\n", " "),
+        #
+        "transpose_mode": """\
+The transpose mode for all input matrices. If not provided, no transposition by default.""".replace("\n", " "),
+        #
+        "function": """\
+A string specifying the name of the function. Currently supports ``'MM'`` (default) for matrix
+multiplication.""".replace("\n", " "),
     }
 )
 
@@ -48,25 +64,36 @@ CUBLASDX_DOCSTRING.update(
 @docstring_decorator(CUBLASDX_DOCSTRING, skip_missing=False)
 class BlasOptions:
     """
-    A class that encapsulates a partial BLAS device function.
-    A partial device function can be queried for available or optimal values for the some knobs (such as `leading_dimension` or `block_dim`).
-    It does not contain a compiled, ready-to-use, device function until finalized using :meth:`create`.
+    A class that encapsulates a partial BLAS device function. A partial device function can
+    be queried for available or optimal values for the some knobs (such as
+    `leading_dimension` or `block_dim`). It does not contain a compiled, ready-to-use,
+    device function until finalized using :meth:`create`.
 
     Args:
         size: {size}
+
         precision: {precision}
+
         data_type: {data_type}
+
         code_type (CodeType): {code_type}
+
         block_size (int): {block_size}
+
         block_dim (Dim3): {block_dim}
+
         leading_dimension (LeadingDimension): {leading_dimension}
+
         transpose_mode (TransposeMode): {transpose_mode}
+
         function (str): {function}
+
         execution (str): {execution}
 
     See Also:
         The attributes of this class provide a 1:1 mapping with the CUDA C++ cuBLASDx APIs.
-        For further details, please refer to `cuBLASDx documentation <https://docs.nvidia.com/cuda/cublasdx/>`_.
+        For further details, please refer to `cuBLASDx documentation
+        <https://docs.nvidia.com/cuda/cublasdx/>`_.
     """
 
     def __init__(
@@ -88,20 +115,20 @@ class BlasOptions:
         code_type = CodeType(code_type[0], ComputeCapability(*code_type[1]))
         if code_type.cc.major < 7:
             raise RuntimeError(
-                "Minimal compute capability 7.0 is required by cuBLASDx, got "
-                f"{code_type.cc.major}.{code_type.cc.minor}"
+                "Minimal compute capability 7.0 is required by cuBLASDx, got " f"{code_type.cc.major}.{code_type.cc.minor}"
             )
 
         if len(transpose_mode) != 2:
             raise ValueError(
-                f"transpose_mode should be an instance of TransposeMode or a 2-tuple ; got transpose_mode = {transpose_mode}"
+                "transpose_mode should be an instance of TransposeMode or a 2-tuple ; " f"got transpose_mode = {transpose_mode}"
             )
         transpose_mode = TransposeMode(*transpose_mode)
 
         if isinstance(leading_dimension, tuple):
             if len(leading_dimension) != 3:
                 raise ValueError(
-                    f"leading_dimension should be a 3-tuple, an instance of LeadingDimension, 'suggested' or None ; got leading_dimension = {leading_dimension}"
+                    "leading_dimension should be a 3-tuple, an instance of LeadingDimension, 'suggested' or None ; "
+                    f"got leading_dimension = {leading_dimension}"
                 )
             else:
                 leading_dimension = LeadingDimension(*leading_dimension)
@@ -118,14 +145,13 @@ class BlasOptions:
                 block_dim = "suggested"
             else:
                 block_dim = Dim3(block_size, 1, 1)
-        if block_dim is not None:
-            if isinstance(block_dim, tuple):
-                if len(block_dim) != 3:
-                    raise ValueError(
-                        f"block_dim should be a 3-tuple, an instance of Dim3, 'suggested' or None ; got block_dim = {block_dim}"
-                    )
-                else:
-                    block_dim = Dim3(*block_dim)
+        if block_dim is not None and isinstance(block_dim, tuple):
+            if len(block_dim) != 3:
+                raise ValueError(
+                    f"block_dim should be a 3-tuple, an instance of Dim3, 'suggested' or None ; got block_dim = {block_dim}"
+                )
+            else:
+                block_dim = Dim3(*block_dim)
 
         validate(
             size=size,
@@ -423,9 +449,7 @@ class BlasNumba(BlasCompiled):
         super().__init__(**kwargs)
 
         # Add Numba logic
-        self._codegened = codegen(
-            {"value_type": self.value_type, "symbols": self._symbols, "execution": self.execution}, self
-        )
+        self._codegened = codegen({"value_type": self.value_type, "symbols": self._symbols, "execution": self.execution}, self)
 
     @property
     def value_type(self):
@@ -446,24 +470,36 @@ class BlasNumba(BlasCompiled):
 @docstring_decorator(CUBLASDX_DOCSTRING, skip_missing=False)
 def matmul(*, compiler=None, **kwargs):
     """
-    Create an :class:`BlasOptions` object that encapsulates a compiled and ready-to-use device function for matrix multiplication.
+    Create an :class:`BlasOptions` object that encapsulates a compiled and ready-to-use
+    device function for matrix multiplication.
 
     Args:
         size: {size}
+
         precision: {precision}
+
         data_type: {data_type}
+
         compiler: {compiler}
+
         code_type (CodeType): {code_type}
+
         block_size (int): {block_size}
+
         block_dim (Dim3): {block_dim}
+
         leading_dimension (LeadingDimension): {leading_dimension}
+
         transpose_mode (TransposeMode): {transpose_mode}
+
         function (str): {function}
+
         execution (str): {execution}
 
     See Also:
-        The attributes of :class:`BlasOptions` provide a 1:1 mapping with the CUDA C++ cuBLASDx APIs.
-        For further details, please refer to `cuBLASDx documentation <https://docs.nvidia.com/cuda/cublasdx/>`_.
+        The attributes of :class:`BlasOptions` provide a 1:1 mapping with the CUDA C++
+        cuBLASDx APIs. For further details, please refer to `cuBLASDx documentation
+        <https://docs.nvidia.com/cuda/cublasdx/>`_.
 
     Examples:
 
@@ -473,17 +509,27 @@ def matmul(*, compiler=None, **kwargs):
         >>> m, n, k = 32, 16, 64
         >>> block_size = 256
 
-        Use :func:`nvmath.device.matmul` to create the compiled matrix multiplication object:
+        Use :func:`nvmath.device.matmul` to create the compiled matrix multiplication
+        object:
 
-        >>> MM = matmul(size=(m, n, k), precision=np.float32, data_type='real', transpose_mode=('non_transposed', 'transposed'),
-        ...             execution='Block', block_size=block_size, compiler='numba')
+        >>> MM = matmul(
+        ...     size=(m, n, k),
+        ...     precision=np.float32,
+        ...     data_type="real",
+        ...     transpose_mode=("non_transposed", "transposed"),
+        ...     execution="Block",
+        ...     block_size=block_size,
+        ...     compiler="numba",
+        ... )
 
-        Pass `link=MM.files` to the `numba.cuda.jit` decorator when defining your kernel to link with the compiled code.
+        Pass ``link=MM.files`` to the :func:`numba.cuda.jit` decorator when defining your
+        kernel to link with the compiled code.
 
-        cuBLASDx works on shared memory arrays.
-        It requires column-major (F order) arrays but `cuda.shared.array` creates row-major (C order) arrays only.
-        You can emulate a column-major array by flipping dimensions.
-        With your shared memory arrays ready and filled with actual data, you can run the matrix multiplication by calling `MM`
+        cuBLASDx works on shared memory arrays. It requires column-major (F order) arrays
+        but :class:`cuda.shared.array` creates row-major (C order) arrays only. You can
+        emulate a column-major array by flipping dimensions. With your shared memory arrays
+        ready and filled with actual data, you can run the matrix multiplication by calling
+        `MM`
 
         >>> a_dim, b_dim, c_dim = MM.a_dim, MM.b_dim, MM.c_dim
         >>> @cuda.jit(link=MM.files)
@@ -492,13 +538,14 @@ def matmul(*, compiler=None, **kwargs):
         ...     b = cuda.shared.array(shape=(b_dim[1], b_dim[0]), dtype=np.float32)
         ...     c = cuda.shared.array(shape=(c_dim[1], c_dim[0]), dtype=np.float32)
         ...     # TODO: Populate the arrays with actual data.
-        ...     alpha, beta = 1., 0.
+        ...     alpha, beta = 1.0, 0.0
         ...     MM(alpha, a, b, beta, c)
         ...     cuda.syncthreads()
         ...     # TODO: Copy the result (c) from the shared memory
         >>> f[1, block_size]()
 
-        Further examples can be found in the `nvmath/examples/device <https://github.com/NVIDIA/nvmath-python/tree/main/examples/device>`_ directory.
+        Further examples can be found in the `nvmath/examples/device
+        <https://github.com/NVIDIA/nvmath-python/tree/main/examples/device>`_ directory.
     """
     check_in("compiler", compiler, [None, "numba"])
     if compiler is None:

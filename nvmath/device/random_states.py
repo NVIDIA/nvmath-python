@@ -20,7 +20,7 @@ from llvmlite import ir
 import os
 import logging
 
-from numba import types, config, cuda
+from numba import config
 
 xorwow_dtype = np.dtype(
     [
@@ -173,7 +173,8 @@ curandStates = [
     "curandStateSobol64",
     "curandStateScrambledSobol64",
     "curandStatePhilox4_32_10",
-    # "curandStateMtgp32", # Require additional type parsing of mtgp32_params_fast and mtgp32_kernel_params
+    # Require additional type parsing of mtgp32_params_fast and mtgp32_kernel_params
+    # "curandStateMtgp32",
 ]
 
 numpy_curand_states = []

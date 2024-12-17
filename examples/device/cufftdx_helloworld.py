@@ -22,12 +22,11 @@ def main():
     shared_memory_size = FFT.shared_memory_size
     files = FFT.files
     stride = FFT.stride
-    ept = FFT.elements_per_thread
     block_dim = FFT.block_dim
     ffts_per_block = FFT.ffts_per_block
     elements_per_thread = FFT.elements_per_thread
 
-    @cuda.jit(link=FFT.files)
+    @cuda.jit(link=files)
     def f(data):
         thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
 

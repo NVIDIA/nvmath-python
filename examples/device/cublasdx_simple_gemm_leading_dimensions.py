@@ -39,7 +39,6 @@ def main():
     a_dim = MM_static_ld.a_dim
     b_dim = MM_static_ld.b_dim
     c_dim = MM_static_ld.c_dim
-    block_size = MM_static_ld.block_size
     shared_memory_size = MM_static_ld.shared_memory_size
 
     @cuda.jit(link=MM_static_ld.files)

@@ -27,9 +27,7 @@ class CupyTensor(Tensor):
 
     name = "cupy"
     module = cupy
-    name_to_dtype = Tensor.create_name_dtype_map(
-        conversion_function=lambda name: np.dtype(name), exception_type=TypeError
-    )
+    name_to_dtype = Tensor.create_name_dtype_map(conversion_function=lambda name: np.dtype(name), exception_type=TypeError)
 
     def __init__(self, tensor):
         super().__init__(tensor)
@@ -72,6 +70,9 @@ class CupyTensor(Tensor):
     def empty(cls, shape, *, dtype="float32", device_id=None, strides=None):
         """
         Create an empty tensor of the specified shape and data type.
+
+        Note, that the strides, if specified, MUST correspond to a dense (possibly permuted)
+        tensor, otherwise the created tensor may be corrupted.
         """
         dtype = CupyTensor.name_to_dtype[dtype]
 
@@ -132,19 +133,21 @@ class CupyTensor(Tensor):
         Inplace copy of src (copy the data from src into self).
         The src must by numpy ndarray
         """
+        stream = stream_holder.obj
         try:
-            stream = stream_holder.obj
             self.tensor.set(src, stream=stream)
-            if stream is not None:
-                stream.synchronize()
         except RuntimeError as e:
             # If self is a strided tensor (neither c nor f layout)
             # cupy refuses to copy from numpy array
             if "set to non-contiguous array" not in str(e):
                 raise
             else:
-                src_gpu = cupy.asarray(src)
-                self.c2c_copy_(src_gpu, stream_holder)
+                with stream_holder.ctx:
+                    src_gpu = cupy.asarray(src)
+                    cupy.copyto(self.tensor, src_gpu)
+        # cupy/cupy#7820
+        if stream is not None:
+            stream.synchronize()
 
     def copy_(self, src, stream_holder=StreamHolder()):
         """

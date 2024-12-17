@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Example using a thread pool to launch multiple independent FFT operations in parallel on multiple GPUs.
+Example using a thread pool to launch multiple independent FFT operations in parallel on
+multiple GPUs.
 """
 
 from functools import partial

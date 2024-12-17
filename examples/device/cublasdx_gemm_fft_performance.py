@@ -54,7 +54,6 @@ def main():
 
     a_size = MM.a_size
     b_size = MM.b_size
-    c_size = MM.c_size
 
     a_dim = MM.a_dim
     b_dim = MM.b_dim
@@ -126,9 +125,7 @@ def main():
 
     def cp_kernel(a, b, c):
         cp_transform = lambda x: cp.multiply(x, x)
-        abc = cp.swapaxes(alpha * cp.einsum("bik,bkj->bij", cp_transform(a), b) + beta * c, 1, 2).reshape(
-            (batch_size, -1)
-        )
+        abc = cp.swapaxes(alpha * cp.einsum("bik,bkj->bij", cp_transform(a), b) + beta * c, 1, 2).reshape((batch_size, -1))
         return cp_transform(cp.fft.fft(abc, axis=-1))
 
     data_ref = cp_kernel(a, b, c)

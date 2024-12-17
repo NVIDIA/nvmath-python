@@ -3,7 +3,8 @@
 cuSPARSE (:mod:`nvmath.bindings.cusparse`)
 ==========================================
 
-For detailed documentation on the original C APIs, please refer to `cuSPARSE documentation <https://docs.nvidia.com/cuda/cusparse/>`_.
+For detailed documentation on the original C APIs, refer to the `cuSPARSE documentation
+<https://docs.nvidia.com/cuda/cusparse/>`_.
 
 Enums and constants
 *******************

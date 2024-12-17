@@ -34,27 +34,47 @@ MatmulReductionScheme = cublaslt.ReductionScheme
 
 @dataclasses.dataclass
 class MatmulOptions:
-    """A data class for providing options to the :class:`Matmul` object and the wrapper function :func:`matmul`.
+    """A data class for providing options to the :class:`Matmul` object and the wrapper
+    function :func:`matmul`.
 
     Attributes:
-        compute_type (nvmath.linalg.ComputeType): CUDA compute type. A suitable compute type will be selected if not specified.
-        scale_type (nvmath.CudaDataType): CUDA data type. A suitable data type consistent with the compute type will be
-            selected if not specified.
-        sm_count_target (int) : The number of SMs to use for execution. The default is 0, corresponding to all available SMs.
-        fast_accumulation (bool) : Enable or disable FP8 fast accumulation mode. The default is False (disabled).
-        device_id: CUDA device ordinal (used if the MM operands reside on the CPU). Device 0 will be used if not specified.
-        handle: Linear algebra library handle. A handle will be created if one is not provided.
-        logger (logging.Logger): Python Logger object. The root logger will be used if a logger object is not provided.
-        memory_limit: Maximum memory available to the MM operation. It can be specified as a value (with optional suffix like
-            K[iB], M[iB], G[iB]) or as a percentage. The default is 80% of the device memory.
-        blocking: A flag specifying the behavior of the execution functions and methods, such as :func:`matmul` and :meth:`Matmul.execute`.
-            When ``blocking`` is `True`, the execution methods do not return until the operation is complete. When ``blocking`` is
-            ``"auto"``, the methods return immediately when the inputs are on the GPU. The execution methods always block
-            when the operands are on the CPU to ensure that the user doesn't inadvertently use the result before it becomes
+        compute_type (nvmath.linalg.ComputeType): CUDA compute type. A suitable compute type
+        will be selected if not specified.
+
+        scale_type (nvmath.CudaDataType): CUDA data type. A suitable data type consistent
+            with the compute type will be selected if not specified.
+
+        sm_count_target (int) : The number of SMs to use for execution. The default is 0,
+            corresponding to all available SMs.
+
+        fast_accumulation (bool) : Enable or disable FP8 fast accumulation mode. The default
+            is False (disabled).
+
+        device_id: CUDA device ordinal (used if the MM operands reside on the CPU). Device 0
+            will be used if not specified.
+
+        handle: Linear algebra library handle. A handle will be created if one is not
+            provided.
+
+        logger (logging.Logger): Python Logger object. The root logger will be used if a
+            logger object is not provided.
+
+        memory_limit: Maximum memory available to the MM operation. It can be specified as a
+            value (with optional suffix like K[iB], M[iB], G[iB]) or as a percentage. The
+            default is 80% of the device memory.
+
+        blocking: A flag specifying the behavior of the execution functions and methods,
+            such as :func:`matmul` and :meth:`Matmul.execute`. When ``blocking`` is `True`,
+            the execution methods do not return until the operation is complete. When
+            ``blocking`` is ``"auto"``, the methods return immediately when the inputs are
+            on the GPU. The execution methods always block when the operands are on the CPU
+            to ensure that the user doesn't inadvertently use the result before it becomes
             available. The default is ``"auto"``.
-        allocator: An object that supports the :class:`BaseCUDAMemoryManager` protocol, used to draw device memory. If an
-            allocator is not provided, a memory allocator from the library package will be used
-            (:func:`torch.cuda.caching_allocator_alloc` for PyTorch operands, :func:`cupy.cuda.alloc` otherwise).
+
+        allocator: An object that supports the :class:`BaseCUDAMemoryManager` protocol, used
+            to draw device memory. If an allocator is not provided, a memory allocator from
+            the library package will be used (:func:`torch.cuda.caching_allocator_alloc` for
+            PyTorch operands, :func:`cupy.cuda.alloc` otherwise).
 
     See Also:
        :class:`Matmul`, :func:`matmul`
@@ -139,16 +159,26 @@ class MatmulNumericalImplFlags(IntEnum):
 
 @dataclasses.dataclass
 class MatmulPlanPreferences:
-    """A data class for providing options to the :meth:`Matmul.plan` method and the wrapper function :func:`matmul`.
+    """A data class for providing options to the :meth:`Matmul.plan` method and the
+    wrapper function :func:`matmul`.
 
     Attributes:
-        reduction_scheme_mask (object of type :class:`linalg.advanced.MatmulReductionScheme`) : Enumerators from :class:`linalg.advanced.MatmulReductionScheme`
-            combined with bitwise operator ``|``. The default is all reduction schemes.
-        max_waves_count (float) : The maximum wave count. Selecting a value greater than 0. will exclude algorithms with
-            device utilization greater than specified. The default is 0.
-        numerical_impl_mask (object of type :class:`linalg.advanced.MatmulNumericalImplFlags`) : Enumerators from :class:`linalg.advanced.MatmulNumericalImplFlags`
-            combined with bitwise operator ``|``. The default is all numerical implementation flag choices.
-        limit (int) : The number of algorithms to consider. If not specified, a suitable default will be chosen.
+        reduction_scheme_mask (object of type
+            :class:`linalg.advanced.MatmulReductionScheme`) : Enumerators from
+            :class:`linalg.advanced.MatmulReductionScheme` combined with bitwise operator
+            ``|``. The default is all reduction schemes.
+
+        max_waves_count (float) : The maximum wave count. Selecting a value greater than 0.
+            will exclude algorithms with device utilization greater than specified. The
+            default is 0.
+
+        numerical_impl_mask (object of type
+            :class:`linalg.advanced.MatmulNumericalImplFlags`) : Enumerators from
+            :class:`linalg.advanced.MatmulNumericalImplFlags` combined with bitwise operator
+            ``|``. The default is all numerical implementation flag choices.
+
+        limit (int) : The number of algorithms to consider. If not specified, a suitable
+            default will be chosen.
 
     See Also:
        :meth:`Matmul.plan`, :func:`matmul`

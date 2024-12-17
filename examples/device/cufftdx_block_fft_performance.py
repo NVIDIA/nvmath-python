@@ -74,7 +74,8 @@ def main():
     perf = fft_perf_GFlops(fft_size, batch_size, time_fft_ms)
 
     print(
-        f"#SMs {sms}\nBlocks per SM {blocks_per_sm}\nFFts per block {ffts_per_block}\nBatch size {batch_size}\nTime {time_fft_ms} ms\nPerf {perf} GFlop/s"
+        f"#SMs {sms}\nBlocks per SM {blocks_per_sm}\nFFts per block {ffts_per_block}\nBatch size {batch_size}"
+        f"\nTime {time_fft_ms} ms\nPerf {perf} GFlop/s"
     )
 
 

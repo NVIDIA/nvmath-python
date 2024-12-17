@@ -6,8 +6,11 @@
 This example illustrates the use of inplace update of input operands in stateful FFT APIs.
 
 The input as well as the result from the FFT operations are CuPy ndarrays.
+
 NOTE: The use of inplace updating input operands should be adopted with caution.
-For the following cases, inplace updating the input operands will not affect the result operand:
+
+For the following cases, inplace updating the input operands will not affect the result
+operand:
     - The input operand reside on CPU.
     - The input operand reside on GPU but the operation amounts to a C2R FFT.
 """

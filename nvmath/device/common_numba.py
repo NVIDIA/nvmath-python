@@ -51,9 +51,9 @@ def make_dx_codegen_one_arg(context, builder, type_, arg):
         else:
             val = arg
         return (intTy, val)
-    # Floats and Complex are passed by reference (pointer)
-    # This is because some CUDA C++ types, such as __half2 are non-trivial, and those must be passed
-    # by reference. For consistency we pass everything by reference.
+    # Floats and Complex are passed by reference (pointer) This is because some CUDA C++
+    # types, such as __half2 are non-trivial, and those must be passed by reference. For
+    # consistency we pass everything by reference.
     elif type_ in [float16x2_type, float16x4_type, float32x2_type, float64x2_type] or isinstance(  # noqa: UP038
         type_, (types.Float, types.Complex)
     ):

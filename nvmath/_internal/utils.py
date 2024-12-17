@@ -24,6 +24,8 @@ from . import mem_limit
 from . import package_wrapper
 from . import tensor_wrapper
 from .package_ifc import StreamHolder
+from .tensor_ifc import Tensor
+from .layout import is_contiguous_and_dense
 
 
 def infer_object_package(obj):
@@ -127,8 +129,8 @@ def _raise_invalid_one_of_options(clss, options, options_description, *, cls_key
 
 def _create_stream_ctx_ptr_cupy_stream(package_ifc, stream):
     """
-    Utility function to create a stream context as a "package-native" object, get stream pointer as well as
-    create a cupy stream object.
+    Utility function to create a stream context as a "package-native" object, get stream
+    pointer as well as create a cupy stream object.
     """
     stream_ctx = package_ifc.to_stream_context(stream)
     stream_ptr = package_ifc.to_stream_pointer(stream)
@@ -142,17 +144,20 @@ def device_ctx(new_device_id):
     """
     Semantics:
 
-    1. The device context manager makes the specified device current from the point of entry until the point of exit.
+    1. The device context manager makes the specified device current from the point of entry
+       until the point of exit.
 
-    2. When the context manager exits, the current device is reset to what it was when the context manager was entered.
+    2. When the context manager exits, the current device is reset to what it was when the
+       context manager was entered.
 
-    3. Any explicit setting of the device within the context manager (using cupy.cuda.Device().use(), torch.cuda.set_device(),
-       etc) will overrule the device set by the context manager from that point onwards till the context manager exits. In
-       other words, the context manager provides a local device scope and the current device can be explicitly reset for the
-       remainder of that scope.
+    3. Any explicit setting of the device within the context manager (using
+       cupy.cuda.Device().use(), torch.cuda.set_device(), etc) will overrule the device set
+       by the context manager from that point onwards till the context manager exits. In
+       other words, the context manager provides a local device scope and the current device
+       can be explicitly reset for the remainder of that scope.
 
-    Corollary: if any library function resets the device globally and this is an undesired side-effect, such functions must be
-      called from within the device context manager.
+    Corollary: if any library function resets the device globally and this is an undesired
+        side-effect, such functions must be called from within the device context manager.
 
     Device context managers can be arbitrarily nested.
     """
@@ -201,12 +206,14 @@ def cached_get_or_create_stream(device_id, stream, op_package):
 
 def get_or_create_stream(device_id, stream, op_package):
     """
-    Create a stream object from a stream pointer or extract the stream pointer from a stream object, or
-    use the current stream.
+    Create a stream object from a stream pointer or extract the stream pointer from a stream
+    object, or use the current stream.
 
     Args:
         device_id: The device ID.
+
         stream: A stream object, stream pointer, or None.
+
         op_package: The package the tensor network operands belong to.
 
     Returns:
@@ -277,31 +284,35 @@ def get_operands_data(operands):
     return op_data
 
 
-def create_empty_tensor(cls, extents, dtype, device_id, stream_holder, strides=None):
+def create_empty_tensor(
+    cls: Tensor,
+    extents: Sequence[int],
+    dtype: type,
+    device_id: int | None,
+    stream_holder: StreamHolder,
+    verify_strides: bool,
+    strides: Sequence[int] | None = None,
+) -> Tensor:
     """
-    Create a wrapped tensor of the same type as (the wrapped) cls on the specified device having the
-    specified extents and dtype.
+    Create a wrapped tensor of the same type as (the wrapped) cls on the specified device
+    having the specified extents and dtype.
 
-    The tensor is created within a stream context to allow for asynchronous memory allocators like
-    CuPy's MemoryAsyncPool.
+    The tensor is created within a stream context to allow for asynchronous memory
+    allocators like CuPy's MemoryAsyncPool.
+
+    Note, the function assumes the `strides` are dense (possibly permuted).
+    Otherwise, the behaviour is framework specific and tensor creation may fail
+    or created tensor may be corrupted. Set `verify_strides` to True to check
+    the layout and drop the strides if the layout is not dense.
     """
     ctx = stream_holder.ctx if device_id is not None else contextlib.nullcontext()
     # if device id is none the stream holder must be too
     assert device_id is not None or stream_holder is None
+    if strides is not None and verify_strides and not is_contiguous_and_dense(extents, strides):
+        strides = None
     with ctx:
         tensor = cls.empty(extents, dtype=dtype, device_id=device_id, strides=strides)
     return tensor
-
-
-def create_output_tensor(cls, extents, device_id, stream_holder, data_type, strides=None):
-    """
-    Create output tensor. This operation is ordered through events and is safe to use with asynchronous memory pools.
-    """
-    with device_ctx(device_id):
-        output = create_empty_tensor(cls, extents, data_type, device_id, stream_holder, strides)
-        output_event = stream_holder.obj.record()
-
-    return output, output_event
 
 
 def get_operands_device_id(operands):
@@ -334,21 +345,17 @@ def get_operands_package(operands):
     package = infer_object_package(operands[0].tensor)
     if not all(infer_object_package(operand.tensor) == package for operand in operands):
         packages = {infer_object_package(operand.tensor) for operand in operands}
-        raise TypeError(
-            f"All tensors in the network must be from the same library package. Packages found = {packages}."
-        )
+        raise TypeError(f"All tensors in the network must be from the same library package. Packages found = {packages}.")
     return package
 
 
 def check_operands_match(orig_operands, new_operands, attribute, description):
     """
-    Check if the specified attribute matches between the corresponding new and old operands, and raise an exception if it
-    doesn't.
+    Check if the specified attribute matches between the corresponding new and old operands,
+    and raise an exception if it doesn't.
     """
     if isinstance(orig_operands, Sequence):
-        checks = [
-            getattr(o, attribute) == getattr(n, attribute) for o, n in zip(orig_operands, new_operands, strict=True)
-        ]
+        checks = [getattr(o, attribute) == getattr(n, attribute) for o, n in zip(orig_operands, new_operands, strict=True)]
 
         if not all(checks):
             mismatch = [
@@ -357,7 +364,9 @@ def check_operands_match(orig_operands, new_operands, attribute, description):
                 if predicate is False
             ]
             mismatch = formatters.array2string(mismatch)
-            message = f"""The {description} of each new operand must match the {description} of the corresponding original operand.
+            message = f"""\
+The {description} of each new operand must match the {description} of the corresponding original operand.
+
 The mismatch in {description} as a sequence of "position: original {description} => new {description}" is: \n{mismatch}"""
             raise ValueError(message)
     else:
@@ -369,8 +378,8 @@ The mismatch in {description} as a sequence of "position: original {description}
 
 def check_attribute_match(orig_attribute, new_attribute, description):
     """
-    Check if the specified attribute matches between the corresponding new and old operands, and raise an exception if it
-    doesn't.
+    Check if the specified attribute matches between the corresponding new and old operands,
+    and raise an exception if it doesn't.
     """
     check = orig_attribute == new_attribute
     if not check:
@@ -381,7 +390,8 @@ def check_attribute_match(orig_attribute, new_attribute, description):
 # Unused since cuQuantum 22.11
 def check_alignments_match(orig_alignments, new_alignments):
     """
-    Check if alignment matches between the corresponding new and old operands, and raise an exception if it doesn't.
+    Check if alignment matches between the corresponding new and old operands, and raise an
+    exception if it doesn't.
     """
     checks = [o == n for o, n in zip(orig_alignments, new_alignments, strict=True)]
 
@@ -392,7 +402,9 @@ def check_alignments_match(orig_alignments, new_alignments):
             if predicate is False
         ]
         mismatch = formatters.array2string(mismatch)
-        message = f"""The data alignment of each new operand must match the data alignment of the corresponding original operand.
+        message = f"""\
+The data alignment of each new operand must match the data alignment of the corresponding original operand.
+
 The mismatch in data alignment as a sequence of "position: original alignment => new alignment" is: \n{mismatch}"""
         raise ValueError(message)
 
@@ -415,9 +427,7 @@ def check_tensor_qualifiers(qualifiers, dtype, num_inputs):
         message = prolog + f" The shape of the ndarray is {qualifiers.shape}."
         raise ValueError(message)
     elif len(qualifiers) != num_inputs:
-        message = (
-            prolog + f" The length of the ndarray is {len(qualifiers)}, while the expected length is {num_inputs}."
-        )
+        message = prolog + f" The length of the ndarray is {len(qualifiers)}, while the expected length is {num_inputs}."
         raise ValueError(message)
 
     return qualifiers
@@ -440,7 +450,8 @@ def check_autotune_params(iterations):
 
 def get_ptr_from_memory_pointer(mem_ptr):
     """
-    Access the value associated with one of the attributes 'device_ptr', 'device_pointer', 'ptr'.
+    Access the value associated with one of the attributes 'device_ptr', 'device_pointer',
+    'ptr'.
     """
     attributes = ("device_ptr", "device_pointer", "ptr")
     for attr in attributes:
@@ -481,7 +492,8 @@ class Value:
 
 def check_and_set_options(required: MutableMapping[str, Value], provided: MutableMapping[str, object]):
     """
-    Update each option specified in 'required' by getting the value from 'provided' if it exists or using a default.
+    Update each option specified in 'required' by getting the value from 'provided' if it
+    exists or using a default.
     """
     for option, value in required.items():
         try:
@@ -496,20 +508,22 @@ def check_and_set_options(required: MutableMapping[str, Value], provided: Mutabl
 @contextlib.contextmanager
 def cuda_call_ctx(stream_holder, blocking=True, timing=True):
     """
-    A simple context manager that provides (non-)blocking behavior depending on the `blocking` parameter for CUDA calls.
-      The call is timed only for blocking behavior when timing is requested.
+    A simple context manager that provides (non-)blocking behavior depending on the
+    `blocking` parameter for CUDA calls. The call is timed only for blocking behavior when
+    timing is requested.
 
-    An `end` event is recorded after the CUDA call for use in establishing stream ordering for non-blocking calls. This
-    event is returned together with a `Value` object that stores the elapsed time if the call is blocking and timing is
-    requested, or None otherwise.
+    An `end` event is recorded after the CUDA call for use in establishing stream ordering
+    for non-blocking calls. This event is returned together with a `Value` object that
+    stores the elapsed time if the call is blocking and timing is requested, or None
+    otherwise.
     """
     stream = stream_holder.obj
 
     if blocking:
-        start = cp.cuda.Event(disable_timing=False if timing else True)
+        start = cp.cuda.Event(disable_timing=not timing)
         stream.record(start)
 
-    end = cp.cuda.Event(disable_timing=False if timing and blocking else True)
+    end = cp.cuda.Event(disable_timing=not (timing and blocking))
 
     time = Value(None, validator=lambda v: True)
     yield end, time
@@ -545,15 +559,18 @@ def atomic(
     handler: Callable[[typing.Any, Exception | None], bool] | Callable[[Exception | None], bool], method: bool = False
 ) -> Callable:
     """
-    A decorator that provides "succeed or roll-back" semantics. A typical use for this is to release partial resources if an
-    exception occurs.
+    A decorator that provides "succeed or roll-back" semantics. A typical use for this is to
+    release partial resources if an exception occurs.
 
     Args:
-        handler: A function to call when an exception occurs. The handler takes a single argument, which is the exception
-            object, and returns a boolean stating whether the same exception should be reraised. We assume that this function
-            does not raise an exception.
-        method: Specify if the wrapped function as well as the exception handler are methods bound to the same object
-            (method = True) or they are free functions (method = False).
+        handler: A function to call when an exception occurs. The handler takes a single
+            argument, which is the exception object, and returns a boolean stating whether
+            the same exception should be reraised. We assume that this function does not
+            raise an exception.
+
+        method: Specify if the wrapped function as well as the exception handler are methods
+            bound to the same object (method = True) or they are free functions (method =
+            False).
 
     Returns:
         Callable: A decorator that creates the wrapping.
@@ -567,8 +584,8 @@ def atomic(
         @functools.wraps(wrapped_function)
         def inner(*args, **kwargs):
             """
-            Call the wrapped function and return the result. If an exception occurs, then call the exception handler and
-            reraise the exception.
+            Call the wrapped function and return the result. If an exception occurs, then
+            call the exception handler and reraise the exception.
             """
             try:
                 result = wrapped_function(*args, **kwargs)
@@ -593,8 +610,9 @@ def precondition(checker: Callable[..., None], what: str = "") -> Callable:
     A decorator that adds checks to ensure any preconditions are met.
 
     Args:
-        checker: The function to call to check whether the preconditions are met. It has the same signature as the wrapped
-            function with the addition of the keyword argument `what`.
+        checker: The function to call to check whether the preconditions are met. It has the
+            same signature as the wrapped function with the addition of the keyword argument
+            `what`.
         what: A string that is passed in to `checker` to provide context information.
 
     Returns:
@@ -643,13 +661,24 @@ def get_mpi_comm_pointer(comm):
 
 
 COMMON_SHARED_DOC_MAP = {
-    "operand": "A tensor (ndarray-like object). The currently supported types are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.",
-    "stream": "Provide the CUDA stream to use for executing the operation. Acceptable inputs include ``cudaStream_t`` (as Python :class:`int`), :class:`cupy.cuda.Stream`, "
-    "and :class:`torch.cuda.Stream`. If a stream is not provided, the current stream from the operand package will be used.",
-    "release_workspace": "A value of `True` specifies that the stateful object should release workspace memory back to the package memory pool on function return, "
-    "while a value of `False` specifies that the object should retain the memory. "
-    "This option may be set to `True` if the application performs other operations that consume a lot of memory between successive calls to the (same or different) :meth:`execute` API, "
-    "but incurs a small overhead due to obtaining and releasing workspace memory from and to the package memory pool on every call. The default is `False`.",
+    "operand": """\
+A tensor (ndarray-like object). The currently supported types are :class:`numpy.ndarray`,
+:class:`cupy.ndarray`, and :class:`torch.Tensor`.""".replace("\n", " "),
+    #
+    "stream": """\
+Provide the CUDA stream to use for executing the operation. Acceptable inputs include
+``cudaStream_t`` (as Python :class:`int`), :class:`cupy.cuda.Stream`, and
+:class:`torch.cuda.Stream`. If a stream is not provided, the current stream from the operand
+package will be used.""".replace("\n", " "),
+    #
+    "release_workspace": """\
+A value of `True` specifies that the stateful object should release workspace memory back to
+the package memory pool on function return, while a value of `False` specifies that the
+object should retain the memory. This option may be set to `True` if the application
+performs other operations that consume a lot of memory between successive calls to the (same
+or different) :meth:`execute` API, but incurs a small overhead due to obtaining and
+releasing workspace memory from and to the package memory pool on every call. The default is
+`False`.""".replace("\n", " "),
 }
 
 

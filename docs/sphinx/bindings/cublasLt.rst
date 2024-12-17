@@ -3,7 +3,8 @@
 cuBLASLt (:mod:`nvmath.bindings.cublaslt`)
 ==========================================
 
-For detailed documentation on the original C APIs, please refer to `cuBLASLt documentation <https://docs.nvidia.com/cuda/cublas/#using-the-cublaslt-api>`_.
+For detailed documentation on the original C APIs, refer to the `cuBLASLt documentation
+<https://docs.nvidia.com/cuda/cublas/#using-the-cublaslt-api>`_.
 
 Enums and constants
 *******************

@@ -22,8 +22,8 @@ _COMMON_APIS_PREFIX = ["curand_", "cu", "cu"]
 _INIT_DOC = """init(..., state)
     Initialize the RNG state.
 
-    The arguments depend upon the selected bit generator
-    (see the overloads of `curand_init` in `cuRAND docs <https://docs.nvidia.com/cuda/curand/group__DEVICE.html>`_).
+    The arguments depend upon the selected bit generator (see the overloads of `curand_init`
+    in `cuRAND docs <https://docs.nvidia.com/cuda/curand/group__DEVICE.html>`_).
 
     Example:
 
@@ -37,17 +37,19 @@ _INIT_DOC = """init(..., state)
         >>> blocks = 64
         >>> nthreads = blocks * threads
 
-        Let us show how to use `init` with :class:`nvmath.device.random.StatesPhilox4_32_10` states.
-        The same applies to :class:`nvmath.device.random.StatesMRG32k3a` and
+        Let us show how to use `init` with :class:`nvmath.device.random.StatesPhilox4_32_10`
+        states. The same applies to :class:`nvmath.device.random.StatesMRG32k3a` and
         :class:`nvmath.device.random.StatesXORWOW`.
 
-        First, create an array of states (one per thread) using :class:`nvmath.device.random.StatesPhilox4_32_10`
-        constructor.
+        First, create an array of states (one per thread) using
+        :class:`nvmath.device.random.StatesPhilox4_32_10` constructor.
 
         >>> states = random.StatesPhilox4_32_10(nthreads)
 
-        Define a kernel to initialize the states. Each thread will initialize one element of `states`.
-        For the `Philox4_32_10 <https://docs.nvidia.com/cuda/curand/group__DEVICE.html#group__DEVICE_1ga613d37dacbc50494f2f859ef0d378b8>`_ generator, the `init` arguments are: `seed`, `subsequence`, `offset`.
+        Define a kernel to initialize the states. Each thread will initialize one element of
+        `states`. For the `Philox4_32_10
+        <https://docs.nvidia.com/cuda/curand/group__DEVICE.html#group__DEVICE_1ga613d37dacbc50494f2f859ef0d378b8>`_
+        generator, the `init` arguments are: `seed`, `subsequence`, `offset`.
 
         >>> @cuda.jit(link=compiled_apis.files, extensions=compiled_apis.extension)
         ... def setup(states):
@@ -58,20 +60,24 @@ _INIT_DOC = """init(..., state)
 
         >>> setup[blocks, threads](states)
 
-        Now, you can use the `states` array to generate random numbers using the random samplers available.
+        Now, you can use the `states` array to generate random numbers using the random
+        samplers available.
 
-        For Sobol' family of quasirandom number generators, initialization is a bit more complex as it
-        requires preparing a set of *direction vectors* and *scramble constants*. In this example, we
-        will setup :class:`nvmath.device.random.StatesScrambledSobol64` states.
+        For Sobol' family of quasirandom number generators, initialization is a bit more
+        complex as it requires preparing a set of *direction vectors* and *scramble
+        constants*. In this example, we will setup
+        :class:`nvmath.device.random.StatesScrambledSobol64` states.
 
-        Direction vectors can be obtained with :func:`nvmath.device.random_helpers.get_direction_vectors64`:
+        Direction vectors can be obtained with
+        :func:`nvmath.device.random_helpers.get_direction_vectors64`:
 
         >>> from nvmath.device import random_helpers
         >>> hostVectors = random_helpers.get_direction_vectors64(
         ...     random.random_helpers.DirectionVectorSet.SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6, nthreads)
         >>> sobolDirectionVectors = cuda.to_device(hostVectors)
 
-        To get scramble constants, use :func:`nvmath.device.random_helpers.get_scramble_constants64`:
+        To get scramble constants, use
+        :func:`nvmath.device.random_helpers.get_scramble_constants64`:
 
         >>> hostScrambleConstants = random_helpers.get_scramble_constants64(nthreads)
         >>> sobolScrambleConstants = cuda.to_device(hostScrambleConstants)
@@ -201,7 +207,6 @@ def _wrap_sampler(new_name, *, extra_arguments_list: list | None = None, extra_a
     # Additional arguments for sampler, if any, other than 'state'.
     num_extra_arguments = len(extra_arguments_list)
     extra_arguments_str = "" if num_extra_arguments == 0 else ", {}".format(", ".join(extra_arguments_list))
-    extra_arguments_str += ")"
 
     # Infer data needed for the description template from the name.
     m = re.match(r"([a-z_]+)([24])?(_([\w]+))?", new_name)
@@ -318,18 +323,14 @@ def _create_symbols():
     extra_arguments_list = ["mean", "stddev"]
     extra_arguments_doc = ["The mean value", "The standard deviation"]
     for sampler in _SAMPLERS_LOG_NORMAL:
-        function = _wrap_sampler(
-            sampler, extra_arguments_list=extra_arguments_list, extra_arguments_doc=extra_arguments_doc
-        )
+        function = _wrap_sampler(sampler, extra_arguments_list=extra_arguments_list, extra_arguments_doc=extra_arguments_doc)
         setattr(random_module, sampler, function)
 
     # The poisson distribution requires an extra argument.
     extra_arguments_list = ["Lambda"]
     extra_arguments_doc = ["The parameter characterizing the Poisson distribution"]
     for sampler in _SAMPLERS_POISSON:
-        function = _wrap_sampler(
-            sampler, extra_arguments_list=extra_arguments_list, extra_arguments_doc=extra_arguments_doc
-        )
+        function = _wrap_sampler(sampler, extra_arguments_list=extra_arguments_list, extra_arguments_doc=extra_arguments_doc)
         setattr(random_module, sampler, function)
 
 
@@ -362,12 +363,13 @@ class Compile:
     """
     Compile the random device APIs with the specified compute capability.
 
-    The ``files`` and ``extension`` attributes should be used as the arguments for `numba.cuda.jit`
-    decorator in Numba kernels which use random device APIs.
+    The ``files`` and ``extension`` attributes should be used as the arguments for
+    :py:func:`numba.cuda.jit` decorator in Numba kernels which use random device APIs.
 
     Args:
-        cc: (optional) the compute capability specified as an object of type `nvmath.device.ComputeCapability`. If
-           not specified, the default compute capability will be used.
+        cc: (optional) the compute capability specified as an object of type
+            :py:class:`nvmath.device.ComputeCapability`. If not specified, the default
+            compute capability will be used.
 
     Example:
         >>> from numba import cuda
@@ -385,7 +387,8 @@ class Compile:
             cc = nvmath.device.common_cuda.get_default_code_type().cc
         elif not isinstance(cc, nvmath.device.ComputeCapability):
             raise ValueError(
-                f"The specified compute capability {cc} is not valid. It must be an object of type `nvmath.device.ComputeCapability`."
+                f"The specified compute capability {cc} is not valid. "
+                "It must be an object of type :py:class:`nvmath.device.ComputeCapability`."
             )
         self.cc = cc
 

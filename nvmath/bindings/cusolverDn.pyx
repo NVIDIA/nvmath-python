@@ -3033,3 +3033,54 @@ cpdef int get_deterministic_mode(intptr_t handle) except *:
         status = cusolverDnGetDeterministicMode(<Handle>handle, &mode)
     check_status(status)
     return <int>mode
+
+
+cpdef tuple xlarft_buffer_size(intptr_t handle, intptr_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, int data_type_v, intptr_t v, int64_t ldv, int data_type_tau, intptr_t tau, int data_type_t, intptr_t t, int64_t ldt, int compute_type):
+    """See `cusolverDnXlarft_bufferSize`."""
+    cdef size_t workspace_in_bytes_on_device
+    cdef size_t workspace_in_bytes_on_host
+    with nogil:
+        status = cusolverDnXlarft_bufferSize(<Handle>handle, <Params>params, direct, storev, n, k, <DataType>data_type_v, <const void*>v, ldv, <DataType>data_type_tau, <const void*>tau, <DataType>data_type_t, <void*>t, ldt, <DataType>compute_type, &workspace_in_bytes_on_device, &workspace_in_bytes_on_host)
+    check_status(status)
+    return (workspace_in_bytes_on_device, workspace_in_bytes_on_host)
+
+
+cpdef xlarft(intptr_t handle, intptr_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, int data_type_v, intptr_t v, int64_t ldv, int data_type_tau, intptr_t tau, int data_type_t, intptr_t t, int64_t ldt, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host):
+    """See `cusolverDnXlarft`."""
+    with nogil:
+        status = cusolverDnXlarft(<Handle>handle, <Params>params, direct, storev, n, k, <DataType>data_type_v, <const void*>v, ldv, <DataType>data_type_tau, <const void*>tau, <DataType>data_type_t, <void*>t, ldt, <DataType>compute_type, <void*>buffer_on_device, workspace_in_bytes_on_device, <void*>buffer_on_host, workspace_in_bytes_on_host)
+    check_status(status)
+
+
+cpdef tuple xsyev_batched_buffer_size(intptr_t handle, intptr_t params, int jobz, int uplo, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int compute_type, int64_t batch_size):
+    """See `cusolverDnXsyevBatched_bufferSize`."""
+    cdef size_t workspace_in_bytes_on_device
+    cdef size_t workspace_in_bytes_on_host
+    with nogil:
+        status = cusolverDnXsyevBatched_bufferSize(<Handle>handle, <Params>params, <cusolverEigMode_t>jobz, <cublasFillMode_t>uplo, n, <DataType>data_type_a, <const void*>a, lda, <DataType>data_type_w, <const void*>w, <DataType>compute_type, &workspace_in_bytes_on_device, &workspace_in_bytes_on_host, batch_size)
+    check_status(status)
+    return (workspace_in_bytes_on_device, workspace_in_bytes_on_host)
+
+
+cpdef xsyev_batched(intptr_t handle, intptr_t params, int jobz, int uplo, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info, int64_t batch_size):
+    """See `cusolverDnXsyevBatched`."""
+    with nogil:
+        status = cusolverDnXsyevBatched(<Handle>handle, <Params>params, <cusolverEigMode_t>jobz, <cublasFillMode_t>uplo, n, <DataType>data_type_a, <void*>a, lda, <DataType>data_type_w, <void*>w, <DataType>compute_type, <void*>buffer_on_device, workspace_in_bytes_on_device, <void*>buffer_on_host, workspace_in_bytes_on_host, <int*>info, batch_size)
+    check_status(status)
+
+
+cpdef tuple xgeev_buffer_size(intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int data_type_vl, intptr_t vl, int64_t ldvl, int data_type_vr, intptr_t vr, int64_t ldvr, int compute_type):
+    """See `cusolverDnXgeev_bufferSize`."""
+    cdef size_t workspace_in_bytes_on_device
+    cdef size_t workspace_in_bytes_on_host
+    with nogil:
+        status = cusolverDnXgeev_bufferSize(<Handle>handle, <Params>params, <cusolverEigMode_t>jobvl, <cusolverEigMode_t>jobvr, n, <DataType>data_type_a, <const void*>a, lda, <DataType>data_type_w, <const void*>w, <DataType>data_type_vl, <const void*>vl, ldvl, <DataType>data_type_vr, <const void*>vr, ldvr, <DataType>compute_type, &workspace_in_bytes_on_device, &workspace_in_bytes_on_host)
+    check_status(status)
+    return (workspace_in_bytes_on_device, workspace_in_bytes_on_host)
+
+
+cpdef xgeev(intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int data_type_vl, intptr_t vl, int64_t ldvl, int data_type_vr, intptr_t vr, int64_t ldvr, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info):
+    """See `cusolverDnXgeev`."""
+    with nogil:
+        status = cusolverDnXgeev(<Handle>handle, <Params>params, <cusolverEigMode_t>jobvl, <cusolverEigMode_t>jobvr, n, <DataType>data_type_a, <void*>a, lda, <DataType>data_type_w, <void*>w, <DataType>data_type_vl, <void*>vl, ldvl, <DataType>data_type_vr, <void*>vr, ldvr, <DataType>compute_type, <void*>buffer_on_device, workspace_in_bytes_on_device, <void*>buffer_on_host, workspace_in_bytes_on_host, <int*>info)
+    check_status(status)

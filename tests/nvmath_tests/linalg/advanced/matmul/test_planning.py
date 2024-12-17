@@ -29,14 +29,26 @@ from .utils import *
 @pytest.mark.parametrize("iterations", (1, 5))
 @pytest.mark.parametrize("prune", (1, 5, 9))
 @pytest.mark.parametrize("use_cuda", (True, False))
-def test_autotuning(framework, dtype, n, m, k, max_waves_count, iterations, prune, use_cuda):
+def test_autotuning(
+    framework,
+    dtype,
+    n,
+    m,
+    k,
+    max_waves_count,
+    iterations,
+    prune,
+    use_cuda,
+):
     a = sample_matrix(framework, dtype, (n, k), use_cuda)
     b = sample_matrix(framework, dtype, (k, m), use_cuda)
     c = sample_matrix(framework, dtype, (n, m), use_cuda)
     mm = Matmul(a, b, beta=0.7, c=c)
     with allow_cublas_unsupported(
         allow_invalid_value=False,
-        message=f"Unsupported configuration: {framework}-{dtype}-{n}-{m}-{k}-{max_waves_count}-{iterations}-{prune}-{use_cuda}.",
+        message=(
+            f"Unsupported configuration: {framework}-{dtype}-{n}-{m}-{k}-{max_waves_count}-{iterations}-{prune}-{use_cuda}."
+        ),
     ):
         mm.plan(preferences=MatmulPlanPreferences(limit=9, max_waves_count=max_waves_count))
     num_algorithms = len(mm.algorithms)

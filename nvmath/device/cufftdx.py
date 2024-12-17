@@ -30,14 +30,26 @@ CUFFTDX_DATABASE = None
 FFTDX_DOCSTRING = SHARED_DEVICE_DOCSTRINGS.copy()
 FFTDX_DOCSTRING.update(
     {
-        "size": "The size of the FFT to calculate.",
-        "fft_type": "A string specifying the type of FFT operation, can be ``'c2c'``, ``'c2r'`` or ``'r2c'``.",
-        "direction": "A string specifying the direction of FFT, can be ``'forward'`` or ``'inverse'``. If not provided, "
-        "will be ``'forward'`` if complex-to-real FFT is specified and ``'inverse'`` if real-to-complex FFT is specified.",
-        "ffts_per_block": "The number of FFTs calculated per CUDA block, optional. The default is 1. Alternatively, if provided as ``'suggested'``, "
-        "will be set to a suggested value",
-        "elements_per_thread": "The number of elements per thread, optional. The default is 1. Alternatively, if provided as ``'suggested'``, will be set to a suggested value. ",
-        "real_fft_options": "A dictionary specifying the options for real FFT operation, optional.",
+        "size": """\
+The size of the FFT to calculate.""".replace("\n", " "),
+        #
+        "fft_type": """\
+A string specifying the type of FFT operation, can be ``'c2c'``, ``'c2r'`` or ``'r2c'``.""".replace("\n", " "),
+        #
+        "direction": """\
+A string specifying the direction of FFT, can be ``'forward'`` or ``'inverse'``. If not provided, will be ``'forward'``
+if complex-to-real FFT is specified and ``'inverse'`` if real-to-complex FFT is specified.""".replace("\n", " "),
+        #
+        "ffts_per_block": """\
+The number of FFTs calculated per CUDA block, optional. The default is 1. Alternatively, if provided as ``'suggested'``
+will be set to a suggested value""".replace("\n", " "),
+        #
+        "elements_per_thread": """\
+The number of elements per thread, optional. The default is 1. Alternatively, if provided as ``'suggested'``, will be
+set to a suggested value. """.replace("\n", " "),
+        #
+        "real_fft_options": """\
+A dictionary specifying the options for real FFT operation, optional.""".replace("\n", " "),
     }
 )
 
@@ -45,30 +57,43 @@ FFTDX_DOCSTRING.update(
 @docstring_decorator(FFTDX_DOCSTRING, skip_missing=False)
 class FFTOptions:
     """
-    A class that encapsulates a partial FFT device function.
-    A partial device function can be queried for available or optimal values for the some knobs (such as `leading_dimension` or `block_dim`).
-    It does not contain a compiled, ready-to-use, device function until finalized using :meth:`create`.
+    A class that encapsulates a partial FFT device function. A partial device function can
+    be queried for available or optimal values for the some knobs (such as
+    `leading_dimension` or `block_dim`). It does not contain a compiled, ready-to-use,
+    device function until finalized using :meth:`create`.
 
     Args:
         size (int): {size}
-        precision (str): {precision}
-        fft_type (str): {fft_type}
-        code_type (CodeType): {code_type}
-        execution (str): {execution}
-        direction (str): {direction}
-        ffts_per_block (int): {ffts_per_block}
-        elements_per_thread (int): {elements_per_thread}
-        real_fft_options (dict): {real_fft_options} User may specify the following options in the dictionary:
 
-            - ``'complex_layout'``, currently supports ``'natural'``, ``'packed'``, and ``'full'``.
+        precision (str): {precision}
+
+        fft_type (str): {fft_type}
+
+        code_type (CodeType): {code_type}
+
+        execution (str): {execution}
+
+        direction (str): {direction}
+
+        ffts_per_block (int): {ffts_per_block}
+
+        elements_per_thread (int): {elements_per_thread}
+
+        real_fft_options (dict): {real_fft_options} User may specify the following options
+        in the dictionary:
+
+            - ``'complex_layout'``, currently supports ``'natural'``, ``'packed'``, and
+              ``'full'``.
             - ``'real_mode'``, currently supports ``'normal'`` and ``'folded``.
 
     Note:
-        The class is not meant to used directly with its constructor. Users are instead advised to use :func:`fft` create the object.
+        The class is not meant to used directly with its constructor. Users are instead
+        advised to use :func:`fft` create the object.
 
     See Also:
         The attributes of this class provide a 1:1 mapping with the CUDA C++ cuFFTDx APIs.
-        For further details, please refer to `cuFFTDx documentation <https://docs.nvidia.com/cuda/cufftdx/index.html>`_.
+        For further details, please refer to `cuFFTDx documentation
+        <https://docs.nvidia.com/cuda/cufftdx/index.html>`_.
     """
 
     def __init__(
@@ -89,8 +114,7 @@ class FFTOptions:
         code_type = CodeType(code_type[0], ComputeCapability(*code_type[1]))
         if code_type.cc.major < 7:
             raise RuntimeError(
-                "Minimal compute capability 7.0 is required by cuFFTDx, got "
-                f"{code_type.cc.major}.{code_type.cc.minor}"
+                f"Minimal compute capability 7.0 is required by cuFFTDx, got {code_type.cc.major}.{code_type.cc.minor}"
             )
 
         #
@@ -180,9 +204,7 @@ class FFTOptions:
 
     def valid(self, *knobs):
         if not (set(knobs) <= {"ffts_per_block", "elements_per_thread"}):
-            raise ValueError(
-                f"Unsupported knob. Only valid knobs are ffts_per_block and elements_per_thread but got {knobs}"
-            )
+            raise ValueError(f"Unsupported knob. Only valid knobs are ffts_per_block and elements_per_thread but got {knobs}")
 
         constraints = {
             "fft_type": self.fft_type,
@@ -201,9 +223,7 @@ class FFTOptions:
 
         global CUFFTDX_DATABASE
         if CUFFTDX_DATABASE is None:
-            CUFFTDX_DATABASE = cuFFTDxDatabase.create(
-                os.path.join(MATHDX_HOME, "include/cufftdx/include/database/records/")
-            )
+            CUFFTDX_DATABASE = cuFFTDxDatabase.create(os.path.join(MATHDX_HOME, "include/cufftdx/include/database/records/"))
 
         return CUFFTDX_DATABASE.query(knobs, constraints)
 
@@ -417,29 +437,43 @@ class FFTNumba(FFTCompiled):
 @docstring_decorator(FFTDX_DOCSTRING, skip_missing=False)
 def fft(*, compiler=None, **kwargs):
     """
-    Create an :class:`FFTOptions` object that encapsulates a compiled and ready-to-use FFT device function.
+    Create an :class:`FFTOptions` object that encapsulates a compiled and ready-to-use FFT
+    device function.
 
     Args:
         size (int): {size}
-        precision (str): {precision}
-        fft_type (str): {fft_type}
-        compiler (str): {compiler}
-        code_type (CodeType): {code_type}. Optional if compiler is specified as ``'Numba'``.
-        execution (str): {execution}
-        direction (str): {direction}
-        ffts_per_block (int): {ffts_per_block}
-        elements_per_thread (int): {elements_per_thread}
-        real_fft_options (dict): {real_fft_options} User may specify the following options in the dictionary:
 
-            - ``'complex_layout'``, currently supports ``'natural'``, ``'packed'``, and ``'full'``.
+        precision (str): {precision}
+
+        fft_type (str): {fft_type}
+
+        compiler (str): {compiler}
+
+        code_type (CodeType): {code_type}. Optional if compiler is specified as ``'Numba'``.
+
+        execution (str): {execution}
+
+        direction (str): {direction}
+
+        ffts_per_block (int): {ffts_per_block}
+
+        elements_per_thread (int): {elements_per_thread}
+
+        real_fft_options (dict): {real_fft_options} User may specify the following options
+        in the dictionary:
+
+            - ``'complex_layout'``, currently supports ``'natural'``, ``'packed'``, and
+              ``'full'``.
             - ``'real_mode'``, currently supports ``'normal'`` and ``'folded'``.
 
     See Also:
-        The attributes of :class:`FFTOptions` provide a 1:1 mapping with the CUDA C++ cuFFTDx APIs.
-        For further details, please refer to `cuFFTDx documentation <https://docs.nvidia.com/cuda/cufftdx/index.html>`_.
+        The attributes of :class:`FFTOptions` provide a 1:1 mapping with the CUDA C++
+        cuFFTDx APIs. For further details, please refer to `cuFFTDx documentation
+        <https://docs.nvidia.com/cuda/cufftdx/index.html>`_.
 
     Examples:
-        Examples can be found in the `nvmath/examples/device <https://github.com/NVIDIA/nvmath-python/tree/main/examples/device>`_ directory.
+        Examples can be found in the `nvmath/examples/device
+        <https://github.com/NVIDIA/nvmath-python/tree/main/examples/device>`_ directory.
     """
     check_in("compiler", compiler, [None, "numba"])
     if compiler is None:

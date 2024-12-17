@@ -62,7 +62,12 @@ class TorchTensor(Tensor):
     @classmethod
     def empty(cls, shape, *, dtype="float32", device_id=None, strides=None):
         """
-        Create an empty tensor of the specified shape and data type on the specified device (None, 'cpu', or device id).
+        Create an empty tensor of the specified shape and data type on the specified device
+        (None, 'cpu', or device id).
+
+        Note, that the strides, if specified, should correspond to a dense
+        (possibly permuted) tensor and MUST NOT overlap.
+        Otherwise, the behaviour is not defined.
         """
         dtype = TorchTensor.name_to_dtype[dtype]
         if strides:
@@ -81,7 +86,7 @@ class TorchTensor(Tensor):
         if not (device == "cpu" or isinstance(device, int)):
             raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device}'.")
 
-        non_blocking = False if device == "cpu" else True
+        non_blocking = device != "cpu"
 
         with stream_holder.ctx:
             tensor_device = self.tensor.to(device=device, non_blocking=non_blocking)
