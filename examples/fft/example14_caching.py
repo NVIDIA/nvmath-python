@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Example showing how to reuse cached objects for repeated computation on the same problem specification with different operands.
+Example showing how to reuse cached objects for repeated computation on the same problem
+specification with different operands.
 
 The cached implementation is provided in `caching.py`.
 """

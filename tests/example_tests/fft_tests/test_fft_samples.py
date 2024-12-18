@@ -45,9 +45,7 @@ def _has_numba():
 
 # The HAS_CUDA filtering may be extended for runs with no CUFFT at all
 skip_cufft_jit_callback = (
-    not HAS_CUFFT
-    or not _has_numba()
-    or bindings._internal.cufft._inspect_function_pointer("__cufftXtSetJITCallback") == 0
+    not HAS_CUFFT or not _has_numba() or bindings._internal.cufft._inspect_function_pointer("__cufftXtSetJITCallback") == 0
 )
 
 samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "fft")

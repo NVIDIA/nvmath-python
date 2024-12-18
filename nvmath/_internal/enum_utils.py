@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Factories for create options dataclasses, as well as utilities to add docstring to enum classes.
+Factories for create options dataclasses, as well as utilities to add docstring to enum
+classes.
 """
 
 import dataclasses
@@ -27,8 +28,12 @@ def create_options_class_from_enum(
 
     Args:
        options_class_name: Name of the dataclass that will be created.
+
        enum_class: The IntEnum class that contains the options for the dataclass.
-       get_attr_dtype: A callable that takes in an enum value as the argument and returns the size in bytes of the cuTensorNet.
+
+       get_attr_dtype: A callable that takes in an enum value as the argument and returns
+            the size in bytes of the cuTensorNet.
+
        filter_re: A re definition that defines the match named 'option_name'.
     """
     if r"(?P<option_name>" not in filter_re:
@@ -119,7 +124,8 @@ def camel_to_snake(name, upper=True):
 
 def determine_enum_prefix(enum_class, chomp):
     """
-    This function assumes that the convention used to translate C enumerators to Python enum names holds.
+    This function assumes that the convention used to translate C enumerators to Python enum
+    names holds.
     """
 
     prefix = enum_class.__module__.split(".")[-1].upper()

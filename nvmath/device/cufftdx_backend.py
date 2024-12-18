@@ -8,9 +8,7 @@ from .common_cpp import generate_type_map, NP_TYPES_TO_CPP_TYPES
 from .types import REAL_NP_TYPES
 
 
-def validate(
-    size, precision, fft_type, execution, direction, ffts_per_block, elements_per_thread, real_fft_options, code_type
-):
+def validate(size, precision, fft_type, execution, direction, ffts_per_block, elements_per_thread, real_fft_options, code_type):
     if size <= 0:
         raise ValueError(f"size must be > 0. Got {size}")
     check_in("precision", precision, REAL_NP_TYPES)
@@ -18,32 +16,27 @@ def validate(
     check_in("execution", execution, ["Block", "Thread"])
     if direction is not None:
         check_in("direction", direction, ["forward", "inverse"])
-    if ffts_per_block is None:
-        pass
-    elif ffts_per_block == "suggested":
+    if ffts_per_block in (None, "suggested"):
         pass
     else:
         if ffts_per_block <= 0:
             raise ValueError(
                 f"ffts_per_block must be None, 'suggested' or a positive integer ; got ffts_per_block = {ffts_per_block}"
             )
-    if elements_per_thread is None:
-        pass
-    elif elements_per_thread == "suggested":
+    if elements_per_thread in (None, "suggested"):
         pass
     else:
         if elements_per_thread <= 0:
             raise ValueError(
-                f"elements_per_thread must be None, 'suggested' or a positive integer ; got elements_per_thread = {elements_per_thread}"
+                f"elements_per_thread must be None, 'suggested' or a positive integer ; "
+                f"got elements_per_thread = {elements_per_thread}"
             )
     if real_fft_options is None:
         pass
     else:
         check_contains(real_fft_options, "complex_layout")
         check_contains(real_fft_options, "real_mode")
-        check_in(
-            "real_fft_options['complex_layout']", real_fft_options["complex_layout"], ["natural", "packed", "full"]
-        )
+        check_in("real_fft_options['complex_layout']", real_fft_options["complex_layout"], ["natural", "packed", "full"])
         check_in("real_fft_options['real_mode']", real_fft_options["real_mode"], ["normal", "folded"])
     check_code_type(code_type)
 
@@ -108,9 +101,7 @@ def generate_FFT(
     return cpp, name
 
 
-def generate_block(
-    size, precision, fft_type, direction, code_type, ffts_per_block, elements_per_thread, real_fft_options
-):
+def generate_block(size, precision, fft_type, direction, code_type, ffts_per_block, elements_per_thread, real_fft_options):
     FFT, name = generate_FFT(
         size=size,
         precision=precision,

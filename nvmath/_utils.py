@@ -135,9 +135,7 @@ def force_loading_nvrtc(cu_ver):
                 # This absolute path will always be correct regardless of the package source
                 nvrtc_path = win32api.GetModuleFileNameW(_nvrtc_obj[0]._handle)
                 dso_dir = os.path.dirname(nvrtc_path)
-                dso_path = os.path.join(
-                    dso_dir, [f for f in os.listdir(dso_dir) if re.match("^nvrtc-builtins.*.dll$", f)][0]
-                )
+                dso_path = os.path.join(dso_dir, [f for f in os.listdir(dso_dir) if re.match("^nvrtc-builtins.*.dll$", f)][0])
                 _nvrtc_obj.append(ctypes.CDLL(dso_path))
             break
     else:

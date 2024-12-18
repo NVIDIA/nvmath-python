@@ -44,7 +44,6 @@ def main():
         value_type = MM.value_type
         a_size = MM.a_size
         b_size = MM.b_size
-        c_size = MM.c_size
         a_dim = MM.a_dim
         b_dim = MM.b_dim
         c_dim = MM.c_dim
@@ -66,19 +65,15 @@ def main():
 
             cuda.syncthreads()
 
-            if scenario == 0:
-                MM(alpha, smem_a, smem_b, beta, smem_c)
-
-            elif scenario == 1:
-                MM(alpha, smem_a, smem_b, beta, smem_c)
-
-            elif scenario == 2:
-                if cuda.threadIdx.y == 0:
+            match scenario:
+                case 0 | 1:
                     MM(alpha, smem_a, smem_b, beta, smem_c)
-
-            elif scenario == 3:
-                if cuda.threadIdx.z == 0:
-                    MM(alpha, smem_a, smem_b, beta, smem_c)
+                case 2:
+                    if cuda.threadIdx.y == 0:
+                        MM(alpha, smem_a, smem_b, beta, smem_c)
+                case 3:
+                    if cuda.threadIdx.z == 0:
+                        MM(alpha, smem_a, smem_b, beta, smem_c)
 
             cuda.syncthreads()
 

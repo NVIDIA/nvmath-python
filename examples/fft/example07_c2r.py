@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Example showing how to perform N-dimensional complex-to-real (C2R) FFT computation with function-form FFT APIs.
+Example showing how to perform N-dimensional complex-to-real (C2R) FFT computation with
+function-form FFT APIs.
 """
 
 import cupy as cp

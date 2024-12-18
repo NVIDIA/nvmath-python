@@ -28,12 +28,13 @@ def make_codegen(kind, value_type, symbol, a_type, b_type, c_type):
     if kind == "smem_basic":
         # smem_basic APIs take the 3 input arrays and alpha/beta as argument
         # lda, ldb and ldc are based on the underlying Dx type
-        # (void) ( (value_type*)alpha, (value_type*)a, (value_type*)b, (value_type*)beta, (value_type*)c )
+        # (void) ( (value_type*)alpha, (value_type*)a, (value_type*)b, (value_type*)beta, (value_type*)c )  # noqa: W505
 
         return signature(return_type, value_type, a_type, b_type, value_type, c_type), make_function_call(symbol)
 
     elif kind == "smem_ldabc":
-        # smem_ldabc APIs take the 3 input arrays, alpha/beta as argument and lda, ldb and ldc
+        # smem_ldabc APIs take the 3 input arrays, alpha/beta as argument and lda, ldb and
+        # ldc
         # (void) ( (value_type*)alpha, (value_type*)a, (unsigned)lda,
         #                              (value_type*)b, (unsigned)ldb,
         #           (value_type*)beta, (value_type*)c, (unsigned)ldc )

@@ -78,7 +78,8 @@ def run_conv_perf(test_cases):
         assert batch >= min_batch
 
         print(
-            f"Numba vs cupy host APIs vs CUDA C++ (convolution), batch = {batch}, size = {size}, precision = {precision}, bpb = {ffts_per_block}, ept = {elements_per_thread}"
+            f"Numba vs cupy host APIs vs CUDA C++ (convolution), batch = {batch}, size = {size}, precision = {precision}, "
+            f"bpb = {ffts_per_block}, ept = {elements_per_thread}"
         )
 
         #

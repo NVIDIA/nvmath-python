@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example is a slight modification of the block FFT example `cufftdx_block_fft.py`, and shows how to use RNG
-device APIs (nvmath.device.random) within a kernel in conjunction with an FFT.
+This example is a slight modification of the block FFT example `cufftdx_block_fft.py`, and
+shows how to use RNG device APIs (nvmath.device.random) within a kernel in conjunction with
+an FFT.
 """
 
 import numpy as np
@@ -64,7 +65,7 @@ def main():
     data = np.empty((ffts_per_block, size), dtype=np.complex64)
     data_d = cuda.to_device(data)
     result = np.empty((ffts_per_block, size), dtype=np.complex64)
-    result_d = cuda.to_device(data)
+    result_d = cuda.to_device(result)
 
     states = random.StatesXORWOW(block_dim.x * block_dim.y)
     setup_random[1, block_dim](states)

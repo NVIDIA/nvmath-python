@@ -6,7 +6,11 @@
 Interface to seamlessly use tensors (or ndarray-like objects) from different libraries.
 """
 
+from __future__ import annotations  # allows typehint of class methods to return the self class
+
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
+import typing
 
 from . import typemaps
 
@@ -41,7 +45,7 @@ class Tensor(ABC):
 
     @classmethod
     @abstractmethod
-    def empty(cls, shape, **context):
+    def empty(cls, shape: Sequence[int], **context: typing.Any) -> Tensor:
         raise NotImplementedError
 
     @abstractmethod
@@ -50,12 +54,12 @@ class Tensor(ABC):
 
     @property
     @abstractmethod
-    def shape(self):
+    def shape(self) -> Sequence[int]:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def strides(self):
+    def strides(self) -> Sequence[int]:
         raise NotImplementedError
 
     @abstractmethod
@@ -69,7 +73,8 @@ class Tensor(ABC):
     @staticmethod
     def create_name_dtype_map(conversion_function, exception_type):
         """
-        Create a map between CUDA data type names and the corresponding package dtypes for supported data types.
+        Create a map between CUDA data type names and the corresponding package dtypes for
+        supported data types.
         """
         names = typemaps.NAME_TO_DATA_TYPE.keys()
         name_to_dtype = dict()

@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Example showing the fallback path for an unsupported layout error using the function-form FFT APIs.
+Example showing the fallback path for an unsupported layout error using the function-form
+FFT APIs.
 """
 
 import cupy as cp
@@ -18,7 +19,8 @@ a = cp.ones(shape, dtype=cp.complex128)
 r = cp.fft.fftn(a, axes=axes)
 
 try:
-    # Forward FFT along (0,2), batched along axis=1. This is not yet supported by the cuFFT C library.
+    # Forward FFT along (0,2), batched along axis=1. This is not yet supported by the cuFFT
+    # C library.
     b = nvmath.fft.fft(a, axes=axes)
 except nvmath.fft.UnsupportedLayoutError as e:
     # Permute the input, and copy.

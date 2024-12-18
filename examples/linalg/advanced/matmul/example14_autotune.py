@@ -29,15 +29,16 @@ with nvmath.linalg.advanced.Matmul(a, b) as mm:
     epilog = nvmath.linalg.advanced.MatmulEpilog.RELU_BIAS
     mm.plan(epilog=epilog, epilog_inputs={"bias": bias})
 
-    # Run the autotuning. It will benchmark the algorithms found during planning and reorder them
-    # according to their actual performance. See the logs section "autotuning phase" to see what
-    # happens under the hood.
+    # Run the autotuning. It will benchmark the algorithms found during planning and reorder
+    # them according to their actual performance. See the logs section "autotuning phase" to
+    # see what happens under the hood.
     mm.autotune(iterations=5)
 
     # Execute the multiplication.
     result = mm.execute()
 
-    # Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
+    # Synchronize the default stream, since by default the execution is non-blocking for GPU
+    # operands.
     cp.cuda.get_current_stream().synchronize()
     print(f"Input types = {type(a), type(b)}, device = {a.device, b.device}")
     print(f"Result type = {type(result)}, device = {result.device}")

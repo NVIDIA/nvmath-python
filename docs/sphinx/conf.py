@@ -58,8 +58,8 @@ author = "NVIDIA Corporation & Affiliates"
 # built documents.
 with open("../../nvmath/_version.py") as f:
     exec(f.read())
-    nvmath_py_ver = __version__
-    del __version__
+    nvmath_py_ver = __version__  # noqa: F821
+    del __version__  # noqa: F821
 
 # The short X.Y version.
 version = nvmath_py_ver
@@ -193,7 +193,8 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
         match_numba_dtype = re.search(r"nvmath.device.float(\d+)x(\d+)_type", name)
         if match_numba_dtype:
             lines.append(
-                f"A Numba compliant vector type object for float{match_numba_dtype.group(1)} with vector length {match_numba_dtype.group(2)} \n"
+                f"A Numba compliant vector type object for float{match_numba_dtype.group(1)} "
+                f"with vector length {match_numba_dtype.group(2)} \n"
             )
 
 
@@ -203,9 +204,9 @@ class PatchedEnumDocumenter(EnumDocumenter):
     """
 
     def generate(self, *args, **kwargs):
-        output = super().generate(*args, **kwargs)
+        super().generate(*args, **kwargs)
         for i in range(1, len(self.directive.result)):
-            if self.directive.result[i - 1].startswith("   alias of"):
+            if self.directive.result[i - 1].startswith("   alias of"):  # noqa: SIM102
                 if self.directive.result[i].startswith("   :Member Type:"):
                     self.directive.result.insert(i, "", "")
 
@@ -392,7 +393,7 @@ def linkcode_resolve(domain, info):
     if mod.__name__.split(".")[0] not in _top_modules:
         return None
 
-    # If it's wrapped (e.g., by `contextlib.contextmanager`), unwrap it
+    # If it's wrapped (by `contextlib.contextmanager` for example), unwrap it
     try:
         obj = inspect.unwrap(obj)
     except ValueError as e:

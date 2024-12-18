@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Example showing the fallback path for an unsupported layout error using the class-form FFT APIs.
+Example showing the fallback path for an unsupported layout error using the class-form FFT
+APIs.
 """
 
 import cupy as cp
@@ -17,7 +18,8 @@ a = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype
 
 r = cp.fft.fftn(a, axes=axes)
 
-# Create a stateful FFT object 'f'. Fallback to suggested layout since the original layout-axes combination is currently not supported.
+# Create a stateful FFT object 'f'. Fallback to suggested layout since the original
+# layout-axes combination is currently not supported.
 try:
     f = nvmath.fft.FFT(a, axes=axes)
     permutation = None

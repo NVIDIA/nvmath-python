@@ -3,7 +3,8 @@
 cuBLAS (:mod:`nvmath.bindings.cublas`)
 ======================================
 
-For detailed documentation on the original C APIs, please refer to `cuBLAS documentation <https://docs.nvidia.com/cuda/cublas/>`_.
+For detailed documentation on the original C APIs, refer to the `cuBLAS documentation
+<https://docs.nvidia.com/cuda/cublas/>`_.
 
 Enums and constants
 *******************

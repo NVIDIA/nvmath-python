@@ -45,7 +45,7 @@ cpdef intptr_t create() except? 0
 cpdef destroy(intptr_t handle)
 cpdef int get_version(intptr_t handle) except? -1
 cpdef int get_property(int type) except? -1
-cpdef size_t get_cudart_version()
+cpdef size_t get_cudart_version() except? 0
 cpdef set_workspace(intptr_t handle, intptr_t workspace, size_t workspace_size_in_bytes)
 cpdef set_stream(intptr_t handle, intptr_t stream_id)
 cpdef intptr_t get_stream(intptr_t handle) except? 0
@@ -537,3 +537,9 @@ cpdef sdgmm_64(intptr_t handle, int mode, int64_t m, int64_t n, intptr_t a, int6
 cpdef ddgmm_64(intptr_t handle, int mode, int64_t m, int64_t n, intptr_t a, int64_t lda, intptr_t x, int64_t incx, intptr_t c, int64_t ldc)
 cpdef cdgmm_64(intptr_t handle, int mode, int64_t m, int64_t n, intptr_t a, int64_t lda, intptr_t x, int64_t incx, intptr_t c, int64_t ldc)
 cpdef zdgmm_64(intptr_t handle, int mode, int64_t m, int64_t n, intptr_t a, int64_t lda, intptr_t x, int64_t incx, intptr_t c, int64_t ldc)
+cpdef sgemm_grouped_batched(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int group_count, group_size)
+cpdef sgemm_grouped_batched_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int64_t group_count, group_size)
+cpdef dgemm_grouped_batched(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int group_count, group_size)
+cpdef dgemm_grouped_batched_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int64_t group_count, group_size)
+cpdef gemm_grouped_batched_ex(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int group_count, group_size, int compute_type)
+cpdef gemm_grouped_batched_ex_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int64_t group_count, group_size, int compute_type)

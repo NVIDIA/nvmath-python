@@ -5,6 +5,10 @@
 # This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
 
 cimport cython  # NOQA
+from libcpp.vector cimport vector
+
+from ._internal.utils cimport (get_resource_ptr, get_resource_ptrs, nullable_unique_ptr,
+                               get_buffer_pointer,)
 
 from enum import IntEnum as _IntEnum
 
@@ -196,7 +200,7 @@ cpdef int get_property(int type) except? -1:
     return value
 
 
-cpdef size_t get_cudart_version():
+cpdef size_t get_cudart_version() except? 0:
     """See `cublasGetCudartVersion`."""
     return cublasGetCudartVersion()
 
@@ -3649,4 +3653,170 @@ cpdef zdgmm_64(intptr_t handle, int mode, int64_t m, int64_t n, intptr_t a, int6
     """See `cublasZdgmm_64`."""
     with nogil:
         status = cublasZdgmm_64(<Handle>handle, <_SideMode>mode, m, n, <const cuDoubleComplex*>a, lda, <const cuDoubleComplex*>x, incx, <cuDoubleComplex*>c, ldc)
+    check_status(status)
+
+
+cpdef sgemm_grouped_batched(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int group_count, group_size):
+    """See `cublasSgemmGroupedBatched`."""
+    cdef nullable_unique_ptr[ vector[int] ] _transa_array_
+    get_resource_ptr[int](_transa_array_, transa_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _transb_array_
+    get_resource_ptr[int](_transb_array_, transb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _m_array_
+    get_resource_ptr[int](_m_array_, m_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _n_array_
+    get_resource_ptr[int](_n_array_, n_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _k_array_
+    get_resource_ptr[int](_k_array_, k_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[float] ] _alpha_array_
+    get_resource_ptr[float](_alpha_array_, alpha_array, <float*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _lda_array_
+    get_resource_ptr[int](_lda_array_, lda_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _ldb_array_
+    get_resource_ptr[int](_ldb_array_, ldb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[float] ] _beta_array_
+    get_resource_ptr[float](_beta_array_, beta_array, <float*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _ldc_array_
+    get_resource_ptr[int](_ldc_array_, ldc_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _group_size_
+    get_resource_ptr[int](_group_size_, group_size, <int*>NULL)
+    with nogil:
+        status = cublasSgemmGroupedBatched(<Handle>handle, <const _Operation*>(_transa_array_.data()), <const _Operation*>(_transb_array_.data()), <const int*>(_m_array_.data()), <const int*>(_n_array_.data()), <const int*>(_k_array_.data()), <const float*>(_alpha_array_.data()), <const float* const*>aarray, <const int*>(_lda_array_.data()), <const float* const*>barray, <const int*>(_ldb_array_.data()), <const float*>(_beta_array_.data()), <float* const*>carray, <const int*>(_ldc_array_.data()), group_count, <const int*>(_group_size_.data()))
+    check_status(status)
+
+
+cpdef sgemm_grouped_batched_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int64_t group_count, group_size):
+    """See `cublasSgemmGroupedBatched_64`."""
+    cdef nullable_unique_ptr[ vector[int] ] _transa_array_
+    get_resource_ptr[int](_transa_array_, transa_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _transb_array_
+    get_resource_ptr[int](_transb_array_, transb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _m_array_
+    get_resource_ptr[int64_t](_m_array_, m_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _n_array_
+    get_resource_ptr[int64_t](_n_array_, n_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _k_array_
+    get_resource_ptr[int64_t](_k_array_, k_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[float] ] _alpha_array_
+    get_resource_ptr[float](_alpha_array_, alpha_array, <float*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _lda_array_
+    get_resource_ptr[int64_t](_lda_array_, lda_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _ldb_array_
+    get_resource_ptr[int64_t](_ldb_array_, ldb_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[float] ] _beta_array_
+    get_resource_ptr[float](_beta_array_, beta_array, <float*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _ldc_array_
+    get_resource_ptr[int64_t](_ldc_array_, ldc_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _group_size_
+    get_resource_ptr[int64_t](_group_size_, group_size, <int64_t*>NULL)
+    with nogil:
+        status = cublasSgemmGroupedBatched_64(<Handle>handle, <const _Operation*>(_transa_array_.data()), <const _Operation*>(_transb_array_.data()), <const int64_t*>(_m_array_.data()), <const int64_t*>(_n_array_.data()), <const int64_t*>(_k_array_.data()), <const float*>(_alpha_array_.data()), <const float* const*>aarray, <const int64_t*>(_lda_array_.data()), <const float* const*>barray, <const int64_t*>(_ldb_array_.data()), <const float*>(_beta_array_.data()), <float* const*>carray, <const int64_t*>(_ldc_array_.data()), group_count, <const int64_t*>(_group_size_.data()))
+    check_status(status)
+
+
+cpdef dgemm_grouped_batched(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int group_count, group_size):
+    """See `cublasDgemmGroupedBatched`."""
+    cdef nullable_unique_ptr[ vector[int] ] _transa_array_
+    get_resource_ptr[int](_transa_array_, transa_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _transb_array_
+    get_resource_ptr[int](_transb_array_, transb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _m_array_
+    get_resource_ptr[int](_m_array_, m_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _n_array_
+    get_resource_ptr[int](_n_array_, n_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _k_array_
+    get_resource_ptr[int](_k_array_, k_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[double] ] _alpha_array_
+    get_resource_ptr[double](_alpha_array_, alpha_array, <double*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _lda_array_
+    get_resource_ptr[int](_lda_array_, lda_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _ldb_array_
+    get_resource_ptr[int](_ldb_array_, ldb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[double] ] _beta_array_
+    get_resource_ptr[double](_beta_array_, beta_array, <double*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _ldc_array_
+    get_resource_ptr[int](_ldc_array_, ldc_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _group_size_
+    get_resource_ptr[int](_group_size_, group_size, <int*>NULL)
+    with nogil:
+        status = cublasDgemmGroupedBatched(<Handle>handle, <const _Operation*>(_transa_array_.data()), <const _Operation*>(_transb_array_.data()), <const int*>(_m_array_.data()), <const int*>(_n_array_.data()), <const int*>(_k_array_.data()), <const double*>(_alpha_array_.data()), <const double* const*>aarray, <const int*>(_lda_array_.data()), <const double* const*>barray, <const int*>(_ldb_array_.data()), <const double*>(_beta_array_.data()), <double* const*>carray, <const int*>(_ldc_array_.data()), group_count, <const int*>(_group_size_.data()))
+    check_status(status)
+
+
+cpdef dgemm_grouped_batched_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int64_t group_count, group_size):
+    """See `cublasDgemmGroupedBatched_64`."""
+    cdef nullable_unique_ptr[ vector[int] ] _transa_array_
+    get_resource_ptr[int](_transa_array_, transa_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _transb_array_
+    get_resource_ptr[int](_transb_array_, transb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _m_array_
+    get_resource_ptr[int64_t](_m_array_, m_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _n_array_
+    get_resource_ptr[int64_t](_n_array_, n_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _k_array_
+    get_resource_ptr[int64_t](_k_array_, k_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[double] ] _alpha_array_
+    get_resource_ptr[double](_alpha_array_, alpha_array, <double*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _lda_array_
+    get_resource_ptr[int64_t](_lda_array_, lda_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _ldb_array_
+    get_resource_ptr[int64_t](_ldb_array_, ldb_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[double] ] _beta_array_
+    get_resource_ptr[double](_beta_array_, beta_array, <double*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _ldc_array_
+    get_resource_ptr[int64_t](_ldc_array_, ldc_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _group_size_
+    get_resource_ptr[int64_t](_group_size_, group_size, <int64_t*>NULL)
+    with nogil:
+        status = cublasDgemmGroupedBatched_64(<Handle>handle, <const _Operation*>(_transa_array_.data()), <const _Operation*>(_transb_array_.data()), <const int64_t*>(_m_array_.data()), <const int64_t*>(_n_array_.data()), <const int64_t*>(_k_array_.data()), <const double*>(_alpha_array_.data()), <const double* const*>aarray, <const int64_t*>(_lda_array_.data()), <const double* const*>barray, <const int64_t*>(_ldb_array_.data()), <const double*>(_beta_array_.data()), <double* const*>carray, <const int64_t*>(_ldc_array_.data()), group_count, <const int64_t*>(_group_size_.data()))
+    check_status(status)
+
+
+cpdef gemm_grouped_batched_ex(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int group_count, group_size, int compute_type):
+    """See `cublasGemmGroupedBatchedEx`."""
+    cdef nullable_unique_ptr[ vector[int] ] _transa_array_
+    get_resource_ptr[int](_transa_array_, transa_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _transb_array_
+    get_resource_ptr[int](_transb_array_, transb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _m_array_
+    get_resource_ptr[int](_m_array_, m_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _n_array_
+    get_resource_ptr[int](_n_array_, n_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _k_array_
+    get_resource_ptr[int](_k_array_, k_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _lda_array_
+    get_resource_ptr[int](_lda_array_, lda_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _ldb_array_
+    get_resource_ptr[int](_ldb_array_, ldb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _ldc_array_
+    get_resource_ptr[int](_ldc_array_, ldc_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _group_size_
+    get_resource_ptr[int](_group_size_, group_size, <int*>NULL)
+    with nogil:
+        status = cublasGemmGroupedBatchedEx(<Handle>handle, <const _Operation*>(_transa_array_.data()), <const _Operation*>(_transb_array_.data()), <const int*>(_m_array_.data()), <const int*>(_n_array_.data()), <const int*>(_k_array_.data()), <const void*>alpha_array, <const void* const*>aarray, <DataType>atype, <const int*>(_lda_array_.data()), <const void* const*>barray, <DataType>btype, <const int*>(_ldb_array_.data()), <const void*>beta_array, <void* const*>carray, <DataType>ctype, <const int*>(_ldc_array_.data()), group_count, <const int*>(_group_size_.data()), <_ComputeType>compute_type)
+    check_status(status)
+
+
+cpdef gemm_grouped_batched_ex_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int64_t group_count, group_size, int compute_type):
+    """See `cublasGemmGroupedBatchedEx_64`."""
+    cdef nullable_unique_ptr[ vector[int] ] _transa_array_
+    get_resource_ptr[int](_transa_array_, transa_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int] ] _transb_array_
+    get_resource_ptr[int](_transb_array_, transb_array, <int*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _m_array_
+    get_resource_ptr[int64_t](_m_array_, m_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _n_array_
+    get_resource_ptr[int64_t](_n_array_, n_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _k_array_
+    get_resource_ptr[int64_t](_k_array_, k_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _lda_array_
+    get_resource_ptr[int64_t](_lda_array_, lda_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _ldb_array_
+    get_resource_ptr[int64_t](_ldb_array_, ldb_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _ldc_array_
+    get_resource_ptr[int64_t](_ldc_array_, ldc_array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _group_size_
+    get_resource_ptr[int64_t](_group_size_, group_size, <int64_t*>NULL)
+    with nogil:
+        status = cublasGemmGroupedBatchedEx_64(<Handle>handle, <const _Operation*>(_transa_array_.data()), <const _Operation*>(_transb_array_.data()), <const int64_t*>(_m_array_.data()), <const int64_t*>(_n_array_.data()), <const int64_t*>(_k_array_.data()), <const void*>alpha_array, <const void* const*>aarray, <DataType>atype, <const int64_t*>(_lda_array_.data()), <const void* const*>barray, <DataType>btype, <const int64_t*>(_ldb_array_.data()), <const void*>beta_array, <void* const*>carray, <DataType>ctype, <const int64_t*>(_ldc_array_.data()), group_count, <const int64_t*>(_group_size_.data()), <_ComputeType>compute_type)
     check_status(status)

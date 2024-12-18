@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example illustrates the use of stateful matrix multiplication objects. Stateful objects amortize the cost of preparation across multiple executions.
+This example illustrates the use of stateful matrix multiplication objects. Stateful objects
+amortize the cost of preparation across multiple executions.
 
 The inputs as well as the result are PyTorch tensors on the CPU.
 """
@@ -19,7 +20,8 @@ b = torch.rand(k, n)
 
 # Use the stateful object as a context manager to automatically release resources.
 with nvmath.linalg.advanced.Matmul(a, b) as mm:
-    # Plan the matrix multiplication. Planning returns a sequence of algorithms that can be configured, as we'll see in a later example.
+    # Plan the matrix multiplication. Planning returns a sequence of algorithms that can be
+    # configured, as we'll see in a later example.
     mm.plan()
 
     # Execute the matrix multiplication.

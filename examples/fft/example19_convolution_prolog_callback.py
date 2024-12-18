@@ -28,20 +28,21 @@ filter_data = cp.sin(a)
 # Define the prolog function for the inverse FFT.
 def convolve(data_in, offset, filter_data, unused):
     """
-    A convolution corresponds to pointwise multiplication in the frequency domain. We also scale by the FFT size N here.
+    A convolution corresponds to pointwise multiplication in the frequency domain. We also
+    scale by the FFT size N here.
     """
     # Note we are accessing `data_out` and `filter_data` with a single `offset` integer,
-    # even though the input and `filter_data` are 2D tensors (batches of samples).
-    # Care must be taken to assure that both arrays accessed here have the same memory layout.
-    # For a reference, see the `example19_convolution_callback_memory_layout` example.
+    # even though the input and `filter_data` are 2D tensors (batches of samples). Care must
+    # be taken to assure that both arrays accessed here have the same memory layout. For a
+    # reference, see the `example19_convolution_callback_memory_layout` example.
     return data_in[offset] * filter_data[offset] / N
 
 
-# Compile the prolog to LTO-IR.
-# In a system with GPUs that have different compute capability, the `compute_capability` option must be specified to the
-# `compile_prolog` or `compile_epilog` helpers. Alternatively, the prolog can be compiled in the context of the device
-# where the FFT to which the prolog is provided is executed. In this case we use the current device context, where the
-# operands have been created.
+# Compile the prolog to LTO-IR. In a system with GPUs that have different compute
+# capability, the `compute_capability` option must be specified to the `compile_prolog` or
+# `compile_epilog` helpers. Alternatively, the prolog can be compiled in the context of the
+# device where the FFT to which the prolog is provided is executed. In this case we use the
+# current device context, where the operands have been created.
 with cp.cuda.Device():
     prolog = nvmath.fft.compile_prolog(convolve, "complex128", "complex128")
 

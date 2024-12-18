@@ -54,7 +54,7 @@ class FFTWError(Exception):
     pass
 
 
-class FFTWUnaliged(FFTWError):
+class FFTWUnaligned(FFTWError):
     pass
 
 
@@ -65,6 +65,21 @@ cdef inline check_plan(intptr_t plan):
 
 
 @cython.profile(False)
+cdef inline check_nthreads(int nthreads):
+    if nthreads <= 0:
+        raise FFTWError(
+            f"The number of threads available for the plan execution "
+            f"was reported to be {nthreads}, expected a positive integer."
+        )
+
+
+@cython.profile(False)
+cdef inline check_init_threads(intptr_t nthreads):
+    if nthreads == 0:
+        raise FFTWError(f"Initialization of FFT threading failed")
+
+
+@cython.profile(False)
 cdef inline intptr_t get_ptr_alignment(intptr_t ptr):
     return ptr & (~(ptr - 1))
 
@@ -72,14 +87,14 @@ cdef inline intptr_t get_ptr_alignment(intptr_t ptr):
 @cython.profile(False)
 cdef inline check_alignment(intptr_t in_ptr, intptr_t out_ptr, int alignment):
     if in_ptr != 0 and get_ptr_alignment(in_ptr) < alignment:
-        raise FFTWUnaliged(
+        raise FFTWUnaligned(
             f"The input tensor's underlying memory pointer must be "
             f"aligned to at least {alignment} bytes. "
             f"The address {in_ptr} is not aligned enough."
         )
 
     if out_ptr != 0 and get_ptr_alignment(out_ptr) < alignment:
-        raise FFTWUnaliged(
+        raise FFTWUnaligned(
             f"The output tensor's underlying memory pointer must be "
             f"aligned to at least {alignment} bytes. "
             f"The address {out_ptr} is not aligned enough."
@@ -330,17 +345,17 @@ cpdef intptr_t plan_many_c2r_double(int rank, n, int batch, intptr_t in_, inembe
     return ret
 
 
-cpdef void execute_c2c_double(intptr_t plan, intptr_t idata, intptr_t odata):
+cpdef void execute_c2c_double(intptr_t plan, intptr_t idata, intptr_t odata) except*:
     """See `fftw_execute_dft`."""
     fftw_execute_dft(<const fftw_plan>plan, <fftw_complex*>idata, <fftw_complex*>odata)
 
 
-cpdef void execute_r2c_double(intptr_t plan, intptr_t idata, intptr_t odata):
+cpdef void execute_r2c_double(intptr_t plan, intptr_t idata, intptr_t odata) except*:
     """See `fftw_execute_dft_r2c`."""
     fftw_execute_dft_r2c(<const fftw_plan>plan, <double*>idata, <fftw_complex*>odata)
 
 
-cpdef void execute_c2r_double(intptr_t plan, intptr_t idata, intptr_t odata):
+cpdef void execute_c2r_double(intptr_t plan, intptr_t idata, intptr_t odata) except*:
     """See `fftw_execute_dft_c2r`."""
     fftw_execute_dft_c2r(<const fftw_plan>plan, <fftw_complex*>idata, <double*>odata)
 
@@ -390,66 +405,82 @@ cpdef intptr_t plan_many_c2r_float(int rank, n, int batch, intptr_t in_, inembed
     return ret
 
 
-cpdef void execute_c2c_float(intptr_t plan, intptr_t idata, intptr_t odata):
+cpdef void execute_c2c_float(intptr_t plan, intptr_t idata, intptr_t odata) except*:
     """See `fftwf_execute_dft`."""
     fftwf_execute_dft(<const fftwf_plan>plan, <fftwf_complex*>idata, <fftwf_complex*>odata)
 
 
-cpdef void execute_r2c_float(intptr_t plan, intptr_t idata, intptr_t odata):
+cpdef void execute_r2c_float(intptr_t plan, intptr_t idata, intptr_t odata) except*:
     """See `fftwf_execute_dft_r2c`."""
     fftwf_execute_dft_r2c(<const fftwf_plan>plan, <float*>idata, <fftwf_complex*>odata)
 
 
-cpdef void execute_c2r_float(intptr_t plan, intptr_t idata, intptr_t odata):
+cpdef void execute_c2r_float(intptr_t plan, intptr_t idata, intptr_t odata) except*:
     """See `fftwf_execute_dft_c2r`."""
     fftwf_execute_dft_c2r(<const fftwf_plan>plan, <fftwf_complex*>idata, <float*>odata)
 
 
-cpdef int init_threads_double():
+cpdef int init_threads_double() except 0:
     """See `fftw_init_threads`."""
-    return fftw_init_threads()
+    cdef intptr_t ret
+    with nogil:
+        ret = fftw_init_threads()
+    check_init_threads(ret)
+    return ret
 
 
-cpdef int init_threads_float():
+cpdef int init_threads_float() except 0:
     """See `fftwf_init_threads`."""
-    return fftwf_init_threads()
+    cdef intptr_t ret
+    with nogil:
+        ret = fftwf_init_threads()
+    check_init_threads(ret)
+    return ret
 
 
-cpdef void plan_with_nthreads_double(int nthreads):
+cpdef void plan_with_nthreads_double(int nthreads) except*:
     """See `fftw_plan_with_nthreads`."""
     fftw_plan_with_nthreads(nthreads)
 
 
-cpdef void plan_with_nthreads_float(int nthreads):
+cpdef void plan_with_nthreads_float(int nthreads) except*:
     """See `fftwf_plan_with_nthreads`."""
     fftwf_plan_with_nthreads(nthreads)
 
 
-cpdef int planner_nthreads_double():
+cpdef int planner_nthreads_double() except? 0:
     """See `fftw_planner_nthreads`."""
-    return fftw_planner_nthreads()
+    cdef intptr_t ret
+    with nogil:
+        ret = fftw_planner_nthreads()
+    check_nthreads(ret)
+    return ret
 
 
-cpdef int planner_nthreads_float():
+cpdef int planner_nthreads_float() except? 0:
     """See `fftwf_planner_nthreads`."""
-    return fftwf_planner_nthreads()
+    cdef intptr_t ret
+    with nogil:
+        ret = fftwf_planner_nthreads()
+    check_nthreads(ret)
+    return ret
 
 
-cpdef void cleanup_threads_double():
+cpdef void cleanup_threads_double() except*:
     """See `fftw_cleanup_threads`."""
     fftw_cleanup_threads()
 
 
-cpdef void cleanup_threads_float():
+cpdef void cleanup_threads_float() except*:
     """See `fftwf_cleanup_threads`."""
     fftwf_cleanup_threads()
 
 
-cpdef void destroy_plan_double(intptr_t plan):
+cpdef void destroy_plan_double(intptr_t plan) except*:
     """See `fftw_destroy_plan`."""
     fftw_destroy_plan(<fftw_plan>plan)
 
 
-cpdef void destroy_plan_float(intptr_t plan):
+cpdef void destroy_plan_float(intptr_t plan) except*:
     """See `fftwf_destroy_plan`."""
     fftwf_destroy_plan(<fftwf_plan>plan)

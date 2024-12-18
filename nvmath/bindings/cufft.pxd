@@ -109,3 +109,6 @@ cpdef xt_exec_descriptor(int plan, intptr_t input, intptr_t output, int directio
 cpdef xt_set_work_area_policy(int plan, int policy, intptr_t work_size)
 cpdef xt_set_jit_callback(int plan, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info)
 cpdef xt_set_subformat_default(int plan, int subformat_forward, int subformat_inverse)
+cpdef set_plan_property_int64(int plan, int property, long long int input_value_int)
+cpdef long long int get_plan_property_int64(int plan, int property) except? -1
+cpdef reset_plan_property(int plan, int property)

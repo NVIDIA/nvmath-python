@@ -32,7 +32,6 @@ def main():
     )
 
     complex_type = FFT_r2c.value_type
-    real_type = FFT_r2c.precision
     storage_size = FFT_r2c.storage_size
     shared_memory_size = FFT_r2c.shared_memory_size
     ffts_per_block = FFT_r2c.ffts_per_block
@@ -73,7 +72,8 @@ def main():
         for i in range(elements_per_thread):
             idx = i * stride + cuda.threadIdx.x
             if idx < size // 2:
-                # Fold optimized, so we load complex (ie 2 consecutive reals) instead of reals
+                # Fold optimized, so we load complex (ie 2 consecutive reals) instead of
+                # reals
                 real_thread_data[2 * i + 0] = inout[global_fft_id, 2 * idx + 0]
                 real_thread_data[2 * i + 1] = inout[global_fft_id, 2 * idx + 1]
 
@@ -96,7 +96,8 @@ def main():
         for i in range(elements_per_thread):
             idx = i * stride + cuda.threadIdx.x
             if idx < size // 2:
-                # Fold optimized, so we load complex (ie 2 consecutive reals) instead of reals
+                # Fold optimized, so we load complex (ie 2 consecutive reals) instead of
+                # reals
                 inout[global_fft_id, 2 * idx + 0] = real_thread_data[2 * i + 0]
                 inout[global_fft_id, 2 * idx + 1] = real_thread_data[2 * i + 1]
 

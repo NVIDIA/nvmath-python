@@ -69,9 +69,7 @@ framework_type_support = {
 
 framework_exec_type_support = {
     framework: {
-        exec_backend: [
-            dtype for dtype in framework_type_support[framework] if dtype in exec_backend_type_support[exec_backend]
-        ]
+        exec_backend: [dtype for dtype in framework_type_support[framework] if dtype in exec_backend_type_support[exec_backend]]
         for exec_backend in ExecBackend
     }
     for framework in Framework
@@ -146,9 +144,7 @@ class _BackendSupport:
 
     @functools.cached_property
     def framework_mem(self) -> dict[Framework, list[MemBackend]]:
-        return {
-            framework: [b for b in self.mem if b in framework_backend_support[framework]] for framework in Framework
-        }
+        return {framework: [b for b in self.mem if b in framework_backend_support[framework]] for framework in Framework}
 
     def __call__(self):
         return self.backends

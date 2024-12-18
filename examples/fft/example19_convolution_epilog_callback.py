@@ -28,20 +28,21 @@ filter_data = cp.sin(a)
 # Define the epilog function for the inverse FFT.
 def convolve(data_out, offset, data, filter_data, unused):
     """
-    A convolution corresponds to pointwise multiplication in the frequency domain. We also scale by the FFT size N here.
+    A convolution corresponds to pointwise multiplication in the frequency domain. We also
+    scale by the FFT size N here.
     """
     # Note we are accessing `data_out` and `filter_data` with a single `offset` integer,
-    # even though the output and `filter_data` are 2D tensors (batches of samples).
-    # Care must be taken to assure that both arrays accessed here have the same memory layout.
+    # even though the output and `filter_data` are 2D tensors (batches of samples). Care
+    # must be taken to assure that both arrays accessed here have the same memory layout.
     # For a reference, see the `example19_convolution_callback_memory_layout` example.
     data_out[offset] = data * filter_data[offset] / N
 
 
-# Compile the epilog to LTO-IR.
-# In a system with GPUs that have different compute capability, the `compute_capability` option must be specified to the
-# `compile_prolog` or `compile_epilog` helpers. Alternatively, the epilog can be compiled in the context of the device
-# where the FFT to which the epilog is provided is executed. In this case we use the current device context, where the
-# operands have been created.
+# Compile the epilog to LTO-IR. In a system with GPUs that have different compute
+# capability, the `compute_capability` option must be specified to the `compile_prolog` or
+# `compile_epilog` helpers. Alternatively, the epilog can be compiled in the context of the
+# device where the FFT to which the epilog is provided is executed. In this case we use the
+# current device context, where the operands have been created.
 with cp.cuda.Device():
     epilog = nvmath.fft.compile_epilog(convolve, "complex128", "complex128")
 

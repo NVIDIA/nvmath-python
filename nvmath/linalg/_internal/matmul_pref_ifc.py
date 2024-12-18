@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Interface class to encapsulate low-level calls to get and set matmul plan preference attributes.
+Interface class to encapsulate low-level calls to get and set matmul plan preference
+attributes.
 """
 
 __all__ = ["MatmulPreferenceInterface"]

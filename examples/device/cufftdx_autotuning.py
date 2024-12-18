@@ -69,9 +69,7 @@ def main():
         data_test = output_d.copy_to_host()
         error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
         assert error < 1e-5
-        print(
-            f"Performance (elements_per_thread={elements_per_thread}, ffts_per_block={ffts_per_block}): {time_ms} [ms.]"
-        )
+        print(f"Performance (elements_per_thread={elements_per_thread}, ffts_per_block={ffts_per_block}): {time_ms} [ms.]")
 
 
 if __name__ == "__main__":

@@ -1252,12 +1252,12 @@ cpdef destroy(intptr_t light_handle):
     check_status(status)
 
 
-cpdef size_t get_version():
+cpdef size_t get_version() except? 0:
     """See `cublasLtGetVersion`."""
     return cublasLtGetVersion()
 
 
-cpdef size_t get_cudart_version():
+cpdef size_t get_cudart_version() except? 0:
     """See `cublasLtGetCudartVersion`."""
     return cublasLtGetCudartVersion()
 
@@ -1524,6 +1524,16 @@ cpdef get_matmul_preference_attribute_dtype(int attr):
     .. note:: This API has no C counterpart and is a convenient helper for
         allocating memory for :func:`matmul_preference_get_attribute`, :func:`matmul_preference_set_attribute`.
     """
+    if attr == CUBLASLT_MATMUL_PREF_MATH_MODE_MASK:
+        raise ValueError('The value has been deprecated and removed. Please use corresponding value from `MatmulNumericalImplFlags`')
+    if attr == CUBLASLT_MATMUL_PREF_GAUSSIAN_MODE_MASK:
+        raise ValueError('The value has been deprecated and removed. Please use corresponding value from `MatmulNumericalImplFlags`')
+    if attr == CUBLASLT_MATMUL_PREF_POINTER_MODE_MASK:
+        raise ValueError('The value has been deprecated and removed. Please use corresponding value from `MatmulPreferenceAttribute`')
+    if attr == CUBLASLT_MATMUL_PREF_EPILOGUE_MASK:
+        raise ValueError('The value has been deprecated and removed. Please use corresponding value from `MatmulPreferenceAttribute`')
+    if attr == CUBLASLT_MATMUL_PREF_SM_COUNT_TARGET:
+        raise ValueError('The value has been deprecated and removed. Please use corresponding value from `MatmulPreferenceAttribute`')
     return matmul_preference_attribute_sizes[attr]
 
 ###########################################################################

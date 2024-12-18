@@ -36,9 +36,7 @@ def _get_attribute_ctype(name):
     return np.ctypeslib.as_ctypes_type(cublaslt.get_matmul_desc_attribute_dtype(DescEnum[name]))
 
 
-DESC_ENUM_SCALAR_ATTR_INFO = {
-    name: (DescEnum[name].value, _get_attribute_ctype(name)) for name in DESC_ENUM_SCALAR_ATTR
-}
+DESC_ENUM_SCALAR_ATTR_INFO = {name: (DescEnum[name].value, _get_attribute_ctype(name)) for name in DESC_ENUM_SCALAR_ATTR}
 
 
 class MatmulDescInterface:

@@ -197,7 +197,7 @@ def test_ifft_explicit_fft_type(framework, fft_type, exec_backend, mem_backend, 
         sample_fft,
         options={
             "fft_type": fft_type.value,
-            "last_axis_size": "even" if shape % 2 == 0 else "odd",
+            "last_axis_parity": "even" if shape % 2 == 0 else "odd",
         },
         execution=exec_backend.nvname,
     )
@@ -363,7 +363,7 @@ def test_fft_ifft_overlap(
             axes=(1,),
             options={
                 "result_layout": result_layout.value,
-                "last_axis_size": "odd" if window_size % 2 else "even",
+                "last_axis_parity": "odd" if window_size % 2 else "even",
             },
             execution=exec_backend.nvname,
         )
@@ -735,10 +735,7 @@ def test_fft_ifft_unsupported_type(framework, dtype, exec_backend, mem_backend):
 
     if dtype in r2c_dtype and r2c_dtype[dtype] not in framework_dtype[framework]:
         err_cls = TypeError
-        rfft_match = (
-            f"The result data type {r2c_dtype[dtype].name} is not "
-            f"supported by the operand package '{framework.name}'."
-        )
+        rfft_match = f"The result data type {r2c_dtype[dtype].name} is not supported by the operand package '{framework.name}'."
     elif is_complex(dtype):
         err_cls = RuntimeError
         rfft_match = f"expects a real input, but got {dtype.name}"
@@ -844,7 +841,7 @@ def test_irfft_unsupported_empty_output(framework, exec_backend, dtype, mem_back
             signal,
             axes=axes,
             execution=exec_backend.nvname,
-            options={"last_axis_size": "odd"},
+            options={"last_axis_parity": "odd"},
         )
 
     with pytest.raises(
@@ -1103,7 +1100,7 @@ def test_cpu_execution_wrong_options(framework, exec_backend, mem_backend, dtype
         ValueError,
         match="The 'device_id' is not a valid option when 'execution' is specified to be 'cpu'",
     ):
-        fn(sample, execution="cpu", options={"last_axis_size": "odd", "device_id": 1})
+        fn(sample, execution="cpu", options={"last_axis_parity": "odd", "device_id": 1})
 
     with pytest.raises(
         TypeError,

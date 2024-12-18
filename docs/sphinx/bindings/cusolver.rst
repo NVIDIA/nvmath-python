@@ -3,7 +3,8 @@
 cuSOLVER (:mod:`nvmath.bindings.cusolver`)
 ==========================================
 
-For detailed documentation on the original C APIs, please refer to `cuSOLVER documentation <https://docs.nvidia.com/cuda/cusolver/>`_.
+For detailed documentation on the original C APIs, refer to the `cuSOLVER documentation
+<https://docs.nvidia.com/cuda/cusolver/>`_.
 
 Enums and constants
 *******************

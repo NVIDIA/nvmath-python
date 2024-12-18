@@ -316,3 +316,6 @@ cdef cufftResult cufftXtExecDescriptor(cufftHandle plan, cudaLibXtDesc* input, c
 cdef cufftResult cufftXtSetWorkAreaPolicy(cufftHandle plan, cufftXtWorkAreaPolicy policy, size_t* workSize) except* nogil
 cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except* nogil
 cdef cufftResult cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat subformat_forward, cufftXtSubFormat subformat_inverse) except* nogil
+cdef cufftResult cufftSetPlanPropertyInt64(cufftHandle plan, cufftProperty property, const long long int inputValueInt) except* nogil
+cdef cufftResult cufftGetPlanPropertyInt64(cufftHandle plan, cufftProperty property, long long int* returnPtrValue) except* nogil
+cdef cufftResult cufftResetPlanProperty(cufftHandle plan, cufftProperty property) except* nogil

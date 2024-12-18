@@ -27,6 +27,7 @@ from .axes_utils import (
     get_fft_dtype,
     get_ifft_dtype,
     is_complex,
+    is_half,
     is_array,
     size_of,
     get_dtype_from_array,
@@ -34,6 +35,9 @@ from .axes_utils import (
     get_framework_module,
     get_array_backend,
 )
+
+_torch_has_cuda = bool(torch and torch.cuda.is_available() and torch.cuda.device_count() > 0)
+
 
 _cufft_version = None
 
@@ -62,6 +66,10 @@ def slice_r2c(fft, axes=None):
     out_shape = r2c_shape(fft.shape, axes=axes)
     slices = tuple(slice(extent) for extent in out_shape)
     return fft[slices]
+
+
+def is_pow_2(extent):
+    return extent > 0 and (extent & (extent - 1) == 0)
 
 
 def get_numpy_fft_ref(
@@ -108,18 +116,23 @@ def get_torch_fft_ref(
 
     dtype = get_dtype_from_array(sample)
     mem_backend = get_array_backend(sample)
-    # torch does not implement half precision fft
-    if dtype == DType.complex32:
-        in_sample = sample.type(torch.complex64)
-    elif dtype == DType.float16:
-        in_sample = sample.type(torch.float32)
+    device = sample.device
+
+    # torch fft does not support f16/c32 cpu tensors
+    # the gpu support is limited only to pows of 2
+    if is_half(dtype):
+        if _torch_has_cuda and mem_backend == MemBackend.cpu and all(is_pow_2(e) for e in sample.shape):
+            in_sample = sample.to("cuda")
+        else:
+            assert dtype in [DType.float16, DType.complex32]
+            in_sample = sample.type(torch.float32 if dtype == DType.float16 else torch.complex64)
     else:
         in_sample = sample
 
     # Workaround for bug in torch CPU fftn that leads to a crash
     # for larger 3D ffts with interleaved batch
     if (
-        mem_backend == MemBackend.cpu
+        get_array_backend(in_sample) == MemBackend.cpu
         and axes is not None
         and len(axes) >= 3
         and len(sample.shape) > 3
@@ -133,11 +146,16 @@ def get_torch_fft_ref(
         if not is_complex(dtype):
             ref = slice_r2c(ref, axes=axes)
 
-    if dtype in [DType.complex32, DType.float16]:
-        assert_eq(ref.dtype, torch.complex64)
-        ref = ref.type(torch.complex32)
+    if is_half(dtype):
+        if _torch_has_cuda and mem_backend == MemBackend.cpu and all(is_pow_2(e) for e in sample.shape):
+            ref = ref.to(device)
+        else:
+            assert_eq(ref.dtype, torch.complex64)
+            ref = ref.type(torch.complex32)
 
     assert_eq(ref.dtype, get_framework_dtype(Framework.torch, get_fft_dtype(dtype)))
+    assert_eq(mem_backend, get_array_backend(ref))
+    assert_eq(ref.device, device)
     return ref
 
 
@@ -182,8 +200,8 @@ def get_ifft_ref(
             assert isinstance(axes, tuple | list)
             assert len(axes)
             last_axis = axes[-1]
-        out_last_axis_size = (2 * shape[last_axis] - 2) if last_axis_parity == "even" else (2 * shape[last_axis] - 1)
-        out_shape = tuple(e if a != last_axis else out_last_axis_size for a, e in enumerate(shape))
+        out_last_axis_parity = (2 * shape[last_axis] - 2) if last_axis_parity == "even" else (2 * shape[last_axis] - 1)
+        out_shape = tuple(e if a != last_axis else out_last_axis_parity for a, e in enumerate(shape))
         fft_out_shape = out_shape if axes is None else tuple(out_shape[a] for a in axes)
 
     if get_framework_from_array(sample) == Framework.numpy:
@@ -198,8 +216,19 @@ def get_ifft_ref(
         fn = cp.fft.ifftn if is_c2c else cp.fft.irfftn
         ret = fn(sample, s=fft_out_shape, axes=axes, norm=norm)
     elif get_framework_from_array(sample) == Framework.torch:
+        # torch does not implement half precision fft
+        # (or the support is partial)
+        if dtype == DType.complex32:
+            in_sample = sample.type(torch.complex64)
+        else:
+            in_sample = sample
         fn = torch.fft.ifftn if is_c2c else torch.fft.irfftn
-        ret = fn(sample, s=fft_out_shape, norm=norm, dim=axes)
+        ret = fn(in_sample, s=fft_out_shape, norm=norm, dim=axes)
+        if dtype == DType.complex32:
+            ret_dtype = get_dtype_from_array(ret)
+            expected_ret_dtype = DType.complex64 if is_c2c else DType.float32
+            assert ret_dtype == expected_ret_dtype
+            ret = ret.type(get_framework_dtype(Framework.torch, out_dtype))
     else:
         raise ValueError(f"Unknown framework {get_framework_from_array(sample)}")
 
@@ -304,12 +333,12 @@ def assert_all_close(a, b, rtol, atol):
         raise ValueError(f"Unknown array type {a}")
 
 
-def get_ifft_c2r_options(out_type, last_axis_size):
+def get_ifft_c2r_options(out_type, last_axis_parity):
     if is_complex(out_type):
         return {}
     return {
         "fft_type": "C2R",
-        "last_axis_size": "odd" if last_axis_size % 2 else "even",
+        "last_axis_parity": "odd" if last_axis_parity % 2 else "even",
     }
 
 
@@ -443,10 +472,11 @@ def copy_array(a):
     if get_framework_from_array(a) != Framework.torch:
         return a.copy()
     else:
-        if not a.is_contiguous():
-            return a.contiguous()
-        else:
-            return a.clone()
+        # torch contiguous or copy does not always
+        # enforce truly contiguous stride
+        t = torch.empty(a.shape, dtype=a.dtype, device=a.device)
+        t.copy_(a, non_blocking=True)
+        return t
 
 
 def get_permuted(sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR, permutation):
@@ -708,6 +738,4 @@ def extent_comprises_only_small_factors(extent):
 
 
 def has_only_small_factors(shape, axes=None):
-    return all(
-        extent_comprises_only_small_factors(extent) for a, extent in enumerate(shape) if axes is None or a in axes
-    )
+    return all(extent_comprises_only_small_factors(extent) for a, extent in enumerate(shape) if axes is None or a in axes)

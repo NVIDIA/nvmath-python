@@ -80,11 +80,11 @@ def make_vector(
     @type_callable(vector)
     def type(context):
         def typer(x, y=None, z=None, w=None):
-            if vector_length == 2 and isinstance(x, types.Complex) and y is None and z is None and w is None:
-                return vector_type
-            elif vector_length == 2 and all(isinstance(v, types.Float) for v in [x, y]) and z is None and w is None:
-                return vector_type
-            elif vector_length == 4 and all(isinstance(v, types.Float) for v in [x, y, z, w]):
+            if (
+                (vector_length == 2 and isinstance(x, types.Complex) and y is None and z is None and w is None)
+                or (vector_length == 2 and all(isinstance(v, types.Float) for v in [x, y]) and z is None and w is None)
+                or (vector_length == 4 and all(isinstance(v, types.Float) for v in [x, y, z, w]))
+            ):
                 return vector_type
 
         return typer

@@ -3,7 +3,8 @@
 cuFFT (:mod:`nvmath.bindings.cufft`)
 ====================================
 
-For detailed documentation on the original C APIs, please refer to `cuFFT documentation <https://docs.nvidia.com/cuda/cufft/>`_.
+For detailed documentation on the original C APIs, refer to the `cuFFT documentation
+<https://docs.nvidia.com/cuda/cufft/>`_.
 
 Enums and constants
 *******************

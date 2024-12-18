@@ -5,8 +5,9 @@
 """
 This example demonstrates basic matrix multiplication of torch tensors.
 
-nvmath-python supports multiple frameworks. The result of each operation is a tensor of the same
-framework that was used to pass the inputs. It is also located on the same device as the inputs.
+nvmath-python supports multiple frameworks. The result of each operation is a tensor of the
+same framework that was used to pass the inputs. It is also located on the same device as
+the inputs.
 """
 
 import torch
@@ -34,7 +35,8 @@ b_gpu = b.cuda()
 print("\nRunning the multiplication on GPU tensors...")
 result = nvmath.linalg.advanced.matmul(a_gpu, b_gpu)
 
-# Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
+# Synchronize the default stream, since by default the execution is non-blocking for GPU
+# operands.
 torch.cuda.default_stream().synchronize()
 
 print(f"Inputs were of types {type(a_gpu)} and {type(b_gpu)} and the result is of type {type(result)}.")

@@ -51,9 +51,9 @@ def test_batched_gemm_perf():
             return out
 
         t_cupy = time_check_cupy(fun, reference, ncycles, a, b)
-        t_cpp = MatmulBatchedCpp(
-            size=size, precision=np.float32, data_type="real", sm=SM, block_size=32, repeat=repeat
-        ).run(a=a, b=b, reference=reference, ncycles=ncycles)
+        t_cpp = MatmulBatchedCpp(size=size, precision=np.float32, data_type="real", sm=SM, block_size=32, repeat=repeat).run(
+            a=a, b=b, reference=reference, ncycles=ncycles
+        )
         t_numba = NumbaGemmBatched(size=size, precision=np.float32, data_type="real", block_size=32, repeat=repeat).run(
             a=a, b=b, reference=reference, ncycles=ncycles
         )

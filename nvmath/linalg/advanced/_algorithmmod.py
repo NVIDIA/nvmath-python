@@ -34,7 +34,8 @@ class Algorithm:
     @property
     def capabilities(self):
         """
-        Return the capabilities of this algorithm as a :class:`nvmath.linalg.advanced.AlgorithmCapabilities` dataclass.
+        Return the capabilities of this algorithm as a
+        :class:`nvmath.linalg.advanced.AlgorithmCapabilities` dataclass.
         """
         names = [field.name for field in dataclasses.fields(AlgorithmCapabilities)]
         _capabilities = dict()
@@ -73,7 +74,9 @@ class Algorithm:
 
     @property
     def split_k(self):
-        "The number of split-k steps (see MatmulAlgoConfigAttribute.SPLITK_NUM). This can be set only if `splitk_support` is 1 in the algorithm capabilities."
+        """The number of split-k steps (see MatmulAlgoConfigAttribute.SPLITK_NUM).
+
+        This can be set only if `splitk_support` is 1 in the algorithm capabilities."""
         return self.config_ifc.splitk_num
 
     @split_k.setter
@@ -83,7 +86,9 @@ class Algorithm:
     @property
     def reduction_scheme(self):
         """The reduction scheme used (see MatmulAlgoConfigAttribute.REDUCTION_SCHEME).
-        The value provided must be consistent with the `reduction_scheme_mask` in the algorithm capabilities."""
+
+        The value provided must be consistent with the `reduction_scheme_mask` in the
+        algorithm capabilities."""
         return self.config_ifc.reduction_scheme
 
     @reduction_scheme.setter
@@ -92,7 +97,9 @@ class Algorithm:
 
     @property
     def cta_swizzling(self):
-        "A flag indicating CTA swizzling (see MatmulAlgoConfigAttribute.CTA_SWIZZLING). This can be set only if `cta_swizzling` is 1 in the algorithm capabilities."
+        """A flag indicating CTA swizzling (see MatmulAlgoConfigAttribute.CTA_SWIZZLING).
+
+        This can be set only if `cta_swizzling` is 1 in the algorithm capabilities."""
         return self.config_ifc.cta_swizzling
 
     @cta_swizzling.setter
@@ -101,8 +108,11 @@ class Algorithm:
 
     @property
     def custom_option(self):
-        """A value indicating the custom option (see MatmulAlgoConfigAttribute.CUSTOM_OPTION). The value provided must be
-        less than `custom_option_max` in the algorithm capabilities."""
+        """A value indicating the custom option (see
+        MatmulAlgoConfigAttribute.CUSTOM_OPTION).
+
+        The value provided must be less than `custom_option_max` in the algorithm
+        capabilities."""
         return self.config_ifc.custom_option
 
     @custom_option.setter
@@ -111,7 +121,8 @@ class Algorithm:
 
     @property
     def inner_shape(self):
-        """A value indicating the inner shape (see MatmulAlgoConfigAttribute.INNER_SHAPE_ID)."""
+        """A value indicating the inner shape (see
+        MatmulAlgoConfigAttribute.INNER_SHAPE_ID)."""
         return self.config_ifc.inner_shape_id
 
     @inner_shape.setter
@@ -120,8 +131,11 @@ class Algorithm:
 
     @property
     def cluster_shape(self):
-        """A tuple representing the cluster shape (see MatmulAlgoConfigAttribute.CLUSTER_SHAPE_ID).
-        The value provided must be one of the `cluster_shape_ids` in the algorithm capabilities."""
+        """A tuple representing the cluster shape (see
+        MatmulAlgoConfigAttribute.CLUSTER_SHAPE_ID).
+
+        The value provided must be one of the `cluster_shape_ids` in the algorithm
+        capabilities."""
         return self.config_ifc.cluster_shape_id
 
     @cluster_shape.setter

@@ -17,5 +17,5 @@ try:
     from .package_ifc_torch import TorchPackage
 
     PACKAGE["torch"] = TorchPackage
-except ImportError as e:
+except ImportError:
     pass

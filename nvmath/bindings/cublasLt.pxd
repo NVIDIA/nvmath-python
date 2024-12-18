@@ -53,8 +53,8 @@ ctypedef cublasLtMatmulInnerShape_t _MatmulInnerShape
 
 cpdef intptr_t create() except? 0
 cpdef destroy(intptr_t light_handle)
-cpdef size_t get_version()
-cpdef size_t get_cudart_version()
+cpdef size_t get_version() except? 0
+cpdef size_t get_cudart_version() except? 0
 cpdef int get_property(int type) except? -1
 cpdef matmul(intptr_t light_handle, intptr_t compute_desc, intptr_t alpha, intptr_t a, intptr_t adesc, intptr_t b, intptr_t bdesc, intptr_t beta, intptr_t c, intptr_t cdesc, intptr_t d, intptr_t ddesc, intptr_t algo, intptr_t workspace, size_t workspace_size_in_bytes, intptr_t stream)
 cpdef matrix_transform(intptr_t light_handle, intptr_t transform_desc, intptr_t alpha, intptr_t a, intptr_t adesc, intptr_t beta, intptr_t b, intptr_t bdesc, intptr_t c, intptr_t cdesc, intptr_t stream)

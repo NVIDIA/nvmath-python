@@ -3,7 +3,8 @@
 cuRAND (:mod:`nvmath.bindings.curand`)
 ======================================
 
-For detailed documentation on the original C APIs, please refer to `cuRAND documentation <https://docs.nvidia.com/cuda/curand/>`_.
+For detailed documentation on the original C APIs, refer to the `cuRAND documentation
+<https://docs.nvidia.com/cuda/curand/>`_.
 
 Enums and constants
 *******************

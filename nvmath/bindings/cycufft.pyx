@@ -221,3 +221,15 @@ cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const void* lto_callbac
 
 cdef cufftResult cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat subformat_forward, cufftXtSubFormat subformat_inverse) except* nogil:
     return _cufft._cufftXtSetSubformatDefault(plan, subformat_forward, subformat_inverse)
+
+
+cdef cufftResult cufftSetPlanPropertyInt64(cufftHandle plan, cufftProperty property, const long long int inputValueInt) except* nogil:
+    return _cufft._cufftSetPlanPropertyInt64(plan, property, inputValueInt)
+
+
+cdef cufftResult cufftGetPlanPropertyInt64(cufftHandle plan, cufftProperty property, long long int* returnPtrValue) except* nogil:
+    return _cufft._cufftGetPlanPropertyInt64(plan, property, returnPtrValue)
+
+
+cdef cufftResult cufftResetPlanProperty(cufftHandle plan, cufftProperty property) except* nogil:
+    return _cufft._cufftResetPlanProperty(plan, property)

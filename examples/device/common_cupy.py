@@ -11,7 +11,7 @@ def time_cupy(fun, ncycles, *args):
 
     start.record(None)
     for _ in range(ncycles):
-        out = fun(*args)
+        out = fun(*args)  # noqa: F841
     stop.record(None)
     stop.synchronize()
 

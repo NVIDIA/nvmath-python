@@ -75,8 +75,7 @@ def check_cuda_home():
             os.path.join(conda_include, "cuda/std/type_traits")
         ):
             CUDA_HOME = (os.path.join(conda_include, ".."),)
-            # TODO: verify conda case.
-            CURAND_HOME = os.path.join(CUDA_HOME, "include")
+            CURAND_HOME = os.path.join(CUDA_HOME[0], "include")
             return
 
     # Try local
@@ -91,9 +90,8 @@ def check_cuda_home():
         )
     elif CUDA_PATH is not None and CUDA_HOME is None:
         CUDA_HOME = CUDA_PATH
-    elif CUDA_PATH is not None and CUDA_HOME is not None:
-        if CUDA_HOME != CUDA_PATH:
-            warnings.warn("Both CUDA_HOME and CUDA_PATH are set but not consistent. " "Ignoring CUDA_PATH...")
+    elif CUDA_PATH is not None and CUDA_HOME is not None and CUDA_HOME != CUDA_PATH:
+        warnings.warn("Both CUDA_HOME and CUDA_PATH are set but not consistent. Ignoring CUDA_PATH...")
     CUDA_HOME = (CUDA_HOME,)
     CURAND_HOME = os.path.join(CUDA_HOME[0], "include")
 

@@ -18,15 +18,20 @@ from .utils.common_axes import (
     DType,
     ShapeKind,
     OptFftLayout,
+    OptFftType,
+    Direction,
 )
 from .utils.axes_utils import (
     is_complex,
     is_half,
     get_fft_dtype,
+    get_ifft_dtype,
+    size_of,
 )
 from .utils.support_matrix import (
     type_shape_support,
     opt_fft_type_input_type_support,
+    opt_fft_type_direction_support,
     inplace_opt_ftt_type_support,
     framework_exec_type_support,
     supported_backends,
@@ -34,12 +39,13 @@ from .utils.support_matrix import (
 from .utils.input_fixtures import (
     get_random_input_data,
     init_assert_exec_backend_specified,
+    fx_last_operand_layout,
 )
 from .utils.check_helpers import (
-    assert_eq,
     is_decreasing,
     copy_array,
     get_fft_ref,
+    get_ifft_ref,
     get_scaled,
     check_layout_fallback,
     get_permuted_copy,
@@ -50,11 +56,13 @@ from .utils.check_helpers import (
     as_strided,
     get_ifft_c2r_options,
     get_array_strides,
+    get_array_element_strides,
     assert_norm_close,
     assert_array_type,
     assert_eq,
     should_skip_3d_unsupported,
     assert_array_equal,
+    get_raw_ptr,
 )
 
 
@@ -99,6 +107,7 @@ assert_exec_backend_specified = init_assert_exec_backend_specified()
     ],
 )
 def test_fft_ifft_1d(
+    fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
     mem_backend,
@@ -112,10 +121,11 @@ def test_fft_ifft_1d(
         ShapeKind.pow2: 128,
         ShapeKind.pow2357: 2 * 3 * 5 * 7,
         ShapeKind.prime: 127,
-        ShapeKind.random: 414,
+        ShapeKind.random: 207,
     }
     shape = (shapes[shape_kind],) * array_dim
     signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=55)
+    check_layouts, *_ = fx_last_operand_layout
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
@@ -135,10 +145,16 @@ def test_fft_ifft_1d(
         execution=exec_backend.nvname,
         options={"result_layout": result_layout.value},
     )
+    check_layouts(
+        exec_backend,
+        mem_backend,
+        (axis,),
+        result_layout,
+        OptFftType.c2c if is_complex(dtype) else OptFftType.r2c,
+        is_dense=True,
+        inplace=False,
+    )
     assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
-    if result_layout == OptFftLayout.natural:
-        fft_strides = get_array_strides(fft)
-        assert is_decreasing(fft_strides), f"{fft_strides}"
     assert_norm_close(
         fft,
         get_fft_ref(signal, axes=[axis]),
@@ -158,10 +174,16 @@ def test_fft_ifft_1d(
             execution=exec_backend.nvname,
             axes=[axis],
         )
+        check_layouts(
+            exec_backend,
+            mem_backend,
+            (axis,),
+            result_layout,
+            OptFftType.c2c,
+            is_dense=True,
+            inplace=False,
+        )
         assert_array_type(ifft, framework, mem_backend, dtype)
-        if result_layout == OptFftLayout.natural:
-            ifft_strides = get_array_strides(ifft)
-            assert is_decreasing(ifft_strides), f"{ifft_strides}"
         assert_norm_close(
             ifft,
             get_scaled(signal, shape[axis]),
@@ -201,6 +223,7 @@ def test_fft_ifft_1d(
     ],
 )
 def test_fft_ifft_2d(
+    fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
     mem_backend,
@@ -219,6 +242,7 @@ def test_fft_ifft_2d(
     shape = shapes[shape_kind][:array_dim]
     axes = list(range(first_axis, first_axis + 2))
     signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=55)
+    check_layouts, *_ = fx_last_operand_layout
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
@@ -238,10 +262,16 @@ def test_fft_ifft_2d(
         execution=exec_backend.nvname,
         options={"result_layout": result_layout.value},
     )
+    check_layouts(
+        exec_backend,
+        mem_backend,
+        axes,
+        result_layout,
+        OptFftType.c2c if is_complex(dtype) else OptFftType.r2c,
+        is_dense=True,
+        inplace=False,
+    )
     assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
-    if result_layout == OptFftLayout.natural:
-        fft_strides = get_array_strides(fft)
-        assert is_decreasing(fft_strides), f"{fft_strides}"
     assert_norm_close(
         fft,
         get_fft_ref(signal, axes=axes),
@@ -255,10 +285,16 @@ def test_fft_ifft_2d(
             **get_ifft_c2r_options(dtype, shape[axes[-1]]),
         }
         ifft = nvmath.fft.ifft(fft, execution=exec_backend.nvname, options=options, axes=axes)
+        check_layouts(
+            exec_backend,
+            mem_backend,
+            axes,
+            result_layout,
+            OptFftType.c2c,
+            is_dense=True,
+            inplace=False,
+        )
         assert_array_type(ifft, framework, mem_backend, dtype)
-        if result_layout == OptFftLayout.natural:
-            ifft_strides = get_array_strides(ifft)
-            assert is_decreasing(ifft_strides), f"{ifft_strides}"
         volume = math.prod(shape[axis] for axis in axes)
         assert_norm_close(
             ifft,
@@ -301,6 +337,7 @@ def test_fft_ifft_2d(
     ],
 )
 def test_fft_ifft_3d(
+    fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
     mem_backend,
@@ -318,6 +355,7 @@ def test_fft_ifft_3d(
     }
     shape = shapes[shape_kind][:array_dim]
     axes = list(range(first_axis, first_axis + 3))
+    check_layouts, *_ = fx_last_operand_layout
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
@@ -331,10 +369,16 @@ def test_fft_ifft_3d(
         execution=exec_backend.nvname,
         options={"result_layout": result_layout.value},
     )
+    check_layouts(
+        exec_backend,
+        mem_backend,
+        axes,
+        result_layout,
+        OptFftType.c2c if is_complex(dtype) else OptFftType.r2c,
+        is_dense=True,
+        inplace=False,
+    )
     assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
-    if result_layout == OptFftLayout.natural:
-        fft_strides = get_array_strides(fft)
-        assert is_decreasing(fft_strides), f"{fft_strides}"
     assert_norm_close(
         fft,
         get_fft_ref(signal, axes=axes),
@@ -349,10 +393,16 @@ def test_fft_ifft_3d(
             **get_ifft_c2r_options(dtype, shape[axes[-1]]),
         }
         ifft = nvmath.fft.ifft(fft, execution=exec_backend.nvname, options=options, axes=axes)
+        check_layouts(
+            exec_backend,
+            mem_backend,
+            axes,
+            result_layout,
+            OptFftType.c2c,
+            is_dense=True,
+            inplace=False,
+        )
         assert_array_type(ifft, framework, mem_backend, dtype)
-        if result_layout == OptFftLayout.natural:
-            ifft_strides = get_array_strides(ifft)
-            assert is_decreasing(ifft_strides), f"{ifft_strides}"
         volume = math.prod(shape[axis] for axis in axes)
         assert_norm_close(
             ifft,
@@ -401,9 +451,19 @@ def test_fft_ifft_3d(
         for result_layout in OptFftLayout
     ],
 )
-def test_irfft_preserves_input(framework, exec_backend, mem_backend, shape, axes, dtype, result_layout):
+def test_irfft_preserves_input(
+    fx_last_operand_layout,  # noqa: F811
+    framework,
+    exec_backend,
+    mem_backend,
+    shape,
+    axes,
+    dtype,
+    result_layout,
+):
     shape = literal_eval(shape)
     axes = literal_eval(axes)
+    check_layouts, *_ = fx_last_operand_layout
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
@@ -420,6 +480,16 @@ def test_irfft_preserves_input(framework, exec_backend, mem_backend, shape, axes
         execution=exec_options,
         options={"result_layout": result_layout.value},
     )
+    check_layouts(
+        exec_backend,
+        mem_backend,
+        axes,
+        result_layout,
+        OptFftType.r2c,
+        is_dense=True,
+        inplace=False,
+    )
+
     assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
     assert_norm_close(
         fft,
@@ -429,14 +499,24 @@ def test_irfft_preserves_input(framework, exec_backend, mem_backend, shape, axes
     )
     fft_copy = copy_array(fft)
     ifft = nvmath.fft.irfft(
-        fft_copy,
+        fft,
         axes=axes,
         execution=exec_options,
         options={
-            "last_axis_size": "odd" if shape[axes[-1]] % 2 else "even",
+            "last_axis_parity": "odd" if shape[axes[-1]] % 2 else "even",
             "result_layout": result_layout.value,
         },
     )
+    check_layouts(
+        exec_backend,
+        mem_backend,
+        axes,
+        result_layout,
+        OptFftType.c2r,
+        is_dense=True,
+        inplace=False,
+    )
+
     assert_array_type(ifft, framework, mem_backend, dtype)
     volume = math.prod(shape[a] for a in axes)
     assert_norm_close(
@@ -445,7 +525,7 @@ def test_irfft_preserves_input(framework, exec_backend, mem_backend, shape, axes
         axes=axes,
         exec_backend=exec_backend,
     )
-    assert_array_equal(fft_copy, fft)
+    assert_array_equal(fft, fft_copy)
 
 
 @pytest.mark.parametrize(
@@ -752,9 +832,7 @@ def test_permuted_axes_c2c_repeated_strides(framework, exec_backend, mem_backend
         for result_layout in OptFftLayout
     ],
 )
-def test_permuted_axes_c2c_repeated_strides_inplace(
-    framework, exec_backend, mem_backend, axes, shape, dtype, result_layout
-):
+def test_permuted_axes_c2c_repeated_strides_inplace(framework, exec_backend, mem_backend, axes, shape, dtype, result_layout):
     axes = literal_eval(axes)
     shape = literal_eval(shape)
 
@@ -810,9 +888,7 @@ def test_permuted_axes_c2c_repeated_strides_inplace(
             mem_backend,
             repr(axes),
             batched,
-            dtype := rng.choice(
-                [dt for dt in framework_exec_type_support[framework][exec_backend] if not is_complex(dt)]
-            ),
+            dtype := rng.choice([dt for dt in framework_exec_type_support[framework][exec_backend] if not is_complex(dt)]),
             repr(
                 rng.sample(
                     ([17, 31, 101] if ShapeKind.prime in type_shape_support[exec_backend][dtype] else [16, 32, 64]),
@@ -874,7 +950,7 @@ def test_permuted_axes_r2c_c2r(framework, exec_backend, mem_backend, axes, batch
         axes=axes,
         execution=exec_backend.nvname,
         options={
-            "last_axis_size": "odd" if shape[axes[-1]] % 2 else "even",
+            "last_axis_parity": "odd" if shape[axes[-1]] % 2 else "even",
             "result_layout": result_layout.value,
         },
     )
@@ -919,9 +995,7 @@ def test_permuted_axes_r2c_c2r(framework, exec_backend, mem_backend, axes, batch
         for result_layout in OptFftLayout
     ],
 )
-def test_permuted_axes_r2c_c2r_repeated_strides(
-    framework, exec_backend, mem_backend, axes, shape, dtype, result_layout
-):
+def test_permuted_axes_r2c_c2r_repeated_strides(framework, exec_backend, mem_backend, axes, shape, dtype, result_layout):
     axes = literal_eval(axes)
     shape = literal_eval(shape)
 
@@ -958,7 +1032,7 @@ def test_permuted_axes_r2c_c2r_repeated_strides(
         axes=axes,
         execution=exec_backend.nvname,
         options={
-            "last_axis_size": "odd" if shape[axes[-1]] % 2 else "even",
+            "last_axis_parity": "odd" if shape[axes[-1]] % 2 else "even",
             "result_layout": result_layout.value,
         },
     )
@@ -1033,7 +1107,7 @@ def test_permuted_axes_r2c_c2r_repeated_strides_fallback(
         axes=axes,
         exec_backend=exec_backend,
     )
-    last_axis_size = "odd" if shape[axes[-1]] % 2 else "even"
+    last_axis_parity = "odd" if shape[axes[-1]] % 2 else "even"
     ifft = check_layout_fallback(
         fft,
         axes,
@@ -1042,7 +1116,7 @@ def test_permuted_axes_r2c_c2r_repeated_strides_fallback(
             execution=exec_backend.nvname,
             axes=axes,
             options={
-                "last_axis_size": last_axis_size,
+                "last_axis_parity": last_axis_parity,
                 "result_layout": result_layout.value,
             },
         ),
@@ -1242,7 +1316,7 @@ def test_ifft_repeated_strides(
             axes=axes,
             execution=exec_backend.nvname,
             options={
-                "last_axis_size": "even" if shape[axes[-1]] % 2 == 0 else "odd",
+                "last_axis_parity": "even" if shape[axes[-1]] % 2 == 0 else "odd",
                 "result_layout": result_layout.value,
             },
         )
@@ -1336,79 +1410,230 @@ def test_irfft_half_strided_output(result_layout, framework, exec_backend, mem_b
         "framework",
         "exec_backend",
         "mem_backend",
-        "fft_dim",
-        "batched",
+        "fft_type",
+        "direction",
         "dtype",
-        "shape_kind",
+        "base_shape",
+        "view_shape_kind",
+        "view_shape",
+        "slices",
+        "axes",
+        "fft_dim",
+        "inplace",
+        "layout",
     ),
     [
         (
             framework,
             exec_backend,
             mem_backend,
-            fft_dim,
-            batched,
+            fft_type,
+            direction,
             dtype,
-            rng.choice(type_shape_support[exec_backend][dtype]),
+            repr(base_shape),
+            view_shape_kind,
+            repr(view_shape),
+            repr(slices),
+            repr(axes),
+            f"FftDim.{len(axes)}",
+            inplace,
+            layout,
         )
         for framework in Framework.enabled()
         for exec_backend in supported_backends.exec
         for mem_backend in supported_backends.framework_mem[framework]
-        for fft_dim in [1, 2, 3]
-        for batched in ["no", "left", "right"]
-        for dtype in framework_exec_type_support[framework][exec_backend]
-        if is_complex(dtype) and not is_half(dtype)
+        for fft_type in OptFftType
+        for direction in opt_fft_type_direction_support[fft_type]
+        for dtype in opt_fft_type_input_type_support[fft_type]
+        if dtype in framework_exec_type_support[framework][exec_backend]
+        for base_shape, view_shape_kind, view_shape, slices, axes in [
+            ((256,), ShapeKind.pow2, (16,), ((16,),), (0,)),
+            ((39, 2), ShapeKind.pow2, (16, 2), ((0, 16), None), (0,)),
+            ((39, 2), ShapeKind.pow2, (16, 2), ((16, 32), None), (0,)),
+            ((39, 7), ShapeKind.pow2, (16, 5), ((0, 16), (0, 5)), (0,)),
+            ((39, 2), ShapeKind.pow2, (8, 2), ((16, 32, 2), None), (0,)),
+            ((2, 39), ShapeKind.pow2, (2, 8), (None, (16, 32, 2)), (1,)),
+            ((5, 2048), ShapeKind.pow2, (5, 16), (None, (1, 17)), (1,)),
+            ((5, 2048), ShapeKind.pow2, (5, 16), (None, (2, 18)), (1,)),
+            ((5, 2048), ShapeKind.random, (5, 177), (None, (2, 179)), (1,)),
+            ((5, 2048), ShapeKind.pow2, (1, 16), ((None, None, 5), (1, 17)), (1,)),
+            ((5, 2048), ShapeKind.pow2, (1, 16), ((0, 1), (2, 18)), (1,)),
+            ((2048, 5), ShapeKind.pow2, (16, 1), ((1, 17), (0, 1)), (0,)),
+            ((2048, 5), ShapeKind.pow2, (16, 1), ((2, 18), (None, None, 5)), (0,)),
+            # using big base shape to catch errors around insufficient allocation
+            ((128, 1024), ShapeKind.pow2, (8, 16), ((-10, -2), (-32, -16)), (0, 1)),
+            ((1024, 4096, 7), ShapeKind.pow2, (256, 16, 7), ((2, 258), (6, 22), None), (0, 1)),
+            ((7, 1024, 4096), ShapeKind.pow2, (7, 32, 16), (None, (2, 34), (6, 22)), (1, 2)),
+            ((3, 17, 13), ShapeKind.pow2, (2, 8, 8), ((1, 3), (8,), (1, 9)), (1, 2)),
+            ((55, 55, 55), ShapeKind.random, (55, 19, 28), (None, (None, None, 3), (None, None, 2)), (0, 1, 2)),
+            ((13, 17, 13), ShapeKind.pow2, (8, 8, 8), ((1, 9), (8,), (1, 9)), (0, 1, 2)),
+            ((13, 17, 13, 11), ShapeKind.pow2, (8, 8, 8, 11), ((1, 9), (8,), (1, 9), None), (0, 1, 2)),
+            ((11, 13, 17, 13), ShapeKind.pow2, (11, 8, 8, 8), (None, (1, 9), (8,), (1, 9)), (1, 2, 3)),
+        ]
+        for inplace in [False, True]
+        if not inplace or fft_type == OptFftType.c2c
+        for layout in OptFftLayout
+        if not inplace or layout == OptFftLayout.natural
     ],
 )
-def test_sliced_tensor_complex(framework, exec_backend, mem_backend, fft_dim, batched, dtype, shape_kind):
-    extent = {
-        ShapeKind.pow2: (64 + 5, 64 + 5, 64 + 5),
-        ShapeKind.pow2357: (48 + 5, 48 + 5, 48 + 5),
-        ShapeKind.prime: (43 + 5, 43 + 5, 43 + 5),
-        ShapeKind.random: (22 + 5, 22 + 5, 22 + 5),
-    }
-    shape = extent[shape_kind][:fft_dim]
+def test_sliced_tensor(
+    fx_last_operand_layout,  # noqa: F811
+    framework,
+    exec_backend,
+    mem_backend,
+    fft_type,
+    direction,
+    dtype,
+    base_shape,
+    view_shape_kind,
+    view_shape,
+    slices,
+    axes,
+    fft_dim,
+    inplace,
+    layout,
+):
+    base_shape = literal_eval(base_shape)
+    view_shape = literal_eval(view_shape)
+    slices = literal_eval(slices)
+    axes = literal_eval(axes)
+    assert len(slices) == len(base_shape) == len(view_shape)
+    check_layouts, *_ = fx_last_operand_layout
 
-    slices = tuple(slice(3, -2) for _ in range(fft_dim))
-    if batched == "left":
-        shape = (8,) + shape
-        axes = tuple(range(1, fft_dim + 1))
-        slices = (slice(None),) + slices
-    elif batched == "right":
-        shape = shape + (16,)
-        axes = tuple(-i for i in range(2, fft_dim + 2))
-        slices = slices + (slice(None),)
+    if fft_type == OptFftType.c2c:
+        if direction == Direction.forward:
+            fft_fn = nvmath.fft.fft
+        else:
+            assert direction == Direction.inverse
+            fft_fn = nvmath.fft.ifft
+        complex_dtype = dtype
+    elif fft_type == OptFftType.r2c:
+        fft_fn = nvmath.fft.rfft
+        complex_dtype = get_fft_dtype(dtype)
     else:
-        assert batched == "no"
-        axes = None
+        assert fft_type == OptFftType.c2r
+        fft_fn = nvmath.fft.irfft
+        complex_dtype = dtype
 
-    if should_skip_3d_unsupported(exec_backend, shape, axes):
-        pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
+    assert is_complex(complex_dtype)
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
-    signal_sliced = signal[slices]
-    assert get_array_strides(signal) == get_array_strides(signal_sliced)
-    assert signal.dtype == signal_sliced.dtype
+    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+    slices = tuple(slice(*s) if s is not None else slice(s) for s in slices)
+    signal = signal_base[slices]
+    assert_array_type(signal, framework, mem_backend, dtype)
+    assert signal.shape == view_shape
+    last_axis_parity = "odd"
 
-    if is_complex(dtype):
-        fft = nvmath.fft.fft(
-            signal_sliced,
-            axes=axes,
-            execution=exec_backend.nvname,
-        )
+    if fft_type != OptFftType.c2r:
+        # problem size as defined by cufft, i.e. shape of the input for r2c, c2c
+        # and the shape of the output for c2r
+        instance_shape = view_shape
     else:
-        fft = nvmath.fft.rfft(
-            signal_sliced,
-            axes=axes,
-            execution=exec_backend.nvname,
-        )
-    assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
-    assert_norm_close(
-        fft,
-        get_fft_ref(signal_sliced, axes=axes),
-        axes=axes,
-        exec_backend=exec_backend,
-    )
+        real_dtype = get_ifft_dtype(dtype, fft_type=fft_type)
+        # assuming last_axis_parit == "odd"
+        instance_shape = tuple(e if i != axes[-1] else 2 * (e - 1) + 1 for i, e in enumerate(view_shape))
+        real_sample = get_random_input_data(framework, instance_shape, real_dtype, mem_backend, seed=106)
+        complex_sample = get_fft_ref(real_sample, axes=axes)
+        assert_array_type(complex_sample, framework, mem_backend, dtype)
+        assert complex_sample.shape == view_shape
+        signal[:] = complex_sample[:]
+        assert_array_type(signal, framework, mem_backend, dtype)
+        assert signal.shape == view_shape
+
+    signal_copy = signal if not inplace else copy_array(signal)
+
+    if should_skip_3d_unsupported(exec_backend, view_shape, axes):
+        pytest.skip("Skipping 3D for older cufft")
+
+    alignment_excpt_clss = (nvmath.bindings.cufft.cuFFTError,)
+    if nvmath.bindings.nvpl is not None:
+        alignment_excpt_clss += (nvmath.bindings.nvpl.fft.FFTWUnaligned,)
+
+    try:
+        try:
+            out = fft_fn(
+                signal,
+                axes=axes,
+                options={
+                    "last_axis_parity": last_axis_parity,
+                    "inplace": inplace,
+                    "result_layout": layout.value,
+                },
+                execution=exec_backend.nvname,
+            )
+            check_layouts(
+                exec_backend,
+                mem_backend,
+                axes,
+                layout,
+                fft_type,
+                is_dense=False,
+                inplace=inplace,
+            )
+        except nvmath.fft.UnsupportedLayoutError as e:
+            # with slices, we don't really require permutation,
+            # just the `step` may make the embedding not possible
+            assert e.permutation == tuple(range(len(view_shape)))
+            assert exec_backend == mem_backend.exec
+            cont_signal = copy_array(signal)
+            out = fft_fn(
+                cont_signal,
+                axes=axes,
+                options={
+                    "last_axis_parity": last_axis_parity,
+                    "inplace": inplace,
+                    "result_layout": layout.value,
+                },
+                execution=exec_backend.nvname,
+            )
+    except alignment_excpt_clss as e:
+        str_e = str(e)
+        if (
+            exec_backend == ExecBackend.cufft
+            and is_half(dtype)
+            and ("CUFFT_NOT_SUPPORTED" in str_e or "CUFFT_SETUP_FAILED" in str_e)
+        ):
+            # only pow2 problem sizes are supported for halfs
+            assert any(math.gcd(instance_shape[a], 2**30) != instance_shape[a] for a in axes)
+        else:
+            alignment = size_of(complex_dtype)
+            if exec_backend == ExecBackend.cufft:
+                assert "CUFFT_INVALID_VALUE" in str_e, str_e
+            else:
+                assert "input tensor's underlying memory" in str_e, str_e
+                assert f"pointer must be aligned to at least {alignment} bytes" in str_e, str_e
+            assert fft_type in (OptFftType.c2r, OptFftType.r2c), f"{fft_type}"
+            assert get_raw_ptr(signal) % alignment != 0
+            strides = get_array_element_strides(signal)
+            start_offset = sum(stride * (extent_slice.start or 0) for stride, extent_slice in zip(strides, slices, strict=True))
+            assert start_offset % 2 == 1, f"{strides} {slices} {start_offset}"
+    except ValueError as e:
+        str_e = str(e)
+        if "The R2C FFT of half-precision tensor" in str_e:
+            assert exec_backend == ExecBackend.cufft and is_half(dtype) and fft_type == OptFftType.r2c
+        elif "The C2R FFT of half-precision tensor" in str_e:
+            assert exec_backend == ExecBackend.cufft and is_half(dtype) and fft_type == OptFftType.c2r
+            assert layout == OptFftLayout.natural
+        else:
+            raise
+    else:
+        if fft_type == OptFftType.c2r:
+            assert out.shape == instance_shape
+
+        if direction == Direction.forward:
+            ref = get_fft_ref(signal_copy, axes=axes)
+            out_dtype = get_fft_dtype(dtype)
+        else:
+            ref = get_ifft_ref(
+                signal_copy,
+                axes=axes,
+                last_axis_parity="odd",
+                is_c2c=fft_type == OptFftType.c2c,
+            )
+            out_dtype = get_ifft_dtype(dtype, fft_type)
+
+        assert_array_type(out, framework, mem_backend, out_dtype)
+        assert_norm_close(out, ref, axes=axes, exec_backend=exec_backend, shape_kind=view_shape_kind)
 
 
 @pytest.mark.parametrize(
@@ -1450,7 +1675,7 @@ def test_sliced_tensor_unaligned(framework, exec_backend, shape, slice_descs, dt
 
     excpt_clss = (nvmath.bindings.cufft.cuFFTError,)
     if nvmath.bindings.nvpl is not None:
-        excpt_clss += (nvmath.bindings.nvpl.fft.FFTWUnaliged,)
+        excpt_clss += (nvmath.bindings.nvpl.fft.FFTWUnaligned,)
     try:
         fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
         fft = fft_fn(
@@ -1649,7 +1874,7 @@ def test_single_element(
         fft,
         axes=axes,
         execution=exec_backend.nvname,
-        options={"last_axis_size": "odd", "result_layout": result_layout.value},
+        options={"last_axis_parity": "odd", "result_layout": result_layout.value},
     )
     assert_norm_close(
         ifft,
@@ -1769,7 +1994,7 @@ def test_single_element_view(
         fft,
         axes=axes,
         execution=exec_backend.nvname,
-        options={"last_axis_size": "odd", "result_layout": result_layout.value},
+        options={"last_axis_parity": "odd", "result_layout": result_layout.value},
     )
     assert_norm_close(
         ifft,
@@ -1783,161 +2008,102 @@ def test_single_element_view(
         "framework",
         "exec_backend",
         "mem_backend",
-        "shape",
+        "base_shape",
         "axes",
-        "slices",
+        "steps",
         "dtype",
-        "result_layout",
     ),
     [
         (
             framework,
             exec_backend,
             mem_backend,
-            repr(shape),
+            repr(base_shape),
             repr(axes),
-            repr(slices),
-            dtype,
-            result_layout,
+            repr(step),
+            rng.choice(
+                [
+                    dtype
+                    for dtype in framework_exec_type_support[framework][exec_backend]
+                    if is_complex(dtype) and not is_half(dtype)
+                ]
+            ),
         )
         for framework in Framework.enabled()
         for exec_backend in supported_backends.exec
         for mem_backend in supported_backends.framework_mem[framework]
-        for shape, axes, slices in [
-            (
-                (
-                    39,
-                    2,
-                ),
-                (0,),
-                ((16,), (None,)),
-            ),
-            (
-                (
-                    39,
-                    7,
-                ),
-                (0,),
-                (
-                    (16,),
-                    (5,),
-                ),
-            ),
-            (
-                (
-                    39,
-                    2,
-                ),
-                (0,),
-                ((16, 32), (None,)),
-            ),
-            (
-                (
-                    39,
-                    2,
-                ),
-                (0,),
-                ((16, 32, 2), (None,)),
-            ),
-            (
-                (
-                    39,
-                    7,
-                ),
-                (0,),
-                (
-                    (16, 32, 2),
-                    (5,),
-                ),
-            ),
-            (
-                (
-                    17,
-                    17,
-                ),
-                (1,),
-                (
-                    (1, 17, 2),
-                    (16,),
-                ),
-            ),
-            ((17, 13, 3), (0, 1), ((8,), (1, 9), (1, 3))),
-            ((3, 17, 13), (1, 2), ((1, 3), (8,), (1, 9))),
-            ((13, 17, 13), (0, 1, 2), ((1, 9), (8,), (1, 9))),
+        for base_shape, axes, step in [
+            ((2, 55), (0,), (None, 2)),
+            ((2, 55), (1,), (None, 2)),
+            ((100, 101, 5), (0, 1), (None, 2, 3)),
+            ((100, 101, 5), (1, 2), (None, 2, 3)),
+            ((100, 101, 5), (0, 1, 2), (None, 2, 3)),
         ]
-        for dtype in framework_exec_type_support[framework][exec_backend]
-        if is_complex(dtype)
-        for result_layout in OptFftLayout
     ],
 )
-def test_inplace_view(
+def test_inplace_sliced_non_overlapping(
     framework,
     exec_backend,
     mem_backend,
-    shape,
+    base_shape,
     axes,
-    slices,
+    steps,
     dtype,
-    result_layout,
 ):
-    shape = literal_eval(shape)
+    base_shape = literal_eval(base_shape)
     axes = literal_eval(axes)
-
+    steps = literal_eval(steps)
+    assert len(base_shape) == len(steps)
+    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+    signal = signal_base[tuple(slice(None, None, step) for step in steps)]
+    signal_copy = copy_array(signal)
+    shape = tuple(
+        (e + impl_step - 1) // impl_step
+        for e, step in zip(base_shape, steps, strict=True)
+        for impl_step in [1 if step is None else step]
+    )
+    assert signal.shape == shape
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    slices = tuple(slice(*args) for args in literal_eval(slices))
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
-    signal_copy = copy_array(signal)
-    signal_view = signal[slices]
-    signal_view_strides = get_array_strides(signal_view)
     try:
         fft = nvmath.fft.fft(
-            signal_view,
+            signal,
             axes=axes,
             execution=exec_backend.nvname,
-            options={"inplace": True, "result_layout": result_layout.value},
+            options={"inplace": True},
         )
-        assert_eq(get_array_strides(signal_view), signal_view_strides)
-        assert_eq(get_array_strides(fft), signal_view_strides)
-        assert_array_type(signal_view, framework, mem_backend, dtype)
-        ref_view = get_fft_ref(signal_copy[slices], axes=axes)
-        assert_norm_close(
-            signal_view,
-            ref_view,
-            axes=axes,
-            exec_backend=exec_backend,
-        )
-        signal_ref = copy_array(signal_copy)
-        signal_ref[slices] = ref_view
-        assert_norm_close(
-            signal,
-            signal_ref,
-            axes=axes,
-            exec_backend=exec_backend,
-        )
-        ifft = nvmath.fft.ifft(
-            signal_view,
-            axes=axes,
-            execution=exec_backend.nvname,
-            options={"inplace": True, "result_layout": result_layout.value},
-        )
-        assert_eq(get_array_strides(signal_view), signal_view_strides)
-        assert_eq(get_array_strides(ifft), signal_view_strides)
-        signal_copy[slices] = get_scaled(
-            signal_copy[slices],
-            math.prod(signal_view.shape[a] for a in range(len(shape)) if a in axes),
-        )
-        assert_norm_close(
-            signal,
-            signal_copy,
-            axes=axes,
-            exec_backend=exec_backend,
-        )
-    except RuntimeError as e:
-        assert "cannot be specified when copying to non-contiguous" in str(e)
-        assert_eq(mem_backend, MemBackend.cpu)
-        assert_eq(framework, Framework.numpy)
+    except nvmath.fft.UnsupportedLayoutError:
+        # The embedding check does usually block the step-sliced
+        # operands. For mem_backend != exec_backend though
+        # the copy is made so we have contiguous layout
+        # and we can make sure that the overlapping check is not
+        # too strict
+        assert mem_backend.exec == exec_backend
+        return
+    assert fft is signal
+    assert_norm_close(
+        fft,
+        get_fft_ref(signal_copy, axes=axes),
+        axes=axes,
+        exec_backend=exec_backend,
+    )
+    ifft = nvmath.fft.ifft(
+        fft,
+        axes=axes,
+        execution=exec_backend.nvname,
+        options={
+            "inplace": True,
+            "last_axis_parity": "odd" if shape[axes[-1]] else "even",
+        },
+    )
+    assert ifft is signal
+    assert_norm_close(
+        ifft,
+        get_scaled(signal_copy, math.prod(shape[a] for a in axes)),
+        axes=axes,
+        exec_backend=exec_backend,
+    )
 
 
 @pytest.mark.parametrize(
@@ -2028,23 +2194,18 @@ def test_inplace_overlapping(
                 options={"inplace": True, "result_layout": result_layout.value},
             )
     else:
-        try:
-            nvmath.fft.fft(
-                signal_view,
-                axes=axes,
-                execution=exec_backend.nvname,
-                options={"inplace": True, "result_layout": result_layout.value},
-            )
-            assert_norm_close(
-                signal_view,
-                get_fft_ref(signal_view_copy, axes=axes),
-                axes=axes,
-                exec_backend=exec_backend,
-            )
-        except RuntimeError as e:
-            assert "cannot be specified when copying to non-contiguous" in str(e)
-            assert_eq(mem_backend, MemBackend.cpu)
-            assert_eq(framework, Framework.numpy)
+        nvmath.fft.fft(
+            signal_view,
+            axes=axes,
+            execution=exec_backend.nvname,
+            options={"inplace": True, "result_layout": result_layout.value},
+        )
+        assert_norm_close(
+            signal_view,
+            get_fft_ref(signal_view_copy, axes=axes),
+            axes=axes,
+            exec_backend=exec_backend,
+        )
 
 
 @pytest.mark.parametrize(
@@ -2122,24 +2283,19 @@ def test_repeated_strides_strided(
     signal = signal[::stride].reshape(shape)
     signal_copy = copy_array(signal)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
-    try:
-        fft = fft_fn(
-            signal,
-            axes=axes,
-            execution=exec_backend.nvname,
-            options={"result_layout": result_layout.value, "inplace": inplace},
-        )
-        assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
-        assert_norm_close(
-            fft,
-            get_fft_ref(signal_copy, axes=axes),
-            axes=axes,
-            exec_backend=exec_backend,
-        )
-    except RuntimeError as e:
-        assert "cannot be specified when copying to non-contiguous" in str(e)
-        assert_eq(mem_backend, MemBackend.cpu)
-        assert_eq(framework, Framework.numpy)
+    fft = fft_fn(
+        signal,
+        axes=axes,
+        execution=exec_backend.nvname,
+        options={"result_layout": result_layout.value, "inplace": inplace},
+    )
+    assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
+    assert_norm_close(
+        fft,
+        get_fft_ref(signal_copy, axes=axes),
+        axes=axes,
+        exec_backend=exec_backend,
+    )
 
 
 @pytest.mark.parametrize(

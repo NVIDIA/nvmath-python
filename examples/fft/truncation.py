@@ -53,13 +53,16 @@ def fft(
     engine=nvmath.fft.fft,
 ):
     """
-    This version supports truncation and padding of the operand, to match the functionality of NumPy FFT.
+    This version supports truncation and padding of the operand, to match the functionality
+    of NumPy FFT.
 
     Args:
-        extents: An array specifying the truncated or padded extents for the FFT axes. If not specified, the extents of the operand dimensions corresponding
-            to the FFT axes will be used.
-        engine: a callable to execute the FFT operation. The engine can be `fft` from the nvmath.fft package, or `caching.fft`, `fftn1.fftn`, `fftn2.fftn`
-            etc. from the examples.
+        extents: An array specifying the truncated or padded extents for the FFT axes. If
+            not specified, the extents of the operand dimensions corresponding to the FFT
+            axes will be used.
+        engine: a callable to execute the FFT operation. The engine can be `fft` from the
+            nvmath.fft package, or `caching.fft`, `fftn1.fftn`, `fftn2.fftn` etc. from the
+            examples.
     """
     if extents is None:
         return engine(a, axes=axes, direction=direction, options=options, prolog=prolog, epilog=epilog, stream=stream)
@@ -78,7 +81,8 @@ def fft(
     shape = a.shape
 
     if all(shape[axes[i]] == extents[i] for i in range(num_axes)):
-        # No need to pad or truncate if the transform axes extents already match the extents.
+        # No need to pad or truncate if the transform axes extents already match the
+        # extents.
         return engine(a, axes=axes, direction=direction, options=options, prolog=prolog, epilog=epilog, stream=stream)
 
     if all(extents[i] < shape[axes[i]] for i in range(num_axes)):  # All axes truncated.

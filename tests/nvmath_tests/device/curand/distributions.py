@@ -40,7 +40,8 @@ class Distribution:
 
     def curand(self, dtype_name: str, group_size: int) -> tuple[Callable, tuple]:
         """
-        Returns curand distribution function for specific dtype and group size, together with its extra arguments.
+        Returns curand distribution function for specific dtype and group size, together
+        with its extra arguments.
         """
         raise NotImplementedError
 

@@ -324,9 +324,9 @@ cpdef set_mat_type(intptr_t descr_a, int type):
     check_status(status)
 
 
-cpdef int get_mat_type(intptr_t descr_a):
+cpdef int get_mat_type(intptr_t descr_a) except? -1:
     """See `cusparseGetMatType`."""
-    return cusparseGetMatType(<const MatDescr>descr_a)
+    return <int>cusparseGetMatType(<const MatDescr>descr_a)
 
 
 cpdef set_mat_fill_mode(intptr_t descr_a, int fill_mode):
@@ -336,9 +336,9 @@ cpdef set_mat_fill_mode(intptr_t descr_a, int fill_mode):
     check_status(status)
 
 
-cpdef int get_mat_fill_mode(intptr_t descr_a):
+cpdef int get_mat_fill_mode(intptr_t descr_a) except? -1:
     """See `cusparseGetMatFillMode`."""
-    return cusparseGetMatFillMode(<const MatDescr>descr_a)
+    return <int>cusparseGetMatFillMode(<const MatDescr>descr_a)
 
 
 cpdef set_mat_diag_type(intptr_t descr_a, int diag_type):
@@ -348,9 +348,9 @@ cpdef set_mat_diag_type(intptr_t descr_a, int diag_type):
     check_status(status)
 
 
-cpdef int get_mat_diag_type(intptr_t descr_a):
+cpdef int get_mat_diag_type(intptr_t descr_a) except? -1:
     """See `cusparseGetMatDiagType`."""
-    return cusparseGetMatDiagType(<const MatDescr>descr_a)
+    return <int>cusparseGetMatDiagType(<const MatDescr>descr_a)
 
 
 cpdef set_mat_index_base(intptr_t descr_a, int base):
@@ -360,9 +360,9 @@ cpdef set_mat_index_base(intptr_t descr_a, int base):
     check_status(status)
 
 
-cpdef int get_mat_index_base(intptr_t descr_a):
+cpdef int get_mat_index_base(intptr_t descr_a) except? -1:
     """See `cusparseGetMatIndexBase`."""
-    return cusparseGetMatIndexBase(<const MatDescr>descr_a)
+    return <int>cusparseGetMatIndexBase(<const MatDescr>descr_a)
 
 
 cpdef sgemvi(intptr_t handle, int trans_a, int m, int n, intptr_t alpha, intptr_t a, int lda, int nnz, intptr_t x_val, intptr_t x_ind, intptr_t beta, intptr_t y, int idx_base, intptr_t p_buffer):
@@ -2350,4 +2350,11 @@ cpdef sp_mv_preprocess(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a
     """See `cusparseSpMV_preprocess`."""
     with nogil:
         status = cusparseSpMV_preprocess(<Handle>handle, <_Operation>op_a, <const void*>alpha, <ConstSpMatDescr>mat_a, <ConstDnVecDescr>vec_x, <const void*>beta, <DnVecDescr>vec_y, <DataType>compute_type, <_SpMVAlg>alg, <void*>external_buffer)
+    check_status(status)
+
+
+cpdef sp_sm_update_matrix(intptr_t handle, intptr_t spsm_descr, intptr_t new_values, int update_part):
+    """See `cusparseSpSM_updateMatrix`."""
+    with nogil:
+        status = cusparseSpSM_updateMatrix(<Handle>handle, <SpSMDescr>spsm_descr, <void*>new_values, <_SpSMUpdate>update_part)
     check_status(status)

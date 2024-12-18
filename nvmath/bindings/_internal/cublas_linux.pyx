@@ -535,6 +535,12 @@ cdef void* __cublasSdgmm_64 = NULL
 cdef void* __cublasDdgmm_64 = NULL
 cdef void* __cublasCdgmm_64 = NULL
 cdef void* __cublasZdgmm_64 = NULL
+cdef void* __cublasSgemmGroupedBatched = NULL
+cdef void* __cublasSgemmGroupedBatched_64 = NULL
+cdef void* __cublasDgemmGroupedBatched = NULL
+cdef void* __cublasDgemmGroupedBatched_64 = NULL
+cdef void* __cublasGemmGroupedBatchedEx = NULL
+cdef void* __cublasGemmGroupedBatchedEx_64 = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
@@ -4063,6 +4069,48 @@ cdef int _check_or_init_cublas() except -1 nogil:
             handle = load_library(driver_ver)
         __cublasZdgmm_64 = dlsym(handle, 'cublasZdgmm_64')
 
+    global __cublasSgemmGroupedBatched
+    __cublasSgemmGroupedBatched = dlsym(RTLD_DEFAULT, 'cublasSgemmGroupedBatched')
+    if __cublasSgemmGroupedBatched == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasSgemmGroupedBatched = dlsym(handle, 'cublasSgemmGroupedBatched')
+
+    global __cublasSgemmGroupedBatched_64
+    __cublasSgemmGroupedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasSgemmGroupedBatched_64')
+    if __cublasSgemmGroupedBatched_64 == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasSgemmGroupedBatched_64 = dlsym(handle, 'cublasSgemmGroupedBatched_64')
+
+    global __cublasDgemmGroupedBatched
+    __cublasDgemmGroupedBatched = dlsym(RTLD_DEFAULT, 'cublasDgemmGroupedBatched')
+    if __cublasDgemmGroupedBatched == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasDgemmGroupedBatched = dlsym(handle, 'cublasDgemmGroupedBatched')
+
+    global __cublasDgemmGroupedBatched_64
+    __cublasDgemmGroupedBatched_64 = dlsym(RTLD_DEFAULT, 'cublasDgemmGroupedBatched_64')
+    if __cublasDgemmGroupedBatched_64 == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasDgemmGroupedBatched_64 = dlsym(handle, 'cublasDgemmGroupedBatched_64')
+
+    global __cublasGemmGroupedBatchedEx
+    __cublasGemmGroupedBatchedEx = dlsym(RTLD_DEFAULT, 'cublasGemmGroupedBatchedEx')
+    if __cublasGemmGroupedBatchedEx == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasGemmGroupedBatchedEx = dlsym(handle, 'cublasGemmGroupedBatchedEx')
+
+    global __cublasGemmGroupedBatchedEx_64
+    __cublasGemmGroupedBatchedEx_64 = dlsym(RTLD_DEFAULT, 'cublasGemmGroupedBatchedEx_64')
+    if __cublasGemmGroupedBatchedEx_64 == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasGemmGroupedBatchedEx_64 = dlsym(handle, 'cublasGemmGroupedBatchedEx_64')
+
     __py_cublas_init = True
     return 0
 
@@ -5571,6 +5619,24 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasZdgmm_64
     data["__cublasZdgmm_64"] = <intptr_t>__cublasZdgmm_64
+
+    global __cublasSgemmGroupedBatched
+    data["__cublasSgemmGroupedBatched"] = <intptr_t>__cublasSgemmGroupedBatched
+
+    global __cublasSgemmGroupedBatched_64
+    data["__cublasSgemmGroupedBatched_64"] = <intptr_t>__cublasSgemmGroupedBatched_64
+
+    global __cublasDgemmGroupedBatched
+    data["__cublasDgemmGroupedBatched"] = <intptr_t>__cublasDgemmGroupedBatched
+
+    global __cublasDgemmGroupedBatched_64
+    data["__cublasDgemmGroupedBatched_64"] = <intptr_t>__cublasDgemmGroupedBatched_64
+
+    global __cublasGemmGroupedBatchedEx
+    data["__cublasGemmGroupedBatchedEx"] = <intptr_t>__cublasGemmGroupedBatchedEx
+
+    global __cublasGemmGroupedBatchedEx_64
+    data["__cublasGemmGroupedBatchedEx_64"] = <intptr_t>__cublasGemmGroupedBatchedEx_64
 
     func_ptrs = data
     return data
@@ -10565,3 +10631,63 @@ cdef cublasStatus_t _cublasZdgmm_64(cublasHandle_t handle, cublasSideMode_t mode
             raise FunctionNotFoundError("function cublasZdgmm_64 is not found")
     return (<cublasStatus_t (*)(cublasHandle_t, cublasSideMode_t, int64_t, int64_t, const cuDoubleComplex*, int64_t, const cuDoubleComplex*, int64_t, cuDoubleComplex*, int64_t) nogil>__cublasZdgmm_64)(
         handle, mode, m, n, A, lda, x, incx, C, ldc)
+
+
+cdef cublasStatus_t _cublasSgemmGroupedBatched(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int m_array[], const int n_array[], const int k_array[], const float alpha_array[], const float* const Aarray[], const int lda_array[], const float* const Barray[], const int ldb_array[], const float beta_array[], float* const Carray[], const int ldc_array[], int group_count, const int group_size[]) except* nogil:
+    global __cublasSgemmGroupedBatched
+    _check_or_init_cublas()
+    if __cublasSgemmGroupedBatched == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSgemmGroupedBatched is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int*, const int*, const int*, const float*, const float* const*, const int*, const float* const*, const int*, const float*, float* const*, const int*, int, const int*) nogil>__cublasSgemmGroupedBatched)(
+        handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, lda_array, Barray, ldb_array, beta_array, Carray, ldc_array, group_count, group_size)
+
+
+cdef cublasStatus_t _cublasSgemmGroupedBatched_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const float alpha_array[], const float* const Aarray[], const int64_t lda_array[], const float* const Barray[], const int64_t ldb_array[], const float beta_array[], float* const Carray[], const int64_t ldc_array[], int64_t group_count, const int64_t group_size[]) except* nogil:
+    global __cublasSgemmGroupedBatched_64
+    _check_or_init_cublas()
+    if __cublasSgemmGroupedBatched_64 == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSgemmGroupedBatched_64 is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int64_t*, const int64_t*, const int64_t*, const float*, const float* const*, const int64_t*, const float* const*, const int64_t*, const float*, float* const*, const int64_t*, int64_t, const int64_t*) nogil>__cublasSgemmGroupedBatched_64)(
+        handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, lda_array, Barray, ldb_array, beta_array, Carray, ldc_array, group_count, group_size)
+
+
+cdef cublasStatus_t _cublasDgemmGroupedBatched(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int m_array[], const int n_array[], const int k_array[], const double alpha_array[], const double* const Aarray[], const int lda_array[], const double* const Barray[], const int ldb_array[], const double beta_array[], double* const Carray[], const int ldc_array[], int group_count, const int group_size[]) except* nogil:
+    global __cublasDgemmGroupedBatched
+    _check_or_init_cublas()
+    if __cublasDgemmGroupedBatched == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasDgemmGroupedBatched is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int*, const int*, const int*, const double*, const double* const*, const int*, const double* const*, const int*, const double*, double* const*, const int*, int, const int*) nogil>__cublasDgemmGroupedBatched)(
+        handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, lda_array, Barray, ldb_array, beta_array, Carray, ldc_array, group_count, group_size)
+
+
+cdef cublasStatus_t _cublasDgemmGroupedBatched_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const double alpha_array[], const double* const Aarray[], const int64_t lda_array[], const double* const Barray[], const int64_t ldb_array[], const double beta_array[], double* const Carray[], const int64_t ldc_array[], int64_t group_count, const int64_t group_size[]) except* nogil:
+    global __cublasDgemmGroupedBatched_64
+    _check_or_init_cublas()
+    if __cublasDgemmGroupedBatched_64 == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasDgemmGroupedBatched_64 is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int64_t*, const int64_t*, const int64_t*, const double*, const double* const*, const int64_t*, const double* const*, const int64_t*, const double*, double* const*, const int64_t*, int64_t, const int64_t*) nogil>__cublasDgemmGroupedBatched_64)(
+        handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, lda_array, Barray, ldb_array, beta_array, Carray, ldc_array, group_count, group_size)
+
+
+cdef cublasStatus_t _cublasGemmGroupedBatchedEx(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int m_array[], const int n_array[], const int k_array[], const void* alpha_array, const void* const Aarray[], cudaDataType_t Atype, const int lda_array[], const void* const Barray[], cudaDataType_t Btype, const int ldb_array[], const void* beta_array, void* const Carray[], cudaDataType_t Ctype, const int ldc_array[], int group_count, const int group_size[], cublasComputeType_t computeType) except* nogil:
+    global __cublasGemmGroupedBatchedEx
+    _check_or_init_cublas()
+    if __cublasGemmGroupedBatchedEx == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGemmGroupedBatchedEx is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int*, const int*, const int*, const void*, const void* const*, cudaDataType_t, const int*, const void* const*, cudaDataType_t, const int*, const void*, void* const*, cudaDataType_t, const int*, int, const int*, cublasComputeType_t) nogil>__cublasGemmGroupedBatchedEx)(
+        handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, Atype, lda_array, Barray, Btype, ldb_array, beta_array, Carray, Ctype, ldc_array, group_count, group_size, computeType)
+
+
+cdef cublasStatus_t _cublasGemmGroupedBatchedEx_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const void* alpha_array, const void* const Aarray[], cudaDataType_t Atype, const int64_t lda_array[], const void* const Barray[], cudaDataType_t Btype, const int64_t ldb_array[], const void* beta_array, void* const Carray[], cudaDataType_t Ctype, const int64_t ldc_array[], int64_t group_count, const int64_t group_size[], cublasComputeType_t computeType) except* nogil:
+    global __cublasGemmGroupedBatchedEx_64
+    _check_or_init_cublas()
+    if __cublasGemmGroupedBatchedEx_64 == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGemmGroupedBatchedEx_64 is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int64_t*, const int64_t*, const int64_t*, const void*, const void* const*, cudaDataType_t, const int64_t*, const void* const*, cudaDataType_t, const int64_t*, const void*, void* const*, cudaDataType_t, const int64_t*, int64_t, const int64_t*, cublasComputeType_t) nogil>__cublasGemmGroupedBatchedEx_64)(
+        handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, Atype, lda_array, Barray, Btype, ldb_array, beta_array, Carray, Ctype, ldc_array, group_count, group_size, computeType)

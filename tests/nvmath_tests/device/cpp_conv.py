@@ -122,9 +122,7 @@ class FFTConvCpp:
         assert batch % self._ffts_per_block == 0
 
         num_blocks = batch // self._ffts_per_block
-        print(
-            f"FFTConvCpp Batch {batch}, ffts_per_block {self._ffts_per_block}, num_blocks {num_blocks}, ncycles {ncycles}"
-        )
+        print(f"FFTConvCpp Batch {batch}, ffts_per_block {self._ffts_per_block}, num_blocks {num_blocks}, ncycles {ncycles}")
         assert num_blocks * self._ffts_per_block == batch
 
         # Create input

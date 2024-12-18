@@ -25,7 +25,8 @@ handler.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 handler.setFormatter(formatter)
 
-# Associate handler with logger, resulting in a logger with the desired level, format, and console output.
+# Associate handler with logger, resulting in a logger with the desired level, format, and
+# console output.
 logger.addHandler(handler)
 
 # Prepare sample input data.
@@ -41,9 +42,10 @@ result = nvmath.linalg.advanced.matmul(a, b, alpha=alpha, options=o)
 
 print("---")
 
-# Recall that the options can also be provided as a dict, so the following is an alternative, entirely
-#   equivalent way to specify options.
+# Recall that the options can also be provided as a dict, so the following is an
+#   alternative, entirely equivalent way to specify options.
 result = nvmath.linalg.advanced.matmul(a, b, alpha=alpha, options={"logger": logger})
 
-# Synchronize the default stream, since by default the execution is non-blocking for GPU operands.
+# Synchronize the default stream, since by default the execution is non-blocking for GPU
+# operands.
 cp.cuda.get_current_stream().synchronize()

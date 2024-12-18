@@ -53,7 +53,8 @@ def _get_compiler():
         else:
             if not isinstance(compute_capability, str):
                 raise ValueError(
-                    f"The compute capability must be specified as a string ('80', '89', ...). The provided value {compute_capability} is invalid."
+                    f"The compute capability must be specified as a string ('80', '89', ...). "
+                    f"The provided value {compute_capability} is invalid."
                 )
             compute_capability = tuple(int(c) for c in compute_capability)
 
@@ -100,7 +101,8 @@ def _compile(
 
     if element_dtype not in VALID_DTYPES:
         raise ValueError(
-            f"The specified operand data type '{element_dtype}' is not currently supported. It must be one of {VALID_DTYPES.keys()}."
+            f"The specified operand data type '{element_dtype}' is not currently supported. "
+            f"It must be one of {VALID_DTYPES.keys()}."
         )
 
     data_type = getattr(numba.cuda.types.types, element_dtype)
@@ -111,7 +113,8 @@ def _compile(
         info_type = user_info_dtype
     else:
         raise ValueError(
-            f"The specified user information data type '{user_info_dtype}' is not supported. It must be a Numba custom type or one of {VALID_DTYPES.keys()}."
+            f"The specified user information data type '{user_info_dtype}' is not supported. "
+            f"It must be a Numba custom type or one of {VALID_DTYPES.keys()}."
         )
 
     dataptr_type = numba.types.CPointer(data_type)
@@ -126,9 +129,7 @@ def _compile(
     else:
         insert = TYPE_MAP[element_dtype]
         return_type = numba.types.void
-        signature = numba.core.typing.signature(
-            return_type, dataptr_type, offset_type, data_type, infoptr_type, smemptr_type
-        )
+        signature = numba.core.typing.signature(return_type, dataptr_type, offset_type, data_type, infoptr_type, smemptr_type)
 
     if name is None:
         snippet = VALID_DTYPES[element_dtype]
@@ -169,50 +170,63 @@ SHARED_FFT_HELPER_DOCUMENTATION = {
 compile_prolog.__doc__ = """
     compile_prolog(prolog_fn, element_dtype, user_info_dtype, *, compute_capability=None)
 
-    Compile a Python function to LTO-IR to provide as a prolog function for :func:`~nvmath.fft.fft` and :meth:`~nvmath.fft.FFT.plan`.
+    Compile a Python function to LTO-IR to provide as a prolog function for
+    :func:`~nvmath.fft.fft` and :meth:`~nvmath.fft.FFT.plan`.
 
     Args:
-        prolog_fn: The prolog function to be compiled to LTO-IR. It must have the signature: ``prolog_fn(data_in, offset, user_info, reserved_for_future_use)``, and
-            it essentially returns transformed ``data_in`` at ``offset``.
+        prolog_fn: The prolog function to be compiled to LTO-IR. It must have the signature:
+            ``prolog_fn(data_in, offset, user_info, reserved_for_future_use)``, and it
+            essentially returns transformed ``data_in`` at ``offset``.
+
         element_dtype: {element_dtype}
+
         user_info_dtype: {user_info_dtype}
+
         compute_capability: {compute_capability}
 
     Returns:
         The function compiled to LTO-IR as `bytes` object.
 
     See Also:
-        :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`, :meth:`~nvmath.fft.compile_epilog`.
+        :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`,
+        :meth:`~nvmath.fft.compile_epilog`.
 
     Notes:
-        - The user must ensure that the specified argument types meet the requirements listed above.
+        - The user must ensure that the specified argument types meet the requirements
+          listed above.
 """.format(**SHARED_FFT_HELPER_DOCUMENTATION)
 compile_prolog.__name__ = "compile_prolog"
 
 compile_epilog.__doc__ = """
     compile_epilog(epilog_fn, element_dtype, user_info_dtype, *, compute_capability=None)
 
-    Compile a Python function to LTO-IR to provide as an epilog function for :func:`~nvmath.fft.fft` and :meth:`~nvmath.fft.FFT.plan`.
+    Compile a Python function to LTO-IR to provide as an epilog function for
+    :func:`~nvmath.fft.fft` and :meth:`~nvmath.fft.FFT.plan`.
 
     Args:
-        epilog_fn: The epilog function to be compiled to LTO-IR. It must have the signature: ``epilog_fn(data_out, offset, data, user_info, reserved_for_future_use)``, and
+        epilog_fn: The epilog function to be compiled to LTO-IR. It must have the signature:
+            ``epilog_fn(data_out, offset, data, user_info, reserved_for_future_use)``, and
             it essentially stores transformed ``data`` into ``data_out`` at ``offset``.
+
         element_dtype: {element_dtype}
+
         user_info_dtype: {user_info_dtype}
+
         compute_capability: {compute_capability}
 
     Returns:
         The function compiled to LTO-IR as `bytes` object.
 
     See Also:
-        :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`, :meth:`~nvmath.fft.compile_prolog`.
+        :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`,
+        :meth:`~nvmath.fft.compile_prolog`.
 
     Examples:
 
-        The cuFFT library expects the end user to manage scaling of the outputs, so in order to replicate the ``norm``
-        option found in `other Python FFT libraries
-        <https://numpy.org/doc/stable/reference/routines.fft.html#normalization>`_ we can define an epilog which
-        performs the scaling.
+        The cuFFT library expects the end user to manage scaling of the outputs, so in order
+        to replicate the ``norm`` option found in `other Python FFT libraries
+        <https://numpy.org/doc/stable/reference/routines.fft.html#normalization>`_ we can
+        define an epilog which performs the scaling.
 
         >>> import cupy as cp
         >>> import nvmath
@@ -230,15 +244,17 @@ compile_epilog.__doc__ = """
         Define the epilog function for the FFT.
 
         >>> def rescale(data_out, offset, data, user_info, unused):
-        >>>     data_out[offset] = data * norm_factor
+        ...     data_out[offset] = data * norm_factor
 
-        Compile the epilog to LTO-IR. In a system with GPUs that have different compute capability, the
-        `compute_capability` option must be specified to the `compile_prolog` or `compile_epilog` helpers.
-        Alternatively, the epilog can be compiled in the context of the device where the FFT to which the epilog is
-        provided is executed. In this case we use the current device context, where the operands have been created.
+        Compile the epilog to LTO-IR. In a system with GPUs that have different compute
+        capability, the `compute_capability` option must be specified to the
+        `compile_prolog` or `compile_epilog` helpers. Alternatively, the epilog can be
+        compiled in the context of the device where the FFT to which the epilog is provided
+        is executed. In this case we use the current device context, where the operands have
+        been created.
 
         >>> with cp.cuda.Device():
-        >>>     epilog = nvmath.fft.compile_epilog(rescale, "complex128", "complex128")
+        ...     epilog = nvmath.fft.compile_epilog(rescale, "complex128", "complex128")
 
         Perform the forward FFT, applying the rescaling as a epilog.
 
@@ -250,6 +266,7 @@ compile_epilog.__doc__ = """
         >>> assert cp.allclose(r, s)
 
     Notes:
-        - The user must ensure that the specified argument types meet the requirements listed above.
+        - The user must ensure that the specified argument types meet the requirements
+          listed above.
 """.format(**SHARED_FFT_HELPER_DOCUMENTATION)
 compile_prolog.__name__ = "compile_prolog"

@@ -86,13 +86,13 @@ cpdef set_pointer_mode(intptr_t handle, int mode)
 cpdef intptr_t create_mat_descr() except? 0
 cpdef destroy_mat_descr(intptr_t descr_a)
 cpdef set_mat_type(intptr_t descr_a, int type)
-cpdef int get_mat_type(intptr_t descr_a)
+cpdef int get_mat_type(intptr_t descr_a) except? -1
 cpdef set_mat_fill_mode(intptr_t descr_a, int fill_mode)
-cpdef int get_mat_fill_mode(intptr_t descr_a)
+cpdef int get_mat_fill_mode(intptr_t descr_a) except? -1
 cpdef set_mat_diag_type(intptr_t descr_a, int diag_type)
-cpdef int get_mat_diag_type(intptr_t descr_a)
+cpdef int get_mat_diag_type(intptr_t descr_a) except? -1
 cpdef set_mat_index_base(intptr_t descr_a, int base)
-cpdef int get_mat_index_base(intptr_t descr_a)
+cpdef int get_mat_index_base(intptr_t descr_a) except? -1
 cpdef sgemvi(intptr_t handle, int trans_a, int m, int n, intptr_t alpha, intptr_t a, int lda, int nnz, intptr_t x_val, intptr_t x_ind, intptr_t beta, intptr_t y, int idx_base, intptr_t p_buffer)
 cpdef int sgemvi_buffer_size(intptr_t handle, int trans_a, int m, int n, int nnz) except? -1
 cpdef dgemvi(intptr_t handle, int trans_a, int m, int n, intptr_t alpha, intptr_t a, int lda, int nnz, intptr_t x_val, intptr_t x_ind, intptr_t beta, intptr_t y, int idx_base, intptr_t p_buffer)
@@ -326,3 +326,4 @@ cpdef intptr_t create_sliced_ell(int64_t rows, int64_t cols, int64_t nnz, int64_
 cpdef intptr_t create_const_sliced_ell(int64_t rows, int64_t cols, int64_t nnz, int64_t sell_values_size, int64_t slice_size, intptr_t sell_slice_offsets, intptr_t sell_col_ind, intptr_t sell_values, int sell_slice_offsets_type, int sell_col_ind_type, int idx_base, int value_type) except? 0
 cpdef sp_sv_update_matrix(intptr_t handle, intptr_t spsv_descr, intptr_t new_values, int update_part)
 cpdef sp_mv_preprocess(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg, intptr_t external_buffer)
+cpdef sp_sm_update_matrix(intptr_t handle, intptr_t spsm_descr, intptr_t new_values, int update_part)

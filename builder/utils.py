@@ -93,10 +93,11 @@ class build_ext(_build_ext):
             if lib_name is not None:
                 ldflag = "-Wl,--disable-new-dtags"
                 if lib_name == "nvpl":
-                    # 1. the nvpl bindings land in site-packages/nvmath/bindings/nvpl/_internal/
-                    # as opposed to other packages that have their bindings in
-                    # site-packages/nvmath/bindings/_internal/, so we need one extra `..`
-                    # to get into `site-packages` and then the lib_name=nvpl is not in nvidia
+                    # 1. the nvpl bindings land in
+                    # site-packages/nvmath/bindings/nvpl/_internal/ as opposed to other
+                    # packages that have their bindings in
+                    # site-packages/nvmath/bindings/_internal/, so we need one extra `..` to
+                    # get into `site-packages` and then the lib_name=nvpl is not in nvidia
                     # dir but directly in the site-packages.
                     # 2. mkl lib is placed directly in the python `lib` directory, not in
                     # python{ver}/site-packages

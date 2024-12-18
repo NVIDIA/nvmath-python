@@ -140,6 +140,86 @@ def test_batching(a_batch, b_batch, c_batch, out_batch):
     assert_tensors_equal(result, a @ b + c)
 
 
+@pytest.mark.parametrize("c_desc", (None, "M", "M1", "MN"))
+@pytest.mark.parametrize("b_desc", ("K", "KN"))
+@pytest.mark.parametrize("a_desc", ("K", "MK"))
+@pytest.mark.parametrize("a_t", (True, False))
+@pytest.mark.parametrize("b_t", (True, False))
+@pytest.mark.parametrize("c_t", (True, False))
+@pytest.mark.parametrize("framework", ("numpy/cupy", "torch"))
+@pytest.mark.parametrize("M,N,K", ((2, 3, 5),))
+@pytest.mark.parametrize("use_cuda", (True, False))
+def test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framework, use_cuda):
+    """
+    Test shape promotion rules for 1D inputs
+    """
+
+    if "M" not in a_desc:
+        M = 1
+    if "N" not in b_desc:
+        N = 1
+
+    def unpack_shape(shape_desc):
+        if shape_desc is None:
+            return None
+        shape_map = {
+            "N": N,
+            "M": M,
+            "K": K,
+            "1": 1,
+        }
+        return tuple(shape_map[c] for c in shape_desc)
+
+    a_shape, b_shape, c_shape = unpack_shape(a_desc), unpack_shape(b_desc), unpack_shape(c_desc)
+
+    def make_matrix(shape, transposed):
+        if transposed:
+            return sample_matrix(framework, "float32", tuple(reversed(shape)), use_cuda=use_cuda).T
+        else:
+            return sample_matrix(framework, "float32", shape, use_cuda=use_cuda)
+
+    a = make_matrix(a_shape, a_t)
+    b = make_matrix(b_shape, b_t)
+    if c_desc:
+        c = make_matrix(c_shape, c_t)
+        with_c = True
+    else:
+        c = None
+        with_c = False
+
+    a_promoted, b_promoted, c_promoted = a, b, c
+
+    if len(a_shape) == 1:
+        # If argument a is 1-D, it is promoted to a matrix by prefixing 1 to its dimensions.
+        a_promoted = a_promoted.reshape(1, a_shape[0])
+
+    if len(b_shape) == 1:
+        # If argument b is 1-D, it is promoted to a matrix by appending 1 to its dimensions.
+        b_promoted = b_promoted.reshape(b_shape[0], 1)
+
+    if with_c and len(c_shape) == 1:
+        c_promoted = c_promoted.reshape(c_shape[0], 1)
+
+    if with_c and c_promoted.shape[-1] == 1:
+        # If a vector is provided or N = 1, the columns of c are broadcast for the addition.
+        c_promoted = get_framework(c_promoted).stack([c_promoted[..., 0]] * N, -1)
+
+    alpha = 0.12
+    beta = 0.34 if with_c else None
+    result = matmul(a, b, c=c, alpha=alpha, beta=beta)
+    reference = matmul(a_promoted, b_promoted, c=c_promoted, alpha=alpha, beta=beta)
+
+    if len(a_shape) == 1:
+        assert reference.shape[-2] == 1
+        reference = reference.reshape((*reference.shape[:-2], reference.shape[-1]))
+
+    if len(b_shape) == 1:
+        assert reference.shape[-1] == 1
+        reference = reference.reshape(reference.shape[:-1])
+
+    assert_tensors_equal(result, reference)
+
+
 @pytest.mark.parametrize(
     "slices",
     (
@@ -302,7 +382,7 @@ def test_dtype_mismatch(framework, a_dtype, b_dtype, c_dtype):
         a = sample_matrix(framework, a_dtype, (2, 2), True)
         b = sample_matrix(framework, b_dtype, (2, 2), True)
         c = sample_matrix(framework, c_dtype, (2, 2), True)
-    except NotImplementedError as e:
+    except NotImplementedError:
         pytest.skip("Unable to generate matrix of this dtype")
     with pytest.raises(ValueError, match=r"The dtype of operands .* must be the same"):
         matmul(a, b, c, beta=1)

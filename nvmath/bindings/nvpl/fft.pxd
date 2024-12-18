@@ -79,22 +79,22 @@ cpdef int get_version() except? -1
 cpdef intptr_t plan_many_c2c_double(int rank, n, int batch, intptr_t in_, inembed, int istride, int idist, intptr_t out, onembed, int ostride, int odist, int sign, unsigned flags) except? 0
 cpdef intptr_t plan_many_r2c_double(int rank, n, int batch, intptr_t in_, inembed, int istride, int idist, intptr_t out, onembed, int ostride, int odist, unsigned flags) except? 0
 cpdef intptr_t plan_many_c2r_double(int rank, n, int batch, intptr_t in_, inembed, int istride, int idist, intptr_t out, onembed, int ostride, int odist, unsigned flags) except? 0
-cpdef void execute_c2c_double(intptr_t plan, intptr_t idata, intptr_t odata)
-cpdef void execute_r2c_double(intptr_t plan, intptr_t idata, intptr_t odata)
-cpdef void execute_c2r_double(intptr_t plan, intptr_t idata, intptr_t odata)
+cpdef void execute_c2c_double(intptr_t plan, intptr_t idata, intptr_t odata) except*
+cpdef void execute_r2c_double(intptr_t plan, intptr_t idata, intptr_t odata) except*
+cpdef void execute_c2r_double(intptr_t plan, intptr_t idata, intptr_t odata) except*
 cpdef intptr_t plan_many_c2c_float(int rank, n, int batch, intptr_t in_, inembed, int istride, int idist, intptr_t out, onembed, int ostride, int odist, int sign, unsigned flags) except? 0
 cpdef intptr_t plan_many_r2c_float(int rank, n, int batch, intptr_t in_, inembed, int istride, int idist, intptr_t out, onembed, int ostride, int odist, unsigned flags) except? 0
 cpdef intptr_t plan_many_c2r_float(int rank, n, int batch, intptr_t in_, inembed, int istride, int idist, intptr_t out, onembed, int ostride, int odist, unsigned flags) except? 0
-cpdef void execute_c2c_float(intptr_t plan, intptr_t idata, intptr_t odata)
-cpdef void execute_r2c_float(intptr_t plan, intptr_t idata, intptr_t odata)
-cpdef void execute_c2r_float(intptr_t plan, intptr_t idata, intptr_t odata)
-cpdef int init_threads_double()
-cpdef int init_threads_float()
-cpdef void plan_with_nthreads_double(int nthreads)
-cpdef void plan_with_nthreads_float(int nthreads)
-cpdef int planner_nthreads_double()
-cpdef int planner_nthreads_float()
-cpdef void cleanup_threads_double()
-cpdef void cleanup_threads_float()
-cpdef void destroy_plan_double(intptr_t plan)
-cpdef void destroy_plan_float(intptr_t plan)
+cpdef void execute_c2c_float(intptr_t plan, intptr_t idata, intptr_t odata) except*
+cpdef void execute_r2c_float(intptr_t plan, intptr_t idata, intptr_t odata) except*
+cpdef void execute_c2r_float(intptr_t plan, intptr_t idata, intptr_t odata) except*
+cpdef int init_threads_double() except 0
+cpdef int init_threads_float() except 0
+cpdef void plan_with_nthreads_double(int nthreads) except*
+cpdef void plan_with_nthreads_float(int nthreads) except*
+cpdef int planner_nthreads_double() except? 0
+cpdef int planner_nthreads_float() except? 0
+cpdef void cleanup_threads_double() except*
+cpdef void cleanup_threads_float() except*
+cpdef void destroy_plan_double(intptr_t plan) except*
+cpdef void destroy_plan_float(intptr_t plan) except*

@@ -33,9 +33,7 @@ def _check_init_cufft():
         try:
             import cupy
         except ImportError as e:
-            raise RuntimeError(
-                "Currently, the FFT CUDA execution requires cupy. " "Please make sure cupy is installed."
-            ) from e
+            raise RuntimeError("Currently, the FFT CUDA execution requires cupy. Please make sure cupy is installed.") from e
 
         IS_EXEC_GPU_AVAILABLE = True
 

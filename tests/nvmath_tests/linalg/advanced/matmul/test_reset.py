@@ -173,7 +173,8 @@ def test_shape_mismatch(
     use_cuda,
 ):
     """
-    Checks if resetting operands to ones of different shapes results in appropriate error message
+    Checks if resetting operands to ones of different shapes results in appropriate error
+    message
     """
     m, n, k = 54, 32, 10
     a = sample_matrix(framework, dtype, (m, k), use_cuda)
@@ -238,7 +239,8 @@ def test_dtype_mismatch(
     use_cuda,
 ):
     """
-    Checks if resetting operands to ones with different dtypes results in appropriate error message
+    Checks if resetting operands to ones with different dtypes results in appropriate error
+    message
     """
 
     m, n, k = 19, 28, 37
@@ -263,9 +265,7 @@ def test_dtype_mismatch(
         new_b = sample_matrix(framework, bad_dtype if b_mismatch else dtype, (k, n), use_cuda)
         new_c = sample_matrix(framework, bad_dtype if c_mismatch else dtype, (m, n), use_cuda) if with_c else None
         new_epilog_inputs = (
-            {"bias": sample_matrix(framework, bad_dtype if bias_mismatch else dtype, (m, 1), use_cuda)}
-            if with_epilog
-            else None
+            {"bias": sample_matrix(framework, bad_dtype if bias_mismatch else dtype, (m, 1), use_cuda)} if with_epilog else None
         )
 
         if any((a_mismatch, b_mismatch, c_mismatch, bias_mismatch)):
@@ -309,7 +309,8 @@ def test_framework_mismatch(
     use_cuda,
 ):
     """
-    Checks if resetting operands to ones from different framework results in appropriate error message
+    Checks if resetting operands to ones from different framework results in appropriate
+    error message
     """
 
     m, n, k = 10, 11, 12
@@ -390,8 +391,8 @@ def test_conjugate_flag(b_conj_init, b_conj_reset):
 
     Only checks GPU tensors, because conj flag is reset on H2D copy.
 
-    Only checks B, because changing conj flag of A requires transposing it due to cublas requirements,
-    which causes stride mismatch.
+    Only checks B, because changing conj flag of A requires transposing it due to cublas
+    requirements, which causes stride mismatch.
     """
     m, k, n = 3, 4, 5
 

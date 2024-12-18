@@ -33,7 +33,8 @@ def integer_or_string(value):
 
 def create_valid_tuples_from_enum(enum, prefix, *, expr=r"(?:(\d+)x(\d+|\w+)(?:x(\d+))?|(AUTO|UNDEFINED))"):
     """
-    Create a sequence of tuples representing the allowed combinations for the given enumeration.
+    Create a sequence of tuples representing the allowed combinations for the given
+    enumeration.
     """
 
     combinations = list()
@@ -56,12 +57,8 @@ def create_valid_tuples_from_enum(enum, prefix, *, expr=r"(?:(\d+)x(\d+|\w+)(?:x
     return tuple(combinations), value_to_enumerator, enumerator_to_value
 
 
-CLUSTER_SHAPES, CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE = create_valid_tuples_from_enum(
-    cublaslt.ClusterShape, "SHAPE_"
-)
+CLUSTER_SHAPES, CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE = create_valid_tuples_from_enum(cublaslt.ClusterShape, "SHAPE_")
 
-MATMUL_STAGES, MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE = create_valid_tuples_from_enum(
-    cublaslt.MatmulStages, "STAGES_"
-)
+MATMUL_STAGES, MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE = create_valid_tuples_from_enum(cublaslt.MatmulStages, "STAGES_")
 
 MATMUL_TILES, MATMUL_TILE_TO_ENUM, ENUM_TO_MATMUL_TILE = create_valid_tuples_from_enum(cublaslt.MatmulTile, "TILE_")

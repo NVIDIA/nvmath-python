@@ -73,7 +73,8 @@ class FLOPSStr:
 
 def array2string(array_like):
     """
-    String representation of an array-like object with possible truncation of "interior" values to limit string size.
+    String representation of an array-like object with possible truncation of "interior"
+    values to limit string size.
 
     The NumPy function "set_printoptions" can be used to control the display of the array.
     """

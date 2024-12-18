@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example illustrates how to reset operands in stateful matrix multiplication APIs, and reuse the object for multiple executions. This is
-needed when the memory space of the operands is not accessible from the execution space, or if it's desired to bind new (compatible) operands
-to the stateful object.
+This example illustrates how to reset operands in stateful matrix multiplication APIs, and
+reuse the object for multiple executions. This is needed when the memory space of the
+operands is not accessible from the execution space, or if it's desired to bind new
+(compatible) operands to the stateful object.
 
 The inputs as well as the result are NumPy ndarrays.
 """
@@ -27,7 +28,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(me
 
 # Use the stateful object as a context manager to automatically release resources.
 with nvmath.linalg.advanced.Matmul(a, b) as mm:
-    # Plan the matrix multiplication. Planning returns a sequence of algorithms that can be configured as we'll see in a later example.
+    # Plan the matrix multiplication. Planning returns a sequence of algorithms that can be
+    # configured as we'll see in a later example.
     mm.plan()
 
     # Execute the matrix multiplication.

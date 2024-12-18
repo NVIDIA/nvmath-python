@@ -32,7 +32,12 @@ from nvmath._internal import typemaps
 from nvmath._internal import utils
 
 from nvmath.linalg._internal import matmul_desc_ifc, matmul_pref_ifc, matrix_layout_ifc
-from nvmath.linalg._internal.typemaps import NAME_TO_DEFAULT_SCALE_TYPE, NAME_TO_DEFAULT_COMPUTE_TYPE
+from nvmath.linalg._internal.typemaps import (
+    NAME_TO_DEFAULT_SCALE_TYPE,
+    NAME_TO_DEFAULT_COMPUTE_TYPE,
+    COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE,
+    SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE,
+)
 from nvmath.linalg._internal.utils import (
     axis_order_in_memory,
     calculate_strides,
@@ -46,7 +51,9 @@ from nvmath.linalg._internal.epilog_protocol import (
     EPILOG_INPUT_HANDLERS_MAP,
     EPILOG_OUTPUT_HANDLERS_MAP,
     EPILOG_MINIMUM_VERSIONS_MAP,
+    BATCHED_EPILOG_MINIMUM_VERSIONS_MAP,
 )
+from nvmath._utils import CudaDataType
 
 MatmulComputeType = cublas.ComputeType
 
@@ -98,10 +105,17 @@ class LayoutTraits:
         if not transpose:
             return *self.mm_shape, self.ld, self.order
 
-        # Use of transpose is supported only for A and B for two specific use cases till the C library directly supports these use cases:
-        #   1. When A or B has the conjugate qualifier, we transpose it internally and then use conjugate transpose in the MM (A @ B.conj() == A @ B.T.H).
-        #   2. When the epilog is BGRADB, we transpose B internally and use transpose in the MM since this epilog requires B to be transposed (A @ B == A @ B.T.T).
-        # This requires that the layout order be ROW or COL (no special layouts such as structured or hierarchical).
+        # Use of transpose is supported only for A and B for two specific use cases till the
+        # C library directly supports these use cases:
+        #
+        #   1. When A or B has the conjugate qualifier, we transpose it internally and then
+        #      use conjugate transpose in the MM (A @ B.conj() == A @ B.T.H).
+        #
+        #   2. When the epilog is BGRADB, we transpose B internally and use transpose in the
+        #      MM since this epilog requires B to be transposed (A @ B == A @ B.T.T).
+        #
+        #  This requires that the layout order be ROW or COL (no special layouts such as
+        #  structured or hierarchical).
         assert self.mm_shape is not None and self.mm_strides is not None, "Internal Error."
         assert self.ld != 0, "Internal Error."
 
@@ -127,27 +141,54 @@ class ResultTraits:
     result_strides: Sequence[int]
 
 
-def get_matrix_layout_traits(mm_shape, mm_strides, batch_strides, col_bcast):
+def get_matrix_layout_traits(mm_shape, mm_strides, batch_strides, col_bcast, ordering=None, orientation=None):
+    """
+    The 'ordering' option specifies the layout order, if it's not None, as in the case of
+    the D matrix whose layout is determined by the other operands' layout. It is required if
+    the matrix is degenerate (a vector or scalar: len(mm_shape) < 2).
+
+    The 'orientation' option (ROW or COL) is required to infer the correct leading dimension
+    for degenerate matrices (a vector or scalar: len(mm_shape) < 2).
+    """
     if len(mm_shape) < 2:  # The result D can be a scalar or vector.
+        assert ordering is not None, "Internal Error: 'ordering' must be specified for degenerate matrices."
+        assert orientation is not None, "Internal Error: 'orientation' must be specified for degenerate matrices."
         batch_offset = min(batch_strides) if batch_strides else 0
-        order = cublaslt.Order.COL
-        ld = max(mm_shape[0], mm_strides[0]) if len(mm_shape) == 1 else 1
+        order = ordering
+        if len(mm_shape) < 1:
+            ld = 1
+        elif order != orientation:
+            # For a ROW vector in COL order, the LD should be 1 since we promote the row
+            # vector to a matrix as (1, M). Similarly, for a COL vector in ROW order, the LD
+            # should be 1 as well since we promote the column vector to a matrix as (M, 1).
+            ld = 1
+        else:
+            ld = max(mm_strides[0], mm_shape[0])
         return order, ld, batch_offset
 
     M, N = mm_shape
 
-    # Important: start with the first dimension so that cases like (M, 1) : (1, 1) or (1, M) : (1, 1) in CuTe notation map to COL.
-    if mm_strides[0] == 1:
-        order = cublaslt.Order.COL
-    elif mm_strides[1] == 1:
-        order = cublaslt.Order.ROW
+    if ordering is not None:
+        order = ordering
+        message = f"Internal Error: incompatible ordering '{ordering}' and strides {mm_strides}"
+        if order == cublaslt.Order.ROW:
+            assert mm_strides[0] >= mm_strides[1] and mm_strides[1] == 1, message
+        else:
+            assert mm_strides[1] >= mm_strides[0] and mm_strides[0] == 1, message
     else:
-        if M == 1:
+        # Important: start with the first dimension so that cases like (M, 1) : (1, 1) or
+        # (1, M) : (1, 1) in CuTe notation map to COL.
+        if mm_strides[0] == 1:
             order = cublaslt.Order.COL
-        elif N == 1:
+        elif mm_strides[1] == 1:
             order = cublaslt.Order.ROW
         else:
-            raise ValueError("Unsupported layout.")
+            if M == 1:
+                order = cublaslt.Order.COL
+            elif N == 1:
+                order = cublaslt.Order.ROW
+            else:
+                raise ValueError("Unsupported layout.")
 
     # We need to handle broadcast dimensions with zero-stride for the c matrix.
     if col_bcast and N == 1:
@@ -155,8 +196,9 @@ def get_matrix_layout_traits(mm_shape, mm_strides, batch_strides, col_bcast):
     else:
         ld = max(M, mm_strides[1]) if order == cublaslt.Order.COL else max(N, mm_strides[0])
 
-    # Batch dimensions should be contiguous in memory, which we have already checked.
-    # The batch_offset should be based on the lowest stride in the batch dimension to account for embedded matrices.
+    # Batch dimensions should be contiguous in memory, which we have already checked. The
+    # batch_offset should be based on the lowest stride in the batch dimension to account
+    # for embedded matrices.
     batch_offset = min(batch_strides) if batch_strides else 0
 
     return order, ld, batch_offset
@@ -168,16 +210,19 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
 
     1. Check MM compatibility (K):
         a. First pad A and/or B MM dimensions if 1-D according to NumPy convention.
-        b. The padding is used to determine M, N, and K but should not appear in the output dimensions.
+        b. The padding is used to determine M, N, and K but should not appear in the output
+           dimensions.
         c. If both A and B are N-D, the dimensions must match.
     2. Check batch dimensions:
-        a. One of A or B can have missing batch extents, in which case it is broadcast, otherwise
+        a. One of A or B can have missing batch extents, in which case it is broadcast,
+           otherwise
         b. A and B must have the same batch ordering.
         c. In addition, the batch dimensions must be tileable (contiguous in memory).
 
     Then check C:
 
-    C can be None. If C is passed in, it must be a vector or matrix. Batching rule is the same as above.
+    C can be None. If C is passed in, it must be a vector or matrix. Batching rule is the
+    same as above.
     """
     a_shape, a_strides = list(a_layout.shape), list(a_layout.strides)
     b_shape, b_strides = list(b_layout.shape), list(b_layout.strides)
@@ -187,7 +232,6 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
 
     a_batch_strides, a_mm_strides = a_strides[:-2], a_strides[-2:]
     b_batch_strides, b_mm_strides = b_strides[:-2], b_strides[-2:]
-
     d_mm_shape = []
     if len(a_mm_shape) == 1:
         s, d = a_mm_shape[0], a_mm_strides[0]
@@ -218,20 +262,26 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
     batch_shape, batch_axis_order = [], ()
     if len(a_batch_shape) > 0:
         if not check_batch_tileable(a_batch_shape, a_batch_strides):
-            message = f"The batch layout for A corresponding to shape = {a_batch_shape} and strides = {a_batch_strides} is currently not supported because it is not tileable."
+            message = (
+                f"The batch layout for A corresponding to shape = {a_batch_shape} and strides = {a_batch_strides} "
+                "is currently not supported because it is not tileable."
+            )
             raise ValueError(message)
         logger.debug(
-            f"The batch layout for A corresponding to shape = {a_batch_shape} and strides = {a_batch_strides} IS tileable."
+            f"The batch layout for A corresponding to shape = {a_batch_shape} and strides = {a_batch_strides} IS " "tileable."
         )
         batch_shape = a_batch_shape
         batch_axis_order = a_batch_axis_order = axis_order_in_memory(a_batch_strides)
 
     if len(b_batch_shape) > 0:
         if not check_batch_tileable(b_batch_shape, b_batch_strides):
-            message = f"The batch layout for B corresponding to shape = {b_batch_shape} and strides = {b_batch_strides} is currently not supported because it is not tileable."
+            message = (
+                f"The batch layout for B corresponding to shape = {b_batch_shape} and strides = {b_batch_strides} "
+                "is currently not supported because it is not tileable."
+            )
             raise ValueError(message)
         logger.debug(
-            f"The batch layout for B corresponding to shape = {b_batch_shape} and strides = {b_batch_strides} IS tileable."
+            f"The batch layout for B corresponding to shape = {b_batch_shape} and strides = {b_batch_strides} IS " "tileable."
         )
         batch_shape = b_batch_shape
         batch_axis_order = b_batch_axis_order = axis_order_in_memory(b_batch_strides)
@@ -240,9 +290,7 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
         if a_batch_shape != b_batch_shape:
             raise ValueError(f"The batch dimensions of operands A {a_batch_shape} and B {b_batch_shape} must match.")
         if a_batch_axis_order != b_batch_axis_order:
-            raise ValueError(
-                f"The batch order of operands A {a_batch_axis_order} and B {b_batch_axis_order} must match."
-            )
+            raise ValueError(f"The batch order of operands A {a_batch_axis_order} and B {b_batch_axis_order} must match.")
 
     logger.debug(f"The batch shape is {batch_shape} with batch axis order {batch_axis_order}.")
 
@@ -258,9 +306,7 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
         mm_shape=a_mm_shape,
         mm_strides=a_mm_strides,
     )
-    logger.debug(
-        f"The layout order for operand A is {a_order.name}, with LD {a_ld}, and batch offset {a_batch_offset}."
-    )
+    logger.debug(f"The layout order for operand A is {a_order.name}, with LD {a_ld}, and batch offset {a_batch_offset}.")
 
     b_order, b_ld, b_batch_offset = get_matrix_layout_traits(b_mm_shape, b_mm_strides, b_batch_strides, col_bcast=False)
     b_layout_traits = LayoutTraits(
@@ -271,16 +317,16 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
         mm_shape=b_mm_shape,
         mm_strides=b_mm_strides,
     )
-    logger.debug(
-        f"The layout order for operand B is {b_order.name}, with LD {b_ld}, and batch offset {b_batch_offset}."
-    )
+    logger.debug(f"The layout order for operand B is {b_order.name}, with LD {b_ld}, and batch offset {b_batch_offset}.")
 
     # Process matrix c, if provided.
     c_layout_traits = None
     if c_layout is not None:
-        # C can be a vector of dimension M, which is broadcast.
-        # C can be a matrix of dimension (M, N) or (M, 1), broadcast in the latter case and has to have contiguous strides.
-        # C can be batched matrices of dimension (..., M, N) or (..., M, 1), broadcast in the latter case and has to have contiguous strides.
+        # 1. C can be a vector of dimension M, which is broadcast.
+        # 2. C can be a matrix of dimension (M, N) or (M, 1), broadcast in the latter case
+        #    and has to have contiguous strides.
+        # 3. C can be batched matrices of dimension (..., M, N) or (..., M, 1), broadcast in
+        #    the latter case and has to have contiguous strides.
         c_shape, c_strides = list(c_layout.shape), list(c_layout.strides)
 
         c_batch_shape, c_mm_shape = c_shape[:-2], c_shape[-2:]
@@ -298,31 +344,29 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
         if Nc != 1 and Nc != N0:
             raise ValueError(f"The N dimension of the C matrix ({Nc}) must match the N dimension of B.")
 
-        if len(c_batch_shape) > 0 and c_batch_shape != batch_shape:
-            raise ValueError(
-                f"The batch dimension of operand C {c_batch_shape} must match with that of the other operands {batch_shape}."
-            )
         if len(c_batch_shape) > 0:
-            c_batch_axis_order = axis_order_in_memory(c_batch_strides)
-            if c_batch_axis_order != batch_axis_order:
+            if c_batch_shape != batch_shape:
                 raise ValueError(
-                    f"The batch axis order of operand C {c_batch_axis_order} must match with that of the other operands {batch_axis_order}."
+                    f"The batch dimension of operand C {c_batch_shape} must match with that of the other operands "
+                    f"{batch_shape}."
                 )
 
-        if len(c_batch_shape) > 0:
+            if (c_batch_axis_order := axis_order_in_memory(c_batch_strides)) != batch_axis_order:
+                raise ValueError(
+                    f"The batch axis order of operand C {c_batch_axis_order} must match with that of the other "
+                    f"operands {batch_axis_order}."
+                )
+
             if not check_batch_tileable(c_batch_shape, c_batch_strides):
-                message = f"The batch layout for C corresponding to shape = {c_batch_shape} and strides = {c_batch_strides} is currently not supported because it is not tileable."
+                message = (
+                    f"The batch layout for C corresponding to shape = {c_batch_shape} and strides = "
+                    f"{c_batch_strides} is currently not supported because it is not tileable."
+                )
                 raise ValueError(message)
 
-        c_order, c_ld, c_batch_offset = get_matrix_layout_traits(
-            c_mm_shape, c_mm_strides, c_batch_strides, col_bcast=True
-        )
-        c_layout_traits = LayoutTraits(
-            order=c_order, ld=c_ld, batch_offset=c_batch_offset, is_conjugate=c_layout.is_conjugate
-        )
-        logger.debug(
-            f"The layout order for operand C is {c_order.name}, with LD {c_ld}, and batch offset {c_batch_offset}."
-        )
+        c_order, c_ld, c_batch_offset = get_matrix_layout_traits(c_mm_shape, c_mm_strides, c_batch_strides, col_bcast=True)
+        c_layout_traits = LayoutTraits(order=c_order, ld=c_ld, batch_offset=c_batch_offset, is_conjugate=c_layout.is_conjugate)
+        logger.debug(f"The layout order for operand C is {c_order.name}, with LD {c_ld}, and batch offset {c_batch_offset}.")
 
     return MMTraits(
         M=M0,
@@ -343,11 +387,12 @@ def get_result_traits(mm_traits, epilog_ordering, logger):
     epilog_ordering = value of type cublaslt.Order or None.
 
     The result layout is determined from:
-    - the ordering of operand c, if it is provided, or
-    - the epilog requirement, if it exists, or
-    - the ordering of operand a.
+        - the ordering of operand c, if it is provided, or
+        - the epilog requirement, if it exists, or
+        - the ordering of operand a.
 
-    The result batch dimensions must have the same extents and axis order as the inputs. The MM layout can be C or F.
+    The result batch dimensions must have the same extents and axis order as the inputs. The
+    MM layout can be C or F.
     """
     # The result shape is the batch shape + d_mm_shape.
     result_shape = mm_traits.batch_shape + mm_traits.d_mm_shape
@@ -371,18 +416,32 @@ def get_result_traits(mm_traits, epilog_ordering, logger):
     # Calculate the result strides.
     result_strides = calculate_strides(result_shape, result_axis_order)
 
+    # For degenerate matrices, we need to specify the result orientation.
+    result_orientation = None
+    if len(mm_traits.d_mm_shape) < 2:
+        if mm_traits.M == 1:
+            result_orientation = cublaslt.Order.ROW
+        elif mm_traits.N == 1:
+            result_orientation = cublaslt.Order.COL
+
     # The result's traits.
     d_batch_strides, d_mm_strides = (
         result_strides[: len(mm_traits.batch_shape)],
         result_strides[len(mm_traits.batch_shape) :],
     )
     d_order, d_ld, d_batch_offset = get_matrix_layout_traits(
-        mm_traits.d_mm_shape, d_mm_strides, d_batch_strides, col_bcast=False
+        mm_traits.d_mm_shape,
+        d_mm_strides,
+        d_batch_strides,
+        col_bcast=False,
+        ordering=result_ordering,
+        orientation=result_orientation,
     )
+    assert (
+        d_order == result_ordering
+    ), f"Internal Error: d_order = {d_order.name}, result_ordering = {result_ordering.name}, mm_traits = {mm_traits}."
     d_layout_traits = LayoutTraits(order=d_order, ld=d_ld, batch_offset=d_batch_offset, is_conjugate=False)
-    logger.debug(
-        f"The layout order for operand D is {d_order.name}, with LD {d_ld}, and batch offset {d_batch_offset}."
-    )
+    logger.debug(f"The layout order for operand D is {d_order.name}, with LD {d_ld}, and batch offset {d_batch_offset}.")
 
     return ResultTraits(result_shape=result_shape, result_strides=result_strides, d_layout_traits=d_layout_traits)
 
@@ -390,50 +449,99 @@ def get_result_traits(mm_traits, epilog_ordering, logger):
 SHARED_MM_DOCUMENTATION = utils.COMMON_SHARED_DOC_MAP.copy()
 SHARED_MM_DOCUMENTATION.update(
     {
-        "a": "A tensor representing the first operand to the matrix multiplication (see `Semantics`). The currently supported types are "
-        ":class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.",
-        "b": "A tensor representing the second operand to the matrix multiplication (see `Semantics`). The currently supported types are "
-        ":class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.",
-        "c": "(Optional) A tensor representing the operand to add to the matrix multiplication result (see `Semantics`). The currently supported "
-        "types are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.",
-        "alpha": "The scale factor for the matrix multiplication term as a real or complex number. The default is :math:`1.0`.",
-        "beta": "The scale factor for the matrix addition term as a real or complex number. A value for `beta` must be provided if operand `c` is specified.",
-        "algorithms": "A sequence of :class:`Algorithm` objects that can be directly provided to bypass planning. The algorithm objects must "
-        "be compatible with the matrix multiplication. A typical use for this option is to provide algorithms serialized (pickled) "
-        "from a previously planned and autotuned matrix multiplication.",
-        "epilog": r"Specify an epilog :math:`F` as an object of type :class:`MatmulEpilog` to apply to the result of the matrix "
-        r"multiplication: :math:`F(\alpha A @ B + \beta C`). The default is no epilog. "
-        r"See `cuBLASLt documentation <https://docs.nvidia.com/cuda/cublas/#cublasltepilogue-t>`_ for the list of available epilogs.",
-        "epilog_inputs": "Specify the additional inputs needed for the selected epilog as a dictionary, where the key is the epilog "
-        "input name and the value is the epilog input. The epilog input must be a tensor with the same package and in the same "
-        "memory space as the operands (see the constructor for more information on the operands). If the required epilog inputs "
-        "are not provided, an exception is raised that lists the required epilog inputs. "
-        "Some epilog inputs are generated by other epilogs. For example, the epilog input for :class:`MatmulEpilog.DRELU` is generated by matrix "
-        "multiplication with the same operands using :class:`MatmulEpilog.RELU_AUX`. ",
-        "qualifiers": "If desired, specify the matrix qualifiers as a :class:`numpy.ndarray` of :class:`~nvmath.linalg.advanced.matrix_qualifiers_dtype` objects "
-        "of length 3 corresponding to the operands `a`, `b`, and `c`.",
-        "options": "Specify options for the matrix multiplication as a :class:`~nvmath.linalg.advanced.MatmulOptions` object. Alternatively, a `dict` containing the parameters for the "
-        "``MatmulOptions`` constructor can also be provided. If not specified, the value will be set to the default-constructed ``MatmulOptions`` object.",
-        "preferences": "This parameter specifies the preferences for planning as a :class:`MatmulPlanPreferences` object. Alternatively, a "
-        "dictionary containing the parameters for the ``MatmulPlanPreferences`` constructor can also be provided. If not specified, the "
-        "value will be set to the default-constructed ``MatmulPlanPreferences`` object.",
-        "result": "The result of the specified matrix multiplication (epilog applied), which remains on the same device and belong to the same package as the input operands. If an epilog "
-        "(like :attr:`nvmath.linalg.advanced.MatmulEpilog.RELU_AUX`) that results in extra output is used, a tuple is returned with the first element being the matrix multiplication result (epilog applied) and the second "
-        "element being the auxiliary output provided by the selected epilog as a `dict`.",
-        "semantics": """The semantics of the matrix multiplication follows :func:`numpy.matmul` semantics, with some restrictions on broadcasting. In addition, the
-        semantics for the fused matrix addition are described below:
+        "a": """\
+A tensor representing the first operand to the matrix multiplication (see `Semantics`). The currently supported types
+are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.""".replace("\n", " "),
+        #
+        "b": """\
+A tensor representing the second operand to the matrix multiplication (see `Semantics`). The currently supported types
+are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.""".replace("\n", " "),
+        #
+        "c": """\
+(Optional) A tensor representing the operand to add to the matrix multiplication result (see `Semantics`). The currently
+supported types are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.""".replace("\n", " "),
+        #
+        "c_admonitions": """
+                .. note::
+                    The broadcasting behavior of a 1-D (vector) `c` deviates from the
+                    equivalent NumPy expression. With nvmath-python, `c` is internally
+                    promoted to shape (M, 1) in order to broadcast with ``a @ b``; this matches the
+                    behavior of cuBLASLt. With NumPy, a 1-D `c` behaves as if it has shape
+                    (1, N) in the expression ``a @ b + c``.
 
-            * If arguments `a` and `b` are matrices, they are multiplied according to the rules of matrix multiplication.
-            * If argument `a` is 1-D, it is promoted to a matrix by prefixing ``1`` to its dimensions. After matrix multiplication, the prefixed ``1``
-              is removed from the result's dimensions.
-            * If argument `b` is 1-D, it is promoted to a matrix by appending ``1`` to its dimensions. After matrix multiplication, the appended ``1``
-              is removed from the result's dimensions.
-            * If `a` or `b` is N-D (N > 2), then the operand is treated as a batch of matrices. If both `a` and `b` are N-D, their batch dimensions
-              must match. If exactly one of `a` or `b` is N-D, the other operand is broadcast.
-            * The operand for the matrix addition `c` may be a vector of length M, a matrix of shape (M, 1) or (M, N), or batched versions of the
-              latter (..., M, 1) or (..., M, N). Here M and N are the dimensions of the result of the matrix multiplication. If a vector is provided
-              or N = 1, the columns of `c` are broadcast for the addition. If batch dimensions are not present, `c` is broadcast across batches as
-              needed.""",
+                .. deprecated:: 0.2.1
+                    In order to avoid broadcasting behavior ambiguity, nvmath-python will no longer
+                    accept a 1-D (vector) `c` starting in version 0.3.0. Use a singleton
+                    dimension to convert your input array to 2-D.
+""",
+        #
+        "alpha": """\
+The scale factor for the matrix multiplication term as a real or complex number. The default is
+:math:`1.0`.""".replace("\n", " "),
+        #
+        "beta": """\
+The scale factor for the matrix addition term as a real or complex number. A value for `beta` must be provided if
+operand `c` is specified.""".replace("\n", " "),
+        #
+        "algorithms": """\
+A sequence of :class:`Algorithm` objects that can be directly provided to bypass planning. The algorithm objects must be
+compatible with the matrix multiplication. A typical use for this option is to provide algorithms serialized (pickled)
+from a previously planned and autotuned matrix multiplication.""".replace("\n", " "),
+        #
+        "epilog": """\
+Specify an epilog :math:`F` as an object of type :class:`MatmulEpilog` to apply to the result of the matrix
+multiplication: :math:`F(\\alpha A @ B + \\beta C`). The default is no epilog. See `cuBLASLt documentation
+<https://docs.nvidia.com/cuda/cublas/#cublasltepilogue-t>`_ for the list of available epilogs.""".replace("\n", " "),
+        #
+        "epilog_inputs": """\
+Specify the additional inputs needed for the selected epilog as a dictionary, where the key is the epilog input name and
+the value is the epilog input. The epilog input must be a tensor with the same package and in the same memory space as
+the operands (see the constructor for more information on the operands). If the required epilog inputs are not provided,
+an exception is raised that lists the required epilog inputs. Some epilog inputs are generated by other epilogs. For
+example, the epilog input for :class:`MatmulEpilog.DRELU` is generated by matrix multiplication with the same operands
+using :class:`MatmulEpilog.RELU_AUX`. """.replace("\n", " "),
+        #
+        "qualifiers": """\
+If desired, specify the matrix qualifiers as a :class:`numpy.ndarray` of
+:class:`~nvmath.linalg.advanced.matrix_qualifiers_dtype` objects of length 3 corresponding to the operands `a`, `b`, and
+`c`.""".replace("\n", " "),
+        #
+        "options": """\
+Specify options for the matrix multiplication as a :class:`~nvmath.linalg.advanced.MatmulOptions` object. Alternatively,
+a `dict` containing the parameters for the ``MatmulOptions`` constructor can also be provided. If not specified, the
+value will be set to the default-constructed ``MatmulOptions`` object.""".replace("\n", " "),
+        #
+        "preferences": """\
+This parameter specifies the preferences for planning as a :class:`MatmulPlanPreferences` object. Alternatively, a
+dictionary containing the parameters for the :class:`MatmulPlanPreferences` constructor can also be provided. If not
+specified, the value will be set to the default-constructed :class:`MatmulPlanPreferences` object.
+""".replace("\n", " "),
+        #
+        "result": """\
+The result of the specified matrix multiplication (epilog applied), which remains on the same device and belong to the
+same package as the input operands. If an epilog (like :attr:`nvmath.linalg.advanced.MatmulEpilog.RELU_AUX`) that
+results in extra output is used, a tuple is returned with the first element being the matrix multiplication result
+(epilog applied) and the second element being the auxiliary output provided by the selected epilog as a
+`dict`.""".replace("\n", " "),
+        #
+        "semantics": """\
+        The semantics of the matrix multiplication follows :func:`numpy.matmul` semantics, with some restrictions on
+        broadcasting. In addition, the semantics for the fused matrix addition are described below:
+
+        * If arguments `a` and `b` are matrices, they are multiplied according to the rules of matrix multiplication.
+        * If argument `a` is 1-D, it is promoted to a matrix by prefixing ``1`` to its dimensions. After matrix
+          multiplication, the prefixed ``1`` is removed from the result's dimensions.
+        * If argument `b` is 1-D, it is promoted to a matrix by appending ``1`` to its dimensions. After matrix
+          multiplication, the appended ``1`` is removed from the result's dimensions.
+        * If `a` or `b` is N-D (N > 2), then the operand is treated as a batch of matrices. If both `a` and `b` are N-D,
+          their batch dimensions must match. If exactly one of `a` or `b` is N-D, the other operand is broadcast.
+        * The operand for the matrix addition `c` may be a vector of length M, a matrix of shape (M, 1) or (M, N), or
+          batched versions of the latter (..., M, 1) or (..., M, N). Here M and N are the dimensions of the result of
+          the matrix multiplication. If a vector is provided or N = 1, the columns of `c` are broadcast for the
+          addition. If batch dimensions are not present, `c` is broadcast across batches as needed.
+        * Similarly, when operating on a batch, auxiliary outputs are 3-D for all epilogs. Therefore, epilogs that return 1-D
+          vectors of length N in non-batched mode return 3-D matrices of size (batch, N, 1) in batched mode.
+""".strip(),
     }
 )
 
@@ -444,48 +552,64 @@ class InvalidMatmulState(Exception):
 
 def _check_extents(shape: tuple, name: str):
     if any(e <= 0 for e in shape):
-        message = (
-            f"The specified extents {shape} for operand {name} are not valid. The extents must be strictly positive. "
-        )
+        message = f"The specified extents {shape} for operand {name} are not valid. The extents must be strictly positive. "
         raise ValueError(message)
 
 
 @utils.docstring_decorator(SHARED_MM_DOCUMENTATION, skip_missing=False)
 class Matmul:
-    r"""
-    Matmul(a, b, /, c=None, *, alpha=None, beta=None, qualifiers=None, options=None, stream=None)
+    """
+    Create a stateful object encapsulating the specified matrix multiplication computation
+    :math:`\\alpha a @ b + \\beta c` and the required resources to perform the operation.  A
+    stateful object can be used to amortize the cost of preparation (planning in the case of
+    matrix multiplication) across multiple executions (also see the :ref:`Stateful APIs
+    <host api types>` section).
 
-    Create a stateful object encapsulating the specified matrix multiplication computation :math:`\alpha a @ b + \beta c` and the required
-    resources to perform the operation.  A stateful object can be used to amortize the cost of preparation (planning in the case of matrix
-    multiplication) across multiple executions (also see the :ref:`Stateful APIs <host api types>` section).
-
-    The function-form API :func:`matmul` is a convenient alternative to using stateful objects for *single* use (the user needs to
-    perform just one matrix multiplication, for example), in which case there is no possibility of amortizing preparatory costs. The
+    The function-form API :func:`matmul` is a convenient alternative to using stateful
+    objects for *single* use (the user needs to perform just one matrix multiplication, for
+    example), in which case there is no possibility of amortizing preparatory costs. The
     function-form APIs are just convenience wrappers around the stateful object APIs.
 
     Using the stateful object typically involves the following steps:
 
-    1. **Problem Specification**: Initialize the object with a defined operation and options.
-    2. **Preparation**: Use :meth:`plan` to determine the best algorithmic implementation for this specific matrix multiplication operation.
+    1. **Problem Specification**: Initialize the object with a defined operation and
+       options.
+    2. **Preparation**: Use :meth:`plan` to determine the best algorithmic implementation
+       for this specific matrix multiplication operation.
     3. **Execution**: Perform the matrix multiplication computation with :meth:`execute`.
-    4. **Resource Management**: Ensure all resources are released either by explicitly calling :meth:`free` or by managing the stateful object within a context manager.
+    4. **Resource Management**: Ensure all resources are released either by explicitly
+       calling :meth:`free` or by managing the stateful object within a context manager.
 
-    Detailed information on what's happening in the various phases described above can be obtained by passing in a :class:`logging.Logger` object
-    to :class:`MatmulOptions` or by setting the appropriate options in the root logger object, which is used by default:
+    Detailed information on what's happening in the various phases described above can be
+    obtained by passing in a :class:`logging.Logger` object to :class:`MatmulOptions` or by
+    setting the appropriate options in the root logger object, which is used by default:
 
         >>> import logging
-        >>> logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M:%S')
+        >>> logging.basicConfig(
+        ...     level=logging.INFO,
+        ...     format="%(asctime)s %(levelname)-8s %(message)s",
+        ...     datefmt="%m-%d %H:%M:%S",
+        ... )
 
-    A user can select the desired logging level and, in general, take advantage of all of the functionality offered by the Python `logging` module.
+    A user can select the desired logging level and, in general, take advantage of all of
+    the functionality offered by the Python `logging` module.
 
     Args:
         a: {a}
+
         b: {b}
+
         c: {c}
+            {c_admonitions}
+
         alpha: {alpha}
+
         beta: {beta}
+
         qualifiers: {qualifiers}
+
         options: {options}
+
         stream: {stream}
 
     Semantics:
@@ -505,31 +629,40 @@ class Matmul:
         >>> a = np.random.rand(M, K)
         >>> b = np.random.rand(K, N)
 
-        We will define a matrix multiplication operation followed by a RELU epilog function using the specialized matrix multiplication interface.
+        We will define a matrix multiplication operation followed by a RELU epilog function
+        using the specialized matrix multiplication interface.
 
         Create a Matmul object encapsulating the problem specification above:
 
         >>> mm = nvmath.linalg.advanced.Matmul(a, b)
 
-        Options can be provided above to control the behavior of the operation using the `options` argument (see :class:`MatmulOptions`).
+        Options can be provided above to control the behavior of the operation using the
+        `options` argument (see :class:`MatmulOptions`).
 
-        Next, plan the operation. The epilog is specified, and optionally, preferences can be specified for planning:
+        Next, plan the operation. The epilog is specified, and optionally, preferences can
+        be specified for planning:
 
         >>> epilog = nvmath.linalg.advanced.MatmulEpilog.RELU
-        >>> mm.plan(epilog=epilog)
+        >>> algorithms = mm.plan(epilog=epilog)
 
-        Certain epilog choices (like :attr:`nvmath.linalg.advanced.MatmulEpilog.BIAS`) require additional input provided using the `epilog_inputs` argument to :meth:`plan`.
+        Certain epilog choices (like :attr:`nvmath.linalg.advanced.MatmulEpilog.BIAS`)
+        require additional input provided using the `epilog_inputs` argument to
+        :meth:`plan`.
 
-        Now execute the matrix multiplication, and obtain the result `r1` as a NumPy ndarray.
+        Now execute the matrix multiplication, and obtain the result `r1` as a NumPy
+        ndarray.
 
         >>> r1 = mm.execute()
 
-        Finally, free the object's resources. To avoid having to explicitly making this call, it's recommended to use the Matmul object as
-        a context manager as shown below, if possible.
+        Finally, free the object's resources. To avoid having to explicitly making this
+        call, it's recommended to use the Matmul object as a context manager as shown below,
+        if possible.
 
         >>> mm.free()
 
-        Note that all :class:`Matmul` methods execute on the current stream by default. Alternatively, the `stream` argument can be used to run a method on a specified stream.
+        Note that all :class:`Matmul` methods execute on the current stream by default.
+        Alternatively, the `stream` argument can be used to run a method on a specified
+        stream.
 
         Let's now look at the same problem with CuPy ndarrays on the GPU.
 
@@ -539,25 +672,29 @@ class Matmul:
         >>> a = cp.random.rand(M, K)
         >>> b = cp.random.rand(K, N)
 
-        Create an Matmul object encapsulating the problem specification described earlier and use it as a context manager.
+        Create an Matmul object encapsulating the problem specification described earlier
+        and use it as a context manager.
 
         >>> with nvmath.linalg.advanced.Matmul(a, b) as mm:
-        ...    mm.plan(epilog=epilog)
+        ...     algorithms = mm.plan(epilog=epilog)
         ...
-        ...    # Execute the operation to get the first result.
-        ...    r1 = mm.execute()
+        ...     # Execute the operation to get the first result.
+        ...     r1 = mm.execute()
         ...
-        ...    # Update operands A and B in-place (see reset_operands() for an alternative).
-        ...    a[:] = cp.random.rand(M, K)
-        ...    b[:] = cp.random.rand(K, N)
+        ...     # Update operands A and B in-place (see reset_operands() for an
+        ...     # alternative).
+        ...     a[:] = cp.random.rand(M, K)
+        ...     b[:] = cp.random.rand(K, N)
         ...
-        ...    # Execute the operation to get the new result.
-        ...    r2 = mm.execute()
+        ...     # Execute the operation to get the new result.
+        ...     r2 = mm.execute()
 
 
         All the resources used by the object are released at the end of the block.
 
-        Further examples can be found in the `nvmath/examples/linalg/advanced/matmul <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul>`_ directory.
+        Further examples can be found in the `nvmath/examples/linalg/advanced/matmul
+        <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul>`_
+        directory.
     """
 
     def __init__(self, a, b, /, c=None, *, alpha=None, beta=None, qualifiers=None, options=None, stream=None):
@@ -566,7 +703,8 @@ class Matmul:
 
         self.logger = options.logger if options.logger is not None else logging.getLogger()
 
-        # The matrix multiplication has two required operands 'a' and 'b', and one optional operand 'c'.
+        # The matrix multiplication has two required operands 'a' and 'b', and one optional
+        # operand 'c'.
         a = tensor_wrapper.wrap_operand(a)
         b = tensor_wrapper.wrap_operand(b)
         self.logger.info("= SPECIFICATION PHASE =")
@@ -607,7 +745,8 @@ class Matmul:
             self.memory_space = "cpu"
             self.device_id = options.device_id
         self.logger.info(
-            f"The input operands' memory space is {self.memory_space}, and the execution space is on device {self.device_id}."
+            f"The input operands' memory space is {self.memory_space}, and the execution space is on device "
+            f"{self.device_id}."
         )
 
         # Allocate device memory (in stream context) if needed.
@@ -619,12 +758,11 @@ class Matmul:
             self.operands = tensor_wrapper.to(self.operands, self.device_id, stream_holder)
 
         # Set qualifiers.
-        self.qualifiers = (
-            qualifiers if qualifiers is not None else np.zeros((3,), dtype=_configuration.matrix_qualifiers_dtype)
-        )
+        self.qualifiers = qualifiers if qualifiers is not None else np.zeros((3,), dtype=_configuration.matrix_qualifiers_dtype)
         if self.qualifiers.dtype != _configuration.matrix_qualifiers_dtype:
             raise ValueError(
-                "The qualifiers must be specified as a NumPy array of length 3 corresponding to the operands A, B, and C of type 'matrix_qualifiers_dtype'."
+                "The qualifiers must be specified as a NumPy array of length 3 corresponding to the operands A, B, and "
+                "C of type 'matrix_qualifiers_dtype'."
             )
         if self.qualifiers[2]["is_conjugate"]:
             raise ValueError("The conjugate flag is currently not supported for operand C.")
@@ -667,18 +805,6 @@ class Matmul:
         else:
             self.handle = get_handle(self.device_id)
 
-        # Determine the scale type.
-        if options.scale_type is None:
-            self.scale_type = NAME_TO_DEFAULT_SCALE_TYPE[self.ab_dtype_name]
-            self.scale_type_name = typemaps.DATA_TYPE_TO_NAME[self.scale_type]
-        else:
-            self.scale_type = options.scale_type
-            if self.scale_type not in typemaps.DATA_TYPE_TO_NAME:
-                message = f"Unsupported scale type. The data type '{self.scale_type}' is currently not supported."
-                raise ValueError(message)
-            self.scale_type_name = typemaps.DATA_TYPE_TO_NAME[self.scale_type]
-        self.logger.info(f"The scale type is '{self.scale_type_name}'.")
-
         # Determine the data types for a and b.
         self.a_dtype = typemaps.NAME_TO_DATA_TYPE[a.dtype]
         self.b_dtype = typemaps.NAME_TO_DATA_TYPE[b.dtype]
@@ -695,25 +821,76 @@ class Matmul:
             self.d_dtype_name = typemaps.DATA_TYPE_TO_NAME[self.d_dtype]
         self.logger.info(f"The data type for the result D is '{self.d_dtype_name}'.")
 
+        def assert_valid_compute_type(compute_type):
+            if compute_type not in cublas.ComputeType:
+                message = f"Unsupported compute type. The compute type '{compute_type}' is currently not supported."
+                raise ValueError(message)
+
+        # Determine the scale type.
+        if options.scale_type is None:
+            if options.compute_type is not None:
+                assert_valid_compute_type(options.compute_type)
+                if "complex" in self.ab_dtype_name:
+                    scale_type_map = COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE["complex"]
+                else:
+                    scale_type_map = COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE["real"]
+                self.scale_type = scale_type_map[options.compute_type]
+            else:
+                self.scale_type = NAME_TO_DEFAULT_SCALE_TYPE[self.ab_dtype_name]
+            self.scale_type_name = typemaps.DATA_TYPE_TO_NAME[self.scale_type]
+        else:
+            self.scale_type = options.scale_type
+            if self.scale_type not in typemaps.DATA_TYPE_TO_NAME:
+                message = f"Unsupported scale type. The data type '{self.scale_type}' is currently not supported."
+                raise ValueError(message)
+            self.scale_type_name = typemaps.DATA_TYPE_TO_NAME[self.scale_type]
+        self.logger.info(f"The scale type is '{self.scale_type_name}'.")
+
         # Determine the compute type.
-        self.compute_type = (
-            options.compute_type
-            if options.compute_type is not None
-            else NAME_TO_DEFAULT_COMPUTE_TYPE[self.ab_dtype_name]
-        )
-        if self.compute_type not in cublas.ComputeType:
-            message = f"Unsupported compute type. The compute type '{self.compute_type}' is currently not supported."
-            raise ValueError(message)
+        if options.compute_type is None:
+            if options.scale_type is not None:
+                self.compute_type = SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE[options.scale_type]
+            else:
+                self.compute_type = NAME_TO_DEFAULT_COMPUTE_TYPE[self.ab_dtype_name]
+        else:
+            self.compute_type = options.compute_type
+        assert_valid_compute_type(self.compute_type)
         self.logger.info(f"The compute type is {self.compute_type.name}.")
+
+        def is_supported(dtype, compute_type, scale_type):
+            ct = cublas.ComputeType
+            st = CudaDataType
+            if compute_type in (ct.COMPUTE_16F, ct.COMPUTE_16F_PEDANTIC):
+                return scale_type == st.CUDA_R_16F and dtype == "float16"
+            elif compute_type in (ct.COMPUTE_32F, ct.COMPUTE_32F_PEDANTIC):
+                if scale_type == st.CUDA_R_32F:
+                    return dtype in ("float32", "bfloat16", "float16")
+                elif scale_type == st.CUDA_C_32F:
+                    return dtype == "complex64"
+            elif compute_type in (ct.COMPUTE_32F_FAST_16F, ct.COMPUTE_32F_FAST_16BF, ct.COMPUTE_32F_FAST_TF32):
+                if scale_type == st.CUDA_R_32F:
+                    return dtype == "float32"
+                if scale_type == st.CUDA_C_32F:
+                    return dtype == "complex64"
+            elif compute_type in (ct.COMPUTE_64F, ct.COMPUTE_64F_PEDANTIC):
+                if scale_type == st.CUDA_R_64F:
+                    return dtype == "float64"
+                if scale_type == st.CUDA_C_64F:
+                    return dtype == "complex128"
+            return False
+
+        if not is_supported(self.ab_dtype_name, self.compute_type, self.scale_type):
+            raise ValueError(
+                f"Selected scale_type={repr(self.scale_type)} compute_type={repr(self.compute_type)} "
+                + f"are not supported for data type {self.ab_dtype_name}"
+            )
 
         # Set alpha and beta.
         self.alpha = np.zeros((1,), dtype=self.scale_type_name)
         try:
             self.alpha[0] = alpha if alpha is not None else 1
         except (ValueError, TypeError) as e:
-            raise ValueError(
-                f"The value provided for alpha {alpha} is not convertible to dtype '{self.alpha.dtype}'."
-            ) from e
+            raise ValueError(f"The value provided for alpha {alpha} is not convertible to dtype '{self.alpha.dtype}'.") from e
 
         self.beta = np.zeros((1,), dtype=self.scale_type_name)
         if beta is not None and self.num_operands == 2:
@@ -721,9 +898,7 @@ class Matmul:
         try:
             self.beta[0] = beta if beta is not None and self.num_operands == 3 else 0
         except (ValueError, TypeError) as e:
-            raise ValueError(
-                f"The value provided for beta {beta} is not convertible to dtype '{self.beta.dtype}'."
-            ) from e
+            raise ValueError(f"The value provided for beta {beta} is not convertible to dtype '{self.beta.dtype}'.") from e
 
         # Capture operand extents and strides for consistency check when resetting operands.
         self.operand_extents = tuple(o.shape for o in self.operands)
@@ -738,10 +913,12 @@ class Matmul:
         self.mm_traits = get_mm_traits(a_layout, b_layout, c_layout, self.logger)
         self.result_traits = None  # Wait till planning to determine this based on the epilog.
         self.logger.info(
-            f"The matrix multiplication attributes are M = {self.mm_traits.M}, N = {self.mm_traits.N}, and K = {self.mm_traits.K}."
+            f"The matrix multiplication attributes are M = {self.mm_traits.M}, N = {self.mm_traits.N}, and "
+            f"K = {self.mm_traits.K}."
         )
         self.logger.info(
-            f"The batch count is {self.mm_traits.batch_count}, and the batch shape is {self.mm_traits.batch_shape} with batch axis order {self.mm_traits.batch_axis_order}."
+            f"The batch count is {self.mm_traits.batch_count}, and the batch shape is {self.mm_traits.batch_shape} "
+            f"with batch axis order {self.mm_traits.batch_axis_order}."
         )
 
         # Create and set the operation descriptor.
@@ -825,7 +1002,8 @@ class Matmul:
         what = kwargs["what"]
         if self.operands is None:
             raise RuntimeError(
-                f"{what} cannot be performed if the operands have been set to None. Use reset_operands() to set the desired input before using performing the {what.lower()}."
+                f"{what} cannot be performed if the operands have been set to None. Use reset_operands() to set the "
+                f"desired input before using performing the {what.lower()}."
             )
 
     def _free_plan_resources(self, exception: Exception | None = None) -> bool:
@@ -874,9 +1052,9 @@ class Matmul:
 
     def _reset_workspace_allocation_tracking(self):
         """
-        Reset workspace allocation tracking attributes to False at the end of the methods where workspace memory is
-        potentially allocated. This is necessary to prevent any exceptions raised before method entry from using
-        stale tracking values.
+        Reset workspace allocation tracking attributes to False at the end of the methods
+        where workspace memory is potentially allocated. This is necessary to prevent any
+        exceptions raised before method entry from using stale tracking values.
         """
         self.workspace_allocated_here = False
 
@@ -921,6 +1099,7 @@ class Matmul:
             with utils.device_ctx(self.device_id), stream_holder.ctx:
                 try:
                     self.workspace_ptr = self.allocator.memalloc(self.workspace_size)
+                    self.workspace_allocated_here = True
                 except TypeError as e:
                     message = (
                         "The method 'memalloc' in the allocator object must conform to the interface in the "
@@ -931,12 +1110,14 @@ class Matmul:
         self.workspace_allocated_size = self.workspace_size
         self.workspace_stream = stream_holder.obj
         self.logger.debug(
-            f"Finished allocating device workspace of size {formatters.MemoryStr(self.workspace_size)} in the context of stream {self.workspace_stream}."
+            f"Finished allocating device workspace of size {formatters.MemoryStr(self.workspace_size)} in the context "
+            f"of stream {self.workspace_stream}."
         )
 
     def _allocate_workspace_memory_perhaps(self, stream_holder):
         """
-        Allocate workspace memory using the specified allocator, if it hasn't already been done.
+        Allocate workspace memory using the specified allocator, if it hasn't already been
+        done.
         """
 
         if self.workspace_ptr is not None and self.workspace_allocated_size >= self.workspace_size:
@@ -952,7 +1133,8 @@ class Matmul:
             limit: The maximum number of applicable algorithm IDs that is desired
 
         Returns:
-            A sequence of algorithm IDs that are applicable to this matrix multiplication problem specification, in random order.
+            A sequence of algorithm IDs that are applicable to this matrix multiplication
+            problem specification, in random order.
         """
         ...
         algo_ids = cublaslt.matmul_algo_get_ids(
@@ -977,66 +1159,89 @@ class Matmul:
 
         Args:
             preferences: {preferences}
+
             algorithms: {algorithms}
+
             epilog: {epilog}
+
             epilog_inputs: {epilog_inputs}
+
             stream: {stream}
 
         Returns:
-            A sequence of :class:`nvmath.linalg.advanced.Algorithm` objects that are applicable to this matrix multiplication problem
-            specification, heuristically ordered from fastest to slowest.
+            A sequence of :class:`nvmath.linalg.advanced.Algorithm` objects that are
+            applicable to this matrix multiplication problem specification, heuristically
+            ordered from fastest to slowest.
 
         Notes:
-            Epilogs that have ``BIAS`` in their name need an epilog input with the key ``'bias'``.
-            Epilogs that have ``DRELU`` need an epilog input with the key ``'relu_aux'``, which is produced in a "forward pass" epilog like ``RELU_AUX`` or ``RELU_AUX_BIAS``.
-            Similarly, epilogs with ``DGELU`` in their name require an epilog input with the key ``'gelu_aux'``, produced in the corresponding forward pass operation.
+            Epilogs that have ``BIAS`` in their name need an epilog input with the key
+            ``'bias'``. Epilogs that have ``DRELU`` need an epilog input with the key
+            ``'relu_aux'``, which is produced in a "forward pass" epilog like ``RELU_AUX``
+            or ``RELU_AUX_BIAS``. Similarly, epilogs with ``DGELU`` in their name require an
+            epilog input with the key ``'gelu_aux'``, produced in the corresponding forward
+            pass operation.
 
         Examples:
 
             >>> import numpy as np
             >>> import nvmath
 
-            Create two 3-D float64 ndarrays on the CPU representing batched matrices, along with a bias vector:
+            Create two 3-D float64 ndarrays on the CPU representing batched matrices, along
+            with a bias vector:
 
             >>> batch = 32
             >>> M, N, K = 1024, 1024, 1024
             >>> a = np.random.rand(batch, M, K)
             >>> b = np.random.rand(batch, K, N)
-            >>> bias = np.random.rand(M)   # The bias vector will be broadcast along the columns, as well as along the batch dimension.
+            >>> # The bias vector will be broadcast along the columns, as well as along the
+            >>> # batch dimension.
+            >>> bias = np.random.rand(M)
 
-            We will define a matrix multiplication operation followed by a :attr:`nvmath.linalg.advanced.MatmulEpilog.RELU_BIAS` epilog function.
+            We will define a matrix multiplication operation followed by a
+            :attr:`nvmath.linalg.advanced.MatmulEpilog.RELU_BIAS` epilog function.
 
             >>> with nvmath.linalg.advanced.Matmul(a, b) as mm:
-            ...
-            ...     # Plan the operation with RELU_BIAS epilog and corresponding epilog input.
+            ...     # Plan the operation with RELU_BIAS epilog and corresponding epilog
+            ...     # input.
             ...     p = nvmath.linalg.advanced.MatmulPlanPreferences(limit=8)
             ...     epilog = nvmath.linalg.advanced.MatmulEpilog.RELU_BIAS
-            ...     epilog_inputs = {{'bias': bias}}
-            ...     mm.plan(preferences=p, epilog=epilog, epilog_inputs=epilog_inputs)    # The preferences can also be provided as a dict: {{'limit': 8}}
+            ...     epilog_inputs = {{"bias": bias}}
+            ...     # The preferences can also be provided as a dict: {{'limit': 8}}
+            ...     algorithms = mm.plan(
+            ...         preferences=p,
+            ...         epilog=epilog,
+            ...         epilog_inputs=epilog_inputs,
+            ...     )
             ...
-            ...     # Execute the matrix multiplication, and obtain the result `r` as a NumPy ndarray.
+            ...     # Execute the matrix multiplication, and obtain the result `r` as a
+            ...     # NumPy ndarray.
             ...     r = mm.execute()
 
-            Some epilogs like :attr:`nvmath.linalg.advanced.MatmulEpilog.RELU_AUX` produce auxiliary output.
+            Some epilogs like :attr:`nvmath.linalg.advanced.MatmulEpilog.RELU_AUX` produce
+            auxiliary output.
 
             >>> with nvmath.linalg.advanced.Matmul(a, b) as mm:
-            ...
             ...     # Plan the operation with RELU_AUX epilog>
             ...     epilog = nvmath.linalg.advanced.MatmulEpilog.RELU_AUX
-            ...     mm.plan(epilog=epilog)
+            ...     algorithms = mm.plan(epilog=epilog)
             ...
-            ...     # Execute the matrix multiplication, and obtain the result `r` along with the auxiliary output.
+            ...     # Execute the matrix multiplication, and obtain the result `r` along
+            ...     # with the auxiliary output.
             ...     r, auxiliary = mm.execute()
 
-            The auxiliary output is a Python `dict` with the names of each auxiliary output as keys.
+            The auxiliary output is a Python `dict` with the names of each auxiliary output
+            as keys.
 
-        Further examples can be found in the `nvmath/examples/linalg/advanced/matmul <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul>`_ directory.
+        Further examples can be found in the `nvmath/examples/linalg/advanced/matmul
+        <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul>`_
+        directory.
         """
         self.logger.info("= PLANNING PHASE =")
 
         # Clear epilog operands, since different epilogs can be provided in different calls.
-        # We don't need to worry about ordering, since it's the user's responsibility to order calls that accept a stream argument.
-        # This applies to CPU operands as well, even though we move them to the GPU, since the execution is blocking.
+        # We don't need to worry about ordering, since it's the user's responsibility to
+        # order calls that accept a stream argument. This applies to CPU operands as well,
+        # even though we move them to the GPU, since the execution is blocking.
         self.epilog_operands = dict()  # Clear operands in case of repeated planning.
         self.epilog_input_name_to_handler = dict()  # Clear input name to handler map as well,
         self.epilog_inputs_traits = dict()  # ... and the input traits as well.
@@ -1048,13 +1253,11 @@ class Matmul:
 
         # Base FLOP count.
         self.flop_count = 2 * mm_traits.M * mm_traits.N * mm_traits.K
-        self.logger.info(
-            f"The base matrix multiplication FLOP count is {formatters.FLOPSStr(self.flop_count, 'FLOP')}."
-        )
+        self.logger.info(f"The base matrix multiplication FLOP count is {formatters.FLOPSStr(self.flop_count, 'FLOP')}.")
 
         if epilog is None and epilog_inputs is not None:
             self.logger.warning(
-                f"Matmul: The provided epilog inputs {epilog_inputs.keys()} are ignored since an epilog is not specified."
+                f"Matmul: The provided epilog inputs {epilog_inputs.keys()} are ignored since an epilog is not " "specified."
             )
 
         self.epilog = epilog
@@ -1064,11 +1267,22 @@ class Matmul:
             self.logger.info(f"The specified epilog is {epilog.name}.")
 
             epilog_minimum_versions = EPILOG_MINIMUM_VERSIONS_MAP[epilog]
+            batched_epilog_minimum_versions = BATCHED_EPILOG_MINIMUM_VERSIONS_MAP[epilog]
             version = cublaslt.get_version()
             if version < epilog_minimum_versions["cublaslt"]:
-                message = f"The epilog {epilog.name} requires cublaslt >= {epilog_minimum_versions['cublaslt']}; you have version {version}. Update to CUDA Toolkit >= {epilog_minimum_versions['ctk']}."
+                message = (
+                    f"The epilog {epilog.name} requires cublaslt >= {epilog_minimum_versions['cublaslt']}; "
+                    f"you have version {version}. Update to CUDA Toolkit >= {epilog_minimum_versions['ctk']}."
+                )
                 raise ValueError(message)
 
+            if len(mm_traits.batch_shape) > 0 and version < batched_epilog_minimum_versions["cublaslt"]:
+                message = (
+                    f"The epilog {epilog.name} supports batching in "
+                    f"cublaslt >= {batched_epilog_minimum_versions['cublaslt']}; "
+                    f"you have version {version}. Update to CUDA Toolkit >= {epilog_minimum_versions['ctk']}."
+                )
+                raise ValueError(message)
             if (
                 self.mm_traits.c_layout_traits is not None
                 and self.mm_traits.c_layout_traits.order == cublaslt.Order.ROW
@@ -1088,7 +1302,8 @@ class Matmul:
                     for handler_type in epilog_input_handler_types
                 ]
 
-                # Check if the epilog requires a specific result layout, and if the requirement is consistent for all the handlers.
+                # Check if the epilog requires a specific result layout, and if the
+                # requirement is consistent for all the handlers.
                 epilog_input_handlers_ordering = {h.order for h in epilog_input_handlers}
                 assert len(epilog_input_handlers_ordering) == 1, "Internal error."
                 epilog_ordering = epilog_input_handlers_ordering.pop()
@@ -1103,7 +1318,8 @@ class Matmul:
 
                 if required_epilog_input_names != set(epilog_inputs.keys()):
                     raise ValueError(
-                        f"The epilog {epilog.name} requires the following input tensors: {required_epilog_input_names}. The provided tensor names are: {epilog_inputs.keys()}"
+                        f"The epilog {epilog.name} requires the following input tensors: "
+                        f"{required_epilog_input_names}. The provided tensor names are: {epilog_inputs.keys()}"
                     )
 
                 # Wrap epilog inputs. Take a copy of the user-provided dict.
@@ -1111,20 +1327,20 @@ class Matmul:
                 for name in epilog_inputs:
                     epilog_inputs[name] = tensor_wrapper.wrap_operand(epilog_inputs[name])
 
-                # Check if epilog inputs all belong to the same package, which is the same as the package of the MM operands.
+                # Check if epilog inputs all belong to the same package, which is the same
+                # as the package of the MM operands.
                 epilog_package = utils.get_operands_package(list(epilog_inputs.values()))
-                epilog_package = (
-                    "cupy" if epilog_package == "numpy" else epilog_package
-                )  # Handle the NumPy <=> CuPy asymmetry.
+                epilog_package = "cupy" if epilog_package == "numpy" else epilog_package  # Handle the NumPy <=> CuPy asymmetry.
                 if self.package != epilog_package:
                     message = f"Library package mismatch for epilog: '{self.package}' => '{epilog_package}'"
                     raise TypeError(message)
 
-                # Check if all epilog inputs all are on the same device, which is the device of the operands.
+                # Check if all epilog inputs all are on the same device, which is the device
+                # of the operands.
                 device_id = utils.get_operands_device_id(list(epilog_inputs.values()))
                 if device_id is not None and self.device_id != device_id:
                     raise ValueError(
-                        f"The epilog inputs must be on the same device ({device_id}) as the operands ({self.device_id})."
+                        f"The epilog inputs must be on the same device ({device_id}) as the operands " f"({self.device_id})."
                     )
 
                 # Move epilog inputs to the GPU, if needed.
@@ -1136,16 +1352,19 @@ class Matmul:
                     for e in required_epilog_input_names:
                         self.epilog_operands[e] = epilog_inputs[e]
 
-                # First validate all epilog inputs. Use the GPU tensors in case metadata has changed.
+                # First validate all epilog inputs. Use the GPU tensors in case metadata has
+                # changed.
                 for handler in epilog_input_handlers:
                     handler.validate(epilog_inputs[handler.name])
 
-                # Finally, update the MM descriptor. Note that we pass in self.epilog_operands (which are on the GPU).
+                # Finally, update the MM descriptor. Note that we pass in
+                # self.epilog_operands (which are on the GPU).
                 for handler in epilog_input_handlers:
                     handler.update(self.mm_desc_ifc, self.epilog_operands[handler.name])
                     self.epilog_input_name_to_handler[handler.name] = handler
 
-                # Capture the epilog operands traits for consistency checks when resetting operands.
+                # Capture the epilog operands traits for consistency checks when resetting
+                # operands.
                 self.epilog_inputs_traits = {
                     name: EpilogInputTraits(
                         dtype=self.epilog_operands[name].dtype,
@@ -1162,7 +1381,8 @@ class Matmul:
                     for handler_type in epilog_output_handler_types
                 ]
 
-                # Check if the epilog requires a specific result layout, and if the requirement is consistent for all the handlers.
+                # Check if the epilog requires a specific result layout, and if the
+                # requirement is consistent for all the handlers.
                 epilog_output_handlers_ordering = {h.order for h in epilog_output_handlers}
                 assert len(epilog_output_handlers_ordering) == 1, "Internal error."
                 op_epilog_ordering = epilog_output_handlers_ordering.pop()
@@ -1175,13 +1395,16 @@ class Matmul:
                 for handler in epilog_output_handlers:
                     handler.update(self.mm_desc_ifc)
 
-            # Set the epilog. At this point, we're sure that the epilog inputs, if any, are valid and have been set.
+            # Set the epilog. At this point, we're sure that the epilog inputs, if any, are
+            # valid and have been set.
             self.mm_desc_ifc.epilogue = epilog
 
         # Fill the result traits, now that we know the epilog.
         self.result_traits = result_traits = get_result_traits(mm_traits, epilog_ordering, self.logger)
         self.logger.info(
-            f"The layout order for the result D is {self.result_traits.d_layout_traits.order.name}, with LD {self.result_traits.d_layout_traits.ld}, and batch offset {self.result_traits.d_layout_traits.batch_offset}."
+            f"The layout order for the result D is {self.result_traits.d_layout_traits.order.name}, with LD "
+            f"{self.result_traits.d_layout_traits.ld}, and batch offset "
+            f"{self.result_traits.d_layout_traits.batch_offset}."
         )
 
         preferences = utils.check_or_create_options(
@@ -1194,25 +1417,29 @@ class Matmul:
             self.mm_desc_ifc.transa = cublas.Operation.C
             transpose = True
             self.logger.debug(
-                "To conjugate A, the operand A will be internally transposed and the matrix multiplication will be performed with OP_C for operand A."
+                "To conjugate A, the operand A will be internally transposed and the matrix multiplication will be "
+                "performed with OP_C for operand A."
             )
         m, n, ld, a_order = mm_traits.a_layout_traits.get_mm_layout(transpose=transpose)
         self.a_layout_ptr = cublaslt.matrix_layout_create(self.a_dtype, rows=m, cols=n, ld=ld)
         self.logger.debug(f"Layout for A: rows = {m}, cols = {n}, ld = {ld}.")
 
-        # Internally transpose operand B if required (conjugate flag, or epilog is BGRADB) and create layout.
+        # Internally transpose operand B if required (conjugate flag, or epilog is BGRADB)
+        # and create layout.
         transpose = False
         if mm_traits.b_layout_traits.is_conjugate and "complex" in self.ab_dtype_name:
             self.mm_desc_ifc.transb = cublas.Operation.C
             transpose = True
             self.logger.debug(
-                "To conjugate B, the operand B will be internally transposed and the matrix multiplication will be performed with OP_C for operand B."
+                "To conjugate B, the operand B will be internally transposed and the matrix multiplication will be "
+                "performed with OP_C for operand B."
             )
         elif epilog == _configuration.MatmulEpilog.BGRADB:
             self.mm_desc_ifc.transb = cublas.Operation.T
             transpose = True
             self.logger.debug(
-                "For BGRADB epilog, the operand B will be internally transposed and the matrix multiplication will be performed with OP_T for operand B."
+                "For BGRADB epilog, the operand B will be internally transposed and the matrix multiplication will be "
+                "performed with OP_T for operand B."
             )
         m, n, ld, b_order = mm_traits.b_layout_traits.get_mm_layout(transpose=transpose)
         self.b_layout_ptr = cublaslt.matrix_layout_create(self.b_dtype, rows=m, cols=n, ld=ld)
@@ -1261,7 +1488,8 @@ class Matmul:
         if self.preference_ptr is None:
             self.preference_ptr = cublaslt.matmul_preference_create()
         else:
-            # We need to create a new preferences object to avoid preferences being set in a cumulative manner if plan() is called multiple times.
+            # We need to create a new preferences object to avoid preferences being set in a
+            # cumulative manner if plan() is called multiple times.
             cublaslt.matmul_preference_destroy(self.preference_ptr)
             self.preference_ptr = cublaslt.matmul_preference_create()
 
@@ -1282,9 +1510,7 @@ class Matmul:
             if self.num_operands == 3:
                 c_ptr = self.operands[2].data_ptr
                 preference_ifc.min_alignment_c_bytes = min(256, pointer_aligned_to(c_ptr))
-                self.logger.debug(
-                    f"The minimum alignment for operand C is {preference_ifc.min_alignment_c_bytes} bytes."
-                )
+                self.logger.debug(f"The minimum alignment for operand C is {preference_ifc.min_alignment_c_bytes} bytes.")
             # The result alignment should be 256 bytes.
             self.logger.debug("The minimum alignment for the result D is the default 256 bytes.")
 
@@ -1328,11 +1554,13 @@ class Matmul:
 
         if algorithms is None:
             self.logger.info(
-                f"The plan found {num_algorithms} suitable algorithms within the requested limit of {limit} algorithms, with a workspace requirement of {formatters.MemoryStr(self.workspace_size)}."
+                f"The plan found {num_algorithms} suitable algorithms within the requested limit of {limit} "
+                f"algorithms, with a workspace requirement of {formatters.MemoryStr(self.workspace_size)}."
             )
         else:
             self.logger.info(
-                f"The plan is using {num_algorithms} algorithm passed through the algorithms argument, with a workspace requirement of {formatters.MemoryStr(self.workspace_size)}."
+                f"The plan is using {num_algorithms} algorithm passed through the algorithms argument, with a "
+                f"workspace requirement of {formatters.MemoryStr(self.workspace_size)}."
             )
 
         self.mm_planned = True
@@ -1344,10 +1572,12 @@ class Matmul:
     @property
     def algorithms(self):
         """
-        After planning using :meth:`plan()`, get the sequence of algorithm objects to inquire their capabilities, configure them, or serialize them for later use.
+        After planning using :meth:`plan()`, get the sequence of algorithm objects to
+        inquire their capabilities, configure them, or serialize them for later use.
 
         Returns:
-            A sequence of :class:`nvmath.linalg.advanced.Algorithm` objects that are applicable to this matrix multiplication problem specification.
+            A sequence of :class:`nvmath.linalg.advanced.Algorithm` objects that are
+            applicable to this matrix multiplication problem specification.
         """
         return self.algorithm_objects
 
@@ -1366,7 +1596,8 @@ class Matmul:
         strides=None,
     ):
         """
-        Check to make sure that the provided operand is consistent with the one it's updating, and update it.
+        Check to make sure that the provided operand is consistent with the one it's
+        updating, and update it.
         """
         assert (operand_index is None) ^ (epilog_name is None), "Internal Error."
 
@@ -1377,11 +1608,13 @@ class Matmul:
         package = utils.infer_object_package(operand.tensor)
 
         # Conjugate flag of the provided operands must match the original qualifiers
-        if operand_index is not None and package == "torch" and self.lazy_conjugation:
-            if self.qualifiers[operand_index]["is_conjugate"] != operand.tensor.is_conj():
-                raise ValueError(
-                    f"The provided operand {operand_name} has different conjugate flag than the original operand"
-                )
+        if (
+            operand_index is not None
+            and package == "torch"
+            and self.lazy_conjugation
+            and self.qualifiers[operand_index]["is_conjugate"] != operand.tensor.is_conj()
+        ):
+            raise ValueError(f"The provided operand {operand_name} has different conjugate flag than the original operand")
 
         device_id = operand.device_id
         if device_id is None:
@@ -1405,7 +1638,8 @@ class Matmul:
                     # Update the epilog pointer, since we're starting afresh.
                     self.epilog_input_name_to_handler[epilog_name].update(mm_desc_ifc, o)
             else:
-                # In-place copy to existing device pointer because the new operand is on the CPU.
+                # In-place copy to existing device pointer because the new operand is on the
+                # CPU.
                 tensor_wrapper.copy_([operand], [o], stream_holder)
         else:
             if self.package != package:
@@ -1437,12 +1671,17 @@ class Matmul:
         """
         Reset the operands held by this :class:`Matmul` instance.
 
-        This method has two use cases: (1) it can be used to provide new operands for execution when the original operands are on the CPU,
-        or (2) it can be used to release the internal reference to the previous operands and make their memory available for other use by
-        passing ``None`` for *all* arguments. In this case, this method must be called again to provide the desired operands before another
-        call to execution APIs like :meth:`autotune` or :meth:`execute`.
+        This method has two use cases:
+            (1) it can be used to provide new operands for execution when the original
+                operands are on the CPU
+            (2) it can be used to release the internal reference to the previous operands
+                and make their memory available for other use by passing ``None`` for *all*
+                arguments. In this case, this method must be called again to provide the
+                desired operands before another call to execution APIs like :meth:`autotune`
+                or :meth:`execute`.
 
-        This method is not needed when the operands reside on the GPU and in-place operations are used to update the operand values.
+        This method is not needed when the operands reside on the GPU and in-place
+        operations are used to update the operand values.
 
         This method will perform various checks on the new operands to make sure:
 
@@ -1452,11 +1691,18 @@ class Matmul:
 
         Args:
             a: {a}
+
             b: {b}
+
             c: {c}
+                {c_admonitions}
+
             alpha: {alpha}
+
             beta: {beta}
+
             epilog_inputs: {epilog_inputs}
+
             stream: {stream}
 
         Examples:
@@ -1473,30 +1719,37 @@ class Matmul:
             Create an matrix multiplication object as a context manager
 
             >>> with nvmath.linalg.advanced.Matmul(a, b) as mm:
-            ...    # Plan the operation.
-            ...    mm.plan()
+            ...     # Plan the operation.
+            ...     algorithms = mm.plan()
             ...
-            ...    # Execute the MM to get the first result.
-            ...    r1 = mm.execute()
+            ...     # Execute the MM to get the first result.
+            ...     r1 = mm.execute()
             ...
-            ...    # Reset the operands to new CuPy ndarrays.
-            ...    c = cp.random.rand(M, K)
-            ...    d = cp.random.rand(K, N)
-            ...    mm.reset_operands(c, d)
+            ...     # Reset the operands to new CuPy ndarrays.
+            ...     c = cp.random.rand(M, K)
+            ...     d = cp.random.rand(K, N)
+            ...     mm.reset_operands(c, d)
             ...
-            ...    # Execute to get the new result corresponding to the updated operands.
-            ...    r2 = mm.execute()
+            ...     # Execute to get the new result corresponding to the updated operands.
+            ...     r2 = mm.execute()
 
-            Note that if only a subset of operands are reset, the operands that are not reset hold their original values.
+            Note that if only a subset of operands are reset, the operands that are not
+            reset hold their original values.
 
-            With :meth:`reset_operands`, minimal overhead is achieved as problem specification and planning are only performed once.
+            With :meth:`reset_operands`, minimal overhead is achieved as problem
+            specification and planning are only performed once.
 
-            For the particular example above, explicitly calling :meth:`reset_operands` is equivalent to updating the operands in-place, i.e, replacing ``mm.reset_operand(c, d)`` with ``a[:]=c`` and ``b[:]=d``.
-            Note that updating the operand in-place should be adopted with caution as it can only yield the expected result under the additional constraint below:
+            For the particular example above, explicitly calling :meth:`reset_operands` is
+            equivalent to updating the operands in-place, i.e, replacing
+            ``mm.reset_operand(c, d)`` with ``a[:]=c`` and ``b[:]=d``. Note that updating
+            the operand in-place should be adopted with caution as it can only yield the
+            expected result under the additional constraint below:
 
-                - The operand is on the GPU (more precisely, the operand memory space should be accessible from the execution space).
+                - The operand is on the GPU (more precisely, the operand memory space should
+                  be accessible from the execution space).
 
-            For more details, please refer to `inplace update example <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/example05_stateful_inplace.py>`_.
+            For more details, please refer to `inplace update example
+            <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul/example05_stateful_inplace.py>`_.
         """
 
         if c is not None and self.num_operands == 2:
@@ -1510,7 +1763,8 @@ class Matmul:
             self.logger.info("The operands have been reset to None.")
             return
 
-        # If the operands have been reset to None, then all required operands (a, b, c, and epilog_inputs need to be provided).
+        # If the operands have been reset to None, then all required operands (a, b, c, and
+        # epilog_inputs need to be provided).
         if self.operands is None:
             if a is None or b is None or (c is None and self.num_operands == 3):
                 op_names = "A, B"
@@ -1525,7 +1779,8 @@ class Matmul:
                 # Check that all required epilog inputs names are provided.
                 if epilog_names != epilog_inputs.keys():
                     raise ValueError(
-                        f"The epilog inputs {epilog_names} are required. The provided epilog input names are {epilog_inputs.keys()}."
+                        f"The epilog inputs {epilog_names} are required. The provided epilog input names are "
+                        f"{epilog_inputs.keys()}."
                     )
             self.operands = [None] * self.num_operands
             self.epilog_operands = {name: None for name in epilog_names}
@@ -1546,9 +1801,7 @@ class Matmul:
         # Update beta.
         if beta is not None:
             if self.num_operands == 2:
-                self.logger.warning(
-                    f"Matmul: The provided beta value {beta} is ignored since operand C is not specified."
-                )
+                self.logger.warning(f"Matmul: The provided beta value {beta} is ignored since operand C is not specified.")
             else:
                 try:
                     self.beta[0] = beta
@@ -1625,13 +1878,18 @@ class Matmul:
         self, iterations=3, prune=None, release_workspace=False, stream=None
     ):  # Prune means keep top N of the algorithms only.
         """
-        Autotune the matrix multiplication to order the algorithms from the fastest measured execution time to the slowest. Once autotuned,
-        the optimally-ordered algorithm sequence can be accessed using :py:attr:`algorithms`.
+        Autotune the matrix multiplication to order the algorithms from the fastest measured
+        execution time to the slowest. Once autotuned, the optimally-ordered algorithm
+        sequence can be accessed using :py:attr:`algorithms`.
 
         Args:
             iterations: The number of autotuning iterations to perform.
-            prune: An integer N, specifying the top N fastest algorithms to retain after autotuning. The default is to retain all algorithms.
+
+            prune: An integer N, specifying the top N fastest algorithms to retain after
+                autotuning. The default is to retain all algorithms.
+
             release_workspace: {release_workspace}
+
             stream: {stream}
         """
         self.logger.info("= AUTOTUNING PHASE =")
@@ -1660,7 +1918,13 @@ class Matmul:
             name = handler.name
             shape, strides, dtype_name = handler.attributes()
             epilog_outputs[name] = aux = utils.create_empty_tensor(
-                self.result_class, shape, dtype_name, self.device_id, stream_holder, strides
+                self.result_class,
+                shape,
+                dtype_name,
+                self.device_id,
+                stream_holder,
+                verify_strides=False,
+                strides=strides,
             )
 
             # Update the data pointer in the MM descriptor.
@@ -1673,7 +1937,8 @@ class Matmul:
             self.d_dtype_name,
             self.device_id,
             stream_holder,
-            self.result_traits.result_strides,
+            verify_strides=False,
+            strides=self.result_traits.result_strides,
         )
         result_ptr = result.data_ptr
 
@@ -1726,7 +1991,8 @@ class Matmul:
         # Get the sort order based on the GPU times.
         sorted_gpu_times, sort_order = zip(*sorted(zip(gpu_times, range(num_algorithms), strict=True)), strict=True)
 
-        # Reorder the algorithms buffer and algorithm objects according to the sort order, and prune it.
+        # Reorder the algorithms buffer and algorithm objects according to the sort order,
+        # and prune it.
         sort_order = sort_order[:limit]
         self.algorithms_buffer = self.algorithms_buffer[list(sort_order)]
         self.algorithm_objects = tuple(self.algorithm_objects[i] for i in sort_order)
@@ -1740,15 +2006,18 @@ class Matmul:
         orig_flop_rate = self.flop_count / gpu_times[0] * 1000
         if sort_order[0] != 0:
             self.logger.info(
-                f"Autotuning found that the algorithm originally ranked {sort_order[0]} is the best out of the {num_algorithms} in the plan, and moved it to rank 0."
+                f"Autotuning found that the algorithm originally ranked {sort_order[0]} is the best out of the "
+                f"{num_algorithms} in the plan, and moved it to rank 0."
             )
             new_flop_rate = self.flop_count / sorted_gpu_times[0] * 1000
             self.logger.info(
-                f"Autotuning has improved performance from {formatters.FLOPSStr(orig_flop_rate, 'FLOP/s')} to {formatters.FLOPSStr(new_flop_rate, 'FLOP/s')}."
+                f"Autotuning has improved performance from {formatters.FLOPSStr(orig_flop_rate, 'FLOP/s')} to "
+                f"{formatters.FLOPSStr(new_flop_rate, 'FLOP/s')}."
             )
         else:
             self.logger.info(
-                f"Autotuning found that the algorithm ranked best by the plan heuristics remains the best out of the {num_algorithms} algorithms in the plan."
+                f"Autotuning found that the algorithm ranked best by the plan heuristics remains the best out of the "
+                f"{num_algorithms} algorithms in the plan."
             )
             self.logger.info(f"The best performance remains at {formatters.FLOPSStr(orig_flop_rate, 'FLOP/s')}.")
 
@@ -1764,9 +2033,12 @@ class Matmul:
         Execute a prepared (planned and possibly autotuned) matrix multiplication.
 
         Args:
-            algorithm: (Experimental) An algorithm chosen from the sequence returned by :meth:`plan` or :py:attr:`algorithms`. By default,
-                the first algorithm in the sequence is used.
+            algorithm: (Experimental) An algorithm chosen from the sequence returned by
+                :meth:`plan` or :py:attr:`algorithms`. By default, the first algorithm in
+                the sequence is used.
+
             release_workspace: {release_workspace}
+
             stream: {stream}
 
         Returns:
@@ -1790,11 +2062,15 @@ class Matmul:
             shape, strides, dtype_name = handler.attributes()
             if log_debug:
                 self.logger.debug(f"Beginning auxiliary output tensor '{name}' creation...")
-                self.logger.debug(
-                    f"The '{name}' tensor shape = {shape} with strides = {strides} and data type '{dtype_name}'."
-                )
+                self.logger.debug(f"The '{name}' tensor shape = {shape} with strides = {strides} and data type '{dtype_name}'.")
             self.epilog_outputs[name] = aux = utils.create_empty_tensor(
-                self.result_class, shape, dtype_name, self.device_id, stream_holder, strides
+                self.result_class,
+                shape,
+                dtype_name,
+                self.device_id,
+                stream_holder,
+                verify_strides=False,
+                strides=strides,
             )
             if log_debug:
                 self.logger.debug(f"The auxiliary output tensor '{name}' has been created.")
@@ -1806,7 +2082,8 @@ class Matmul:
         if log_debug:
             self.logger.debug("Beginning output (empty) tensor creation...")
             self.logger.debug(
-                f"The output tensor shape = {self.result_traits.result_shape} with strides = {self.result_traits.result_strides} and data type '{self.d_dtype_name}'."
+                f"The output tensor shape = {self.result_traits.result_shape} with strides = "
+                f"{self.result_traits.result_strides} and data type '{self.d_dtype_name}'."
             )
         self.result = utils.create_empty_tensor(
             self.result_class,
@@ -1814,7 +2091,8 @@ class Matmul:
             self.d_dtype_name,
             self.device_id,
             stream_holder,
-            self.result_traits.result_strides,
+            verify_strides=False,
+            strides=self.result_traits.result_strides,
         )
         if log_debug:
             self.logger.debug("The output (empty) tensor has been created.")
@@ -1824,7 +2102,8 @@ class Matmul:
             algorithm_struct = self.algorithms_buffer[0]["algo"]
             if log_info:
                 self.logger.info(
-                    f"The highest ranked algorithm in the plan (algorithm id = {self.algorithm_objects[0].algorithm_id}) will be used."
+                    "The highest ranked algorithm in the plan (algorithm id = "
+                    f"{self.algorithm_objects[0].algorithm_id}) will be used."
                 )
         else:
             if algorithm not in self.algorithm_objects:
@@ -1874,9 +2153,7 @@ class Matmul:
         if self.memory_space == "cpu":
             out = self.result.to("cpu", stream_holder=stream_holder)
             # Copy auxiliary output to CPU.
-            aux = {
-                name: self.epilog_outputs[name].to("cpu", stream_holder=stream_holder) for name in self.epilog_outputs
-            }
+            aux = {name: self.epilog_outputs[name].to("cpu", stream_holder=stream_holder) for name in self.epilog_outputs}
         else:
             out = self.result.tensor
             # Return the unwrapped epilog output tensor(s).
@@ -1895,16 +2172,18 @@ class Matmul:
     def free(self):
         """Free Matmul resources.
 
-        It is recommended that the :class:`Matmul` object be used within a context, but if it is not possible then this
-        method must be called explicitly to ensure that the matrix multiplication resources (especially internal library objects) are
-        properly cleaned up.
+        It is recommended that the :class:`Matmul` object be used within a context, but if
+        it is not possible then this method must be called explicitly to ensure that the
+        matrix multiplication resources (especially internal library objects) are properly
+        cleaned up.
         """
 
         if not self.valid_state:
             return
 
         try:
-            # Future operations on the workspace stream should be ordered after the computation.
+            # Future operations on the workspace stream should be ordered after the
+            # computation.
             if self.last_compute_event is not None:
                 self.workspace_stream.wait_event(self.last_compute_event)
 
@@ -1941,34 +2220,55 @@ def matmul(
     algorithm=None,
     stream=None,
 ):
-    r"""
-    Perform the specified matrix multiplication computation :math:`F(\alpha a @ b + \beta c)`, where :math:`F` is the epilog. This function-form is a wrapper around the
-    stateful :class:`Matmul` object APIs and is meant for *single* use (the user needs to perform just one matrix multiplication, for
-    example), in which case there is no possibility of amortizing preparatory costs.
+    """
+    Perform the specified matrix multiplication computation :math:`F(\\alpha a @ b + \\beta
+    c)`, where :math:`F` is the epilog. This function-form is a wrapper around the stateful
+    :class:`Matmul` object APIs and is meant for *single* use (the user needs to perform
+    just one matrix multiplication, for example), in which case there is no possibility of
+    amortizing preparatory costs.
 
-    Detailed information on what's happening within this function can be obtained by passing in a :class:`logging.Logger` object
-    to :class:`MatmulOptions` or by setting the appropriate options in the root logger object, which is used by default:
+    Detailed information on what's happening within this function can be obtained by passing
+    in a :class:`logging.Logger` object to :class:`MatmulOptions` or by setting the
+    appropriate options in the root logger object, which is used by default:
 
         >>> import logging
-        >>> logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M:%S')
+        >>> logging.basicConfig(
+        ...     level=logging.INFO,
+        ...     format="%(asctime)s %(levelname)-8s %(message)s",
+        ...     datefmt="%m-%d %H:%M:%S",
+        ... )
 
-    A user can select the desired logging level and, in general, take advantage of all of the functionality offered by the Python `logging` module.
+    A user can select the desired logging level and, in general, take advantage of all of
+    the functionality offered by the Python `logging` module.
 
     Args:
         a: {a}
+
         b: {b}
+
         c: {c}
+            {c_admonitions}
+
         alpha: {alpha}
-        beta: {beta}
-           from a previously planned and autotuned matrix multiplication.
+
+        beta: {beta} from a previously planned and autotuned matrix multiplication.
+
         epilog: {epilog}
+
         epilog_inputs: {epilog_inputs}
+
         qualifiers: {qualifiers}
+
         options: {options}
+
         preferences: {preferences}
-        algorithm: An object of type :class:`Algorithm` objects can be directly provided to bypass planning, if desired. The algorithm object must
-            be compatible with the matrix multiplication. A typical use for this option is to provide an algorithm that has been serialized
-            (pickled) from a previously planned and autotuned matrix multiplication.
+
+        algorithm: An object of type :class:`Algorithm` objects can be directly provided to
+            bypass planning, if desired. The algorithm object must be compatible with the
+            matrix multiplication. A typical use for this option is to provide an algorithm
+            that has been serialized (pickled) from a previously planned and autotuned
+            matrix multiplication.
+
         stream: {stream}
 
     Returns:
@@ -1978,7 +2278,8 @@ def matmul(
         {semantics}
 
     See Also:
-        :class:`Matmul`, :class:`MatmulOptions`, :class:`MatmulEpilog`, :class:`MatmulPlanPreferences`
+        :class:`Matmul`, :class:`MatmulOptions`, :class:`MatmulEpilog`,
+        :class:`MatmulPlanPreferences`
 
     Examples:
 
@@ -1992,11 +2293,13 @@ def matmul(
         >>> b = cp.random.rand(K, N, dtype=cp.float32)
         >>> c = cp.random.rand(M, N, dtype=cp.float32)
 
-        Perform the operation :math:`\alpha A @ B + \beta C` using :func:`matmul`. The result `r` is also a CuPy float64 ndarray:
+        Perform the operation :math:`\\alpha A @ B + \\beta C` using :func:`matmul`. The
+        result `r` is also a CuPy float64 ndarray:
 
         >>> r = nvmath.linalg.advanced.matmul(a, b, c, alpha=1.23, beta=0.74)
 
-        An epilog can be used as well. Here we perform :math:`RELU(\alpha A @ B + \beta C)`:
+        An epilog can be used as well. Here we perform
+        :math:`RELU(\\alpha A @ B + \\beta C)`:
 
         >>> epilog = nvmath.linalg.advanced.MatmulEpilog.RELU
         >>> r = nvmath.linalg.advanced.matmul(a, b, c, alpha=1.23, beta=0.74, epilog=epilog)
@@ -2009,16 +2312,18 @@ def matmul(
 
         See `MatmulOptions` for the complete list of available options.
 
-        The package current stream is used by default, but a stream can be explicitly provided to the Matmul operation. This can be done if the
-        operands are computed on a different stream, for example:
+        The package current stream is used by default, but a stream can be explicitly
+        provided to the Matmul operation. This can be done if the operands are computed on a
+        different stream, for example:
 
         >>> s = cp.cuda.Stream()
         >>> with s:
-        ...    a = cp.random.rand(M, K)
-        ...    b = cp.random.rand(K, N)
-        >>> nvmath.linalg.advanced.matmul(a, b, stream=s)
+        ...     a = cp.random.rand(M, K)
+        ...     b = cp.random.rand(K, N)
+        >>> r = nvmath.linalg.advanced.matmul(a, b, stream=s)
 
-        The operation above runs on stream `s` and is ordered with respect to the input computation.
+        The operation above runs on stream `s` and is ordered with respect to the input
+        computation.
 
         Create  NumPy ndarrays on the CPU.
 
@@ -2026,14 +2331,18 @@ def matmul(
         >>> a = np.random.rand(M, K)
         >>> b = np.random.rand(K, N)
 
-        Provide the NumPy ndarrays to :func:`matmul`, with the result also being a NumPy ndarray:
+        Provide the NumPy ndarrays to :func:`matmul`, with the result also being a NumPy
+        ndarray:
 
         >>> r = nvmath.linalg.advanced.matmul(a, b)
 
     Notes:
-        - This function is a convenience wrapper around :class:`Matmul` and and is specifically meant for *single* use.
+        - This function is a convenience wrapper around :class:`Matmul` and and is
+          specifically meant for *single* use.
 
-    Further examples can be found in the `nvmath/examples/linalg/advanced/matmul <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul>`_ directory.
+    Further examples can be found in the `nvmath/examples/linalg/advanced/matmul
+    <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul>`_
+    directory.
     """
 
     # Set algorithm limit to 1, but take a copy first if needed.
@@ -2051,9 +2360,7 @@ def matmul(
         algorithms = [algorithm]  # The type of algorithm should be algorithm.Algorithm and will be checked in plan()
 
     with Matmul(a, b, c=c, alpha=alpha, beta=beta, qualifiers=qualifiers, options=options, stream=stream) as mm:
-        mm.plan(
-            preferences=preferences, epilog=epilog, epilog_inputs=epilog_inputs, stream=stream, algorithms=algorithms
-        )
+        mm.plan(preferences=preferences, epilog=epilog, epilog_inputs=epilog_inputs, stream=stream, algorithms=algorithms)
 
         r = mm.execute(stream=stream)
 

@@ -8,7 +8,6 @@ from nvmath.linalg.advanced import matmul, Matmul, MatmulOptions
 from .utils import *
 import pytest
 import logging
-import pytest
 
 try:
     import cupy_backends.cuda
@@ -26,45 +25,105 @@ This set of tests checks Matmul's options
 """
 
 
-def check_matmul_with_options(size, options, use_cuda=False, dtype="float32"):
-    a = b = sample_matrix("numpy/cupy", dtype, (size, size), use_cuda)
-    result = matmul(a, b, alpha=0.42, options=options)
-    assert_tensors_equal(result, 0.42 * (a @ b))
+def check_matmul_with_options(size, options, use_cuda=False, dtype="float32", atol=None):
+    a = b = sample_matrix("numpy/cupy" if dtype != "bfloat16" else "torch", dtype, (size, size), use_cuda)
+    is_complex = "_C_" in str(options.scale_type) or (options.compute_type is None and "complex" in dtype)
+    alpha = 0.42 + 0.24j if is_complex else 0.42
+    result = matmul(a, b, alpha=alpha, options=options)
+    assert_tensors_equal(result, alpha * (a @ b), atol=atol)
     return result
 
 
+ct = cublas.ComputeType
+st = nvmath.CudaDataType
+
+
 @pytest.mark.parametrize(
-    "dtype,compute_type",
+    "dtype,compute_type,scale_type",
     (
-        ("float32", cublas.ComputeType.COMPUTE_32F),
-        ("float64", cublas.ComputeType.COMPUTE_64F),
-        ("float16", cublas.ComputeType.COMPUTE_32F),
+        # None specified
+        ("bfloat16", None, None),
+        ("float16", None, None),
+        ("float32", None, None),
+        ("float64", None, None),
+        ("complex64", None, None),
+        ("complex128", None, None),
+        # Only compute type specified
+        ("float16", ct.COMPUTE_16F, None),
+        ("float16", ct.COMPUTE_16F_PEDANTIC, None),
+        ("float16", ct.COMPUTE_32F, None),
+        ("float32", ct.COMPUTE_32F, None),
+        ("bfloat16", ct.COMPUTE_32F_PEDANTIC, None),
+        ("complex64", ct.COMPUTE_32F, None),
+        ("float16", ct.COMPUTE_32F_PEDANTIC, None),
+        ("float32", ct.COMPUTE_32F_PEDANTIC, None),
+        ("bfloat16", ct.COMPUTE_32F_PEDANTIC, None),
+        ("complex64", ct.COMPUTE_32F_PEDANTIC, None),
+        ("float32", ct.COMPUTE_32F_FAST_16F, None),
+        ("float32", ct.COMPUTE_32F_FAST_16BF, None),
+        ("float32", ct.COMPUTE_32F_FAST_TF32, None),
+        ("float64", ct.COMPUTE_64F, None),
+        ("float64", ct.COMPUTE_64F_PEDANTIC, None),
+        ("complex128", ct.COMPUTE_64F, None),
+        ("complex128", ct.COMPUTE_64F_PEDANTIC, None),
+        # Only scale type specified
+        ("float16", None, st.CUDA_R_16F),
+        ("float16", None, st.CUDA_R_32F),
+        ("bfloat16", None, st.CUDA_R_32F),
+        ("float32", None, st.CUDA_R_32F),
+        ("complex64", None, st.CUDA_C_32F),
+        ("float32", None, st.CUDA_R_32F),
+        ("float64", None, st.CUDA_R_64F),
+        ("complex128", None, st.CUDA_C_64F),
+        # Both compute and scale type specified
+        ("float16", ct.COMPUTE_16F, st.CUDA_R_16F),
+        ("float16", ct.COMPUTE_16F_PEDANTIC, st.CUDA_R_16F),
+        ("float16", ct.COMPUTE_32F, st.CUDA_R_32F),
+        ("bfloat16", ct.COMPUTE_32F, st.CUDA_R_32F),
+        ("float32", ct.COMPUTE_32F, st.CUDA_R_32F),
+        ("complex64", ct.COMPUTE_32F, st.CUDA_C_32F),
+        ("float16", ct.COMPUTE_32F_PEDANTIC, st.CUDA_R_32F),
+        ("bfloat16", ct.COMPUTE_32F_PEDANTIC, st.CUDA_R_32F),
+        ("float32", ct.COMPUTE_32F_PEDANTIC, st.CUDA_R_32F),
+        ("complex64", ct.COMPUTE_32F_PEDANTIC, st.CUDA_C_32F),
+        ("float32", ct.COMPUTE_32F_FAST_16F, st.CUDA_R_32F),
+        ("float32", ct.COMPUTE_32F_FAST_16BF, st.CUDA_R_32F),
+        ("float32", ct.COMPUTE_32F_FAST_TF32, st.CUDA_R_32F),
+        ("float64", ct.COMPUTE_64F, st.CUDA_R_64F),
+        ("float64", ct.COMPUTE_64F_PEDANTIC, st.CUDA_R_64F),
+        ("complex128", ct.COMPUTE_64F, st.CUDA_C_64F),
+        ("complex128", ct.COMPUTE_64F_PEDANTIC, st.CUDA_C_64F),
     ),
 )
-def test_compute_type(dtype, compute_type):
+def test_compute_scale_type(dtype, compute_type, scale_type):
     check_matmul_with_options(
-        5,
-        MatmulOptions(compute_type=compute_type),
+        2,
+        MatmulOptions(compute_type=compute_type, scale_type=scale_type),
         dtype=dtype,
         use_cuda=True,
+        atol=0.1,
     )
 
 
 @pytest.mark.parametrize(
-    "dtype,scale_type",
+    "dtype,compute_type,scale_type",
     (
-        ("float32", nvmath.CudaDataType.CUDA_R_32F),
-        ("float64", nvmath.CudaDataType.CUDA_R_64F),
-        ("float16", nvmath.CudaDataType.CUDA_R_32F),
+        ("float16", ct.COMPUTE_32F, st.CUDA_R_16F),
+        ("float32", ct.COMPUTE_16F, st.CUDA_R_32F),
+        ("float64", ct.COMPUTE_64F, st.CUDA_R_32F),
+        ("complex64", ct.COMPUTE_32F_PEDANTIC, st.CUDA_R_32F),
+        ("float64", ct.COMPUTE_32F_FAST_16F, st.CUDA_R_32F),
+        ("float16", ct.COMPUTE_32F_FAST_16BF, st.CUDA_R_32F),
     ),
 )
-def test_scale_type(dtype, scale_type):
-    check_matmul_with_options(
-        5,
-        MatmulOptions(scale_type=scale_type),
-        dtype=dtype,
-        use_cuda=True,
-    )
+def test_unsupported_compute_scale_type(dtype, compute_type, scale_type):
+    with pytest.raises(Exception, match="not supported|INVALID_VALUE|NOT_SUPPORTED"):
+        check_matmul_with_options(
+            2,
+            MatmulOptions(compute_type=compute_type, scale_type=scale_type),
+            dtype=dtype,
+            use_cuda=True,
+        )
 
 
 @pytest.mark.parametrize(
@@ -144,7 +203,7 @@ def test_memory_limit_filtering():
     a = b = sample_matrix("numpy/cupy", "float32", (1000, 1000), True)
 
     def get_memory_requirements(algos):
-        return [int(alg.algorithm["workspace_size"]) for alg in algos]
+        return [alg.algorithm.workspace_size for alg in algos]
 
     all_memory = get_memory_requirements(Matmul(a, b).plan())
 
@@ -228,7 +287,8 @@ def test_invalid_allocator():
 
 def test_uninstantiated_allocator():
     """
-    Tests if reasonable error is produced when an allocator class is provided instead of an instance
+    Tests if reasonable error is produced when an allocator class is provided instead of an
+    instance
     """
     from nvmath.memory import _TorchCUDAMemoryManager
 

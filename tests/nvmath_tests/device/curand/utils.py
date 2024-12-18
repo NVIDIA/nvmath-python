@@ -76,7 +76,8 @@ def generate_random_numbers(
 ):
     """
     Runs numba kernel generating random numbers from the specified distribution and states.
-    Each thread generates `nsample` values. The result is a numpy array of shape (threads*blocks, nsamples).
+    Each thread generates `nsample` values. The result is a numpy array of shape
+    (threads*blocks, nsamples).
     """
     assert nsamples % group_size == 0
     nthreads = blocks * threads
@@ -151,8 +152,10 @@ def prepare_states_and_generate(
 ):
     """
     A wrapper for prepare_states and generate_random_numbers.
-    Creates states and runs numba kernel generating random numbers from the specified distribution.
-    Each thread generates `nsample` values. The result is a numpy array of shape (threads*blocks, nsamples).
+
+    Creates states and runs numba kernel generating random numbers from the specified
+    distribution. Each thread generates `nsample` values. The result is a numpy array of
+    shape (threads*blocks, nsamples).
     """
     states = prepare_states(generator=generator, seed=seed, threads=threads, blocks=blocks, offset=offset)
     return generate_random_numbers(

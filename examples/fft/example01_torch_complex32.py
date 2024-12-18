@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example describes how to perform FFT on PyTorch tensors with low precision using function-form FFT APIs.
+This example describes how to perform FFT on PyTorch tensors with low precision using
+function-form FFT APIs.
 """
 
 import torch

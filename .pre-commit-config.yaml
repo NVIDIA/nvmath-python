@@ -108,7 +108,15 @@ repos:
     rev: v0.41.0
     hooks:
       - id: markdownlint
-        args: ["--fix"]
+      # Ignore old internal README that will not be rendered as docs page
+        args: ["--fix", "--ignore", "internal/gtc2024/README.md"]
+
+  - repo: https://github.com/sphinx-contrib/sphinx-lint
+    rev: v1.0.0
+    hooks:
+      - id: sphinx-lint
+        args: ["--enable", "all", "--max-line-length", "92"]
+        exclude: ^(.*)generated/(.*)\.rst$
 
 default_language_version:
-      python: python3
+  python: python310

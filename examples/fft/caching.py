@@ -36,21 +36,23 @@ def fft(
     cache: dict | None = None,
 ):
     """
-    A cached version of FFT, taking a cache argument in addition the the regular arguments for fft(). The stateful
-    objects are cached in the provided cache, and reused.
+    A cached version of FFT, taking a cache argument in addition the the regular arguments
+    for fft(). The stateful objects are cached in the provided cache, and reused.
 
     Args:
         cache: an object to use as the cache that satisfies `typing.Mapping` concept.
 
     Note:
-        User is responsible for explicitly free all resources stored in `cache` after no longer needed.
-        If a native `dict` object is used to store the cache, the resources can be released via:
+        User is responsible for explicitly free all resources stored in `cache` after no
+        longer needed. If a native `dict` object is used to store the cache, the resources
+        can be released via:
 
         >>> for f in cache.values():
         >>>    f.free()
 
-        Alternatively, users may use the `FFTCache` class above.
-        Resources can be cleaned by a call the the `free` method or will be automatically released if used in a context manager.
+        Alternatively, users may use the `FFTCache` class above. Resources can be cleaned by
+        a call the the `free` method or will be automatically released if used in a context
+        manager.
     """
     if cache is None:
         cache = {}
@@ -61,7 +63,8 @@ def fft(
 
     key = nvmath.fft.FFT.create_key(a, axes=axes, options=options, execution=execution, prolog=prolog, epilog=epilog)
 
-    # Get object from cache if it already exists, or create a new one and add it to the cache.
+    # Get object from cache if it already exists, or create a new one and add it to the
+    # cache.
     if (key, stream_ptr) in cache:
         logger.info("Cache HIT: using planned object.")
         # The planned object is already cached, so retrieve it.

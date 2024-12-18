@@ -67,13 +67,15 @@ class BaseCUDAMemoryManager(Protocol):
             size: The size of the memory buffer in bytes.
 
         Returns:
-            An object that owns the allocated memory and is responsible for releasing it (to the OS or a pool). The object must
-            have an attribute named ``device_ptr``, ``device_pointer``, or ``ptr`` specifying the pointer to the allocated memory
+            An object that owns the allocated memory and is responsible for releasing it (to
+            the OS or a pool). The object must have an attribute named ``device_ptr``,
+            ``device_pointer``, or ``ptr`` specifying the pointer to the allocated memory
             buffer. See :class:`MemoryPointer` for an example interface.
 
         Note:
-            Objects of type :class:`numba.cuda.MemoryPointer` as well as :class:`cupy.cuda.MemoryPointer` meet the requirements
-            listed above for the device memory pointer object.
+            Objects of type :class:`numba.cuda.MemoryPointer` as well as
+            :class:`cupy.cuda.MemoryPointer` meet the requirements listed above for the
+            device memory pointer object.
         """
         raise NotImplementedError
 
@@ -105,7 +107,8 @@ class _RawCUDAMemoryManager(BaseCUDAMemoryManager):
 
         def create_finalizer():
             def finalizer():
-                # Note: With UVA there is no need to switch context to the device the memory belongs to before calling free().
+                # Note: With UVA there is no need to switch context to the device the memory
+                # belongs to before calling free().
                 cp.cuda.runtime.free(device_ptr)
                 self.logger.debug(f"_RawCUDAMemoryManager (release memory): ptr = {device_ptr}")
 

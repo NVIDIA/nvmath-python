@@ -27,9 +27,6 @@ def main():
         compiler="numba",
     )
 
-    a_size = MM.a_size
-    b_size = MM.b_size
-    c_size = MM.c_size
     a_dim = MM.a_dim
     b_dim = MM.b_dim
     c_dim = MM.c_dim
@@ -37,8 +34,8 @@ def main():
 
     @cuda.jit(link=MM.files)
     def f(a, b, c, alpha, beta, output):
-        # cuBLASDx requires column-major arrays but cuda.shared.array creates row-major arrays (only)
-        # so we emulate a column-major array by flipping dimensions
+        # cuBLASDx requires column-major arrays but cuda.shared.array creates row-major
+        # arrays (only) so we emulate a column-major array by flipping dimensions
         smem_a = cuda.shared.array(shape=(a_dim[1], a_dim[0]), dtype=np.float32)
         smem_b = cuda.shared.array(shape=(b_dim[1], b_dim[0]), dtype=np.float32)
         smem_c = cuda.shared.array(shape=(c_dim[1], c_dim[0]), dtype=np.float32)

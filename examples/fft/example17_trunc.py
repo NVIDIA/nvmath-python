@@ -23,20 +23,14 @@ a = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype
 r = truncated_fft(a, axes=axes, extents=extents)
 
 nvtime = benchmark(truncated_fft, args=(a,), kwargs={"axes": axes, "extents": extents}, n_repeat=10)
-print(
-    f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (non-cached version):\n{nvtime}\n"
-)
+print(f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (non-cached version):\n{nvtime}\n")
 
 with FFTCache() as cache:
     cached_fft = functools.partial(cached_fft, cache=cache)
     r = truncated_fft(a, axes=axes, extents=extents, engine=cached_fft)
 
-    nvtime = benchmark(
-        truncated_fft, args=(a,), kwargs={"axes": axes, "extents": extents, "engine": cached_fft}, n_repeat=10
-    )
-    print(
-        f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (cached version):\n{nvtime}\n"
-    )
+    nvtime = benchmark(truncated_fft, args=(a,), kwargs={"axes": axes, "extents": extents, "engine": cached_fft}, n_repeat=10)
+    print(f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on nvmath-python (cached version):\n{nvtime}\n")
 
 cptime = benchmark(cp.fft.fftn, args=(a,), kwargs={"axes": axes, "s": extents}, n_repeat=10)
 print(f"{len(axes)}-D FFT for axes={axes} and extents={extents} based on CuPy:\n{cptime}\n")

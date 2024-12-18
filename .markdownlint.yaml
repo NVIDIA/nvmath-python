@@ -1,7 +1,9 @@
 MD013:
-  line_length: 120
+  line_length: 92
+  code_block_line_length: 88
   code_blocks: true
   tables: false
+  stern: true
 MD033:
   allowed_elements:
     - img

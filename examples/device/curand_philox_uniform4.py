@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This example shows how to use the Philox4_32_10 bit generator to sample four single-precision values from a uniform
-distribution in a single call. The values are wrapped into an object of type `uint32x4` (Numba vector type).
+This example shows how to use the Philox4_32_10 bit generator to sample four
+single-precision values from a uniform distribution in a single call. The values are wrapped
+into an object of type `uint32x4` (Numba vector type).
 
-Following recommended practice, the implementation is split into a state initialization kernel and a sample
-generation kernel.
+Following recommended practice, the implementation is split into a state initialization
+kernel and a sample generation kernel.
 """
 
 import numpy as np
@@ -43,7 +44,8 @@ def test_random_uniform4():
         i = cuda.grid(1)
         count = 0
 
-        # Count the number of samples that falls greater than 0.5, getting 4 values at a time.
+        # Count the number of samples that falls greater than 0.5, getting 4 values at a
+        # time.
         for sample in range(n // 4):
             v = random.uniform4(states[i])
             a = v.x, v.y, v.z, v.w

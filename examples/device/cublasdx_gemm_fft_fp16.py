@@ -51,14 +51,12 @@ def main():
 
     a_size = MM.a_size
     b_size = MM.b_size
-    c_size = MM.c_size
 
     a_dim = MM.a_dim
     b_dim = MM.b_dim
     c_dim = MM.c_dim
 
     lda = MM.leading_dimension.a
-    ldb = MM.leading_dimension.b
     ldc = MM.leading_dimension.c
     shared_memory_size = max(MM.shared_memory_size, FFT.shared_memory_size)
 

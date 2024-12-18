@@ -67,6 +67,6 @@ def test_default_backend(monkeypatch, framework, exec_backend, mem_backend, dtyp
     assert_array_type(out, framework, mem_backend, get_fft_dtype(dtype))
     assert_norm_close(out, get_fft_ref(signal, axes))
     ifft_fn = nvmath.fft.ifft if is_complex(dtype) else nvmath.fft.irfft
-    iout = ifft_fn(out, axes=axes, options={"last_axis_size": "odd"})
+    iout = ifft_fn(out, axes=axes, options={"last_axis_parity": "odd"})
     assert_array_type(iout, framework, mem_backend, dtype)
     assert_norm_close(iout, get_scaled(signal, shape[0]))

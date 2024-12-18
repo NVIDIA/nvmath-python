@@ -15,9 +15,7 @@ from common import random_complex
 def main():
     fft_size = 16
 
-    FFT = fft(
-        fft_type="c2c", size=fft_size, direction="forward", precision=np.float32, execution="Thread", compiler="numba"
-    )
+    FFT = fft(fft_type="c2c", size=fft_size, direction="forward", precision=np.float32, execution="Thread", compiler="numba")
 
     block_dim = Dim3(fft_size, fft_size, 1)
     grid_dim = Dim3(1, 1, 1)

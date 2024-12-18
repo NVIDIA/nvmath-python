@@ -9,7 +9,6 @@ from nvmath.device import (
     CodeType,
     ComputeCapability,
     matmul,
-    BlasOptions,
     TransposeMode,
     LeadingDimension,
     BlasOptions,
@@ -64,9 +63,7 @@ def test_third_party_code():
     assert MM.max_threads_per_block <= 1024
 
 
-@pytest.mark.parametrize(
-    "ta, tb", list(itertools.product(["non_transposed", "transposed", "conj_transposed"], repeat=2))
-)
+@pytest.mark.parametrize("ta, tb", list(itertools.product(["non_transposed", "transposed", "conj_transposed"], repeat=2)))
 def test_transpose_mode(ta, tb):
     MM1 = matmul(
         size=(2, 2, 2),
@@ -241,7 +238,7 @@ def test_negative(opt, value):
     else:
         opts[opt] = value
     with pytest.raises(Exception):
-        MM = matmul(**opts)
+        MM = matmul(**opts)  # noqa: F841
 
 
 @pytest.mark.parametrize("code_type", [SM70, SM72, SM75, SM80, SM86, SM89, SM90])

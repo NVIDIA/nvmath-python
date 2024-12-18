@@ -97,7 +97,8 @@ def main():
     except cuda.cudadrv.driver.LinkerError as e:
         if str(e) == "libcudadevrt.a not found":
             print(
-                f"\n=== Numba linker error: {e}. Please use the System CTK option (see Getting Started in the documentation) to run this example. ===\n"
+                f"\n=== Numba linker error: {e}. Please use the System CTK option (see Installation in the documentation) "
+                "to run this example. ===\n"
             )
         raise e
     cuda.synchronize()

@@ -79,6 +79,9 @@ cdef void* __cufftXtExecDescriptor = NULL
 cdef void* __cufftXtSetWorkAreaPolicy = NULL
 cdef void* __cufftXtSetJITCallback = NULL
 cdef void* __cufftXtSetSubformatDefault = NULL
+cdef void* __cufftSetPlanPropertyInt64 = NULL
+cdef void* __cufftGetPlanPropertyInt64 = NULL
+cdef void* __cufftResetPlanProperty = NULL
 
 
 cdef inline list get_site_packages():
@@ -474,6 +477,24 @@ cdef int _check_or_init_cufft() except -1 nogil:
         except:
             pass
 
+        global __cufftSetPlanPropertyInt64
+        try:
+            __cufftSetPlanPropertyInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftSetPlanPropertyInt64')
+        except:
+            pass
+
+        global __cufftGetPlanPropertyInt64
+        try:
+            __cufftGetPlanPropertyInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftGetPlanPropertyInt64')
+        except:
+            pass
+
+        global __cufftResetPlanProperty
+        try:
+            __cufftResetPlanProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftResetPlanProperty')
+        except:
+            pass
+
     __py_cufft_init = True
     return 0
 
@@ -647,6 +668,15 @@ cpdef dict _inspect_function_pointers():
 
     global __cufftXtSetSubformatDefault
     data["__cufftXtSetSubformatDefault"] = <intptr_t>__cufftXtSetSubformatDefault
+
+    global __cufftSetPlanPropertyInt64
+    data["__cufftSetPlanPropertyInt64"] = <intptr_t>__cufftSetPlanPropertyInt64
+
+    global __cufftGetPlanPropertyInt64
+    data["__cufftGetPlanPropertyInt64"] = <intptr_t>__cufftGetPlanPropertyInt64
+
+    global __cufftResetPlanProperty
+    data["__cufftResetPlanProperty"] = <intptr_t>__cufftResetPlanProperty
 
     func_ptrs = data
     return data
@@ -1191,3 +1221,33 @@ cdef cufftResult _cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat 
             raise FunctionNotFoundError("function cufftXtSetSubformatDefault is not found")
     return (<cufftResult (*)(cufftHandle, cufftXtSubFormat, cufftXtSubFormat) nogil>__cufftXtSetSubformatDefault)(
         plan, subformat_forward, subformat_inverse)
+
+
+cdef cufftResult _cufftSetPlanPropertyInt64(cufftHandle plan, cufftProperty property, const long long int inputValueInt) except* nogil:
+    global __cufftSetPlanPropertyInt64
+    _check_or_init_cufft()
+    if __cufftSetPlanPropertyInt64 == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cufftSetPlanPropertyInt64 is not found")
+    return (<cufftResult (*)(cufftHandle, cufftProperty, const long long int) nogil>__cufftSetPlanPropertyInt64)(
+        plan, property, inputValueInt)
+
+
+cdef cufftResult _cufftGetPlanPropertyInt64(cufftHandle plan, cufftProperty property, long long int* returnPtrValue) except* nogil:
+    global __cufftGetPlanPropertyInt64
+    _check_or_init_cufft()
+    if __cufftGetPlanPropertyInt64 == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cufftGetPlanPropertyInt64 is not found")
+    return (<cufftResult (*)(cufftHandle, cufftProperty, long long int*) nogil>__cufftGetPlanPropertyInt64)(
+        plan, property, returnPtrValue)
+
+
+cdef cufftResult _cufftResetPlanProperty(cufftHandle plan, cufftProperty property) except* nogil:
+    global __cufftResetPlanProperty
+    _check_or_init_cufft()
+    if __cufftResetPlanProperty == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cufftResetPlanProperty is not found")
+    return (<cufftResult (*)(cufftHandle, cufftProperty) nogil>__cufftResetPlanProperty)(
+        plan, property)

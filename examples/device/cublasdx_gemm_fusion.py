@@ -44,11 +44,9 @@ def main():
     )
 
     a_size = MM1.a_size
-    b_size = MM1.b_size
     c_size = MM1.c_size
 
     d_size = MM2.b_size
-    f_size = MM2.c_size
 
     a_dim = MM1.a_dim
     b_dim = MM1.b_dim
@@ -135,9 +133,7 @@ def main():
     alpha2 = 1.0
     beta2 = 1.0
 
-    set_max_dynamic_shared_size_bytes(
-        kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d
-    )
+    set_max_dynamic_shared_size_bytes(kernel, shared_memory_size, alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d)
 
     kernel[1, block_dim, 0, shared_memory_size](alpha1, a_d, b_d, beta1, c_d, alpha2, d_d, beta2, f_d, o_d)
     cuda.synchronize()

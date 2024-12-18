@@ -3,7 +3,8 @@
 cuSOLVERDn (:mod:`nvmath.bindings.cusolverDn`)
 ==============================================
 
-For detailed documentation on the original C APIs, please refer to `cuSOLVERDn documentation <https://docs.nvidia.com/cuda/cusolver/#cusolverdn-dense-lapack-function-reference>`_.
+For detailed documentation on the original C APIs, refer to the `cuSOLVERDn documentation
+<https://docs.nvidia.com/cuda/cusolver/#cusolverdn-dense-lapack-function-reference>`_.
 
 Enums and constants
 *******************

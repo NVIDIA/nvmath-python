@@ -27,7 +27,7 @@ try:
 
     _TENSOR_TYPES["torch"] = TorchTensor
     torch_asarray = functools.partial(torch.as_tensor, device="cuda")
-except ImportError as e:
+except ImportError:
     torch = None  # type: ignore
     torch_asarray = None  # type: ignore
 
@@ -69,9 +69,7 @@ def check_valid_package(native_operands):
     operands_pkg = [infer_tensor_package(o) for o in native_operands]
     checks = [p in _SUPPORTED_PACKAGES for p in operands_pkg]
     if not all(checks):
-        unknown = [
-            f"{location}: {operands_pkg[location]}" for location, predicate in enumerate(checks) if predicate is False
-        ]
+        unknown = [f"{location}: {operands_pkg[location]}" for location, predicate in enumerate(checks) if predicate is False]
         unknown = formatters.array2string(unknown)
         message = f"""The operands should be ndarray-like objects from one of {_SUPPORTED_PACKAGES} packages.
 The unsupported operands as a sequence of "position: package" is: \n{unknown}"""

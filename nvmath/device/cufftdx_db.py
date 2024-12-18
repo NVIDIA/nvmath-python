@@ -9,9 +9,7 @@ from collections import namedtuple
 from abc import ABC, abstractmethod
 from .common_cuda import ComputeCapability
 
-Record = namedtuple(
-    "Record", ["arch", "fft_type", "precision", "direction", "size", "elements_per_thread", "ffts_per_block"]
-)
+Record = namedtuple("Record", ["arch", "fft_type", "precision", "direction", "size", "elements_per_thread", "ffts_per_block"])
 
 
 def _update(dict, **kwargs):
@@ -25,13 +23,14 @@ def _update(dict, **kwargs):
 
 
 #
-# Those transformations take care of mapping a set of constraints (e.g. arch=800, fft_type=r2c, size=32)
-# from the "frontend API" to the "database".
-# This is necessary because the mapping is not bijective: multiple APIs map to the same implementation
-# For instance (fft_type=C2C, size=32) and (fft_type=R2C, size=32) both map to (fft_type=C2C, size=32) under the hood
-# Those mapper take care of
+# Those transformations take care of mapping a set of constraints (e.g. arch=800,
+# fft_type=r2c, size=32) from the "frontend API" to the "database". This is necessary
+# because the mapping is not bijective: multiple APIs map to the same implementation For
+# instance (fft_type=C2C, size=32) and (fft_type=R2C, size=32) both map to (fft_type=C2C,
+# size=32) under the hood Those mapper take care of
 # [1] Doing the forward mapping (frontend -> db), which is injective - the `fwd` methods
-# [2] Undoing the mapping (which is doable because we keep track of the forward mapping internally) - the `inv` methods
+# [2] Undoing the mapping (which is doable because we keep track of the forward mapping
+# internally) - the `inv` methods
 #
 class Mapper(ABC):
     @staticmethod
@@ -87,7 +86,8 @@ class ThreadToBlock(Mapper):
             return _update(kwargs, execution="Block")
 
 
-# Fwd: If fft_type=(R2C|C2R) and real_fft_options[real_mode]=folded, set fft_type=C2C and size/=2 and elements_per_thread/=2 (if set) and drop real_fft_options
+# Fwd: If fft_type=(R2C|C2R) and real_fft_options[real_mode]=folded, set fft_type=C2C and
+# size/=2 and elements_per_thread/=2 (if set) and drop real_fft_options
 # Inv: Restore the original R2C/C2R. If elements_per_thread was set, restore it
 class FoldedToC2C(Mapper):
     # This should be the complement of R2CC2RToC2C.required

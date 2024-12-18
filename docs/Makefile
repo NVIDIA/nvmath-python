@@ -3,7 +3,7 @@ SHELL=/bin/bash
 
 # You can set these variables from the command line or environment
 SPHINX_NVMATH_PYTHON_VER ?= $(shell [[ $$(< ../nvmath/_version.py) =~ __version__[^0-9.]*([0-9.]*) ]] && echo $${BASH_REMATCH[1]})
-SPHINXOPTS    ?= -j auto
+SPHINXOPTS    ?= -W
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = sphinx
 BUILDDIR      ?= _build/html
@@ -27,4 +27,10 @@ html: Makefile
 	cd $(BUILDDIR) && cp -a ${SPHINX_NVMATH_PYTHON_VER}/* latest/
 	cp $(BUILDDIR)/latest/objects.inv $(BUILDDIR)
 
-.PHONY: help Makefile clean html
+
+linkcheck: Makefile
+	$(eval $@_BUILDDIR := $(shell mktemp -d))
+	$(SPHINXBUILD) -b $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	rm -rf $($@_BUILDDIR)
+
+.PHONY: help Makefile clean html linkcheck
