@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,10 +17,11 @@ except ModuleNotFoundError:
 import numpy as np
 
 import nvmath
+import datetime
 import re
 
 
-def sample_matrix(framework, dtype, shape, use_cuda):
+def sample_matrix(framework, dtype, shape, use_cuda, min=-5, max=5):
     """
     Generates a sample matrix with random contents.
     """
@@ -32,7 +33,7 @@ def sample_matrix(framework, dtype, shape, use_cuda):
         if torch is None:
             pytest.skip("pytorch not present")
         dtype = getattr(torch, dtype)
-        r = (10 * torch.rand(shape) - 5).type(dtype)
+        r = ((max - min) * torch.rand(shape) + min).type(dtype)
         return r.cuda() if use_cuda else r
     elif framework == "cupy":
         if not use_cuda:
@@ -83,26 +84,38 @@ def get_framework(tensor):
         raise AssertionError()
 
 
-def get_tolerance(value):
+def get_machine_eps(value):
     eps = np.finfo(to_numpy(value).dtype).eps
     if torch is not None and value.dtype == torch.bfloat16:
         eps = 2**-6
-    return eps**0.5
+    return eps
 
 
-def compare_tensors(result, reference, atol=None):
+def get_absolute_tolerance(value):
+    return get_machine_eps(value) ** 0.5
+
+
+def get_relative_tolerance(value):
+    return max(1e-5, get_machine_eps(value) ** 0.5)
+
+
+def compare_tensors(result, reference, atol=None, rtol=None):
     if atol is None:
-        atol = get_tolerance(result)
-    return np.allclose(to_numpy(result), to_numpy(reference), atol=atol)
+        atol = get_absolute_tolerance(result)
+    if rtol is None:
+        rtol = get_relative_tolerance(result)
+    return np.allclose(to_numpy(result), to_numpy(reference), atol=atol, rtol=rtol)
 
 
-def assert_tensors_equal(result, reference, atol=None):
+def assert_tensors_equal(result, reference, atol=None, rtol=None):
     """
     Checks if result is close to the provided numpy reference.
     """
     assert result is not reference, "same object passed as `result` and `reference`!"
-    ok = compare_tensors(result, reference, atol=atol)
+    ok = compare_tensors(result, reference, atol=atol, rtol=rtol)
     if not ok:
+        print(f"Absdiff: {np.max(np.abs(to_numpy(result) - to_numpy(reference)))}")
+        print(f"Reldiff: {np.max(np.abs(to_numpy(result) - to_numpy(reference)) / (np.abs(to_numpy(reference)) + 0.000001) )}")
         print("Result:\n", result)
         print("Reference:\n", reference)
     assert ok
@@ -128,12 +141,30 @@ def skip_if_cublas_before(version, message="Unsupported cublas version."):
     return False
 
 
+# Setting the seed once per day allows randomness, but helps with reproducibility.
+matmul_with_random_autotune_rng = np.random.default_rng(seed=abs(hash(datetime.date.today())))
+
+
+def matmul_with_random_autotune(*args, p=0.25, **kwargs):
+    """
+    Executes matmul, using autotuning with probability p.
+    """
+    constructor_kwargs = ("c", "alpha", "beta", "qualifiers", "options", "stream", "quantization_scales")
+    plan_kwargs = ("preferences", "epilog", "epilog_inputs", "algorithms", "stream")
+    execute_kwargs = ("stream",)
+    mm = nvmath.linalg.advanced.Matmul(*args, **{k: kwargs[k] for k in constructor_kwargs if k in kwargs})
+    mm.plan(**{k: kwargs[k] for k in plan_kwargs if k in kwargs})
+    if matmul_with_random_autotune_rng.random() < p:
+        mm.autotune()
+    return mm.execute(**{k: kwargs[k] for k in execute_kwargs if k in kwargs})
+
+
 class allow_cublas_unsupported:
     def __init__(self, *, allow_invalid_value=True, unsupported_before=None, message="Unsupported cublas version."):
         if allow_invalid_value:
-            self.regex = r"\(CUBLAS_STATUS_(NOT_SUPPORTED|INVALID_VALUE)\)"
+            self.regex = r"\(?(CUBLAS_STATUS_)?(NOT_SUPPORTED|INVALID_VALUE)\)?"
         else:
-            self.regex = r"\(CUBLAS_STATUS_NOT_SUPPORTED\)"
+            self.regex = r"\(?(CUBLAS_STATUS_)?NOT_SUPPORTED\)?"
         self.unsupported_before = unsupported_before
         self.message = message
 

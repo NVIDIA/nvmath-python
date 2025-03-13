@@ -1,13 +1,14 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import nvmath
 from nvmath.bindings import cublas
 from nvmath.linalg.advanced import matmul, Matmul, MatmulOptions
-from .utils import *
-import pytest
 import logging
+import nvmath
+import pytest
+
+from .utils import assert_tensors_equal, sample_matrix, is_torch_available
 
 try:
     import cupy_backends.cuda
@@ -25,12 +26,12 @@ This set of tests checks Matmul's options
 """
 
 
-def check_matmul_with_options(size, options, use_cuda=False, dtype="float32", atol=None):
+def check_matmul_with_options(size, options, use_cuda=False, dtype="float32", atol=None, rtol=None):
     a = b = sample_matrix("numpy/cupy" if dtype != "bfloat16" else "torch", dtype, (size, size), use_cuda)
     is_complex = "_C_" in str(options.scale_type) or (options.compute_type is None and "complex" in dtype)
     alpha = 0.42 + 0.24j if is_complex else 0.42
     result = matmul(a, b, alpha=alpha, options=options)
-    assert_tensors_equal(result, alpha * (a @ b), atol=atol)
+    assert_tensors_equal(result, alpha * (a @ b), atol=atol, rtol=rtol)
     return result
 
 
@@ -102,6 +103,7 @@ def test_compute_scale_type(dtype, compute_type, scale_type):
         dtype=dtype,
         use_cuda=True,
         atol=0.1,
+        rtol=None,
     )
 
 

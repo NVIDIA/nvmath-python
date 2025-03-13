@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,12 +7,9 @@
 #   support LTO code generation and linking
 #   find libnvvm located in PYPI wheels
 #
-
-import os
 import functools
 
 import numba
-from numba.cuda.cudadrv import libs
 import numba.cuda.cudadrv.nvrtc as nvrtc
 import numba.cuda.cudadrv.nvvm as nvvm
 import pynvjitlink.patch  # type: ignore

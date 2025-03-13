@@ -1,8 +1,8 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -45,6 +45,7 @@ ctypedef cublasLtMatmulAlgoCapAttributes_t _MatmulAlgoCapAttribute
 ctypedef cublasLtMatmulAlgoConfigAttributes_t _MatmulAlgoConfigAttribute
 ctypedef cublasLtClusterShape_t _ClusterShape
 ctypedef cublasLtMatmulInnerShape_t _MatmulInnerShape
+ctypedef cublasLtMatmulMatrixScale_t _MatmulMatrixScale
 
 
 ###############################################################################

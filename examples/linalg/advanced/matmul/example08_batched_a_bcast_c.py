@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -23,7 +23,7 @@ batch_size = 32
 m = n = k = 2000
 a_batch = cp.random.rand(batch_size, m, k)
 b = cp.random.rand(k, n)
-c = cp.random.rand(m)
+c = cp.random.rand(m, 1)
 beta = 1.2
 print(f"a shape is: {a_batch.shape}, b shape is: {b.shape} and c shape is: {c.shape}")
 

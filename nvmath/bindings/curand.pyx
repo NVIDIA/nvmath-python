@@ -1,12 +1,12 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
 cimport cython  # NOQA
 cimport cpython
-from cpython cimport memoryview as _memoryview
+from cpython.memoryview cimport PyMemoryView_FromMemory
 
 from enum import IntEnum as _IntEnum
 
@@ -479,7 +479,7 @@ cpdef get_scramble_constants32(size_t size):
     with nogil:
         status = curandGetScrambleConstants32(&constants)
     check_status(status)
-    cdef object buf = _memoryview.PyMemoryView_FromMemory(
+    cdef object buf = PyMemoryView_FromMemory(
         <char*><intptr_t>constants, size * sizeof(unsigned int), cpython.PyBUF_READ)
     return _numpy.ndarray((size,), buffer=buf, dtype=_numpy.uint32)
 
@@ -501,7 +501,7 @@ cpdef get_scramble_constants64(size_t size):
     with nogil:
         status = curandGetScrambleConstants64(&constants)
     check_status(status)
-    cdef object buf = _memoryview.PyMemoryView_FromMemory(
+    cdef object buf = PyMemoryView_FromMemory(
         <char*><intptr_t>constants, size * sizeof(unsigned long long), cpython.PyBUF_READ)
     return _numpy.ndarray((size,), buffer=buf, dtype=_numpy.uint64)
 
@@ -524,7 +524,7 @@ cpdef get_direction_vectors32(int set_, size_t size):
     with nogil:
         status = curandGetDirectionVectors32(&vec, <_DirectionVectorSet>set_)
     check_status(status)
-    cdef object buf = _memoryview.PyMemoryView_FromMemory(
+    cdef object buf = PyMemoryView_FromMemory(
         <char*><intptr_t>vec, size * sizeof(curandDirectionVectors32_t), cpython.PyBUF_READ)
     return _numpy.ndarray((size, 32,), buffer=buf, dtype=_numpy.uint32)
 
@@ -547,6 +547,6 @@ cpdef get_direction_vectors64(int set_, size_t size):
     with nogil:
         status = curandGetDirectionVectors64(&vec, <_DirectionVectorSet>set_)
     check_status(status)
-    cdef object buf = _memoryview.PyMemoryView_FromMemory(
+    cdef object buf = PyMemoryView_FromMemory(
         <char*><intptr_t>vec, size * sizeof(curandDirectionVectors64_t), cpython.PyBUF_READ)
     return _numpy.ndarray((size, 64,), buffer=buf, dtype=_numpy.uint64)

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,8 +7,11 @@ This set of tests checks matmul's behavior for different kinds of inputs.
 """
 
 from nvmath.linalg.advanced import matmul, matrix_qualifiers_dtype
+import numpy as np
 import pytest
-from .utils import *
+from nvmath.bindings import cublasLt as cublaslt
+
+from .utils import compare_tensors, random_torch_complex, sample_matrix, assert_tensors_equal, to_numpy, get_framework
 
 
 @pytest.mark.parametrize("framework", ("torch", "numpy/cupy"))
@@ -140,7 +143,7 @@ def test_batching(a_batch, b_batch, c_batch, out_batch):
     assert_tensors_equal(result, a @ b + c)
 
 
-@pytest.mark.parametrize("c_desc", (None, "M", "M1", "MN"))
+@pytest.mark.parametrize("c_desc", (None, "M1", "MN"))
 @pytest.mark.parametrize("b_desc", ("K", "KN"))
 @pytest.mark.parametrize("a_desc", ("K", "MK"))
 @pytest.mark.parametrize("a_t", (True, False))
@@ -384,7 +387,7 @@ def test_dtype_mismatch(framework, a_dtype, b_dtype, c_dtype):
         c = sample_matrix(framework, c_dtype, (2, 2), True)
     except NotImplementedError:
         pytest.skip("Unable to generate matrix of this dtype")
-    with pytest.raises(ValueError, match=r"The dtype of operands .* must be the same"):
+    with pytest.raises(ValueError, match=r"Unsupported combination of dtypes"):
         matmul(a, b, c, beta=1)
 
 
@@ -421,6 +424,30 @@ def test_unsupported_type():
     """
     Tests if a proper error is reported for an unsupported data type.
     """
-    a = b = c = np.asarray(["hello"])
-    with pytest.raises(ValueError, match=r"Unsupported dtype."):
+    a = b = c = np.zeros((2, 2), dtype=np.int64)
+    with pytest.raises(ValueError, match=r"^The dtype of operand.*not supported"):
         matmul(a, b, c, beta=1)
+
+
+def test_unsupported_float8():
+    """
+    Tests if proper error is reported when FP8 is not supported.
+    """
+    try:
+        import torch
+    except:
+        pytest.skip("Torch is required for FP8 support test.")
+
+    if not hasattr(torch, "float8_e4m3fn"):
+        # Old torch versions don't support float8_e4m3fn at all.
+        pytest.skip("torch.float8_e4m3fn is required for FP8 support test.")
+
+    a = torch.zeros((16, 16)).type(torch.float8_e4m3fn).cuda()
+    b = torch.zeros((16, 16)).type(torch.float8_e4m3fn).cuda()
+
+    if cublaslt.get_version() < 120800:
+        with pytest.raises(ValueError, match=r"FP8 is not supported.*cuBLASLt version 12\.8 or higher is required"):
+            matmul(a, b, quantization_scales={"a": 1, "b": 1, "d": 1})
+    elif (torch.cuda.get_device_properties(0).major, torch.cuda.get_device_properties(0).minor) < (8, 9):
+        with pytest.raises(cublaslt.cuBLASLtError):
+            matmul(a, b, quantization_scales={"a": 1, "b": 1, "d": 1})

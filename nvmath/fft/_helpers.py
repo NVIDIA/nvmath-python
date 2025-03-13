@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,7 +24,7 @@ TYPE_MAP = {
 
 def _check_numba_available():
     try:
-        import numba
+        import numba  # noqa: F401
     except ModuleNotFoundError as e:
         raise RuntimeError("Numba is required to compile FFT prolog and epilog functions.") from e
 

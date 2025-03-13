@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,7 +21,7 @@ cython_version = Version(Cython.__version__)
 # flow, so we need to hack sys.path ourselves...
 source_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(source_root, "builder"))
-import utils  # this is builder.utils
+import utils  # type: ignore # this is builder.utils  # noqa: E402
 
 
 # List the main modules, and infer the auxiliary modules automatically
@@ -129,10 +129,6 @@ else:
 setup(
     ext_modules=cythonize(ext_modules, verbose=True, language_level=3, compiler_directives=compiler_directives),
     packages=find_packages(include=["nvmath", "nvmath.*"]),
-    package_data=dict.fromkeys(
-        find_packages(include=["nvmath.*"]),
-        ["*.pxd", "*.pyx", "*.py"],
-    ),
     zip_safe=False,
     cmdclass=cmdclass,
 )

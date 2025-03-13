@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,7 +36,7 @@ except RuntimeError as e:
 
 def _has_numba():
     try:
-        import numba
+        import numba  # noqa: F401
 
         return True
     except ModuleNotFoundError:

@@ -7,7 +7,7 @@ __pycache__
 *.so
 *.pyd
 docs/_build
-docs/sphinx/*/generated
+docs/sphinx/**/generated
 docs/sphinx/generated
 dist
 build

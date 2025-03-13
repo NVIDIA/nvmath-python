@@ -1,8 +1,8 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 ###############################################################################
@@ -158,34 +158,6 @@ ctypedef cufftDoubleReal (*cufftCallbackLoadD 'cufftCallbackLoadD')(
     void* callerInfo,
     void* sharedPointer
 )
-ctypedef void (*cufftCallbackStoreC 'cufftCallbackStoreC')(
-    void* dataOut,
-    size_t offset,
-    cufftComplex element,
-    void* callerInfo,
-    void* sharedPointer
-)
-ctypedef void (*cufftCallbackStoreZ 'cufftCallbackStoreZ')(
-    void* dataOut,
-    size_t offset,
-    cufftDoubleComplex element,
-    void* callerInfo,
-    void* sharedPointer
-)
-ctypedef void (*cufftCallbackStoreR 'cufftCallbackStoreR')(
-    void* dataOut,
-    size_t offset,
-    cufftReal element,
-    void* callerInfo,
-    void* sharedPointer
-)
-ctypedef void (*cufftCallbackStoreD 'cufftCallbackStoreD')(
-    void* dataOut,
-    size_t offset,
-    cufftDoubleReal element,
-    void* callerInfo,
-    void* sharedPointer
-)
 ctypedef cufftComplex (*cufftJITCallbackLoadC 'cufftJITCallbackLoadC')(
     void* dataIn,
     unsigned long long offset,
@@ -210,17 +182,10 @@ ctypedef cufftDoubleReal (*cufftJITCallbackLoadD 'cufftJITCallbackLoadD')(
     void* callerInfo,
     void* sharedPointer
 )
-ctypedef void (*cufftJITCallbackStoreC 'cufftJITCallbackStoreC')(
+ctypedef void (*cufftCallbackStoreR 'cufftCallbackStoreR')(
     void* dataOut,
-    unsigned long long offset,
-    cufftComplex element,
-    void* callerInfo,
-    void* sharedPointer
-)
-ctypedef void (*cufftJITCallbackStoreZ 'cufftJITCallbackStoreZ')(
-    void* dataOut,
-    unsigned long long offset,
-    cufftDoubleComplex element,
+    size_t offset,
+    cufftReal element,
     void* callerInfo,
     void* sharedPointer
 )
@@ -231,10 +196,45 @@ ctypedef void (*cufftJITCallbackStoreR 'cufftJITCallbackStoreR')(
     void* callerInfo,
     void* sharedPointer
 )
+ctypedef void (*cufftCallbackStoreD 'cufftCallbackStoreD')(
+    void* dataOut,
+    size_t offset,
+    cufftDoubleReal element,
+    void* callerInfo,
+    void* sharedPointer
+)
 ctypedef void (*cufftJITCallbackStoreD 'cufftJITCallbackStoreD')(
     void* dataOut,
     unsigned long long offset,
     cufftDoubleReal element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftCallbackStoreC 'cufftCallbackStoreC')(
+    void* dataOut,
+    size_t offset,
+    cufftComplex element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftJITCallbackStoreC 'cufftJITCallbackStoreC')(
+    void* dataOut,
+    unsigned long long offset,
+    cufftComplex element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftCallbackStoreZ 'cufftCallbackStoreZ')(
+    void* dataOut,
+    size_t offset,
+    cufftDoubleComplex element,
+    void* callerInfo,
+    void* sharedPointer
+)
+ctypedef void (*cufftJITCallbackStoreZ 'cufftJITCallbackStoreZ')(
+    void* dataOut,
+    unsigned long long offset,
+    cufftDoubleComplex element,
     void* callerInfo,
     void* sharedPointer
 )

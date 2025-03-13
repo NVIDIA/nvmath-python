@@ -1,14 +1,13 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from cuda import cuda
-from cuda import nvrtc
+from cuda import cudart, nvrtc, cuda
 
 from nvmath.device.common_mathdx import CUDA_HOME as _CUDA_HOME
 from nvmath.device.common_mathdx import MATHDX_HOME as _MATHDX_HOME
 
-from .helpers import CHECK_CUDA, CHECK_NVRTC, make_args, get_unsigned
+from .helpers import CHECK_CUDA, CHECK_CUDART, CHECK_NVRTC, make_args, get_unsigned
 
 
 def run_and_time(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args):
@@ -61,6 +60,12 @@ def run_and_time(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args
 
 def compile_cpp_kernel(cpp, sm, mangled):
     print(f"compile_cpp_kernel CUDA_HOME = {_CUDA_HOME}, _MATHDX_HOME = {_MATHDX_HOME}")
+
+    # TODO: dx does not support platforms > arch90 for now and version is capped
+    # at 9.0, but we want to compile program against actual architecture.
+    err, prop = cudart.cudaGetDeviceProperties(0)
+    CHECK_CUDART(err)
+    sm = (prop.major, prop.minor)
 
     opts = (
         [b"--std=c++17", b"--device-as-default-execution-space", b"-DCUFFTDX_DETAIL_USE_CUDA_STL=1"]

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,12 +6,17 @@
 This set of tests checks basic properties of separated planning.
 """
 
-import re
-import nvmath
-from nvmath.linalg.advanced import Matmul, MatmulPlanPreferences
 from nvmath.bindings import cublasLt as cublaslt
+from nvmath.linalg.advanced import Matmul, MatmulPlanPreferences
+import numpy as np
 import pytest
-from .utils import *
+
+from .utils import sample_matrix, allow_cublas_unsupported, assert_tensors_equal
+
+try:
+    import cupy
+except ModuleNotFoundError:
+    pytest.skip("cupy required for matmul tests", allow_module_level=True)
 
 
 @pytest.mark.parametrize("framework", ("numpy/cupy", "torch"))
@@ -176,3 +181,74 @@ def test_algorithm_not_planned(framework, use_cuda):
         match=r"Algorithm passed to execute\(\) has to be included in the plan\(\) algorithms",
     ):
         mm2.execute(algorithm=algos[0])
+
+def test_algorithm_ids():
+    a = cupy.zeros((10, 10))
+    b = cupy.zeros((10, 10))
+    with Matmul(a, b) as mm:
+        assert len(mm.applicable_algorithm_ids(limit=4)) <= 4
+
+def test_algo_attributes():
+    '''
+    Test Algorithm class setter/property
+    '''
+    m, n, k = 24, 24, 24
+    a = cupy.random.rand(m, k)
+    b = cupy.random.rand(k, n)
+
+    with Matmul(a, b) as mm:
+        algos = mm.plan()
+        best = algos[0]
+
+        # An attribute may not be supported in all cuBLASLt versions (INVALID_VALUE).
+
+        message = "The attribute '{attr}' is not supported in this version."
+        with allow_cublas_unsupported(
+            allow_invalid_value=True,
+            message=message.format(attr='stages')
+        ):
+            if best.capabilities.stages_ids:
+                best.stages = best.capabilities.stages_ids[-1]
+                assert best.stages == best.capabilities.stages_ids[-1]
+
+        with allow_cublas_unsupported(
+            allow_invalid_value=True,
+            message=message.format(attr='split_k')
+        ):
+            best.split_k = 4
+            assert best.split_k == 4
+
+        with allow_cublas_unsupported(
+            allow_invalid_value=True,
+            message=message.format(attr='reduction_scheme')
+        ):
+            best.reduction_scheme = best.capabilities.reduction_scheme_mask
+            assert best.reduction_scheme == best.capabilities.reduction_scheme_mask
+
+        with allow_cublas_unsupported(
+            allow_invalid_value=True,
+            message=message.format(attr='cta_swizzling')
+        ):
+            best.cta_swizzling = True
+            assert best.cta_swizzling == True
+
+        with allow_cublas_unsupported(
+            allow_invalid_value=True,
+            message=message.format(attr='custom_option')
+        ):
+            best.custom_option = 1
+            assert best.custom_option == 1
+
+        with allow_cublas_unsupported(
+            allow_invalid_value=True,
+            message=message.format(attr='inner_shape')
+        ):
+            best.inner_shape = cublaslt.MatmulInnerShape.MMA884
+            assert best.inner_shape == cublaslt.MatmulInnerShape.MMA884
+
+        with allow_cublas_unsupported(
+            allow_invalid_value=True,
+            message=message.format(attr='cluster_shape')
+        ):
+            best.cluster_shape = (1,1,1)
+            assert best.cluster_shape == (1,1,1)

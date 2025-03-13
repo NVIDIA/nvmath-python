@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,7 +22,6 @@ import numpy as np
 from . import formatters
 from . import mem_limit
 from . import package_wrapper
-from . import tensor_wrapper
 from .package_ifc import StreamHolder
 from .tensor_ifc import Tensor
 from .layout import is_contiguous_and_dense
@@ -236,7 +235,6 @@ def get_memory_limit(memory_limit, device):
     """
     Parse user provided memory limit and return the memory limit in bytes.
     """
-    import re
 
     _, total_memory = device.mem_info
     if isinstance(memory_limit, int):

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +8,6 @@ from nvmath.device import matmul, TransposeMode
 import cupy
 from numba import cuda
 from .helpers_numba import run_and_time, shared_load_3d, shared_store_3d
-import time
 
 
 class NumbaGemmBatched:

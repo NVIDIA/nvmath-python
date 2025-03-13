@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,9 +8,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from logging import Logger
 from typing import Literal
-import warnings
 
-from nvmath._internal.mem_limit import MEM_LIMIT_RE_PCT, MEM_LIMIT_RE_VAL, MEM_LIMIT_DOC
 from nvmath.memory import BaseCUDAMemoryManager
 
 
@@ -74,12 +72,6 @@ class FFTOptions:
             * (m - 1) + 1`. The specified value should be either ``'even'`` or ``'odd'``,
             with the default being ``'even'``.
 
-        last_axis_size: See :attr:`last_axis_parity`.
-
-            .. deprecated:: 0.2.1
-                :attr:`last_axis_size` will be removed in 0.3.0. Use
-                :attr:`last_axis_parity` instead.
-
         result_layout: The layout to use for the result, either ``'natural'`` or
             ``'optimized'``. For the ``'natural'`` option, the result layout is the same as
             that of the operand. The default is ``'optimized'``, which generally provides
@@ -123,7 +115,6 @@ class FFTOptions:
     fft_type: Literal["C2C", "C2R", "R2C"] | None = None
     inplace: bool = False
     last_axis_parity: Literal["even", "odd"] | None = "even"
-    last_axis_size: None = None
     result_layout: Literal["natural", "optimized"] | None = "optimized"
     device_id: int | None = None
     logger: Logger | None = None
@@ -138,14 +129,6 @@ class FFTOptions:
         if not isinstance(self.inplace, bool):
             raise ValueError("The value specified for 'inplace' must be of type bool (True or False).")
 
-        # TODO: Remove in version 0.3.0
-        if self.last_axis_size is not None:
-            warnings.warn(
-                "FFTOptions.last_axis_size is deprecated and will be removed in version 0.3.0. "
-                "Use FFTOptions.last_axis_parity instead.",
-                DeprecationWarning,
-            )
-            self.last_axis_parity = self.last_axis_size
         valid_last_axis_parity = ["even", "odd"]
         if self.last_axis_parity not in valid_last_axis_parity:
             raise ValueError(f"The value specified for 'last_axis_parity' must be one of {valid_last_axis_parity}.")

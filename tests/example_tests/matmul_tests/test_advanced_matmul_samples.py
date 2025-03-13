@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +9,7 @@ import re
 import pytest
 
 try:
-    import cupy
+    import cupy  # noqa: F401
 except ModuleNotFoundError:
     pytest.skip("cupy required for matmul tests", allow_module_level=True)
 
@@ -36,9 +36,40 @@ min_cublas_version = {
     "example13_epilog_stateful_reset.py": 11501,
     "example14_autotune.py": 11501,
     "example16_reuse_algorithms.py": 11501,
+    "example17_fp8.py": 120800,
+    "example18_fp8_types.py": 120800,
+    "example19_fp8_reset.py": 120800,
+    "example20_fp8_inplace_scale_change.py": 120800,
+    "example21_fp8_amax.py": 120800,
+    "example22_fp8_delayed_scaling.py": 120800,
+    "example23_fp8_epilog.py": 120800,
+    "example24_fp8_epilog_aux.py": 120800,
+    "example25_mxfp8.py": 120800,
+    "example26_mxfp8_d_out.py": 120800,
+    "example27_mxfp8_chaining.py": 120800,
+    "example28_mxfp8_epilog.py": 120800,
+    "example29_mxfp8_layout.py": 120800,
+}
+
+min_cc = {
+    "example17_fp8.py": (8, 9),
+    "example18_fp8_types.py": (8, 9),
+    "example19_fp8_reset.py": (8, 9),
+    "example20_fp8_inplace_scale_change.py": (8, 9),
+    "example21_fp8_amax.py": (8, 9),
+    "example22_fp8_delayed_scaling.py": (8, 9),
+    "example23_fp8_epilog.py": (8, 9),
+    "example24_fp8_epilog_aux.py": (8, 9),
+    "example25_mxfp8.py": (10, 0),
+    "example26_mxfp8_d_out.py": (10, 0),
+    "example27_mxfp8_chaining.py": (10, 0),
+    "example28_mxfp8_epilog.py": (10, 0),
+    "example29_mxfp8_layout.py": (10, 0),
 }
 
 cublas_version = bindings.cublasLt.get_version()
+device_properties = cupy.cuda.runtime.getDeviceProperties(cupy.cuda.runtime.getDevice())
+cc = (device_properties["major"], device_properties["minor"])
 
 
 @pytest.mark.parametrize("sample", sample_files)
@@ -48,4 +79,7 @@ class TestMatmulSamples:
         required_cublas_version = min_cublas_version.get(filename, 0)
         if cublas_version < required_cublas_version:
             pytest.skip(f"cublas version {cublas_version} lower than required ({required_cublas_version})")
+        required_cc = min_cc.get(filename, (0, 0))
+        if cc < required_cc:
+            pytest.skip(f"compute capability {cc} lower than required {required_cc}")
         run_sample(samples_path, sample)

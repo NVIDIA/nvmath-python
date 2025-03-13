@@ -1,8 +1,8 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
 cimport cython  # NOQA
 from libc.stdint cimport int64_t

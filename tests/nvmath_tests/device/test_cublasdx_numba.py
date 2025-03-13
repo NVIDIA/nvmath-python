@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -239,6 +239,7 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, precision, np_ty
         assert MM.block_dim == Dim3(*block_dim)
     assert MM.max_threads_per_block <= 1024
     assert MM.code_type.kind == "lto"
+
     assert MM.code_type.cc.major == SM[0]
     assert MM.code_type.cc.minor == SM[1]
 

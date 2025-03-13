@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -54,6 +54,7 @@ from .utils.input_fixtures import (
     get_random_1d_shape,
     get_random_input_data,
     get_custom_stream,
+    get_stream_pointer,
     init_assert_exec_backend_specified,
 )
 from .utils.check_helpers import (
@@ -648,9 +649,9 @@ def test_fft_array_device_id(monkeypatch, framework, exec_backend, mem_backend, 
 
 
 @pytest.mark.parametrize(
-    ("framework", "exec_backend", "mem_backend", "dtype"),
+    ("framework", "exec_backend", "mem_backend", "dtype", "use_stream_ptr"),
     [
-        (framework, exec_backend, mem_backend, dtype)
+        (framework, exec_backend, mem_backend, dtype, use_stream_ptr)
         for framework in Framework.enabled()
         for exec_backend in [ExecBackend.cufft]
         if exec_backend in supported_backends.exec
@@ -658,9 +659,10 @@ def test_fft_array_device_id(monkeypatch, framework, exec_backend, mem_backend, 
         if mem_backend in supported_backends.framework_mem[framework]
         for dtype in framework_exec_type_support[framework][exec_backend]
         if not is_half(dtype)  # for the fft size, the halfs lack precision
+        for use_stream_ptr in (True, False)
     ],
 )
-def test_fft_custom_stream(framework, exec_backend, mem_backend, dtype):
+def test_fft_custom_stream(framework, exec_backend, mem_backend, dtype, use_stream_ptr):
     stream = get_custom_stream(framework)
     shape = 1024 * 1024
 
@@ -670,14 +672,18 @@ def test_fft_custom_stream(framework, exec_backend, mem_backend, dtype):
         fft_ref = fft_ref * 42
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
-    fft = fft_fn(
-        signal,
-        execution=exec_backend.nvname,
-        options={
-            "blocking": "auto",
-        },
-        stream=stream,
-    )
+    try:
+        fft = fft_fn(
+            signal,
+            execution=exec_backend.nvname,
+            options={
+                "blocking": "auto",
+            },
+            stream=get_stream_pointer(stream) if use_stream_ptr else stream,
+        )
+    except TypeError as e:
+        assert "A stream object must be provided for PyTorch operands" in str(e) and framework == Framework.torch
+        return
 
     with use_stream(stream):
         # The stateless API synchronizes on plan creation,

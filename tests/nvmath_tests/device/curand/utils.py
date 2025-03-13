@@ -1,12 +1,14 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
-import pytest
-import nvmath.device.random as R
 from functools import cache
-from .generators import *
+from numba import cuda
+import numpy as np
+import nvmath.device.random as R
+import pytest
+
+from . import generators
 from .compiled_apis import compiled_apis
 
 NP_DTYPES = {
@@ -48,7 +50,7 @@ def _make_random_kernel(curand_distribution, group_size):
 
 def prepare_states(
     *,
-    generator: Generator,
+    generator: generators.Generator,
     seed,
     threads,
     blocks,
@@ -140,7 +142,7 @@ def per_thread_skipahead_sequence(
 
 def prepare_states_and_generate(
     *,
-    generator: Generator,
+    generator: generators.Generator,
     seed,
     threads,
     blocks,

@@ -157,13 +157,13 @@ require a sequence or a nested sequence, the following operations are equivalent
     my_func(..., buf, ...)  # the underlying data type is determined by the C API
 
 which is particularly useful when users need to pass multiple sequences or nested sequences
-to C (ex: :func:`nvmath.bindings.cufft.plan_many`).
+to C (For example, :func:`nvmath.bindings.cufft.plan_many`).
 
 .. note::
 
     Some functions require their arguments to be in the device memory. You need to pass
     device memory (for example, :class:`cupy.ndarray`) to such arguments. nvmath-python
-    does not validate the memory pointers passed and does not implicitly transfer the data.
+    neither validates the memory pointers nor implicitly transfers the data.
     Passing host memory where device memory is expected (and vice versa) results in
     undefined behavior.
 

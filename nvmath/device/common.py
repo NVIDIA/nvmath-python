@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +9,7 @@ from .common_cuda import CodeType
 
 
 SHARED_DEVICE_DOCSTRINGS = {
-    "compiler": "A string to specify the compiler for the device code, currently supports ``None`` (default) and ``'Numba'``",
+    "compiler": "A string to specify the compiler for the device code, currently supports ``None`` (default) and ``'numba'``",
     #
     "precision": """\
 The computation precision specified as a numpy float dtype, currently supports ``numpy.float16``, ``numpy.float32`` and

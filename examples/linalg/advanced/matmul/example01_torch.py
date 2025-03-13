@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -25,7 +25,7 @@ result = nvmath.linalg.advanced.matmul(a, b)
 
 # No synchronization is needed for CPU tensors, since the execution always blocks.
 
-# Check if the result is numpy array as well.
+# Check if the result is torch tensor as well.
 print(f"Inputs were of types {type(a)} and {type(b)} and the result is of type {type(result)}.")
 print(f"Inputs were located on devices {a.device} and {b.device} and the result is on {result.device}")
 

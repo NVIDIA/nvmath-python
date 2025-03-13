@@ -1,12 +1,14 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
-import scipy.stats as stats
-import nvmath.device.random as R
 from collections.abc import Callable
-from .generators import *
+
+import numpy as np
+import nvmath.device.random as R
+import scipy.stats as stats
+
+from . import generators
 
 
 class Distribution:
@@ -22,7 +24,7 @@ class Distribution:
         """
         raise NotImplementedError
 
-    def curand_variants(self) -> dict[tuple[str, int, Generator], Callable]:
+    def curand_variants(self) -> dict[tuple[str, int, generators.Generator], Callable]:
         """
         A dictionary mapping (dtype, group size, generator) to curand distribution function.
         """
@@ -72,22 +74,22 @@ class Uniform(ContinuousDistribution):
 
     def curand_variants(self):
         return {
-            ("float", 1, XorwowGenerator()): R.uniform,
-            ("float", 1, MrgGenerator()): R.uniform,
-            ("float", 1, PhiloxGenerator()): R.uniform,
-            ("float", 1, Sobol32Generator()): R.uniform,
-            ("float", 1, ScrambledSobol32Generator()): R.uniform,
-            ("float", 1, Sobol64Generator()): R.uniform,
-            ("float", 1, ScrambledSobol64Generator()): R.uniform,
-            ("double", 1, XorwowGenerator()): R.uniform_double,
-            ("double", 1, MrgGenerator()): R.uniform_double,
-            ("double", 1, PhiloxGenerator()): R.uniform_double,
-            ("double", 1, Sobol32Generator()): R.uniform_double,
-            ("double", 1, ScrambledSobol32Generator()): R.uniform_double,
-            ("double", 1, Sobol64Generator()): R.uniform_double,
-            ("double", 1, ScrambledSobol64Generator()): R.uniform_double,
-            ("double", 2, PhiloxGenerator()): R.uniform2_double,
-            ("float", 4, PhiloxGenerator()): R.uniform4,
+            ("float", 1, generators.XorwowGenerator()): R.uniform,
+            ("float", 1, generators.MrgGenerator()): R.uniform,
+            ("float", 1, generators.PhiloxGenerator()): R.uniform,
+            ("float", 1, generators.Sobol32Generator()): R.uniform,
+            ("float", 1, generators.ScrambledSobol32Generator()): R.uniform,
+            ("float", 1, generators.Sobol64Generator()): R.uniform,
+            ("float", 1, generators.ScrambledSobol64Generator()): R.uniform,
+            ("double", 1, generators.XorwowGenerator()): R.uniform_double,
+            ("double", 1, generators.MrgGenerator()): R.uniform_double,
+            ("double", 1, generators.PhiloxGenerator()): R.uniform_double,
+            ("double", 1, generators.Sobol32Generator()): R.uniform_double,
+            ("double", 1, generators.ScrambledSobol32Generator()): R.uniform_double,
+            ("double", 1, generators.Sobol64Generator()): R.uniform_double,
+            ("double", 1, generators.ScrambledSobol64Generator()): R.uniform_double,
+            ("double", 2, generators.PhiloxGenerator()): R.uniform2_double,
+            ("float", 4, generators.PhiloxGenerator()): R.uniform4,
         }
 
     def curand(self, dtype_name, group_size):
@@ -107,27 +109,27 @@ class Normal(ContinuousDistribution):
 
     def curand_variants(self):
         return {
-            ("float", 1, XorwowGenerator()): R.normal,
-            ("float", 1, MrgGenerator()): R.normal,
-            ("float", 1, PhiloxGenerator()): R.normal,
-            ("float", 1, Sobol32Generator()): R.normal,
-            ("float", 1, ScrambledSobol32Generator()): R.normal,
-            ("float", 1, Sobol64Generator()): R.normal,
-            ("float", 1, ScrambledSobol64Generator()): R.normal,
-            ("double", 1, XorwowGenerator()): R.normal_double,
-            ("double", 1, MrgGenerator()): R.normal_double,
-            ("double", 1, PhiloxGenerator()): R.normal_double,
-            ("double", 1, Sobol32Generator()): R.normal_double,
-            ("double", 1, ScrambledSobol32Generator()): R.normal_double,
-            ("double", 1, Sobol64Generator()): R.normal_double,
-            ("double", 1, ScrambledSobol64Generator()): R.normal_double,
-            ("float", 2, XorwowGenerator()): R.normal2,
-            ("float", 2, MrgGenerator()): R.normal2,
-            ("float", 2, PhiloxGenerator()): R.normal2,
-            ("double", 2, XorwowGenerator()): R.normal2_double,
-            ("double", 2, MrgGenerator()): R.normal2_double,
-            ("double", 2, PhiloxGenerator()): R.normal2_double,
-            ("float", 4, PhiloxGenerator()): R.normal4,
+            ("float", 1, generators.XorwowGenerator()): R.normal,
+            ("float", 1, generators.MrgGenerator()): R.normal,
+            ("float", 1, generators.PhiloxGenerator()): R.normal,
+            ("float", 1, generators.Sobol32Generator()): R.normal,
+            ("float", 1, generators.ScrambledSobol32Generator()): R.normal,
+            ("float", 1, generators.Sobol64Generator()): R.normal,
+            ("float", 1, generators.ScrambledSobol64Generator()): R.normal,
+            ("double", 1, generators.XorwowGenerator()): R.normal_double,
+            ("double", 1, generators.MrgGenerator()): R.normal_double,
+            ("double", 1, generators.PhiloxGenerator()): R.normal_double,
+            ("double", 1, generators.Sobol32Generator()): R.normal_double,
+            ("double", 1, generators.ScrambledSobol32Generator()): R.normal_double,
+            ("double", 1, generators.Sobol64Generator()): R.normal_double,
+            ("double", 1, generators.ScrambledSobol64Generator()): R.normal_double,
+            ("float", 2, generators.XorwowGenerator()): R.normal2,
+            ("float", 2, generators.MrgGenerator()): R.normal2,
+            ("float", 2, generators.PhiloxGenerator()): R.normal2,
+            ("double", 2, generators.XorwowGenerator()): R.normal2_double,
+            ("double", 2, generators.MrgGenerator()): R.normal2_double,
+            ("double", 2, generators.PhiloxGenerator()): R.normal2_double,
+            ("float", 4, generators.PhiloxGenerator()): R.normal4,
         }
 
     def curand(self, dtype_name, group_size):
@@ -150,27 +152,27 @@ class LogNormal(ContinuousDistribution):
 
     def curand_variants(self):
         return {
-            ("float", 1, XorwowGenerator()): R.log_normal,
-            ("float", 1, MrgGenerator()): R.log_normal,
-            ("float", 1, PhiloxGenerator()): R.log_normal,
-            ("float", 1, Sobol32Generator()): R.log_normal,
-            ("float", 1, ScrambledSobol32Generator()): R.log_normal,
-            ("float", 1, Sobol64Generator()): R.log_normal,
-            ("float", 1, ScrambledSobol64Generator()): R.log_normal,
-            ("double", 1, XorwowGenerator()): R.log_normal_double,
-            ("double", 1, MrgGenerator()): R.log_normal_double,
-            ("double", 1, PhiloxGenerator()): R.log_normal_double,
-            ("double", 1, Sobol32Generator()): R.log_normal_double,
-            ("double", 1, ScrambledSobol32Generator()): R.log_normal_double,
-            ("double", 1, Sobol64Generator()): R.log_normal_double,
-            ("double", 1, ScrambledSobol64Generator()): R.log_normal_double,
-            ("float", 2, XorwowGenerator()): R.log_normal2,
-            ("float", 2, MrgGenerator()): R.log_normal2,
-            ("float", 2, PhiloxGenerator()): R.log_normal2,
-            ("double", 2, XorwowGenerator()): R.log_normal2_double,
-            ("double", 2, MrgGenerator()): R.log_normal2_double,
-            ("double", 2, PhiloxGenerator()): R.log_normal2_double,
-            ("float", 4, PhiloxGenerator()): R.log_normal4,
+            ("float", 1, generators.XorwowGenerator()): R.log_normal,
+            ("float", 1, generators.MrgGenerator()): R.log_normal,
+            ("float", 1, generators.PhiloxGenerator()): R.log_normal,
+            ("float", 1, generators.Sobol32Generator()): R.log_normal,
+            ("float", 1, generators.ScrambledSobol32Generator()): R.log_normal,
+            ("float", 1, generators.Sobol64Generator()): R.log_normal,
+            ("float", 1, generators.ScrambledSobol64Generator()): R.log_normal,
+            ("double", 1, generators.XorwowGenerator()): R.log_normal_double,
+            ("double", 1, generators.MrgGenerator()): R.log_normal_double,
+            ("double", 1, generators.PhiloxGenerator()): R.log_normal_double,
+            ("double", 1, generators.Sobol32Generator()): R.log_normal_double,
+            ("double", 1, generators.ScrambledSobol32Generator()): R.log_normal_double,
+            ("double", 1, generators.Sobol64Generator()): R.log_normal_double,
+            ("double", 1, generators.ScrambledSobol64Generator()): R.log_normal_double,
+            ("float", 2, generators.XorwowGenerator()): R.log_normal2,
+            ("float", 2, generators.MrgGenerator()): R.log_normal2,
+            ("float", 2, generators.PhiloxGenerator()): R.log_normal2,
+            ("double", 2, generators.XorwowGenerator()): R.log_normal2_double,
+            ("double", 2, generators.MrgGenerator()): R.log_normal2_double,
+            ("double", 2, generators.PhiloxGenerator()): R.log_normal2_double,
+            ("float", 4, generators.PhiloxGenerator()): R.log_normal4,
         }
 
     def curand(self, dtype_name, group_size):
@@ -199,14 +201,14 @@ class Poisson(DiscreteDistribution):
 
     def curand_variants(self):
         return {
-            ("uint32", 1, XorwowGenerator()): R.poisson,
-            ("uint32", 1, MrgGenerator()): R.poisson,
-            ("uint32", 1, PhiloxGenerator()): R.poisson,
-            ("uint32", 1, Sobol32Generator()): R.poisson,
-            ("uint32", 1, ScrambledSobol32Generator()): R.poisson,
-            ("uint32", 1, Sobol64Generator()): R.poisson,
-            ("uint32", 1, ScrambledSobol64Generator()): R.poisson,
-            ("uint32", 4, PhiloxGenerator()): R.poisson4,
+            ("uint32", 1, generators.XorwowGenerator()): R.poisson,
+            ("uint32", 1, generators.MrgGenerator()): R.poisson,
+            ("uint32", 1, generators.PhiloxGenerator()): R.poisson,
+            ("uint32", 1, generators.Sobol32Generator()): R.poisson,
+            ("uint32", 1, generators.ScrambledSobol32Generator()): R.poisson,
+            ("uint32", 1, generators.Sobol64Generator()): R.poisson,
+            ("uint32", 1, generators.ScrambledSobol64Generator()): R.poisson,
+            ("uint32", 4, generators.PhiloxGenerator()): R.poisson4,
         }
 
     def curand(self, dtype_name, group_size):

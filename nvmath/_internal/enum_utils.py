@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,7 +10,7 @@ classes.
 import dataclasses
 from enum import IntEnum
 import re
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 from collections.abc import Callable
 
 import numpy

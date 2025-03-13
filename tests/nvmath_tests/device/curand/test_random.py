@@ -1,14 +1,21 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
 import scipy.stats as stats
 import pytest
-import nvmath.device.random as R
-from .generators import *
-from .distributions import *
-from .utils import *
+
+from . import distributions
+from . import generators
+from .utils import (
+    all_supported_configs,
+    generate_random_numbers,
+    per_thread_skipahead,
+    per_thread_skipahead_sequence,
+    prepare_states,
+    prepare_states_and_generate,
+)
 
 """
 This set of tests checks random device APIs.
@@ -25,13 +32,13 @@ then become much faster.
 @pytest.mark.parametrize(
     "distribution,dtype_name,group_size,generator",
     all_supported_configs(
-        Poisson(1),
-        Poisson(10),
-        Poisson(15),
-        LogNormal(),
-        LogNormal(-2, 0.5),
-        Uniform(),
-        Normal(),
+        distributions.Poisson(1),
+        distributions.Poisson(10),
+        distributions.Poisson(15),
+        distributions.LogNormal(),
+        distributions.LogNormal(-2, 0.5),
+        distributions.Uniform(),
+        distributions.Normal(),
     ),
 )
 def test_distribution(distribution, dtype_name, generator, nsamples, threads, blocks, group_size):
@@ -81,7 +88,9 @@ def test_distribution(distribution, dtype_name, generator, nsamples, threads, bl
 @pytest.mark.parametrize("threads,blocks", ((38, 2), (1, 1)))
 @pytest.mark.parametrize(
     "distribution,dtype_name,group_size,generator",
-    all_supported_configs(Poisson(12), LogNormal(2, 1.1), Uniform(), Normal()),
+    all_supported_configs(
+        distributions.Poisson(12), distributions.LogNormal(2, 1.1), distributions.Uniform(), distributions.Normal()
+    ),
 )
 def test_seeds(distribution, dtype_name, generator, nsamples, threads, blocks, group_size):
     """
@@ -122,7 +131,7 @@ def test_seeds(distribution, dtype_name, generator, nsamples, threads, blocks, g
 )
 @pytest.mark.parametrize(
     "generator",
-    [pytest.param(g(), id=g().name()) for g in GENERATORS if g().supports_skipahead()],
+    [pytest.param(g(), id=g().name()) for g in generators.GENERATORS if g().supports_skipahead()],
 )
 def test_skipahead(generator, threads, blocks):
     """
@@ -139,7 +148,7 @@ def test_skipahead(generator, threads, blocks):
     def gen(states, n):
         return generate_random_numbers(
             states=states,
-            distribution=Uniform(),
+            distribution=distributions.Uniform(),
             dtype_name="float",
             nsamples=n,
             threads=threads,
@@ -195,7 +204,7 @@ def test_skipahead(generator, threads, blocks):
 )
 @pytest.mark.parametrize(
     "generator",
-    [pytest.param(g(), id=g().name()) for g in GENERATORS if g().supports_skipahead_subsequence()],
+    [pytest.param(g(), id=g().name()) for g in generators.GENERATORS if g().supports_skipahead_subsequence()],
 )
 def test_skipahead_sequence(generator, threads, blocks):
     """
@@ -211,7 +220,7 @@ def test_skipahead_sequence(generator, threads, blocks):
     def gen(states):
         return generate_random_numbers(
             states=states,
-            distribution=Uniform(),
+            distribution=distributions.Uniform(),
             dtype_name="double",
             nsamples=1,
             threads=threads,

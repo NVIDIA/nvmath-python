@@ -1,8 +1,8 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t, uint64_t
@@ -648,6 +648,10 @@ ctypedef enum cublasLtMatmulTile_t "cublasLtMatmulTile_t":
     CUBLASLT_MATMUL_TILE_768x56 "CUBLASLT_MATMUL_TILE_768x56" = 628
     CUBLASLT_MATMUL_TILE_768x72 "CUBLASLT_MATMUL_TILE_768x72" = 629
     CUBLASLT_MATMUL_TILE_768x80 "CUBLASLT_MATMUL_TILE_768x80" = 630
+    CUBLASLT_MATMUL_TILE_256x512 "CUBLASLT_MATMUL_TILE_256x512" = 631
+    CUBLASLT_MATMUL_TILE_256x1024 "CUBLASLT_MATMUL_TILE_256x1024" = 632
+    CUBLASLT_MATMUL_TILE_512x512 "CUBLASLT_MATMUL_TILE_512x512" = 633
+    CUBLASLT_MATMUL_TILE_512x1024 "CUBLASLT_MATMUL_TILE_512x1024" = 634
 
 ctypedef enum cublasLtMatmulStages_t "cublasLtMatmulStages_t":
     CUBLASLT_MATMUL_STAGES_UNDEFINED "CUBLASLT_MATMUL_STAGES_UNDEFINED" = 0
@@ -685,6 +689,7 @@ ctypedef enum cublasLtMatmulStages_t "cublasLtMatmulStages_t":
     CUBLASLT_MATMUL_STAGES_32xAUTO "CUBLASLT_MATMUL_STAGES_32xAUTO" = 34
     CUBLASLT_MATMUL_STAGES_64xAUTO "CUBLASLT_MATMUL_STAGES_64xAUTO" = 35
     CUBLASLT_MATMUL_STAGES_128xAUTO "CUBLASLT_MATMUL_STAGES_128xAUTO" = 36
+    CUBLASLT_MATMUL_STAGES_256xAUTO "CUBLASLT_MATMUL_STAGES_256xAUTO" = 37
     CUBLASLT_MATMUL_STAGES_16x80 "CUBLASLT_MATMUL_STAGES_16x80" = 29
     CUBLASLT_MATMUL_STAGES_64x80 "CUBLASLT_MATMUL_STAGES_64x80" = 30
 
@@ -750,6 +755,13 @@ ctypedef enum cublasLtMatmulDescAttributes_t "cublasLtMatmulDescAttributes_t":
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS "CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS" = 28
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER "CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER" = 29
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER "CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER" = 30
+    CUBLASLT_MATMUL_DESC_A_SCALE_MODE "CUBLASLT_MATMUL_DESC_A_SCALE_MODE" = 31
+    CUBLASLT_MATMUL_DESC_B_SCALE_MODE "CUBLASLT_MATMUL_DESC_B_SCALE_MODE" = 32
+    CUBLASLT_MATMUL_DESC_C_SCALE_MODE "CUBLASLT_MATMUL_DESC_C_SCALE_MODE" = 33
+    CUBLASLT_MATMUL_DESC_D_SCALE_MODE "CUBLASLT_MATMUL_DESC_D_SCALE_MODE" = 34
+    CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE "CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE" = 35
+    CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER "CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER" = 36
+    CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE "CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE" = 37
 
 ctypedef enum cublasLtMatrixTransformDescAttributes_t "cublasLtMatrixTransformDescAttributes_t":
     CUBLASLT_MATRIX_TRANSFORM_DESC_SCALE_TYPE "CUBLASLT_MATRIX_TRANSFORM_DESC_SCALE_TYPE"
@@ -904,6 +916,11 @@ ctypedef enum cublasLtMatmulInnerShape_t "cublasLtMatmulInnerShape_t":
     CUBLASLT_MATMUL_INNER_SHAPE_MMA1688 "CUBLASLT_MATMUL_INNER_SHAPE_MMA1688" = 3
     CUBLASLT_MATMUL_INNER_SHAPE_MMA16816 "CUBLASLT_MATMUL_INNER_SHAPE_MMA16816" = 4
 
+ctypedef enum cublasLtMatmulMatrixScale_t "cublasLtMatmulMatrixScale_t":
+    CUBLASLT_MATMUL_MATRIX_SCALE_SCALAR_32F "CUBLASLT_MATMUL_MATRIX_SCALE_SCALAR_32F" = 0
+    CUBLASLT_MATMUL_MATRIX_SCALE_VEC16_UE4M3 "CUBLASLT_MATMUL_MATRIX_SCALE_VEC16_UE4M3" = 1
+    CUBLASLT_MATMUL_MATRIX_SCALE_VEC32_UE8M0 "CUBLASLT_MATMUL_MATRIX_SCALE_VEC32_UE8M0" = 2
+
 
 # types
 cdef extern from *:
@@ -932,17 +949,17 @@ ctypedef void* cublasLtMatrixTransformDesc_t 'cublasLtMatrixTransformDesc_t'
 ctypedef void* cublasLtMatmulPreference_t 'cublasLtMatmulPreference_t'
 ctypedef struct cublasLtMatmulAlgo_t 'cublasLtMatmulAlgo_t':
     uint64_t data[8]
+ctypedef void (*cublasLtLoggerCallback_t 'cublasLtLoggerCallback_t')(
+    int logLevel,
+    const char* functionName,
+    const char* message
+)
 ctypedef struct cublasLtMatmulHeuristicResult_t 'cublasLtMatmulHeuristicResult_t':
     cublasLtMatmulAlgo_t algo
     size_t workspaceSize
     cublasStatus_t state
     float wavesCount
     int reserved[4]
-ctypedef void (*cublasLtLoggerCallback_t 'cublasLtLoggerCallback_t')(
-    int logLevel,
-    const char* functionName,
-    const char* message
-)
 
 
 ###############################################################################

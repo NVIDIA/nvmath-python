@@ -1,8 +1,7 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import nvmath
 import numpy as np
 import itertools
 import functools
@@ -14,7 +13,7 @@ from .utils.support_matrix import supported_backends
 
 if ExecBackend.cufft in supported_backends.exec:
     import cupy
-    from nvmath_tests.helpers import time_cupy, random_complex, print_aligned_table, fft_perf_GFlops
+    from nvmath_tests.helpers import time_cupy, print_aligned_table, fft_perf_GFlops
 
     def test_fft():
         try:

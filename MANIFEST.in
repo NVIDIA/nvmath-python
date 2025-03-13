@@ -1,0 +1,5 @@
+graft nvmath
+global-include *.pyd
+global-include *.pyi
+global-exclude *.cpp
+global-exclude *.pyx

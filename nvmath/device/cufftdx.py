@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -87,8 +87,8 @@ class FFTOptions:
             - ``'real_mode'``, currently supports ``'normal'`` and ``'folded``.
 
     Note:
-        The class is not meant to used directly with its constructor. Users are instead
-        advised to use :func:`fft` create the object.
+        The class is not meant to be used directly with its constructor. Users are instead
+        advised to use :func:`fft` to create the object.
 
     See Also:
         The attributes of this class provide a 1:1 mapping with the CUDA C++ cuFFTDx APIs.
@@ -115,6 +115,11 @@ class FFTOptions:
         if code_type.cc.major < 7:
             raise RuntimeError(
                 f"Minimal compute capability 7.0 is required by cuFFTDx, got {code_type.cc.major}.{code_type.cc.minor}"
+            )
+        # TODO: cufftdx does not support platforms > arch90 for now
+        if (code_type.cc.major, code_type.cc.minor) > (9, 0):
+            raise RuntimeError(
+                f"The maximum compute capability currently supported by device APIs is 9.0, got {code_type.cc.major}.{code_type.cc.minor}"
             )
 
         #
@@ -245,14 +250,6 @@ class FFTOptions:
     #
     # Private implementations
     #
-
-    def _valid(self, knob):
-        if knob == "elements_per_thread":
-            return [self._suggested_elements_per_thread]
-        elif knob == "ffts_per_block":
-            return [1, self._suggested_ffts_per_block]
-        else:
-            raise ValueError("Unsupported knob")
 
     def _suggested(self, what):
         # Generate full PTX
@@ -449,7 +446,7 @@ def fft(*, compiler=None, **kwargs):
 
         compiler (str): {compiler}
 
-        code_type (CodeType): {code_type}. Optional if compiler is specified as ``'Numba'``.
+        code_type (CodeType): {code_type}. Optional if compiler is specified as ``'numba'``.
 
         execution (str): {execution}
 

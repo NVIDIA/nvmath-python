@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,20 +11,20 @@ operands is not accessible from the execution space, or if it's desired to bind 
 The inputs as well as the result are NumPy ndarrays.
 """
 
+import logging
+
 import numpy as np
 
 import nvmath
+
+# Turn on logging to see what's happening.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Prepare sample input data
 m, n, k = 123, 456, 789
 m, n, k = 2, 3, 4
 a = np.random.rand(m, k)
 b = np.random.rand(k, n)
-
-# Turn on logging to see what's happening.
-import logging
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Use the stateful object as a context manager to automatically release resources.
 with nvmath.linalg.advanced.Matmul(a, b) as mm:
