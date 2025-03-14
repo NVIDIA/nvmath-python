@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,7 +36,7 @@ def fft(
     cache: dict | None = None,
 ):
     """
-    A cached version of FFT, taking a cache argument in addition the the regular arguments
+    A cached version of FFT, taking a cache argument in addition to the regular arguments
     for fft(). The stateful objects are cached in the provided cache, and reused.
 
     Args:

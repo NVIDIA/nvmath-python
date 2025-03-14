@@ -1,12 +1,11 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import operator
-import re
 
 from nvmath.device import curand_kernel
-from nvmath.device.common_mathdx import CURAND_HOME
+from nvmath.device.common_mathdx import CURAND_HOME  # noqa: F401
 
 from numba import cuda, types
 from numba.extending import models, register_model, typeof_impl
@@ -16,11 +15,6 @@ from numba.core.typing.templates import AbstractTemplate, signature
 import numpy as np
 
 from llvmlite import ir
-
-import os
-import logging
-
-from numba import config
 
 xorwow_dtype = np.dtype(
     [

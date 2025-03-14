@@ -1,10 +1,14 @@
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import itertools
 
 import cupy as cp
 import numpy as np
 import scipy.fft
 
-from hypothesis import given, reproduce_failure, strategies as st
+from hypothesis import given, strategies as st
 from hypothesis.extra.numpy import arrays, array_shapes
 
 import nvmath

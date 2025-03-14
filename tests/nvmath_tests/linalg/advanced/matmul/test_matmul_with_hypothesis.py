@@ -1,9 +1,13 @@
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import collections
 import logging
 import re
 import typing
 
-from hypothesis import given, settings, reproduce_failure, assume
+from hypothesis import given, assume
 from hypothesis.extra.numpy import arrays, from_dtype
 from hypothesis.strategies import (
     one_of,
@@ -11,7 +15,6 @@ from hypothesis.strategies import (
     none,
     floats,
     integers,
-    complex_numbers,
     sampled_from,
     fixed_dictionaries,
     composite,
@@ -24,15 +27,21 @@ except ModuleNotFoundError:
     pytest.skip("cupy is required for matmul tests", allow_module_level=True)
 import numpy as np
 
-from nvmath._utils import CudaDataType
+import nvmath.linalg
+from nvmath import CudaDataType
 from nvmath.bindings.cublasLt import cuBLASLtError, ReductionScheme
-from nvmath.linalg._internal.typemaps import NAME_TO_DEFAULT_COMPUTE_TYPE, CUBLAS_COMPUTE_TYPE_TO_NAME
+from nvmath.linalg._internal.typemaps import (
+    NAMES_TO_DEFAULT_COMPUTE_TYPE,
+    CUBLAS_COMPUTE_TYPE_TO_NAME,
+    SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE,
+    COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE,
+)
 from nvmath.linalg.advanced import MatmulEpilog, MatmulNumericalImplFlags, MatmulPlanPreferences, matmul
 from nvmath.linalg.advanced.matmulmod import EPILOG_INPUT_HANDLERS_MAP, EPILOG_MINIMUM_VERSIONS_MAP
 from nvmath.memory import _RawCUDAMemoryManager, BaseCUDAMemoryManager, _CupyCUDAMemoryManager
 
 from nvmath_tests.helpers import nvmath_seed
-from nvmath_tests.linalg.advanced.matmul.utils import get_tolerance
+from .utils import get_absolute_tolerance
 
 MatmulEpilog_BIAS_list = [
     MatmulEpilog.BIAS,
@@ -97,7 +106,7 @@ def compare_result(ref, res):
         ref,
         equal_nan=True,
         rtol=(1e-02 if res.dtype == np.float16 else 2e-05),
-        atol=2 * get_tolerance(ref),
+        atol=2 * get_absolute_tolerance(ref),
     )
 
 
@@ -122,7 +131,7 @@ def drelu(x, bitmask):
 
 
 def verify_result(a, b, c, result_c, alpha, beta, epilog, epilog_inputs):
-    possible_dtype = CUBLAS_COMPUTE_TYPE_TO_NAME[NAME_TO_DEFAULT_COMPUTE_TYPE[str(a.dtype)]]
+    possible_dtype = CUBLAS_COMPUTE_TYPE_TO_NAME[NAMES_TO_DEFAULT_COMPUTE_TYPE[(str(a.dtype), str(b.dtype))]]
     compute_dtype = possible_dtype[1] if np.iscomplexobj(a) else possible_dtype[0]
 
     added_singleton_dimensions: list[int] = []
@@ -219,6 +228,10 @@ MatmulInputs = collections.namedtuple(
 )
 
 
+def notNone(x):
+    return x is not None
+
+
 @composite
 def matrix_multiply_arrays(draw):
     m = draw(one_of(none(), problem_size_mnk))
@@ -247,11 +260,14 @@ def matrix_multiply_arrays(draw):
             none(),
             arrays(
                 dtype=ab_type,
-                shape=(m_for_c,)
-                if n is None
-                else (
-                    m_for_c,
-                    draw(sampled_from([1, n])),
+                shape=tuple(
+                    filter(
+                        notNone,
+                        (
+                            m_for_c,
+                            draw(sampled_from([1, n])),
+                        ),
+                    )
                 ),
                 elements=element_properties,
             ),
@@ -276,6 +292,13 @@ def matrix_multiply_arrays(draw):
     return MatmulInputs(a=a, b=b, c=c, m=m, n=n, k=k, ab_type=ab_type, bias=bias, beta=beta, alpha=alpha, epilogs=epilogs)
 
 
+@composite
+def preference_object_strategy(draw):
+    limit = draw(integers(min_value=1, max_value=8))
+    reduction_scheme_mask = draw(one_of(sampled_from(ReductionScheme)))
+    return MatmulPlanPreferences(reduction_scheme_mask=reduction_scheme_mask, limit=limit)
+
+
 @nvmath_seed()
 @given(
     input_arrays=matrix_multiply_arrays(),
@@ -286,7 +309,8 @@ def matrix_multiply_arrays(draw):
             {
                 "blocking": sampled_from(options_blocking_values),
                 "allocator": sampled_from(options_allocator_values),
-                "scale_type": one_of(none()),
+                "scale_type": one_of(none(), sampled_from(CudaDataType)),
+                # "compute_type": one_of(none(), sampled_from(nvmath.linalg.ComputeType)),
             }
         ),
     ),
@@ -298,27 +322,28 @@ def matrix_multiply_arrays(draw):
                 "max_waves_count": one_of(floats(min_value=0, max_value=100, width=32)),
             }
         ),
+        preference_object_strategy(),
     ),
 )
 def test_matmul(input_arrays, order, options, preferences):
     """Call nvmath.linalg.advanced.matmul() with valid inputs."""
+    a, b, c, m, n, k, ab_type, bias, beta, alpha, epilogs = input_arrays
+    epilog, epilog1 = epilogs
+
+    d_a = cp.asarray(a, order=order)
+    d_b = cp.asarray(b, order=order)
+    c_order = "F" if epilog is not None and epilog in [MatmulEpilog.BGRADB, MatmulEpilog.BGRADA] else order
+    d_c = (
+        # FIXME: c must be F ordered when using BGRAD[A,B]
+        None if c is None else cp.asarray(c, order=c_order)
+    )
+
+    epilog_inputs = None if epilog is None else {}
+
+    if epilog is not None and epilog in MatmulEpilog_BIAS_list:
+        epilog_inputs["bias"] = cp.asarray(bias, order=order)
+
     try:
-        a, b, c, m, n, k, ab_type, bias, beta, alpha, epilogs = input_arrays
-        epilog, epilog1 = epilogs
-
-        d_a = cp.asarray(a, order=order)
-        d_b = cp.asarray(b, order=order)
-        c_order = "F" if epilog is not None and epilog in [MatmulEpilog.BGRADB, MatmulEpilog.BGRADA] else order
-        d_c = (
-            # FIXME: c must be F ordered when using BGRAD[A,B]
-            None if c is None else cp.asarray(c, order=c_order)
-        )
-
-        epilog_inputs = None if epilog is None else {}
-
-        if epilog is not None and epilog in MatmulEpilog_BIAS_list:
-            epilog_inputs["bias"] = cp.asarray(bias, order=order)
-
         result_c = matmul(
             d_a,
             d_b,
@@ -359,7 +384,17 @@ def test_matmul(input_arrays, order, options, preferences):
             raise e
     except ValueError as e:
         # FIXME: Check for CUDA toolkit version 11
-        if re.search("K=1 is not supported for (BGRAD(A|B)|D(R|G)ELU) epilog", str(e)) or "requires cublaslt >=" in str(e):
+        if (
+            re.search("K=1 is not supported for (BGRAD(A|B)|D(R|G)ELU) epilog", str(e))
+            or "requires cublaslt >=" in str(e)
+            or ("`c` must be at least 2-D." in str(e) and c is not None and len(c.shape) < 2)
+            or ("Unsupported scale type." in str(e) and options["scale_type"] not in SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE)
+            or (
+                "Unsupported compute type." in str(e)
+                and options["compute_type"] not in COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE["real"]
+            )
+            or re.search("Selected scale_type=(.*) compute_type=(.*) are not supported for data types", str(e))
+        ):
             pass
         else:
             raise e
@@ -431,17 +466,17 @@ def generate_alpha_beta(value_type, value):
 def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs, options, preferences):
     """Call nvmath.linalg.advanced.matmul() with invalid inputs; catch expected
     exceptions."""
+    if c is not None and ((a.dtype != c.dtype) or (a.shape[0] != c.shape[0]) or (c.shape[1] != b.shape[1])):
+        return
+
+    d_a = cp.asarray(a, order="F")
+    d_b = cp.asarray(b, order="F")
+    d_c = cp.asarray(c, order="F") if c is not None else None
+
+    alpha = generate_alpha_beta(a.dtype, alpha_value)
+    beta = generate_alpha_beta(a.dtype, beta_value)
+
     try:
-        if c is not None and ((a.dtype != c.dtype) or (a.shape[0] != c.shape[0]) or (c.shape[1] != b.shape[1])):
-            return
-
-        d_a = cp.asarray(a, order="F")
-        d_b = cp.asarray(b, order="F")
-        d_c = cp.asarray(c, order="F") if c is not None else None
-
-        alpha = generate_alpha_beta(a.dtype, alpha_value)
-        beta = generate_alpha_beta(a.dtype, beta_value)
-
         result_c = matmul(
             d_a,
             d_b,
@@ -466,7 +501,7 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
     except ValueError as e:
         if "A value for beta must be provided if operand C is provided." in str(e):
             assert (beta is None) and (c is not None)
-        elif f"The dtype of operands A {a.dtype} and B {b.dtype} must be the same." in str(e):
+        elif f"Unsupported combination of dtypes for operands A {a.dtype} and B {b.dtype}" in str(e):
             assert a.dtype != b.dtype
         elif (
             f"The 'K' extent must match for the operands: K={a.shape[1]} in operand A is not equal to K={b.shape[0]} "
@@ -479,10 +514,7 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
             assert c.shape[0] != a.shape[0] or c.shape[1] != b.shape[1]
         elif re.search(re.compile(r"The epilog \w+ requires the following input tensors: \{\'\w+\'\}\."), str(e)):
             assert epilog is not None
-            if "The provided tensor names are:" in str(e):
-                assert epilog_inputs is not None
-            else:
-                assert epilog_inputs is None
+            assert epilog_inputs is None or epilog_inputs == {}
         elif "The value specified for blocking must be either True or 'auto'." in str(e):
             assert options["blocking"] not in (True, "auto")
         elif "is not a valid CudaDataType" in str(e):
@@ -496,7 +528,19 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
         elif "requires cublaslt >=" in str(e):
             from nvmath.bindings import cublasLt
 
-            assert cublasLt.get_version() < EPILOG_MINIMUM_VERSIONS_MAP[epilog]["cublaslt"]
+            assert cublasLt.get_version() < EPILOG_MINIMUM_VERSIONS_MAP[epilog]["cublaslt"] or (
+                a.shape[-2] == 1 and c is not None and c.shape[-1] == 1 and epilog & MatmulEpilog.BIAS > 0
+            )
+        elif re.search("K=1 is not supported for (BGRAD(A|B)|D(R|G)ELU) epilog", str(e)):
+            assert a.shape[1] == 1 and b.shape[0] == 1
+            assert epilog in [
+                MatmulEpilog.BGRADA,
+                MatmulEpilog.BGRADB,
+                MatmulEpilog.DGELU_BGRAD,
+                MatmulEpilog.DGELU,
+                MatmulEpilog.DRELU_BGRAD,
+                MatmulEpilog.DRELU,
+            ]
         else:
             raise e
     except TypeError as e:

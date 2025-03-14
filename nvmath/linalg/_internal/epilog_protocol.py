@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -135,7 +135,7 @@ class EpilogOutputHandler(Protocol):
 
 
 class BiasHandler(EpilogInputHandler):
-    def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
 
@@ -264,7 +264,7 @@ def gelu_aux_mm_shape(m, n):
 
 
 class ReluAuxHandler(EpilogOutputHandler):
-    def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
 
@@ -279,6 +279,8 @@ class ReluAuxHandler(EpilogOutputHandler):
         self.aux_shape = mm_traits.batch_shape + [m, n]
         aux_axis_order = [batch_len, batch_len + 1] + list(mm_traits.batch_axis_order)  # Column order for the bitmask.
         self.aux_strides = calculate_strides(self.aux_shape, aux_axis_order)
+        if aux_dtype_name is not None:
+            raise ValueError("Custom type for auxiliary outputs is not supported for RELU epilogs.")
         self.aux_dtype_name = "uint8"
 
         # We store bitmask using int8 dtype but the values below are in number of elements.
@@ -309,7 +311,7 @@ class ReluAuxHandler(EpilogOutputHandler):
 
 
 class GeluAuxHandler(EpilogOutputHandler):
-    def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
 
@@ -326,7 +328,15 @@ class GeluAuxHandler(EpilogOutputHandler):
         self.aux_shape = mm_traits.batch_shape + [m, n]
         aux_axis_order = [batch_len, batch_len + 1] + list(mm_traits.batch_axis_order)  # Column order for the GELU inputs.
         self.aux_strides = calculate_strides(self.aux_shape, aux_axis_order)
-        self.aux_dtype_name = d_dtype_name
+
+        self.version = cublaslt.get_version()
+
+        if aux_dtype_name:
+            if self.version < 120800:
+                raise ValueError("Specifying custom AUX data type is not supported for cuBLAS < 12.8.")
+            self.aux_dtype_name = aux_dtype_name
+        else:
+            self.aux_dtype_name = c_dtype_name if "float8" in d_dtype_name else d_dtype_name
 
         self.aux_ld = m  # should be consistent with order (currently COL).
         self.aux_batch_offset = m * n
@@ -347,9 +357,10 @@ class GeluAuxHandler(EpilogOutputHandler):
         mm_desc_ifc.epilogue_aux_ld = self.aux_ld
         # Set the aux batch offset.
         mm_desc_ifc.epilogue_aux_batch_stride = self.aux_batch_offset
-        # The aux data type is by default the data type of the result for all the cases we
-        # support.
-        assert self.aux_dtype_name == self.d_dtype_name, "Internal error."
+        # Set the pointer to 0x1 to bypass the cuBLAS check.
+        mm_desc_ifc.epilogue_aux_pointer = 0x1
+        if self.aux_dtype_name is not None and self.version >= 120800:
+            mm_desc_ifc.epilogue_aux_data_type = typemaps.NAME_TO_DATA_TYPE[self.aux_dtype_name]
 
     def update_ptr(self, mm_desc_ifc, ptr):
         # Set the aux pointer.
@@ -357,7 +368,7 @@ class GeluAuxHandler(EpilogOutputHandler):
 
 
 class BgradHandler(EpilogOutputHandler):
-    def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
 
@@ -371,6 +382,9 @@ class BgradHandler(EpilogOutputHandler):
             )
 
         self._name = enumerator.name.lower()
+
+        if aux_dtype_name is not None:
+            raise ValueError("Custom type for auxiliary outputs is not supported for RELU epilogs.")
 
         m = mm_traits.N if enumerator == Epilog.BGRADB else mm_traits.M
         batch_len = len(mm_traits.batch_axis_order)
@@ -418,7 +432,7 @@ class BgradHandler(EpilogOutputHandler):
 
 
 class DReluAuxHandler(EpilogInputHandler):
-    def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
 
@@ -520,7 +534,7 @@ class DReluAuxHandler(EpilogInputHandler):
 
 
 class DGeluAuxHandler(EpilogInputHandler):
-    def __init__(self, logger, mm_traits, enumerator, d_dtype_name):
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
         self.logger = logger
         self.mm_traits = mm_traits
 

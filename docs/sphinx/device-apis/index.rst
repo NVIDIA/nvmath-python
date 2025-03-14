@@ -13,6 +13,7 @@ Detailed documentation for these libraries can be found at `cuFFTDx
 <https://docs.nvidia.com/cuda/cufftdx/1.2.0>`_, `cuBLASDx
 <https://docs.nvidia.com/cuda/cublasdx/0.1.1>`_, and `cuRAND device APIs
 <https://docs.nvidia.com/cuda/curand/group__DEVICE.html#group__DEVICE>`_ respectively.
+Device APIs can only be called from CUDA device or kernel code, and execute on the GPU.
 
 Users may take advantage of the device module via the two approaches below:
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -464,7 +464,7 @@ def get_fft_plan_traits(
     if last_axis_size == 0:
         raise ValueError(
             f"The size of the last FFT axis in the result for FFT type '{fft_abstract_type}' is 0 for operand shape = "
-            f"{operand_shape} and axes = {axes}. To fix this, provide 'last_axis_size' = 'odd' to the FFT options."
+            f"{operand_shape} and axes = {axes}. To fix this, provide 'last_axis_parity' = 'odd' to the FFT options."
         )
     ordered_fft_out_shape = list(ordered_fft_in_shape)
     index = ordered_axes.index(last_axis_id)
@@ -839,7 +839,12 @@ def create_fft_key(operand, *, axes=None, options=None, execution=None, inplace=
 
     # Prolog and epilog, if used.
     if prolog is not None or epilog is not None:
-        get_data = lambda device_callable: None if device_callable is None else (device_callable.ltoir, device_callable.data)
+        prolog = utils.check_or_create_options(_configuration.DeviceCallable, prolog, "prolog", keep_none=True)
+        epilog = utils.check_or_create_options(_configuration.DeviceCallable, epilog, "epilog", keep_none=True)
+
+        def get_data(device_callable):
+            return None if device_callable is None else (device_callable.ltoir, device_callable.data)
+
         callable_data = get_data(prolog), get_data(epilog)
     else:
         callable_data = None
@@ -1071,7 +1076,7 @@ class FFT:
         - The input must be Hermitian-symmetric when :attr:`FFTOptions.fft_type` is
           ``'C2R'``, otherwise the result is undefined. As a specific example, if the input
           for a C2R FFT was generated using an R2C FFT with an odd last axis size, then
-          :attr:`FFTOptions.last_axis_size` must be set to `odd` to recover the original
+          :attr:`FFTOptions.last_axis_parity` must be set to `odd` to recover the original
           signal.
     """
 
@@ -1823,6 +1828,7 @@ class FFT:
             "the value of 'workspace_allocated_here'."
         )
         self._free_workspace_memory_perhaps(release_workspace)
+        self._workspace_allocated_here = False
         return True
 
     @utils.precondition(_check_valid_fft)
@@ -2199,9 +2205,9 @@ def irfft(x, *, axes=None, options=None, execution=None, prolog=None, epilog=Non
     Returns:
         A real tensor that remains on the same device and belongs to the same package as the
         input operand. The extent of the last transformed axis in the result will be
-        ``(operand.shape[axes[-1]] - 1) * 2`` if :attr:`FFTOptions.last_axis_size` is
+        ``(operand.shape[axes[-1]] - 1) * 2`` if :attr:`FFTOptions.last_axis_parity` is
         ``even``, or ``operand.shape[axes[-1]] * 2 - 1`` if
-        :attr:`FFTOptions.last_axis_size` is ``odd``.
+        :attr:`FFTOptions.last_axis_parity` is ``odd``.
 
     See Also:
         :func:`fft`, :func:`ifft`, :class:`FFT`.
@@ -2239,7 +2245,7 @@ def irfft(x, *, axes=None, options=None, execution=None, prolog=None, epilog=Non
           example, 1-D transforms require the first element (and the last element, if the
           extent is even) of the input to be purely real-valued. In addition, if the input
           to `irfft` was generated using an R2C FFT with an odd last axis size,
-          :attr:`FFTOptions.last_axis_size` must be set to ``odd`` to recover the original
+          :attr:`FFTOptions.last_axis_parity` must be set to ``odd`` to recover the original
           signal.
         - For more details, please refer to `C2R example
           <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example07_c2r.py>`_

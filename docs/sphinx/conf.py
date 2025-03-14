@@ -17,11 +17,12 @@ import inspect
 import os
 import re
 import sys
+import tomllib
+import tempfile
+import json
 
 sys.path.insert(0, os.path.abspath("."))
-import pkg_resources
 import warnings
-import json
 
 from sphinx.writers.html import HTMLTranslator
 from docutils.transforms import Transform
@@ -56,10 +57,8 @@ author = "NVIDIA Corporation & Affiliates"
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
-with open("../../nvmath/_version.py") as f:
-    exec(f.read())
-    nvmath_py_ver = __version__  # noqa: F821
-    del __version__  # noqa: F821
+with open("../../pyproject.toml", "rb") as f:
+    nvmath_py_ver = tomllib.load(f)["project"]["version"]
 
 # The short X.Y version.
 version = nvmath_py_ver
@@ -90,6 +89,8 @@ extensions = [
     #'sphinxcontrib.autoprogram',
     "sphinxcontrib.programoutput",
     "sphinx_favicon",
+    "nbsphinx",
+    "nbsphinx_link",
 ]
 
 imgmath_latex_preamble = r"\usepackage{braket}"
@@ -100,6 +101,9 @@ imgmath_font_size = 14
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
+
+# Silence a warning about unpicklable value
+nbsphinx_custom_formats = {}
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -181,7 +185,7 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
             struct = snake_to_camel([mod] + struct.split("_")[:-1])
             line = f"NumPy dtype object that represents the `{struct}` struct.\n"
         else:
-            # handle dtype in high-level pythonic APIs
+            # handle dtype in high-level Pythonic APIs
             struct = " ".join(struct.split("_")[:-1])
             line = f"NumPy dtype object that encapsulates the {struct} in {mod}.\n"
         lines.clear()
@@ -250,9 +254,42 @@ class UnqualifiedTitlesTransform(Transform):
     default_priority = 800
 
 
+class NotebookHandler:
+    def __init__(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def __del__(self):
+        os.unlink(self.tmpdir)
+
+    def remove_notebook_copyright(self, app, docname, content):
+        if os.path.exists(os.path.join("sphinx", docname + ".nblink")):
+            link = json.loads(content[0])
+            notebook_path = os.path.join("sphinx", os.path.dirname(docname), link["path"])
+
+            with open(notebook_path) as original_notebook_file:
+                notebook_content = json.load(original_notebook_file)
+                copyright_regex = (
+                    r"\s*Copyright \(c\) [0-9-]+, NVIDIA CORPORATION & AFFILIATES\s*SPDX-License-Identifier: BSD-3-Clause\s*"
+                )
+                if re.match(copyright_regex, "".join(notebook_content["cells"][0]["source"])):
+                    # Remove first cell if it's a copyright notice
+                    notebook_content["cells"] = notebook_content["cells"][1:]
+
+            new_notebook_path = os.path.join(self.tmpdir, docname.replace(".nblink", ".ipynb").replace("/", "__"))
+            with open(new_notebook_path, "w") as new_notebook_file:
+                json.dump(notebook_content, new_notebook_file)
+
+            link["path"] = os.path.relpath(new_notebook_path, os.path.join("sphinx", os.path.dirname(docname)))
+            content[0] = json.dumps(link)
+
+
+notebook_handler = NotebookHandler()
+
+
 def setup(app):
     app.add_css_file("nvmath_override.css")
     app.connect("autodoc-process-docstring", autodoc_process_docstring)
+    app.connect("source-read", lambda *args, **kwargs: notebook_handler.remove_notebook_copyright(*args, **kwargs))
     app.set_translator("html", DotBreakHtmlTranslator)
     app.add_autodocumenter(PatchedEnumDocumenter, override=True)
     app.add_post_transform(UnqualifiedTitlesTransform)
@@ -283,6 +320,10 @@ autosectionlabel_prefix_document = True
 # sweetspot value determined by trial & error to suppress all warnings
 autosectionlabel_maxdepth = 2
 
+show_warning_types = True
+suppress_warnings = [
+    "config.cache",  # nbsphinx_link makes nbsphinx_custom_formats unpicklable
+]
 
 doctest_global_setup = """
 import numpy as np

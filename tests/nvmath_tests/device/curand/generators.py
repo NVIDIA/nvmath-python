@@ -1,10 +1,9 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 from numba import cuda, uint32, uint64
 import nvmath.device.random as R
-from functools import cache
 from .compiled_apis import compiled_apis
 import cffi
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,15 +6,25 @@
 This set of tests verifies the correctness of the epilog handling.
 """
 
+import numpy as np
+import pytest
+
 from nvmath.linalg.advanced import matmul, Matmul, MatmulEpilog as Epilog
 from nvmath.bindings import cublasLt as cublaslt
-import pytest
-import random
-from .utils import *
-import numpy as np
+
+from .utils import (
+    compare_tensors,
+    get_absolute_tolerance,
+    get_framework,
+    sample_float_tensor,
+    sample_matrix,
+    assert_tensors_equal,
+    skip_if_cublas_before,
+    to_numpy,
+)
 
 try:
-    from cupy import tanh, sqrt, pi, cosh
+    import cupy
 except ModuleNotFoundError:
     pytest.skip("cupy required for matmul tests", allow_module_level=True)
 
@@ -28,7 +38,7 @@ def relu(x):
 
 
 def gelu(x):
-    return 0.5 * x * (1 + tanh(sqrt(2 / pi) * (x + 0.0447115 * x**3)))
+    return 0.5 * x * (1 + cupy.tanh(cupy.sqrt(2 / cupy.pi) * (x + 0.0447115 * x**3)))
 
 
 simple_epilogs = (
@@ -55,7 +65,7 @@ def verify_relu_bitmask(x, bitmask):
     n, m = x.shape
     for i in range(n):
         for j in range(m):
-            if abs(x[i][j]) <= get_tolerance(x):
+            if abs(x[i][j]) <= get_absolute_tolerance(x):
                 # This value is dangerously close to 0 and the bitmask might
                 # be incorrect due to precision issues.
                 continue
@@ -136,9 +146,9 @@ def simulate_epilog(a, b, epilog, epilog_inputs):
         """
         Derivative of (tanh-approximated) gelu from the values returned by GELU_AUX
         """
-        sech = lambda x: 1 / cosh(x)
+        sech = lambda x: 1 / cupy.cosh(x)
         return (
-            0.5 * tanh(0.0356774 * x**3 + 0.797885 * x)
+            0.5 * cupy.tanh(0.0356774 * x**3 + 0.797885 * x)
             + (0.0535161 * x**3 + 0.398942 * x) * (sech(0.0356774 * x**3 + 0.797885 * x)) ** 2
             + 0.5
         )
@@ -483,3 +493,63 @@ def test_renamed_epilog_inputs():
                 epilog_inputs={"not_a_bias": cupy.full((4, 1), np.float32(0.8))},
             ),
         )
+
+@pytest.mark.parametrize("epilog", epilogs_with_bias)
+@pytest.mark.parametrize("test_case", [
+    {
+        "name": "mismatch_batch_size",
+        "a_shape": (2, 4, 5),
+        "b_shape": (2, 5, 8),
+        "bias_shape": (3, 4, 1),
+        "error_pattern": "batch dimensions of the bias.*must match",
+        "make_bias": lambda shape: cupy.full(shape, np.float32(0.8)),
+        "min_cublas_version": 11703
+    },
+    {
+        "name": "mismatched_batch_axis_order",
+        "a_shape": (2, 3, 4, 5),
+        "b_shape": (2, 3, 5, 8),
+        "bias_shape": (2, 3, 4, 1),
+        "error_pattern": "batch axis order of the bias.*must match",
+        "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
+            cupy.full((2, 3, 4, 1), np.float32(0.8)),
+            shape=shape,
+            strides=(4, 12, 1, 4)
+        ),
+        "min_cublas_version": 11703
+    },
+    {
+        "name": "non_tileable_batch",
+        "a_shape": (2, 3, 4, 5),
+        "b_shape": (2, 3, 5, 8),
+        "bias_shape": (2, 3, 4, 1),
+        "error_pattern": "not supported because it is not tileable",
+        "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
+            cupy.full(shape, np.float32(0.8)),
+            shape=shape,
+            strides=(16, 4, 1, 4)
+        ),
+        "min_cublas_version": 11703
+    },
+    {
+        "name": "invalid_stride",
+        "a_shape": (4, 5),
+        "b_shape": (5, 8),
+        "bias_shape": (4, 2),
+        "error_pattern": "stride of the bias.*must be 1",
+        "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
+            cupy.full(shape, np.float32(0.8)),
+            shape=(4, 1),
+            strides=(2, 1)
+        ),
+        "min_cublas_version": 11501
+    }
+])
+def test_invalid_bias(epilog, test_case):
+    skip_if_cublas_before(test_case["min_cublas_version"])
+
+    a = sample_float_tensor(test_case["a_shape"])
+    b = sample_float_tensor(test_case["b_shape"])
+    bias = test_case["make_bias"](test_case["bias_shape"])
+    with pytest.raises(ValueError, match=test_case["error_pattern"]):
+        matmul(a, b, epilog=epilog, epilog_inputs={"bias": bias})

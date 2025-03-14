@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,7 +6,7 @@
 Functions to link type names with CUDA data and compute types.
 """
 
-__all__ = ["COMPUTE_TYPE_TO_NAME", "DATA_TYPE_TO_NAME", "NAME_TO_DATA_TYPE", "NAME_TO_COMPUTE_TYPE"]
+__all__ = ["COMPUTE_TYPE_TO_NAME", "DATA_TYPE_TO_NAME", "NAME_TO_DATA_TYPE", "NAME_TO_COMPUTE_TYPE", "NAME_TO_DATA_WIDTH"]
 
 from enum import IntEnum
 import re
@@ -58,19 +58,25 @@ class cudaDataType(IntEnum):
     CUDA_C_64I = 25
     CUDA_R_64U = 26
     CUDA_C_64U = 27
+    CUDA_R_8F_E4M3 = 28
+    CUDA_R_8F_E5M2 = 29
 
 
 def create_cuda_data_type_map(cuda_data_type_enum_class):
     """
     Map the data type name to the corresponding CUDA data type.
     """
-    cuda_data_type_pattern = re.compile(r"CUDA_(?P<cr>C|R)_(?P<width>\d+)(?P<type>F|I|U|BF)")
+    cuda_data_type_pattern = re.compile(r"CUDA_(?P<cr>C|R)_(?P<width>\d+)(?P<type>F|I|U|BF)_?(?P<kind>(E\dM\d)?)")
 
     type_code_map = {"i": "int", "u": "uint", "f": "float", "bf": "bfloat"}
+    # A map from (width, exponent kind) to qualifiers (finite, unsigned zero, ...) for data
+    # types.
+    type_qualifier_map = {(8, "e4m3"): "fn"}
 
     complex_types = {"float": "complex", "bfloat": "bcomplex"}
 
     cuda_data_type_map = dict()
+    data_type_width_map = dict()
     for d in cuda_data_type_enum_class:
         m = cuda_data_type_pattern.match(d.name)
 
@@ -87,9 +93,19 @@ def create_cuda_data_type_map(cuda_data_type_enum_class):
             type_code = complex_types[type_code]
 
         name = type_code + str(width)
-        cuda_data_type_map[name] = d
 
-    return cuda_data_type_map
+        # Handle narrow type kinds.
+        if width <= 8:
+            kind = m.group("kind").lower()
+            # Handle type qualifiers for narrow types.
+            kind += type_qualifier_map.get((width, kind), "")
+            if kind:
+                name += "_" + kind
+
+        cuda_data_type_map[name] = d
+        data_type_width_map[name] = width
+
+    return cuda_data_type_map, data_type_width_map
 
 
 def create_cuda_compute_type_map(cuda_compute_type_enum_class):
@@ -125,7 +141,7 @@ def create_cuda_compute_type_map(cuda_compute_type_enum_class):
     return cuda_compute_type_map
 
 
-NAME_TO_DATA_TYPE = create_cuda_data_type_map(cudaDataType)
+NAME_TO_DATA_TYPE, NAME_TO_DATA_WIDTH = create_cuda_data_type_map(cudaDataType)
 DATA_TYPE_TO_NAME = {v: k for k, v in NAME_TO_DATA_TYPE.items()}
 NAME_TO_COMPUTE_TYPE = create_cuda_compute_type_map(ComputeType)
 COMPUTE_TYPE_TO_NAME = {v: k for k, v in NAME_TO_COMPUTE_TYPE.items()}

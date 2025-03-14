@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -135,6 +135,16 @@ def get_custom_stream(framework: Framework, device_id=None):
         return torch.cuda.Stream(device=device)
     else:
         raise ValueError(f"Unknown GPU framework {framework}")
+
+
+def get_stream_pointer(stream) -> int:
+    package = stream.__class__.__module__.split(".")[0]
+    if package == "cupy":
+        return stream.ptr
+    elif package == "torch":
+        return stream.cuda_stream
+    else:
+        raise ValueError(f"Unknown GPU framework {package}")
 
 
 def init_assert_exec_backend_specified():

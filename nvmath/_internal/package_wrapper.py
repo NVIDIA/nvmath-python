@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,7 @@ from .package_ifc_cupy import CupyPackage
 
 PACKAGE: dict[str, type[Package]] = {"cupy": CupyPackage}
 try:
-    import torch
+    import torch  # noqa: F401
     from .package_ifc_torch import TorchPackage
 
     PACKAGE["torch"] = TorchPackage

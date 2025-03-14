@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,11 +10,15 @@ import numpy as np
 
 from nvmath.linalg.advanced import Matmul
 from nvmath.linalg._internal.matmul_desc_ifc import MatmulDescInterface
+from nvmath.linalg._internal.matrix_layout_ifc import MatrixLayoutInterface
+from nvmath.linalg._internal.matmul_pref_ifc import MatmulPreferenceInterface
+
+from nvmath._internal import typemaps
 
 import pytest
 
 try:
-    import cupy
+    import cupy  # noqa: F401
 except ModuleNotFoundError:
     pytest.skip("cupy required for matmul tests", allow_module_level=True)
 
@@ -23,7 +27,28 @@ def test_matmul_desc_ifc():
     """
     Test MatmulDescInterface.__getattr__ (not used anywhere yet)
     """
-    mm = Matmul(np.zeros((1, 1)), np.zeros((1, 1)))
-    desc = MatmulDescInterface(mm.mm_desc)
-    desc.epilog = 123
-    assert desc.epilog == 123
+    a = np.zeros((1, 1))
+    with Matmul(a, a) as mm:
+        desc = MatmulDescInterface(mm.mm_desc)
+        desc.epilogue = 123
+        assert desc.epilogue == 123
+
+def test_matrix_layout_ifc():
+    '''
+    Test MatrixLayoutInterface.__getattr__
+    '''
+    a = np.zeros((1, 1), dtype=np.float32)
+    with Matmul(a, a) as mm:
+        algorithms = mm.plan()
+        layout_a_ifc = MatrixLayoutInterface(mm.a_layout_ptr)
+        assert typemaps.DATA_TYPE_TO_NAME[layout_a_ifc.type] == "float32"
+
+def test_matmul_pref_ifc():
+    '''
+    Test MatmulPreferenceInterface.__getattr__
+    '''
+    a = np.zeros((1, 1))
+    with Matmul(a, a) as mm:
+        algorithms = mm.plan()
+        pref_ifc = MatmulPreferenceInterface(mm.preference_ptr)
+        assert pref_ifc.max_workspace_bytes == mm.memory_limit

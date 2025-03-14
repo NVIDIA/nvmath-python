@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,19 +8,14 @@ Interface class to encapsulate low-level calls to get and set matmul descriptor 
 
 __all__ = ["MatmulDescInterface"]
 
-from collections.abc import Sequence
-import itertools
-import numbers
-import operator
 import ctypes
 import logging
-
-logger = logging.getLogger()
 
 import numpy as np
 
 from nvmath.bindings import cublasLt as cublaslt
 
+logger = logging.getLogger()
 
 DescEnum = cublaslt.MatmulDescAttribute
 

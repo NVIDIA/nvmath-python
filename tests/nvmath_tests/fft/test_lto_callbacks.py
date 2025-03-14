@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -52,7 +52,8 @@ from .utils.input_fixtures import (
     get_custom_stream,
     get_primes_up_to,
     init_assert_exec_backend_specified,
-    fx_last_operand_layout,
+    # pytest fixture is used but not detected by linter because of strange syntax
+    fx_last_operand_layout,  # noqa: F401
 )
 from .utils.check_helpers import (
     add_in_place,
@@ -150,7 +151,7 @@ rng = random.Random(42)
 
 def _has_numba():
     try:
-        import numba
+        import numba  # noqa: F401
 
         return True
     except ModuleNotFoundError:
@@ -399,6 +400,28 @@ def test_operand_shape_fft_ifft(
         epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, epilog_dtype.name, epilog_dtype.name)
         cb_kwargs["epilog"] = {"ltoir": epilog_ltoir}
         scaling *= 5
+    # Test create_key() function
+    try:
+        key1 = nvmath.fft.FFT.create_key(
+            signal,
+            axes=axes,
+            prolog=cb_kwargs["prolog"] if fft_callbacks.has_prolog() else None,
+            epilog=cb_kwargs["epilog"] if fft_callbacks.has_epilog() else None,
+        )
+        assert key1 is not None
+        key2 = nvmath.fft.FFT.create_key(
+            signal,
+            axes=axes,
+            prolog=nvmath.fft.DeviceCallable(**cb_kwargs["prolog"]) if fft_callbacks.has_prolog() else None,
+            epilog=nvmath.fft.DeviceCallable(**cb_kwargs["epilog"]) if fft_callbacks.has_epilog() else None,
+        )
+        assert key1 == key2
+    except RuntimeError as e:
+        if "The FFT CPU execution is not available" in str(e) and mem_backend == MemBackend.cpu:
+            # Skip this check since create_key() function needs CPU FFT lib availability
+            pass
+        else:
+            raise
 
     ref = get_fft_ref(get_scaled(signal, scaling), axes=axes)
 
@@ -1423,8 +1446,10 @@ def test_operand_and_filter_shapes_fft_ifft(
         "dtype_1",
         "shape_0",
         "axes_0",
+        "shape_kind_0",
         "shape_1",
         "axes_1",
+        "shape_kind_1",
         "callbacks_0",
         "callbacks_1",
     ),
@@ -1437,16 +1462,39 @@ def test_operand_and_filter_shapes_fft_ifft(
             rng.choice(lto_callback_supperted_types),
             repr(shape_0),
             repr(axes_0),
+            shape_kind_0,
             repr(shape_1),
             repr(axes_1),
+            shape_kind_1,
             callbacks_0,
             rng.choice(list(LtoCallback)),
         )
         for dtype_0 in lto_callback_supperted_types
-        for shape_0, axes_0, shape_1, axes_1 in [
-            ((4200, 13), (0,), (7, 4199), (1,)),  # 2*2*2*3*5*5*7, 13*17*19
-            ((420, 512, 3), (0, 1), (5, 4, 4307), (1, 2)),  # 4307=59*73
-            ((2, 16, 16, 5), (0, 1, 2), (3, 9, 49, 25), (1, 2, 3)),
+        for shape_0, axes_0, shape_kind_0, shape_1, axes_1, shape_kind_1, in [
+            (
+                (4200, 13),
+                (0,),
+                ShapeKind.pow2357,
+                (7, 4199),
+                (1,),
+                ShapeKind.random,
+            ),  # 2*2*2*3*5*5*7, 13*17*19
+            (
+                (420, 512, 3),
+                (0, 1),
+                ShapeKind.pow2357,
+                (5, 4, 4307),
+                (1, 2),
+                ShapeKind.random,
+            ),  # 4307=59*73
+            (
+                (2, 16, 16, 5),
+                (0, 1, 2),
+                ShapeKind.pow2,
+                (3, 9, 49, 25),
+                (1, 2, 3),
+                ShapeKind.pow2357,
+            ),
         ]
         for framework in Framework.enabled()
         if ExecBackend.cufft in supported_backends.exec
@@ -1463,8 +1511,10 @@ def test_two_plans_different_cbs(
     dtype_1,
     shape_0,
     axes_0,
+    shape_kind_0,
     shape_1,
     axes_1,
+    shape_kind_1,
     callbacks_0,
     callbacks_1,
 ):
@@ -1579,8 +1629,8 @@ def test_two_plans_different_cbs(
     assert_array_type(fft_0_out, framework, mem_backend, get_fft_dtype(dtype_0))
     assert_array_type(fft_1_out, framework, mem_backend, get_fft_dtype(dtype_1))
 
-    assert_norm_close(fft_0_out, ref_0, **get_tolerance(signal_0))
-    assert_norm_close(fft_1_out, ref_1, **get_tolerance(signal_1))
+    assert_norm_close(fft_0_out, ref_0, **get_tolerance(signal_0, shape_kind=shape_kind_0))
+    assert_norm_close(fft_1_out, ref_1, **get_tolerance(signal_1, shape_kind=shape_kind_1))
 
 
 @skip_if_lto_unssuported

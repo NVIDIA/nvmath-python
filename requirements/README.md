@@ -70,3 +70,4 @@ requirements are included by the top-level requirements sets.
 | requirements/pip/tests.txt | Test dependencies |
 | requirements/pip/torch-cu11.txt | Enable torch use in tests and examples via wheels for CUDA-11.8 |
 | requirements/pip/torch-cu12.txt | Enable torch use in tests and examples via wheels for CUDA-12.1 |
+| requirements/pip/torch-cu12-nightly.txt | Enable torch nightly + CTK-12.8 wheels |

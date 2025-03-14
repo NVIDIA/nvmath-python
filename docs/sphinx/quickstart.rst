@@ -2,7 +2,7 @@ Getting Started
 ***************
 
 nvmath-python brings the power of the NVIDIA math libraries to the Python ecosystem.
-The package aims to provide intuitive pythonic APIs that provide users full access
+The package aims to provide intuitive Pythonic APIs that provide users full access
 to all the features offered by NVIDIA's libraries in a variety of execution spaces.
 nvmath-python works seamlessly with existing Python array/tensor frameworks and focuses
 on providing functionality that is missing from those frameworks.
@@ -32,7 +32,8 @@ Matrix multiplication
 
 Using the nvmath-python API allows access to all parameters of the underlying
 NVIDIA cuBLASLt library.
-Some of these parameters are unavailable in other wrappings of NVIDIA's C-API libraries.
+Some of these parameters are unavailable in other packages that wrap NVIDIA's C-API
+libraries.
 
 .. doctest::
 
@@ -76,7 +77,7 @@ prolog to the IFFT operation.
     >>> B, N = 256, 1024
     >>> a = cp.random.rand(B, N, dtype=cp.float64) + 1j * cp.random.rand(B, N, dtype=cp.float64)
     >>>
-    >>> # Create the data to use as filter.
+    >>> # Create the data to use as a filter.
     >>> filter_data = cp.sin(a)
     >>>
     >>> # Define the prolog function for the inverse FFT.
@@ -84,7 +85,7 @@ prolog to the IFFT operation.
     >>> def convolve(data_in, offset, filter_data, unused):
     ...     # Note we are accessing `data_out` and `filter_data` with a single `offset` integer,
     ...     # even though the input and `filter_data` are 2D tensors (batches of samples).
-    ...     # Care must be taken to assure that both arrays accessed here have the same memory
+    ...     # Care must be taken to ensure that both arrays accessed here have the same memory
     ...     # layout.
     ...     return data_in[offset] * filter_data[offset] / N
     >>>

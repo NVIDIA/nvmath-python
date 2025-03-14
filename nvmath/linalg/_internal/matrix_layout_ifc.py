@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,10 +8,6 @@ Interface class to encapsulate low-level calls to get and set matrix layout attr
 
 __all__ = ["MatrixLayoutInterface"]
 
-from collections.abc import Sequence
-import itertools
-import numbers
-import operator
 
 import numpy as np
 

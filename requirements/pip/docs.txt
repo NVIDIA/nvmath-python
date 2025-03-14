@@ -1,8 +1,12 @@
 breathe
 enum-tools
 grip
+jupyter
 myst-parser
+nbsphinx
+nbsphinx-link
 nvidia-sphinx-theme
+pandoc
 sphinx
 sphinx-favicon
 sphinx-toolbox

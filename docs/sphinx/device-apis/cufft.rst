@@ -9,7 +9,7 @@ Overview
 ========
 
 These APIs offer integration with the NVIDIA cuFFTDx library.
-Detailed documentation of cuBLASDx can be found in the
+Detailed documentation of cuFFTDx can be found in the
 `cuFFTDx documentation <https://docs.nvidia.com/cuda/cufftdx/1.2.0>`_.
 
 .. note::

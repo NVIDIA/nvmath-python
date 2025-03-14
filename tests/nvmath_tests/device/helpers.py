@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,6 +36,10 @@ def set_device():
     CHECK_CUDART(err)
     err, prop = cudart.cudaGetDeviceProperties(0)
     CHECK_CUDART(err)
+    # TODO: dx does not support platforms > arch90 for now and version is capped
+    # at 9.0
+    if (prop.major, prop.minor) > (9, 0):
+        return (9, 0)
     return (prop.major, prop.minor)
 
 

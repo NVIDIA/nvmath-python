@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -50,6 +50,10 @@ class TorchTensor(Tensor):
     @property
     def shape(self):
         return tuple(self.tensor.shape)
+
+    @property
+    def size(self):
+        return self.tensor.nelement()
 
     @property
     def strides(self):

@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,8 +10,7 @@ an FFT.
 
 import numpy as np
 from numba import cuda
-from nvmath.device import fft, random
-from nvmath.device.vector_types_numba import float32x2
+from nvmath.device import fft, random, float32x2
 
 # Compile the random device APIs for the current device.
 compiled_random_apis = random.Compile(cc=None)

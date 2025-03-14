@@ -10,9 +10,10 @@ Welcome to the nvmath-python documentation!
 interoperability within the Python computational ecosystem through NVIDIA's high-performance
 math libraries.
 
-To quickly get started with *nvmath-python*, take a look at our
+To quickly get started with nvmath-python, take a look at our
 :doc:`Getting Started <quickstart>` manual.
-Refer to our :doc:`Installation Guide <installation>` for detailed instructions on the various installation choices available.
+Refer to our :doc:`Installation Guide <installation>` for detailed instructions on the
+various installation choices available.
 
 ========
 Contents
@@ -32,12 +33,17 @@ Contents
    Installation <installation.rst>
 
 .. toctree::
-   :caption: API Reference
+   :caption: Examples and tutorials
    :maxdepth: 2
 
-   Host API Utilities <host-utils.rst>
-   Linear Algebra <linalg/index.rst>
-   Fast Fourier Transform <fft/index.rst>
+   Linear Algebra Host APIs Tutorial <tutorials/linalg.rst>
+   Examples on GitHub <https://github.com/NVIDIA/nvmath-python/tree/main/examples>
+
+.. toctree::
+   :caption: API Reference
+   :maxdepth: 3
+
+   Host APIs <host-apis/index.rst>
    Device APIs <device-apis/index.rst>
    Bindings <bindings/index.rst>
 

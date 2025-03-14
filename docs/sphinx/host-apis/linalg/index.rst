@@ -43,5 +43,27 @@ Specialized Linear Algebra APIs (:mod:`nvmath.linalg.advanced`)
 
    :template: dataclass.rst
 
+   MatmulEpilogPreferences
    MatmulOptions
    MatmulPlanPreferences
+   MatmulQuantizationScales
+
+Helpers
+^^^^^^^
+
+The Specialized Linear Algebra helpers module :mod:`nvmath.linalg.advanced.helpers`
+provides helper functions to facilitate working with some of the complex features of
+:mod:`nvmath.linalg.advanced` module.
+
+Matmul helpers (:mod:`nvmath.linalg.advanced.helpers.matmul`)
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+.. module:: nvmath.linalg.advanced.helpers.matmul
+
+.. autosummary::
+   :toctree: generated/
+
+   create_mxfp8_scale
+   invert_mxfp8_scale
+   apply_mxfp8_scale
+   get_mxfp8_scale_offset

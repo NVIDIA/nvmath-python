@@ -1,3 +1,7 @@
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from libc.stdint cimport int32_t, int64_t, intptr_t
 from libcpp.vector cimport vector
 from libcpp cimport bool as cppbool

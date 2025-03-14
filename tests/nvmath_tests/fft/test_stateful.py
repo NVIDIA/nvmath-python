@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -1383,7 +1383,7 @@ def test_reset_operand_decreasing_alignment(
                 "fft_type": fft_type.value,
                 "inplace": inplace,
                 "result_layout": layout.value,
-                "last_axis_size": "odd",
+                "last_axis_parity": "odd",
             },
             axes=axes,
         ) as fft:

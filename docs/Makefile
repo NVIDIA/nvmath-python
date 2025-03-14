@@ -2,7 +2,7 @@
 SHELL=/bin/bash
 
 # You can set these variables from the command line or environment
-SPHINX_NVMATH_PYTHON_VER ?= $(shell [[ $$(< ../nvmath/_version.py) =~ __version__[^0-9.]*([0-9.]*) ]] && echo $${BASH_REMATCH[1]})
+SPHINX_NVMATH_PYTHON_VER ?= $(shell [[ $$(< ../pyproject.toml) =~ [^a-zA-Z_]version\ =\ [^0-9.]*([0-9.]*) ]] && echo $${BASH_REMATCH[1]})
 SPHINXOPTS    ?= -W
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = sphinx

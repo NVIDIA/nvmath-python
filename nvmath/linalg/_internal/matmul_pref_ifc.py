@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,18 +9,14 @@ attributes.
 
 __all__ = ["MatmulPreferenceInterface"]
 
-from collections.abc import Sequence
-import itertools
-import numbers
-import operator
 import logging
-
-logger = logging.getLogger()
 
 import numpy as np
 
 from nvmath.bindings import cublasLt as cublaslt
 
+
+logger = logging.getLogger()
 
 PreferenceEnum = cublaslt.MatmulPreferenceAttribute
 

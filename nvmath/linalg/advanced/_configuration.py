@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,7 +7,9 @@ __all__ = [
     "MatmulInnerShape",
     "MatmulNumericalImplFlags",
     "MatmulOptions",
+    "MatmulEpilogPreferences",
     "MatmulPlanPreferences",
+    "MatmulQuantizationScales",
     "MatmulReductionScheme",
     "matrix_qualifiers_dtype",
 ]
@@ -22,8 +24,8 @@ import numpy as _np
 from nvmath.bindings import cublas  # type: ignore
 from nvmath.bindings import cublasLt as cublaslt  # type: ignore
 from nvmath._internal import enum_utils
+from nvmath._internal.utils import check_or_create_options
 from nvmath._internal.mem_limit import check_memory_str
-from nvmath._internal.mem_limit import MEM_LIMIT_RE_PCT, MEM_LIMIT_RE_VAL, MEM_LIMIT_DOC
 from nvmath.memory import BaseCUDAMemoryManager
 from nvmath._utils import CudaDataType
 
@@ -39,10 +41,27 @@ class MatmulOptions:
 
     Attributes:
         compute_type (nvmath.linalg.ComputeType): CUDA compute type. A suitable compute type
-        will be selected if not specified.
+            will be selected if not specified.
 
         scale_type (nvmath.CudaDataType): CUDA data type. A suitable data type consistent
             with the compute type will be selected if not specified.
+
+        result_type (nvmath.CudaDataType): CUDA data type. A requested datatype of the
+            result. If not specified, this type will be determined based on the input types.
+            Non-default result types are only supported for narrow-precision (FP8 and lower)
+            operations.
+
+        result_amax (bool): If set, the absolute maximum (amax) of the result will be
+            returned in the auxiliary output tensor. Only supported for narrow-precision
+            (FP8 and lower) operations.
+
+        block_scaling (bool): If set, block scaling (MXFP8) will be used instead of
+            tensor-wide scaling for FP8 operations. If the result is a narrow-precision
+            (FP8 and lower) data type, scales used for result quantization will be returned
+            in the auxiliary output tensor as ``"d_out_scale"`` in UE8M0 format. For more
+            information on UE8M0 format, see the documentation of
+            :class:`~linalg.advanced.MatmulQuantizationScales`.
+            This option is only supported for narrow-precision (FP8 and lower) operations.
 
         sm_count_target (int) : The number of SMs to use for execution. The default is 0,
             corresponding to all available SMs.
@@ -82,6 +101,9 @@ class MatmulOptions:
 
     compute_type: int | None = None
     scale_type: int | None = None
+    result_type: int | None = None
+    result_amax: bool = False
+    block_scaling: bool = False
     sm_count_target: int | None = 0
     fast_accumulation: bool | None = False
     device_id: int | None = None
@@ -158,27 +180,59 @@ class MatmulNumericalImplFlags(IntEnum):
 
 
 @dataclasses.dataclass
+class MatmulEpilogPreferences:
+    """A data class for providing epilog options as part of ``preferences`` to the
+    :meth:`Matmul.plan` method and the wrapper function :func:`matmul`.
+
+    Attributes:
+        aux_type (nvmath.CudaDataType): The requested datatype of the
+            epilog auxiliary output. If not specified, this type will be determined based on
+            the input types. Non-default auxiliary output types are only supported for
+            narrow-precision operations and certain epilogs. For more details on the
+            supported combinations, see ``CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_DATA_TYPE`` in
+            cuBLAS documentation. If this option is set to a narrow-precision data type,
+            an additional epilog input ``"aux_quantization_scale"`` needs to be specified.
+
+        aux_amax (bool): If set, the absolute maximum (amax) of the epilog
+            auxiliary output will be returned in the auxiliary output tensor.
+            Only supported when ``aux_type`` option is set to a narrow-precision
+            data type.
+
+    See Also:
+       :meth:`Matmul.plan`, :func:`matmul`, :class:`MatmulPlanPreferences`
+    """
+
+    aux_type: int | None = None
+    aux_amax: bool = False
+
+
+@dataclasses.dataclass
 class MatmulPlanPreferences:
     """A data class for providing options to the :meth:`Matmul.plan` method and the
     wrapper function :func:`matmul`.
 
     Attributes:
-        reduction_scheme_mask (object of type
-            :class:`linalg.advanced.MatmulReductionScheme`) : Enumerators from
-            :class:`linalg.advanced.MatmulReductionScheme` combined with bitwise operator
-            ``|``. The default is all reduction schemes.
+        reduction_scheme_mask (:class:`nvmath.linalg.advanced.MatmulReductionScheme`):
+            Enumerators from
+            :class:`nvmath.linalg.advanced.MatmulReductionScheme` combined with
+            bitwise operator ``|``. The default is all reduction schemes.
 
         max_waves_count (float) : The maximum wave count. Selecting a value greater than 0.
             will exclude algorithms with device utilization greater than specified. The
             default is 0.
 
-        numerical_impl_mask (object of type
-            :class:`linalg.advanced.MatmulNumericalImplFlags`) : Enumerators from
-            :class:`linalg.advanced.MatmulNumericalImplFlags` combined with bitwise operator
-            ``|``. The default is all numerical implementation flag choices.
+        numerical_impl_mask (:class:`nvmath.linalg.advanced.MatmulNumericalImplFlags`):
+            Enumerators from
+            :class:`nvmath.nvmath.linalg.advanced.MatmulNumericalImplFlags` combined with
+            bitwise operator ``|``. The default is all numerical implementation flag
+            choices.
 
         limit (int) : The number of algorithms to consider. If not specified, a suitable
             default will be chosen.
+
+        epilog (:class:`nvmath.linalg.advanced.MatmulEpilogPreferences`):
+            Epilog preferences (as an object of class
+            :class:`~nvmath.linalg.advanced.MatmulEpilogPreferences` or a `dict`).
 
     See Also:
        :meth:`Matmul.plan`, :func:`matmul`
@@ -188,6 +242,7 @@ class MatmulPlanPreferences:
     max_waves_count: float | None = 0.0
     numerical_impl_mask: MatmulNumericalImplFlags | None = MatmulNumericalImplFlags.ALL
     limit: int = 8
+    epilog: MatmulEpilogPreferences | None = None
 
     def __post_init__(self):
         if self.reduction_scheme_mask is None:
@@ -203,6 +258,42 @@ class MatmulPlanPreferences:
 
         if self.limit is None:
             self.limit = MatmulPlanPreferences.limit
+
+        self.epilog = check_or_create_options(MatmulEpilogPreferences, self.epilog, "epilog preferences")
+
+
+@dataclasses.dataclass
+class MatmulQuantizationScales:
+    """A data class for providing quantization_scales to :class:`Matmul` constructor and the
+    wrapper function :func:`matmul`.
+
+    Scales can only be set for narrow-precision (FP8 and lower) matrices.
+
+    When ``MatmulOptions.block_scaling=False``, each scale can either be a scalar (integer
+    or float) or a single-element tensor of shape ``()`` or ``(1,)``.
+
+    When ``MatmulOptions.block_scaling=True``, each scale should be a 1D ``uint8`` tensor
+    with layout matching the requirements of cuBLAS MXFP8 scaling tensor. Values in the
+    tensor will be interpreted as UE8M0 values. This means that a value :math:`x` in the
+    scaling tensor will cause cuBLAS to multiply the respective block by :math:`2^{x-127}`.
+
+    Attributes:
+        a (float or Tensor) : Scale for matrix A.
+
+        b (float or Tensor) : Scale for matrix B.
+
+        c (float or Tensor) : Scale for matrix C.
+
+        d (float or Tensor) : Scale for matrix D.
+
+    See Also:
+       :class:`Matmul`, :func:`matmul`
+    """
+
+    a : float | None = None
+    b : float | None = None
+    c : float | None = None
+    d : float | None = None
 
 
 _create_options = enum_utils.create_options_class_from_enum

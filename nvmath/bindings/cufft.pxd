@@ -1,8 +1,8 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -18,18 +18,18 @@ ctypedef cufftCallbackLoadC CallbackLoadC
 ctypedef cufftCallbackLoadZ CallbackLoadZ
 ctypedef cufftCallbackLoadR CallbackLoadR
 ctypedef cufftCallbackLoadD CallbackLoadD
-ctypedef cufftCallbackStoreC CallbackStoreC
-ctypedef cufftCallbackStoreZ CallbackStoreZ
-ctypedef cufftCallbackStoreR CallbackStoreR
-ctypedef cufftCallbackStoreD CallbackStoreD
 ctypedef cufftJITCallbackLoadC JITCallbackLoadC
 ctypedef cufftJITCallbackLoadZ JITCallbackLoadZ
 ctypedef cufftJITCallbackLoadR JITCallbackLoadR
 ctypedef cufftJITCallbackLoadD JITCallbackLoadD
-ctypedef cufftJITCallbackStoreC JITCallbackStoreC
-ctypedef cufftJITCallbackStoreZ JITCallbackStoreZ
+ctypedef cufftCallbackStoreR CallbackStoreR
 ctypedef cufftJITCallbackStoreR JITCallbackStoreR
+ctypedef cufftCallbackStoreD CallbackStoreD
 ctypedef cufftJITCallbackStoreD JITCallbackStoreD
+ctypedef cufftCallbackStoreC CallbackStoreC
+ctypedef cufftJITCallbackStoreC JITCallbackStoreC
+ctypedef cufftCallbackStoreZ CallbackStoreZ
+ctypedef cufftJITCallbackStoreZ JITCallbackStoreZ
 
 ctypedef cudaStream_t Stream
 ctypedef cudaDataType DataType

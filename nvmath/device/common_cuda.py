@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -113,8 +113,15 @@ def get_current_device_cc():
         CHECK_CUDART(err)
     err, prop = cudart.cudaGetDeviceProperties(device)
     CHECK_CUDART(err)
+    major, minor = prop.major, prop.minor
+    # TODO: dx does not support platforms > arch90 for now
+    if (major, minor) > (9, 0):
+        logging.info(
+            f"The current device supports compute capability {prop.major}.{prop.minor}, but the generated LTO version is capped at 9.0."
+        )
+        major, minor = 9, 0
     logging.info(f"Using device {device} for default compute capability, found cc = {prop.major}.{prop.minor}")
-    return ComputeCapability(prop.major, prop.minor)
+    return ComputeCapability(major, minor)
 
 
 def get_default_code_type():

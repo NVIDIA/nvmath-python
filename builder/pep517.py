@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,8 +14,6 @@
 # creating a wheel). This may require pip>21.3.0.
 
 from setuptools import build_meta as _build_meta
-
-import utils  # this is builder.utils (the build system has sys.path set up)
 
 
 prepare_metadata_for_build_wheel = _build_meta.prepare_metadata_for_build_wheel

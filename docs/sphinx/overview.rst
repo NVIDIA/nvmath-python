@@ -4,7 +4,7 @@ Overview
 ********
 
 The primary goal of nvmath-python is to bring the power of the NVIDIA math libraries to the
-Python ecosystem. The package aims to provide intuitive pythonic APIs that provide users
+Python ecosystem. The package aims to provide intuitive Pythonic APIs that provide users
 full access to all the features offered by our libraries in a variety of execution spaces.
 
 We hope to empower a wide range of Python users by providing easy access to high-performance
@@ -26,7 +26,7 @@ The APIs provided by nvmath-python can be categorized into:
 
 nvmath-python is dedicated to delivering the following key features and commitments:
 
-1. **Logical Feature Parity**: While the pythonic API surface (the number of APIs and the
+1. **Logical Feature Parity**: While the Pythonic API surface (the number of APIs and the
    complexity of each) is more concise compared to that of the C libraries, it provides
    access to their complete functionality.
 2. **Consistent Design Patterns**: Uniform design across all modules to simplify user
@@ -67,12 +67,12 @@ flexibility allows:
 Additionally, we offer :doc:`Python bindings <bindings/index>` that provide a 1:1 mapping
 with the C APIs. These bindings, which serve as wrappers with API signatures similar to
 their C counterparts, are ideal for library developers looking to integrate the capabilities
-of the NVIDIA Math Libraries in a customized manner, in the event that the pythonic APIs
-don't meet their specific requirements. Conversely, our high-level pythonic APIs deliver a
+of the NVIDIA Math Libraries in a customized manner, in the event that the Pythonic APIs
+don't meet their specific requirements. Conversely, our high-level Pythonic APIs deliver a
 fully integrated solution suitable for native Python users as well as library developers,
-encompassing both host and device APIs. In the future, select host APIs will accept
-**callback functions written in Python** and compiled into supported formats such as LTO-IR,
-using compilers like `Numba`_.
+encompassing both host and device APIs. Select host APIs accept **callback functions
+written in Python**, which are compiled into supported formats such as LTO-IR, using
+compilers like `Numba`_.
 
 .. _host api section:
 
@@ -86,9 +86,9 @@ nvmath-python provides a collection of APIs that can be directly invoked from th
 categories:
 
 - Fast Fourier Transform in :mod:`nvmath.fft`. Refer to :doc:`Fast Fourier Transform
-  <fft/index>` for details.
+  <host-apis/fft/index>` for details.
 - Linear Algebra in :mod:`nvmath.linalg`. Refer to :doc:`Linear Algebra
-  <linalg/index>` for details.
+  <host-apis/linalg/index>` for details.
 
 
 .. _host api interop:
@@ -108,7 +108,7 @@ frameworks. One example for the interoperability is shown below:
     # Create a numpy.ndarray as input
     a = np.random.random(128) + 1.j * np.random.random(128)
 
-    # Call nvmath-python pythonic APIs
+    # Call nvmath-python Pythonic APIs
     b = nvmath.fft.fft(a)
 
     # Verify that output is also a numpy.ndarray
@@ -134,24 +134,24 @@ potentially enhancing performance significantly.
 
 The design pattern for all stateful APIs in nvmath-python consists of several key phases:
 
-    - Problem Specification: This initial phase involves defining the operation and setting
-      options that affect its execution. It's designed to be as lightweight as possible,
-      ensuring the problem is well-defined and supported by the current implementation.
-    - Preparation: Using FFT as an example, this phase includes a planning step to select
-      the optimal algorithm for the defined FFT operation. An optional autotuning operation,
-      when available, also falls within the preparation phase. The preparation phase is
-      generally the most resource-intensive and may incorporate user-specified planning and
-      autotuning options.
-    - Execution: This phase allows for repeated execution, where the operand can be either
-      modified in-place or explicitly reset using the ``reset_operand``/``reset_operands``
-      method. The costs associated with the first two phases are therefore amortized over
-      these multiple executions.
-    - Resource Release: Users are advised to use stateful objects from within a context
-      using the `with statement
-      <https://docs.python.org/3/reference/compound_stmts.html#the-with-statement>`_, which
-      automatically handles the release of internal resources upon exit. If the object is
-      not used as a context manager using ``with``, it is necessary to explicitly call the
-      ``free`` method to ensure all resources are properly released.
+- Problem Specification: This initial phase involves defining the operation and setting
+  options that affect its execution. It's designed to be as lightweight as possible,
+  ensuring the problem is well-defined and supported by the current implementation.
+- Preparation: Using FFT as an example, this phase includes a planning step to select
+  the optimal algorithm for the defined FFT operation. An optional autotuning operation,
+  when available, also falls within the preparation phase. The preparation phase is
+  generally the most resource-intensive and may incorporate user-specified planning and
+  autotuning options.
+- Execution: This phase allows for repeated execution, where the operand can be either
+  modified in-place or explicitly reset using the ``reset_operand``/``reset_operands``
+  method. The costs associated with the first two phases are therefore amortized over
+  these multiple executions.
+- Resource Release: Users are advised to use stateful objects from within a context
+  using the `with statement
+  <https://docs.python.org/3/reference/compound_stmts.html#the-with-statement>`_, which
+  automatically handles the release of internal resources upon exit. If the object is
+  not used as a context manager using ``with``, it is necessary to explicitly call the
+  ``free`` method to ensure all resources are properly released.
 
 .. note::
 
@@ -166,7 +166,7 @@ The design pattern for all stateful APIs in nvmath-python consists of several ke
 .. note::
 
     The decision to require explicit ``free`` calls for resource release is driven by the
-    fact that Python's garbage collector can delay freeing object resources when the object
+    fact that Python's garbage collector may delay freeing object resources when the object
     goes out of scope or its reference count drops to zero. For details, refer to the
     `__del__ method Python documentation
     <https://docs.python.org/3/reference/datamodel.html#object.__del__>`_.
@@ -206,8 +206,8 @@ Full Logging Support
 
 nvmath-python provides integration with the Python standard library logger from the `logging
 module <https://docs.python.org/3/library/logging.html>`_ to offer full logging of the
-computational details at various levels, for example debug, information, warning and error. An
-example illustrating the use of the global Python logger is shown below:
+computational details at various levels, for example debug, information, warning and error.
+An example illustrating the use of the global Python logger is shown below:
 
 .. code-block:: python
 
@@ -220,7 +220,7 @@ example illustrating the use of the global Python logger is shown below:
       datefmt='%m-%d %H:%M:%S'
    )
 
-    # Call nvmath-python pythonic APIs
+    # Call nvmath-python Pythonic APIs
     out = nvmath.linalg.advanced.matmul(...)
 
 Alternatively, for APIs that contain the ``options`` argument, users can set a custom logger
@@ -236,7 +236,7 @@ object, for example :attr:`nvmath.fft.FFTOptions.logger` for :func:`nvmath.fft.f
     logger = logging.getLogger('userlogger')
     ...
 
-    # Call nvmath-python pythonic APIs
+    # Call nvmath-python Pythonic APIs
     out = nvmath.fft.fft(..., options={'logger': logger})
 
 For the complete examples, refer to `global logging example
@@ -260,7 +260,7 @@ example04_logging_user.py>`_.
 Call Blocking Behavior
 ----------------------
 
-By default, calls to all pythonic host APIs that require GPU execution are *not* blocking if
+By default, calls to all Pythonic host APIs that require GPU execution are *not* blocking if
 the input operands reside on the device. This means that functions like
 :func:`nvmath.linalg.advanced.matmul`, :meth:`nvmath.fft.FFT.execute`, and
 :meth:`nvmath.linalg.advanced.Matmul.execute` will return immediately after the operation is
@@ -269,7 +269,7 @@ properly synchronizing the stream when needed. The default behavior can be modif
 setting the ``blocking`` attribute (default ``'auto'``) of the relevant ``Options`` object
 to ``True``. For example, users may set :attr:`nvmath.fft.FFTOptions.blocking` to ``True``
 and pass this options object to the corresponding FFT API calls. If the input operands are
-on the host, the pythonic API calls will always block since the computation yields an output
+on the host, the Pythonic API calls will always block since the computation yields an output
 operand that will also reside on the host. Meanwhile, APIs that execute on the host (such as
 :meth:`nvmath.fft.FFT.create_key`) always block.
 
@@ -295,7 +295,7 @@ provided for two reasons:
 For non-blocking behavior, it is the user's responsibility to ensure correct stream ordering
 between the execution API calls.
 
-In any case, the execution APIs are launched on the provided stream.
+The execution APIs are always launched on the provided stream.
 
 For examples on stream ordering, refer to `FFT with multiple streams
 <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example09_streams.py>`_.
@@ -307,8 +307,8 @@ Memory Management
 
 By default, the host APIs use the memory pool from the package that their operands belong
 to. This ensures that there is no contention for memory or spurious out-of-memory errors.
-However the user also has the ability to provide their own memory allocator if they choose
-to do so. In our pythonic APIs, we support an `EMM`_-like interface as proposed and
+However, the user also has the ability to provide their own memory allocator if they choose
+to do so. In our Pythonic APIs, we support an `EMM`_-like interface as proposed and
 supported by Numba for users to set their Python mempool. Taking FFT as an example, users
 can set the option :attr:`nvmath.fft.FFTOptions.allocator` to a Python object complying with
 the :class:`nvmath.BaseCUDAMemoryManager` protocol, and pass the options to the high-level
@@ -397,7 +397,7 @@ considerations, we strive to meet the following commitments:
 
    Note that all bindings are currently *experimental*.
 
-2. For the high-level pythonic APIs, we maintain backward compatibility to the greatest
+2. For the high-level Pythonic APIs, we maintain backward compatibility to the greatest
    extent feasible. When a breaking change is necessary, we issue a runtime warning to alert
    users of the upcoming changes in the next major release. This practice ensures that
    breaking changes are clearly communicated and reserved for major version updates,

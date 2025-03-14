@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -15,8 +15,8 @@ backend-path = ["builder"]
 
 [project]
 name = "nvmath-python"
+version = "0.3.0"
 dynamic = [
-    "version",
     "readme",
     "dependencies",
     "optional-dependencies"
@@ -51,7 +51,6 @@ classifiers = [
 ]
 
 [tool.setuptools.dynamic]
-version = { attr = "nvmath._version.__version__" }
 readme = { file = ["DESCRIPTION.rst"], content-type = "text/x-rst" }
 dependencies = {file = ["requirements/pip/nvmath-python.txt"] }
 
@@ -106,8 +105,6 @@ ignore = [
     "I001",
     "SIM105",
     "SIM108",
-    # Ignore module-import-not-at-top-of-file
-    "E402",
     # Ignore multiple-statements-on-one-line-colon
     "E701",
     # Ignore multiple-statements-on-one-line-semicolon
@@ -118,12 +115,6 @@ ignore = [
     "E731",
     # Ignore ambiguous-variable-name
     "E741",
-    # Ignore unused-import
-    "F401",
-    # Ignore undefined-local-with-import-star
-    "F403",
-    # Ignore undefined-local-with-import-star-usage
-    "F405",
 ]
 fixable = ["ALL"]
 

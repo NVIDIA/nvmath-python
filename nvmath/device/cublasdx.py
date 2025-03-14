@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -116,6 +116,11 @@ class BlasOptions:
         if code_type.cc.major < 7:
             raise RuntimeError(
                 "Minimal compute capability 7.0 is required by cuBLASDx, got " f"{code_type.cc.major}.{code_type.cc.minor}"
+            )
+        # TODO: cublasdx does not support platforms > arch90 for now
+        if (code_type.cc.major, code_type.cc.minor) > (9, 0):
+            raise RuntimeError(
+                f"The maximum compute capability currently supported by device APIs is 9.0, got {code_type.cc.major}.{code_type.cc.minor}"
             )
 
         if len(transpose_mode) != 2:

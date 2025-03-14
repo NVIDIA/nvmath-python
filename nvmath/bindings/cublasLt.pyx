@@ -1,13 +1,13 @@
-# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
 cimport cython  # NOQA
 from libcpp.vector cimport vector
 from cpython cimport buffer as _buffer
-from cpython cimport memoryview as _memoryview
+from cpython.memoryview cimport PyMemoryView_FromMemory
 
 from enum import IntEnum as _IntEnum
 
@@ -128,7 +128,7 @@ cdef class MatmulAlgo:
             raise ValueError("ptr must not be null (0)")
         cdef MatmulAlgo obj = MatmulAlgo.__new__(MatmulAlgo)
         cdef flag = _buffer.PyBUF_READ if readonly else _buffer.PyBUF_WRITE
-        cdef object buf = _memoryview.PyMemoryView_FromMemory(
+        cdef object buf = PyMemoryView_FromMemory(
             <char*>ptr, sizeof(cublasLtMatmulAlgo_t) * size, flag)
         data = _numpy.ndarray((size,), buffer=buf,
                               dtype=matmul_algo_dtype)
@@ -283,7 +283,7 @@ cdef class MatmulHeuristicResult:
             raise ValueError("ptr must not be null (0)")
         cdef MatmulHeuristicResult obj = MatmulHeuristicResult.__new__(MatmulHeuristicResult)
         cdef flag = _buffer.PyBUF_READ if readonly else _buffer.PyBUF_WRITE
-        cdef object buf = _memoryview.PyMemoryView_FromMemory(
+        cdef object buf = PyMemoryView_FromMemory(
             <char*>ptr, sizeof(cublasLtMatmulHeuristicResult_t) * size, flag)
         data = _numpy.ndarray((size,), buffer=buf,
                               dtype=matmul_heuristic_result_dtype)
@@ -929,6 +929,10 @@ class MatmulTile(_IntEnum):
     TILE_768x56 = CUBLASLT_MATMUL_TILE_768x56
     TILE_768x72 = CUBLASLT_MATMUL_TILE_768x72
     TILE_768x80 = CUBLASLT_MATMUL_TILE_768x80
+    TILE_256x512 = CUBLASLT_MATMUL_TILE_256x512
+    TILE_256x1024 = CUBLASLT_MATMUL_TILE_256x1024
+    TILE_512x512 = CUBLASLT_MATMUL_TILE_512x512
+    TILE_512x1024 = CUBLASLT_MATMUL_TILE_512x1024
 
 class MatmulStages(_IntEnum):
     """See `cublasLtMatmulStages_t`."""
@@ -967,6 +971,7 @@ class MatmulStages(_IntEnum):
     STAGES_32xAUTO = CUBLASLT_MATMUL_STAGES_32xAUTO
     STAGES_64xAUTO = CUBLASLT_MATMUL_STAGES_64xAUTO
     STAGES_128xAUTO = CUBLASLT_MATMUL_STAGES_128xAUTO
+    STAGES_256xAUTO = CUBLASLT_MATMUL_STAGES_256xAUTO
     STAGES_16x80 = CUBLASLT_MATMUL_STAGES_16x80
     STAGES_64x80 = CUBLASLT_MATMUL_STAGES_64x80
 
@@ -1037,6 +1042,13 @@ class MatmulDescAttribute(_IntEnum):
     ATOMIC_SYNC_NUM_CHUNKS_D_COLS = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS
     ATOMIC_SYNC_IN_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER
     ATOMIC_SYNC_OUT_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER
+    A_SCALE_MODE = CUBLASLT_MATMUL_DESC_A_SCALE_MODE
+    B_SCALE_MODE = CUBLASLT_MATMUL_DESC_B_SCALE_MODE
+    C_SCALE_MODE = CUBLASLT_MATMUL_DESC_C_SCALE_MODE
+    D_SCALE_MODE = CUBLASLT_MATMUL_DESC_D_SCALE_MODE
+    EPILOGUE_AUX_SCALE_MODE = CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE
+    D_OUT_SCALE_POINTER = CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER
+    D_OUT_SCALE_MODE = CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE
 
 class MatrixTransformDescAttribute(_IntEnum):
     """See `cublasLtMatrixTransformDescAttributes_t`."""
@@ -1199,6 +1211,12 @@ class MatmulInnerShape(_IntEnum):
     MMA1684 = CUBLASLT_MATMUL_INNER_SHAPE_MMA1684
     MMA1688 = CUBLASLT_MATMUL_INNER_SHAPE_MMA1688
     MMA16816 = CUBLASLT_MATMUL_INNER_SHAPE_MMA16816
+
+class MatmulMatrixScale(_IntEnum):
+    """See `cublasLtMatmulMatrixScale_t`."""
+    SCALAR_32F = CUBLASLT_MATMUL_MATRIX_SCALE_SCALAR_32F
+    VEC16_UE4M3 = CUBLASLT_MATMUL_MATRIX_SCALE_VEC16_UE4M3
+    VEC32_UE8M0 = CUBLASLT_MATMUL_MATRIX_SCALE_VEC32_UE8M0
 
 
 ###############################################################################
@@ -1393,6 +1411,13 @@ cdef dict matmul_desc_attribute_sizes = {
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS: _numpy.int32,
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER: _numpy.int32,
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_A_SCALE_MODE: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_B_SCALE_MODE: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_C_SCALE_MODE: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_D_SCALE_MODE: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER: _numpy.intp,
+    CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE: _numpy.int32,
 }
 
 cpdef get_matmul_desc_attribute_dtype(int attr):
