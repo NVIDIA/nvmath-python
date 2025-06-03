@@ -12,8 +12,6 @@ import warnings
 
 CUDA_HOME = None
 CURAND_HOME = None
-MATHDX_HOME = None
-CUTLASS_HOME = None
 
 
 PLATFORM_LINUX = sys.platform.startswith("linux")
@@ -96,87 +94,4 @@ def check_cuda_home():
     CURAND_HOME = os.path.join(CUDA_HOME[0], "include")
 
 
-def check_mathdx_home():
-    # Find mathDx headers
-    global MATHDX_HOME
-
-    # Try wheel
-    try:
-        MATHDX_HOME = files("nvidia-mathdx")
-    except PackageNotFoundError:
-        pass
-    else:
-        # use cufftdx.hpp as a proxy
-        MATHDX_HOME = [f for f in MATHDX_HOME if "cufftdx.hpp" in str(f)][0]
-        MATHDX_HOME = os.path.join(os.path.dirname(MATHDX_HOME.locate()), "..")
-        return
-
-    # Try conda
-    if "CONDA_PREFIX" in os.environ:
-        if PLATFORM_LINUX:
-            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "include")
-        elif PLATFORM_WIN:
-            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "Library", "include")
-        if os.path.isfile(os.path.join(conda_include, "cufftdx.hpp")):
-            MATHDX_HOME = os.path.join(conda_include, "..")
-            return
-
-    # Try local
-    if "MATHDX_HOME" not in os.environ:
-        raise RuntimeError(
-            "mathDx headers not found. Depending on how you install nvmath-python and other CUDA packages, "
-            "you may need to perform one of the steps below:\n"
-            "   - pip install nvidia-mathdx\n"
-            "   - conda install -c conda-forge mathdx\n"
-            "   - export MATHDX_HOME=/path/to/mathdx"
-        )
-    else:
-        MATHDX_HOME = os.environ["MATHDX_HOME"]
-
-
-def check_cutlass_home():
-    # Find CUTLASS headers
-    global CUTLASS_HOME
-
-    # Try bundle
-    if os.path.isdir(os.path.join(MATHDX_HOME, "external", "cutlass")):
-        CUTLASS_HOME = os.path.join(MATHDX_HOME, "external", "cutlass")
-        return
-
-    # Try wheel
-    try:
-        CUTLASS_HOME = files("nvidia-cutlass")
-    except PackageNotFoundError:
-        pass
-    else:
-        # use cutlass.h as a proxy
-        CUTLASS_HOME = [f for f in CUTLASS_HOME if "cutlass.h" in str(f)][0]
-        CUTLASS_HOME = os.path.join(os.path.dirname(CUTLASS_HOME.locate()), "../..")
-        return
-
-    # Try conda
-    if "CONDA_PREFIX" in os.environ:
-        if PLATFORM_LINUX:
-            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "include")
-        elif PLATFORM_WIN:
-            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "Library", "include")
-        if os.path.isfile(os.path.join(conda_include, "cutlass", "cutlass.h")):
-            CUTLASS_HOME = os.path.join(conda_include, "..")
-            return
-
-    # Try local
-    if "CUTLASS_HOME" not in os.environ:
-        raise RuntimeError(
-            "CUTLASS headers not found. Depending on how you install nvmath-python and other CUDA packages, "
-            "you may need to perform one of the steps below:\n"
-            "   - pip install nvidia-cutlass\n"
-            "   - conda install -c conda-forge cutlass\n"
-            "   - export CUTLASS_HOME=/path/to/cutlass"
-        )
-    else:
-        CUTLASS_HOME = os.environ["CUTLASS_HOME"]
-
-
 check_cuda_home()
-check_mathdx_home()
-check_cutlass_home()

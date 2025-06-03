@@ -12,9 +12,9 @@ from .utils import sample_matrix
 from .fp8_utils import assert_fp8_equal
 from nvmath.linalg.advanced import Matmul, matmul, MatmulEpilog as Epilog
 from nvmath.linalg.advanced.helpers import matmul as matmul_helpers
-from nvmath._internal.typemaps import NAME_TO_DATA_TYPE
+from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
 from nvmath.bindings import cublasLt as cublaslt
-from nvmath._internal.utils import check_or_create_options
+from nvmath.internal.utils import check_or_create_options
 from nvmath.linalg.advanced import _configuration
 from contextlib import nullcontext
 from .utils import allow_cublas_unsupported

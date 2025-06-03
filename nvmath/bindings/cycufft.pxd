@@ -14,8 +14,6 @@ ctypedef enum libFormat_t "libFormat_t":
     LIB_FORMAT_CUFFT "LIB_FORMAT_CUFFT" = 0x0
     LIB_FORMAT_UNDEFINED "LIB_FORMAT_UNDEFINED" = 0x1
 
-ctypedef libFormat_t libFormat "libFormat"
-
 ctypedef enum cufftResult "cufftResult":
     CUFFT_SUCCESS "CUFFT_SUCCESS" = 0x0
     CUFFT_INVALID_PLAN "CUFFT_INVALID_PLAN" = 0x1
@@ -34,6 +32,7 @@ ctypedef enum cufftResult "cufftResult":
     CUFFT_NOT_IMPLEMENTED "CUFFT_NOT_IMPLEMENTED" = 0xE
     CUFFT_LICENSE_ERROR "CUFFT_LICENSE_ERROR" = 0x0F
     CUFFT_NOT_SUPPORTED "CUFFT_NOT_SUPPORTED" = 0x10
+    _CUFFTRESULT_INTERNAL_LOADING_ERROR "_CUFFTRESULT_INTERNAL_LOADING_ERROR" = -42
 
 ctypedef enum cufftType "cufftType":
     CUFFT_R2C "CUFFT_R2C" = 0x2a
@@ -252,7 +251,7 @@ ctypedef cudaXtDesc_t cudaXtDesc 'cudaXtDesc'
 ctypedef struct cudaLibXtDesc_t 'cudaLibXtDesc_t':
     int version "version"
     cudaXtDesc* descriptor "descriptor"
-    libFormat library "library"
+    libFormat_t library "library"
     int subFormat "subFormat"
     void* libDescriptor "libDescriptor"
 
@@ -263,59 +262,59 @@ ctypedef cudaLibXtDesc_t cudaLibXtDesc 'cudaLibXtDesc'
 # Functions
 ###############################################################################
 
-cdef cufftResult cufftPlan1d(cufftHandle* plan, int nx, cufftType type, int batch) except* nogil
-cdef cufftResult cufftPlan2d(cufftHandle* plan, int nx, int ny, cufftType type) except* nogil
-cdef cufftResult cufftPlan3d(cufftHandle* plan, int nx, int ny, int nz, cufftType type) except* nogil
-cdef cufftResult cufftPlanMany(cufftHandle* plan, int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch) except* nogil
-cdef cufftResult cufftMakePlan1d(cufftHandle plan, int nx, cufftType type, int batch, size_t* workSize) except* nogil
-cdef cufftResult cufftMakePlan2d(cufftHandle plan, int nx, int ny, cufftType type, size_t* workSize) except* nogil
-cdef cufftResult cufftMakePlan3d(cufftHandle plan, int nx, int ny, int nz, cufftType type, size_t* workSize) except* nogil
-cdef cufftResult cufftMakePlanMany(cufftHandle plan, int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch, size_t* workSize) except* nogil
-cdef cufftResult cufftMakePlanMany64(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, long long int* onembed, long long int ostride, long long int odist, cufftType type, long long int batch, size_t* workSize) except* nogil
-cdef cufftResult cufftGetSizeMany64(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, long long int* onembed, long long int ostride, long long int odist, cufftType type, long long int batch, size_t* workSize) except* nogil
-cdef cufftResult cufftEstimate1d(int nx, cufftType type, int batch, size_t* workSize) except* nogil
-cdef cufftResult cufftEstimate2d(int nx, int ny, cufftType type, size_t* workSize) except* nogil
-cdef cufftResult cufftEstimate3d(int nx, int ny, int nz, cufftType type, size_t* workSize) except* nogil
-cdef cufftResult cufftEstimateMany(int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch, size_t* workSize) except* nogil
-cdef cufftResult cufftCreate(cufftHandle* handle) except* nogil
-cdef cufftResult cufftGetSize1d(cufftHandle handle, int nx, cufftType type, int batch, size_t* workSize) except* nogil
-cdef cufftResult cufftGetSize2d(cufftHandle handle, int nx, int ny, cufftType type, size_t* workSize) except* nogil
-cdef cufftResult cufftGetSize3d(cufftHandle handle, int nx, int ny, int nz, cufftType type, size_t* workSize) except* nogil
-cdef cufftResult cufftGetSizeMany(cufftHandle handle, int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch, size_t* workArea) except* nogil
-cdef cufftResult cufftGetSize(cufftHandle handle, size_t* workSize) except* nogil
-cdef cufftResult cufftSetWorkArea(cufftHandle plan, void* workArea) except* nogil
-cdef cufftResult cufftSetAutoAllocation(cufftHandle plan, int autoAllocate) except* nogil
-cdef cufftResult cufftExecC2C(cufftHandle plan, cufftComplex* idata, cufftComplex* odata, int direction) except* nogil
-cdef cufftResult cufftExecR2C(cufftHandle plan, cufftReal* idata, cufftComplex* odata) except* nogil
-cdef cufftResult cufftExecC2R(cufftHandle plan, cufftComplex* idata, cufftReal* odata) except* nogil
-cdef cufftResult cufftExecZ2Z(cufftHandle plan, cufftDoubleComplex* idata, cufftDoubleComplex* odata, int direction) except* nogil
-cdef cufftResult cufftExecD2Z(cufftHandle plan, cufftDoubleReal* idata, cufftDoubleComplex* odata) except* nogil
-cdef cufftResult cufftExecZ2D(cufftHandle plan, cufftDoubleComplex* idata, cufftDoubleReal* odata) except* nogil
-cdef cufftResult cufftSetStream(cufftHandle plan, cudaStream_t stream) except* nogil
-cdef cufftResult cufftDestroy(cufftHandle plan) except* nogil
-cdef cufftResult cufftGetVersion(int* version) except* nogil
-cdef cufftResult cufftGetProperty(libraryPropertyType type, int* value) except* nogil
-cdef cufftResult cufftXtSetGPUs(cufftHandle handle, int nGPUs, int* whichGPUs) except* nogil
-cdef cufftResult cufftXtMalloc(cufftHandle plan, cudaLibXtDesc** descriptor, cufftXtSubFormat format) except* nogil
-cdef cufftResult cufftXtMemcpy(cufftHandle plan, void* dstPointer, void* srcPointer, cufftXtCopyType type) except* nogil
-cdef cufftResult cufftXtFree(cudaLibXtDesc* descriptor) except* nogil
-cdef cufftResult cufftXtSetWorkArea(cufftHandle plan, void** workArea) except* nogil
-cdef cufftResult cufftXtExecDescriptorC2C(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output, int direction) except* nogil
-cdef cufftResult cufftXtExecDescriptorR2C(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except* nogil
-cdef cufftResult cufftXtExecDescriptorC2R(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except* nogil
-cdef cufftResult cufftXtExecDescriptorZ2Z(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output, int direction) except* nogil
-cdef cufftResult cufftXtExecDescriptorD2Z(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except* nogil
-cdef cufftResult cufftXtExecDescriptorZ2D(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except* nogil
-cdef cufftResult cufftXtQueryPlan(cufftHandle plan, void* queryStruct, cufftXtQueryType queryType) except* nogil
-cdef cufftResult cufftXtClearCallback(cufftHandle plan, cufftXtCallbackType cbType) except* nogil
-cdef cufftResult cufftXtSetCallbackSharedSize(cufftHandle plan, cufftXtCallbackType cbType, size_t sharedSize) except* nogil
-cdef cufftResult cufftXtMakePlanMany(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, cudaDataType inputtype, long long int* onembed, long long int ostride, long long int odist, cudaDataType outputtype, long long int batch, size_t* workSize, cudaDataType executiontype) except* nogil
-cdef cufftResult cufftXtGetSizeMany(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, cudaDataType inputtype, long long int* onembed, long long int ostride, long long int odist, cudaDataType outputtype, long long int batch, size_t* workSize, cudaDataType executiontype) except* nogil
-cdef cufftResult cufftXtExec(cufftHandle plan, void* input, void* output, int direction) except* nogil
-cdef cufftResult cufftXtExecDescriptor(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output, int direction) except* nogil
-cdef cufftResult cufftXtSetWorkAreaPolicy(cufftHandle plan, cufftXtWorkAreaPolicy policy, size_t* workSize) except* nogil
-cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except* nogil
-cdef cufftResult cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat subformat_forward, cufftXtSubFormat subformat_inverse) except* nogil
-cdef cufftResult cufftSetPlanPropertyInt64(cufftHandle plan, cufftProperty property, const long long int inputValueInt) except* nogil
-cdef cufftResult cufftGetPlanPropertyInt64(cufftHandle plan, cufftProperty property, long long int* returnPtrValue) except* nogil
-cdef cufftResult cufftResetPlanProperty(cufftHandle plan, cufftProperty property) except* nogil
+cdef cufftResult cufftPlan1d(cufftHandle* plan, int nx, cufftType type, int batch) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftPlan2d(cufftHandle* plan, int nx, int ny, cufftType type) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftPlan3d(cufftHandle* plan, int nx, int ny, int nz, cufftType type) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftPlanMany(cufftHandle* plan, int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftMakePlan1d(cufftHandle plan, int nx, cufftType type, int batch, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftMakePlan2d(cufftHandle plan, int nx, int ny, cufftType type, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftMakePlan3d(cufftHandle plan, int nx, int ny, int nz, cufftType type, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftMakePlanMany(cufftHandle plan, int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftMakePlanMany64(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, long long int* onembed, long long int ostride, long long int odist, cufftType type, long long int batch, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetSizeMany64(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, long long int* onembed, long long int ostride, long long int odist, cufftType type, long long int batch, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftEstimate1d(int nx, cufftType type, int batch, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftEstimate2d(int nx, int ny, cufftType type, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftEstimate3d(int nx, int ny, int nz, cufftType type, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftEstimateMany(int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftCreate(cufftHandle* handle) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetSize1d(cufftHandle handle, int nx, cufftType type, int batch, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetSize2d(cufftHandle handle, int nx, int ny, cufftType type, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetSize3d(cufftHandle handle, int nx, int ny, int nz, cufftType type, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetSizeMany(cufftHandle handle, int rank, int* n, int* inembed, int istride, int idist, int* onembed, int ostride, int odist, cufftType type, int batch, size_t* workArea) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetSize(cufftHandle handle, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftSetWorkArea(cufftHandle plan, void* workArea) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftSetAutoAllocation(cufftHandle plan, int autoAllocate) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftExecC2C(cufftHandle plan, cufftComplex* idata, cufftComplex* odata, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftExecR2C(cufftHandle plan, cufftReal* idata, cufftComplex* odata) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftExecC2R(cufftHandle plan, cufftComplex* idata, cufftReal* odata) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftExecZ2Z(cufftHandle plan, cufftDoubleComplex* idata, cufftDoubleComplex* odata, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftExecD2Z(cufftHandle plan, cufftDoubleReal* idata, cufftDoubleComplex* odata) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftExecZ2D(cufftHandle plan, cufftDoubleComplex* idata, cufftDoubleReal* odata) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftSetStream(cufftHandle plan, cudaStream_t stream) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftDestroy(cufftHandle plan) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetVersion(int* version) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetProperty(libraryPropertyType type, int* value) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtSetGPUs(cufftHandle handle, int nGPUs, int* whichGPUs) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtMalloc(cufftHandle plan, cudaLibXtDesc** descriptor, cufftXtSubFormat format) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtMemcpy(cufftHandle plan, void* dstPointer, void* srcPointer, cufftXtCopyType type) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtFree(cudaLibXtDesc* descriptor) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtSetWorkArea(cufftHandle plan, void** workArea) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExecDescriptorC2C(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExecDescriptorR2C(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExecDescriptorC2R(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExecDescriptorZ2Z(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExecDescriptorD2Z(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExecDescriptorZ2D(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtQueryPlan(cufftHandle plan, void* queryStruct, cufftXtQueryType queryType) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtClearCallback(cufftHandle plan, cufftXtCallbackType cbType) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtSetCallbackSharedSize(cufftHandle plan, cufftXtCallbackType cbType, size_t sharedSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtMakePlanMany(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, cudaDataType inputtype, long long int* onembed, long long int ostride, long long int odist, cudaDataType outputtype, long long int batch, size_t* workSize, cudaDataType executiontype) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtGetSizeMany(cufftHandle plan, int rank, long long int* n, long long int* inembed, long long int istride, long long int idist, cudaDataType inputtype, long long int* onembed, long long int ostride, long long int odist, cudaDataType outputtype, long long int batch, size_t* workSize, cudaDataType executiontype) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExec(cufftHandle plan, void* input, void* output, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtExecDescriptor(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtSetWorkAreaPolicy(cufftHandle plan, cufftXtWorkAreaPolicy policy, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat subformat_forward, cufftXtSubFormat subformat_inverse) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftSetPlanPropertyInt64(cufftHandle plan, cufftProperty property, const long long int inputValueInt) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftGetPlanPropertyInt64(cufftHandle plan, cufftProperty property, long long int* returnPtrValue) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftResetPlanProperty(cufftHandle plan, cufftProperty property) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil

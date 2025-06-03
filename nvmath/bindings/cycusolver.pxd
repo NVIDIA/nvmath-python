@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -42,6 +42,7 @@ ctypedef enum cusolverStatus_t "cusolverStatus_t":
     CUSOLVER_STATUS_IRS_INFOS_NOT_DESTROYED "CUSOLVER_STATUS_IRS_INFOS_NOT_DESTROYED" = 26
     CUSOLVER_STATUS_IRS_MATRIX_SINGULAR "CUSOLVER_STATUS_IRS_MATRIX_SINGULAR" = 30
     CUSOLVER_STATUS_INVALID_WORKSPACE "CUSOLVER_STATUS_INVALID_WORKSPACE" = 31
+    _CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR "_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR" = -42
 
 ctypedef enum cusolverEigType_t "cusolverEigType_t":
     CUSOLVER_EIG_TYPE_1 "CUSOLVER_EIG_TYPE_1" = 1
@@ -138,5 +139,5 @@ ctypedef int cusolver_int_t 'cusolver_int_t'
 # Functions
 ###############################################################################
 
-cdef cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* value) except* nogil
-cdef cusolverStatus_t cusolverGetVersion(int* version) except* nogil
+cdef cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* value) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverGetVersion(int* version) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -311,7 +311,7 @@ cpdef intptr_t plan_many_c2c_double(int rank, n, int batch, intptr_t in_, inembe
     cdef intptr_t ret
     with nogil:
         ret = <intptr_t>fftw_plan_many_dft(rank, <const int*>(_n_.data()), batch, <fftw_complex*>in_, <const int*>(_inembed_.data()), istride, idist, <fftw_complex*>out, <const int*>(_onembed_.data()), ostride, odist, sign, flags)
-    check_plan(<intptr_t>ret)
+    check_plan(ret)
     return ret
 
 
@@ -326,7 +326,7 @@ cpdef intptr_t plan_many_r2c_double(int rank, n, int batch, intptr_t in_, inembe
     cdef intptr_t ret
     with nogil:
         ret = <intptr_t>fftw_plan_many_dft_r2c(rank, <const int*>(_n_.data()), batch, <double*>in_, <const int*>(_inembed_.data()), istride, idist, <fftw_complex*>out, <const int*>(_onembed_.data()), ostride, odist, flags)
-    check_plan(<intptr_t>ret)
+    check_plan(ret)
     return ret
 
 
@@ -341,7 +341,7 @@ cpdef intptr_t plan_many_c2r_double(int rank, n, int batch, intptr_t in_, inembe
     cdef intptr_t ret
     with nogil:
         ret = <intptr_t>fftw_plan_many_dft_c2r(rank, <const int*>(_n_.data()), batch, <fftw_complex*>in_, <const int*>(_inembed_.data()), istride, idist, <double*>out, <const int*>(_onembed_.data()), ostride, odist, flags)
-    check_plan(<intptr_t>ret)
+    check_plan(ret)
     return ret
 
 
@@ -371,7 +371,7 @@ cpdef intptr_t plan_many_c2c_float(int rank, n, int batch, intptr_t in_, inembed
     cdef intptr_t ret
     with nogil:
         ret = <intptr_t>fftwf_plan_many_dft(rank, <const int*>(_n_.data()), batch, <fftwf_complex*>in_, <const int*>(_inembed_.data()), istride, idist, <fftwf_complex*>out, <const int*>(_onembed_.data()), ostride, odist, sign, flags)
-    check_plan(<intptr_t>ret)
+    check_plan(ret)
     return ret
 
 
@@ -386,7 +386,7 @@ cpdef intptr_t plan_many_r2c_float(int rank, n, int batch, intptr_t in_, inembed
     cdef intptr_t ret
     with nogil:
         ret = <intptr_t>fftwf_plan_many_dft_r2c(rank, <const int*>(_n_.data()), batch, <float*>in_, <const int*>(_inembed_.data()), istride, idist, <fftwf_complex*>out, <const int*>(_onembed_.data()), ostride, odist, flags)
-    check_plan(<intptr_t>ret)
+    check_plan(ret)
     return ret
 
 
@@ -401,7 +401,7 @@ cpdef intptr_t plan_many_c2r_float(int rank, n, int batch, intptr_t in_, inembed
     cdef intptr_t ret
     with nogil:
         ret = <intptr_t>fftwf_plan_many_dft_c2r(rank, <const int*>(_n_.data()), batch, <fftwf_complex*>in_, <const int*>(_inembed_.data()), istride, idist, <float*>out, <const int*>(_onembed_.data()), ostride, odist, flags)
-    check_plan(<intptr_t>ret)
+    check_plan(ret)
     return ret
 
 
@@ -422,7 +422,7 @@ cpdef void execute_c2r_float(intptr_t plan, intptr_t idata, intptr_t odata) exce
 
 cpdef int init_threads_double() except 0:
     """See `fftw_init_threads`."""
-    cdef intptr_t ret
+    cdef int ret
     with nogil:
         ret = fftw_init_threads()
     check_init_threads(ret)
@@ -431,7 +431,7 @@ cpdef int init_threads_double() except 0:
 
 cpdef int init_threads_float() except 0:
     """See `fftwf_init_threads`."""
-    cdef intptr_t ret
+    cdef int ret
     with nogil:
         ret = fftwf_init_threads()
     check_init_threads(ret)
@@ -450,7 +450,7 @@ cpdef void plan_with_nthreads_float(int nthreads) except*:
 
 cpdef int planner_nthreads_double() except? 0:
     """See `fftw_planner_nthreads`."""
-    cdef intptr_t ret
+    cdef int ret
     with nogil:
         ret = fftw_planner_nthreads()
     check_nthreads(ret)
@@ -459,7 +459,7 @@ cpdef int planner_nthreads_double() except? 0:
 
 cpdef int planner_nthreads_float() except? 0:
     """See `fftwf_planner_nthreads`."""
-    cdef intptr_t ret
+    cdef int ret
     with nogil:
         ret = fftwf_planner_nthreads()
     check_nthreads(ret)

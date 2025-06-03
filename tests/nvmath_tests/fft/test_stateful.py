@@ -1400,7 +1400,7 @@ def test_reset_operand_decreasing_alignment(
                     assert_norm_close(res, ref, exec_backend=exec_backend, axes=axes)
                 except AssertionError as e:
                     raise AssertionError(
-                        f"The output and reference are not close for " f"tesnor aligned to {alignment} (i={i})"
+                        f"The output and reference are not close for tesnor aligned to {alignment} (i={i})"
                     ) from e
     except ValueError as e:
         if (

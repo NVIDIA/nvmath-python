@@ -25,14 +25,14 @@ class MatmulLoopCpp:
         #include <cublasdx.hpp>
         using namespace cublasdx;
 
-        using GEMM = decltype( Size< { m }, { n }, { k } >()
+        using GEMM = decltype( Size< {m}, {n}, {k} >()
                                + Precision<float>()
-                               + Type< type::{ data_type }>()
+                               + Type< type::{data_type}>()
                                + Function<function::MM>()
-                               + TransposeMode< transpose_mode::{ transpose_mode.a }, transpose_mode::{ transpose_mode.b }>()
-                               + BlockDim<{ block_size }>()
+                               + TransposeMode< transpose_mode::{transpose_mode.a}, transpose_mode::{transpose_mode.b}>()
+                               + BlockDim<{block_size}>()
                                + Block()
-                               + SM<{ sm[0] * 100 + sm[1] * 10 }>()
+                               + SM<{sm[0] * 100 + sm[1] * 10}>()
                               );
 
         __device__ const unsigned int shared_memory_size = GEMM::shared_memory_size;
@@ -41,11 +41,12 @@ class MatmulLoopCpp:
                                void* b_void,
                                void* c_void) {{
 
-            const GEMM::value_type* a = (const GEMM::value_type*) a_void;
-            const GEMM::value_type* b = (const GEMM::value_type*) b_void;
-            GEMM::value_type* c = (GEMM::value_type*) c_void;
+            using value_type = float;
 
-            using value_type = GEMM::value_type;
+            const value_type* a = (const value_type*) a_void;
+            const value_type* b = (const value_type*) b_void;
+            value_type* c = (value_type*) c_void;
+
             extern __shared__ __align__(16) char smem[];
 
             value_type* smem_a = reinterpret_cast<value_type*>(smem);
@@ -65,8 +66,8 @@ class MatmulLoopCpp:
             }}
             __syncthreads();
 
-            for (unsigned int i = 0; i < { repeat }; i++) {{
-                GEMM().execute(1.0, smem_a, smem_b, 0.0, smem_c);
+            for (unsigned int i = 0; i < {repeat}; i++) {{
+                GEMM().execute(value_type(1.0), smem_a, smem_b, value_type(0.0), smem_c);
             }}
 
             __syncthreads();
@@ -89,7 +90,7 @@ class MatmulLoopCpp:
         # - cuobjdump --dump-resource-usage ${CUBIN}
         mangled = "_Z6kernelPvS_S_"
 
-        self._module, self._kernel, self._shared_memory_size = compile_cpp_kernel(cpp, sm, mangled)
+        self._module, self._kernel, self._shared_memory_size = compile_cpp_kernel(cpp, mangled)
         self._precision = precision
         self._size = size
         self._repeat = repeat

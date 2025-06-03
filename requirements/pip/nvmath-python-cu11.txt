@@ -1,3 +1,4 @@
+cuda-core[cu11] == 0.2.*
 cupy-cuda11x
 nvidia-cublas-cu11
 nvidia-cuda-nvrtc-cu11

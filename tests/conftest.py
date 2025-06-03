@@ -8,17 +8,58 @@
 
 from collections.abc import Iterable
 import datetime
+import os
 
 import hypothesis
 
+ci_phases = [
+    hypothesis.Phase.explicit,
+    # Skip reuse phase on CI because runners do not cache previous runs
+    hypothesis.Phase.generate,
+    hypothesis.Phase.target,
+    hypothesis.Phase.shrink,
+]
 hypothesis.settings.register_profile(
-    "nvmath",
+    "nightly",
+    deadline=datetime.timedelta(seconds=10),
     derandomize=False,
-    deadline=datetime.timedelta(minutes=5),
-    verbosity=hypothesis.Verbosity.normal,
+    max_examples=10_000,
     print_blob=True,
+    verbosity=hypothesis.Verbosity.normal,
+    phases=ci_phases,
 )
-hypothesis.settings.load_profile("nvmath")
+hypothesis.settings.register_profile(
+    "merge",
+    deadline=datetime.timedelta(seconds=10),
+    derandomize=False,
+    max_examples=1_000,
+    print_blob=True,
+    verbosity=hypothesis.Verbosity.normal,
+    phases=ci_phases,
+)
+hypothesis.settings.register_profile(
+    "local",
+    deadline=datetime.timedelta(seconds=10),
+    derandomize=False,
+    max_examples=100,
+    phases=[
+        hypothesis.Phase.explicit,
+        hypothesis.Phase.reuse,
+        hypothesis.Phase.generate,
+        hypothesis.Phase.target,
+        hypothesis.Phase.shrink,
+        # https://github.com/HypothesisWorks/hypothesis/issues/4339
+        # hypothesis.Phase.explain,
+    ],
+    print_blob=True,
+    verbosity=hypothesis.Verbosity.normal,
+)
+if os.environ.get("NVMATH_NIGHTLY", default="").lower() == "true":
+    hypothesis.settings.load_profile("nightly")
+elif os.environ.get("CI", default="").lower() == "true":
+    hypothesis.settings.load_profile("merge")
+else:
+    hypothesis.settings.load_profile("local")
 
 
 def pytest_configure(config):

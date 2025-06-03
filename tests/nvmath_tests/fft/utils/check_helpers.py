@@ -583,9 +583,9 @@ def assert_norm_close(
     exec_backend=None,
 ):
     assert a.shape == a_ref.shape, f"{a.shape} != {a_ref.shape}"
-    assert get_framework_from_array(a) == get_framework_from_array(
-        a_ref
-    ), f"{get_framework_from_array(a)} != {get_framework_from_array(a_ref)}"
+    assert get_framework_from_array(a) == get_framework_from_array(a_ref), (
+        f"{get_framework_from_array(a)} != {get_framework_from_array(a_ref)}"
+    )
     dtype = get_dtype_from_array(a)
     ref_dtype = get_dtype_from_array(a_ref)
     assert dtype == ref_dtype, f"{dtype} != {ref_dtype}"
@@ -674,25 +674,37 @@ def intercept_default_allocations(monkeypatch):
 
     from nvmath.memory import (
         _RawCUDAMemoryManager,
-        _CupyCUDAMemoryManager,
-        _TorchCUDAMemoryManager,
     )
 
     def get_memalloc_wrapper(manager, alloc_key):
-        actual = manager.memalloc
+        actual = manager.memalloc_async
 
-        def wrapper(self, size):
+        def wrapper(self, *args, **kwargs):
             allocations[alloc_key] += 1
-            return actual(self, size)
+            return actual(self, *args, **kwargs)
 
         return wrapper
 
-    for manager, alloc_key in (
+    managers = [
         (_RawCUDAMemoryManager, "raw"),
-        (_CupyCUDAMemoryManager, "cupy"),
-        (_TorchCUDAMemoryManager, "torch"),
-    ):
-        monkeypatch.setattr(manager, "memalloc", get_memalloc_wrapper(manager, alloc_key))
+    ]
+
+    if cp is not None:
+        from nvmath.memory import _CupyCUDAMemoryManager
+
+        managers += [
+            (_CupyCUDAMemoryManager, "cupy"),
+        ]
+
+    if torch is not None:
+        from nvmath.memory import _TorchCUDAMemoryManager
+
+        managers += [
+            (_TorchCUDAMemoryManager, "torch"),
+        ]
+
+    for manager, alloc_key in managers:
+        monkeypatch.setattr(manager, "memalloc_async", get_memalloc_wrapper(manager, alloc_key))
 
     return allocations
 

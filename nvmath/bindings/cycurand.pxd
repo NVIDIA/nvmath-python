@@ -28,6 +28,7 @@ ctypedef enum curandStatus "curandStatus":
     CURAND_STATUS_INITIALIZATION_FAILED "CURAND_STATUS_INITIALIZATION_FAILED" = 203
     CURAND_STATUS_ARCH_MISMATCH "CURAND_STATUS_ARCH_MISMATCH" = 204
     CURAND_STATUS_INTERNAL_ERROR "CURAND_STATUS_INTERNAL_ERROR" = 999
+    _CURANDSTATUS_T_INTERNAL_LOADING_ERROR "_CURANDSTATUS_T_INTERNAL_LOADING_ERROR" = -42
 
 ctypedef curandStatus curandStatus_t "curandStatus_t"
 
@@ -114,32 +115,32 @@ ctypedef unsigned long long curandDirectionVectors64_t[64]
 # Functions
 ###############################################################################
 
-cdef curandStatus_t curandCreateGenerator(curandGenerator_t* generator, curandRngType_t rng_type) except* nogil
-cdef curandStatus_t curandCreateGeneratorHost(curandGenerator_t* generator, curandRngType_t rng_type) except* nogil
-cdef curandStatus_t curandDestroyGenerator(curandGenerator_t generator) except* nogil
-cdef curandStatus_t curandGetVersion(int* version) except* nogil
-cdef curandStatus_t curandGetProperty(libraryPropertyType type, int* value) except* nogil
-cdef curandStatus_t curandSetStream(curandGenerator_t generator, cudaStream_t stream) except* nogil
-cdef curandStatus_t curandSetPseudoRandomGeneratorSeed(curandGenerator_t generator, unsigned long long seed) except* nogil
-cdef curandStatus_t curandSetGeneratorOffset(curandGenerator_t generator, unsigned long long offset) except* nogil
-cdef curandStatus_t curandSetGeneratorOrdering(curandGenerator_t generator, curandOrdering_t order) except* nogil
-cdef curandStatus_t curandSetQuasiRandomGeneratorDimensions(curandGenerator_t generator, unsigned int num_dimensions) except* nogil
-cdef curandStatus_t curandGenerate(curandGenerator_t generator, unsigned int* outputPtr, size_t num) except* nogil
-cdef curandStatus_t curandGenerateLongLong(curandGenerator_t generator, unsigned long long* outputPtr, size_t num) except* nogil
-cdef curandStatus_t curandGenerateUniform(curandGenerator_t generator, float* outputPtr, size_t num) except* nogil
-cdef curandStatus_t curandGenerateUniformDouble(curandGenerator_t generator, double* outputPtr, size_t num) except* nogil
-cdef curandStatus_t curandGenerateNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except* nogil
-cdef curandStatus_t curandGenerateNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except* nogil
-cdef curandStatus_t curandGenerateLogNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except* nogil
-cdef curandStatus_t curandGenerateLogNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except* nogil
-cdef curandStatus_t curandCreatePoissonDistribution(double lambda_, curandDiscreteDistribution_t* discrete_distribution) except* nogil
-cdef curandStatus_t curandDestroyDistribution(curandDiscreteDistribution_t discrete_distribution) except* nogil
-cdef curandStatus_t curandGeneratePoisson(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_) except* nogil
-cdef curandStatus_t curandGeneratePoissonMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_, curandMethod_t method) except* nogil
-cdef curandStatus_t curandGenerateBinomial(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p) except* nogil
-cdef curandStatus_t curandGenerateBinomialMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p, curandMethod_t method) except* nogil
-cdef curandStatus_t curandGenerateSeeds(curandGenerator_t generator) except* nogil
-cdef curandStatus_t curandGetDirectionVectors32(curandDirectionVectors32_t* vectors[], curandDirectionVectorSet_t set) except* nogil
-cdef curandStatus_t curandGetScrambleConstants32(unsigned int** constants) except* nogil
-cdef curandStatus_t curandGetDirectionVectors64(curandDirectionVectors64_t* vectors[], curandDirectionVectorSet_t set) except* nogil
-cdef curandStatus_t curandGetScrambleConstants64(unsigned long long** constants) except* nogil
+cdef curandStatus_t curandCreateGenerator(curandGenerator_t* generator, curandRngType_t rng_type) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandCreateGeneratorHost(curandGenerator_t* generator, curandRngType_t rng_type) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandDestroyGenerator(curandGenerator_t generator) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGetVersion(int* version) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGetProperty(libraryPropertyType type, int* value) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandSetStream(curandGenerator_t generator, cudaStream_t stream) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandSetPseudoRandomGeneratorSeed(curandGenerator_t generator, unsigned long long seed) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandSetGeneratorOffset(curandGenerator_t generator, unsigned long long offset) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandSetGeneratorOrdering(curandGenerator_t generator, curandOrdering_t order) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandSetQuasiRandomGeneratorDimensions(curandGenerator_t generator, unsigned int num_dimensions) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerate(curandGenerator_t generator, unsigned int* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateLongLong(curandGenerator_t generator, unsigned long long* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateUniform(curandGenerator_t generator, float* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateUniformDouble(curandGenerator_t generator, double* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateLogNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateLogNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandCreatePoissonDistribution(double lambda_, curandDiscreteDistribution_t* discrete_distribution) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandDestroyDistribution(curandDiscreteDistribution_t discrete_distribution) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGeneratePoisson(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGeneratePoissonMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_, curandMethod_t method) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateBinomial(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateBinomialMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p, curandMethod_t method) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGenerateSeeds(curandGenerator_t generator) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGetDirectionVectors32(curandDirectionVectors32_t* vectors[], curandDirectionVectorSet_t set) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGetScrambleConstants32(unsigned int** constants) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGetDirectionVectors64(curandDirectionVectors64_t* vectors[], curandDirectionVectorSet_t set) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef curandStatus_t curandGetScrambleConstants64(unsigned long long** constants) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil

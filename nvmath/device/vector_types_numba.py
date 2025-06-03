@@ -190,7 +190,7 @@ def make_vector(
 
     vector.__name__ = f"float{float_bitwidth}x{vector_length}"
     vector.__doc__ = f"""
-    float{float_bitwidth}x{vector_length}({'x, y' if vector_length==2 else 'x, y, z, w'})
+    float{float_bitwidth}x{vector_length}({"x, y" if vector_length == 2 else "x, y, z, w"})
 
     Create a Numba compliant vector object for float{float_bitwidth} with vector length {vector_length}.
     """

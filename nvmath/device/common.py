@@ -2,11 +2,26 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import re
+from abc import abstractmethod
 import tempfile
+
+import numpy as np
+from numba import cuda
 
 from .common_cuda import CodeType
 
+from nvmath.bindings import mathdx
+
+__all__ = [
+    "make_tensor",
+    "OpaqueTensor",
+    "Layout",
+    "axpby",
+    "copy",
+    "copy_fragment",
+    "clear",
+    "copy_wait",
+]
 
 SHARED_DEVICE_DOCSTRINGS = {
     "compiler": "A string to specify the compiler for the device code, currently supports ``None`` (default) and ``'numba'``",
@@ -24,7 +39,7 @@ The computation precision specified as a numpy float dtype, currently supports `
 # TODO: maybe pre-compile regular expression
 def make_binary_tempfile(content, suffix):
     # TODO: may need to set it False for Windows? (refer to Python API doc)
-    tmp = tempfile.NamedTemporaryFile(mode="w+b", suffix=suffix, delete=True)
+    tmp = tempfile.NamedTemporaryFile(mode="w+b", suffix=suffix, delete=True)  # noqa: SIM115
     tmp.write(content)
     tmp.flush()
     return tmp
@@ -45,11 +60,6 @@ def check_contains(set, key):
         raise ValueError(f"{key} must be in {set}")
 
 
-def check_dim3(name, arg):
-    if len(arg) != 3:
-        raise ValueError(f"{name} should be a length-3 tuple ; got {name} = {arg}")
-
-
 def check_code_type(code_type):
     if isinstance(code_type, CodeType):
         if code_type.cc.major < 7:
@@ -61,28 +71,78 @@ def check_code_type(code_type):
         raise ValueError(f"code_type should be an instance of CodeType ; got code_type = {code_type}")
 
 
-def find_unsigned(name, txt):
-    regex = re.compile(f".global .align 4 .u32 {name} = ([0-9]*);", re.MULTILINE)
-    found = regex.search(txt)
-    if found is None:  # TODO: improve regex logic
-        regex = re.compile(f".global .align 4 .u32 {name};", re.MULTILINE)
-        found = regex.search(txt)
-        if found is not None:
-            return 0
-        else:
-            raise ValueError(f"{name} not found in text")
-    else:
-        return int(found.group(1))
+def pad_or_truncate(list, target_len):
+    return list[:target_len] + [0] * (target_len - len(list))
 
 
-def find_mangled_name(name, txt):
-    regex = re.compile(f"[_a-zA-Z0-9]*{name}[_a-zA-Z0-9]*", re.MULTILINE)
-    return regex.search(txt).group(0)
+class Layout:
+    """Layout for the OpaqueTensor"""
+
+    def __init__(self):
+        raise RuntimeError("Layout should not be called directly.")
+
+    @property
+    @abstractmethod
+    def size(self) -> int:
+        """
+        Number of valid elements in a tensor. This is simply a product of all
+        shape dimensions.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def cosize(self) -> int:
+        """
+        Returns a distance from last element of a tensor to its first element.
+        It describes how many elements does the argument layout span.
+        """
+        pass
 
 
-def find_dim2(name, txt):
-    return (find_unsigned(f"{name}_x", txt), find_unsigned(f"{name}_y", txt))
+class OpaqueTensor:
+    buffer: np.ndarray
+    layout: Layout
+    leading_dimension: int | None
+
+    def __init__(self, *args):
+        raise RuntimeError("OpaqueTensor should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
 
-def find_dim3(name, txt):
-    return (find_unsigned(f"{name}_x", txt), find_unsigned(f"{name}_y", txt), find_unsigned(f"{name}_z", txt))
+def make_tensor(array: np.ndarray, layout: Layout) -> OpaqueTensor:
+    raise RuntimeError("make_tensor should not be called directly outside of a numba.cuda.jit(...) kernel.")
+
+
+if mathdx.get_version() < 201:
+    # DCE bug https://github.com/numba/numba/issues/10037
+    # @cuda.jit(inline="always")
+    @cuda.jit
+    def axpby(alpha: float, x_tensor: OpaqueTensor, beta: float, y_tensor: OpaqueTensor) -> None:
+        """
+        Computes product alpha*x_tensor + beta*y_tensor and writes it to y_tensor.
+        """
+        # WARN: this is not a reference implementation and only for internal use.
+        alpha = y_tensor.buffer.dtype.type(alpha)
+        beta = y_tensor.buffer.dtype.type(beta)
+        for i in range(y_tensor.layout.size):
+            y_tensor.buffer[i] = alpha * x_tensor.buffer[i] + beta * y_tensor.buffer[i]
+else:
+
+    def axpby(alpha: float, x_tensor: OpaqueTensor, beta: float, y_tensor: OpaqueTensor) -> None:
+        raise RuntimeError("axpby should not be called directly outside of a numba.cuda.jit(...) kernel.")
+
+
+def copy(src: OpaqueTensor, dst: OpaqueTensor):
+    raise RuntimeError("copy should not be called directly outside of a numba.cuda.jit(...) kernel.")
+
+
+def copy_fragment(src: OpaqueTensor, dst: OpaqueTensor):
+    raise RuntimeError("copy_fragment should not be called directly outside of a numba.cuda.jit(...) kernel.")
+
+
+def clear(arr: OpaqueTensor):
+    raise RuntimeError("copy_c should not be called directly outside of a numba.cuda.jit(...) kernel.")
+
+
+def copy_wait():
+    raise RuntimeError("copy_wait should not be called directly outside of a numba.cuda.jit(...) kernel.")

@@ -7,15 +7,15 @@
 __all__ = ["BaseCUDAMemoryManager", "MemoryPointer"]
 
 from abc import abstractmethod
+from collections.abc import Callable
 from typing import Protocol, runtime_checkable
+import logging
 import weakref
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
+import cuda.core.experimental as ccx
 
-from nvmath._internal import utils
+from nvmath.internal import utils
+from nvmath.internal.package_ifc_cuda import CUDAPackage
 
 
 class MemoryPointer:
@@ -30,9 +30,10 @@ class MemoryPointer:
     .. seealso:: :class:`numba.cuda.MemoryPointer`
     """
 
-    def __init__(self, device_ptr, size, finalizer):
+    def __init__(self, device_ptr: int, size: int, finalizer: None | Callable[[], None]):
         self.device_ptr = device_ptr
         self.size = size
+        self._finalizer: weakref.finalize | None
         if finalizer is not None:
             self._finalizer = weakref.finalize(self, finalizer)
         else:
@@ -59,9 +60,13 @@ class BaseCUDAMemoryManager(Protocol):
     """
 
     @abstractmethod
-    def memalloc(self, size):
+    def __init__(self, device_id: int, logger: logging.Logger):
+        raise NotImplementedError
+
+    @abstractmethod
+    def memalloc(self, size: int) -> MemoryPointer:
         """
-        Allocate device memory.
+        Allocate device memory synchronously or on the current stream.
 
         Args:
             size: The size of the memory buffer in bytes.
@@ -80,7 +85,42 @@ class BaseCUDAMemoryManager(Protocol):
         raise NotImplementedError
 
 
-class _RawCUDAMemoryManager(BaseCUDAMemoryManager):
+@runtime_checkable
+class BaseCUDAMemoryManagerAsync(Protocol):
+    """
+    Protocol for async memory manager plugins.
+
+    .. seealso:: :class:`BaseCUDAMemoryManager`
+    """
+
+    @abstractmethod
+    def __init__(self, device_id: int, logger: logging.Logger):
+        raise NotImplementedError
+
+    @abstractmethod
+    def memalloc_async(self, size: int, stream: ccx.Stream) -> MemoryPointer:
+        """
+        Allocate device memory asynchronously on the provided stream.
+
+        Args:
+            size: The size of the memory buffer in bytes.
+            stream: A cuda.core.Stream object on which the allocation will be performed.
+
+        Returns:
+            An object that owns the allocated memory and is responsible for releasing it (to
+            the OS or a pool). The object must have an attribute named ``device_ptr``,
+            ``device_pointer``, or ``ptr`` specifying the pointer to the allocated memory
+            buffer. See :class:`MemoryPointer` for an example interface.
+
+        Note:
+            Objects of type :class:`numba.cuda.MemoryPointer` as well as
+            :class:`cupy.cuda.MemoryPointer` meet the requirements listed above for the
+            device memory pointer object.
+        """
+        raise NotImplementedError
+
+
+class _RawCUDAMemoryManager(BaseCUDAMemoryManagerAsync):
     """
     Raw device memory allocator.
 
@@ -89,97 +129,141 @@ class _RawCUDAMemoryManager(BaseCUDAMemoryManager):
         logger (logging.Logger): Python Logger object.
     """
 
-    def __init__(self, device_id, logger):
+    def __init__(self, device_id: int, logger: logging.Logger):
         """
         __init__(device_id)
         """
         self.device_id = device_id
         self.logger = logger
 
-    def memalloc(self, size):
-        with utils.device_ctx(self.device_id):
-            device_ptr = cp.cuda.runtime.malloc(size)
+    def memalloc_async(self, size: int, stream: ccx.Stream) -> MemoryPointer:
+        with utils.device_ctx(self.device_id) as device:
+            buffer = device.allocate(size=size, stream=stream)
+            device_ptr = int(buffer.handle)
 
         self.logger.debug(
-            f"_RawCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
-            f"device = {self.device_id}, stream={cp.cuda.get_current_stream()}"
+            "_RawCUDAMemoryManager (allocate memory): size = %d, ptr = %d, device_id = %d, stream = %s",
+            size,
+            device_ptr,
+            self.device_id,
+            stream,
         )
 
-        def create_finalizer():
+        def finalizer():
+            nonlocal buffer, stream, device_ptr
+            self.logger.debug(
+                "_RawCUDAMemoryManager (release memory): ptr = %d, device_id = %d, stream = %s",
+                device_ptr,
+                self.device_id,
+                stream,
+            )
+            with utils.device_ctx(self.device_id):
+                buffer.close(stream=stream)
+
+        return MemoryPointer(device_ptr, size, finalizer=finalizer)
+
+
+_MEMORY_MANAGER: dict[str, type[BaseCUDAMemoryManager] | type[BaseCUDAMemoryManagerAsync]] = {
+    "_raw": _RawCUDAMemoryManager,
+}
+
+
+try:
+    import cupy as cp
+    from nvmath.internal.package_ifc_cupy import CupyPackage
+
+    class _CupyCUDAMemoryManager(BaseCUDAMemoryManagerAsync):
+        """
+        CuPy device memory allocator.
+
+        Args:
+            device_id: The ID (int) of the device on which memory is to be allocated.
+            logger (logging.Logger): Python Logger object.
+        """
+
+        def __init__(self, device_id: int, logger: logging.Logger):
+            """
+            __init__(device_id)
+            """
+            self.device_id = device_id
+            self.logger = logger
+
+        def memalloc_async(self, size: int, stream) -> MemoryPointer:
+            stream_ctx = CupyPackage.to_stream_context(
+                CupyPackage.create_external_stream(self.device_id, CUDAPackage.to_stream_pointer(stream))
+            )
+            with utils.device_ctx(self.device_id), stream_ctx:
+                cp_mem_ptr = cp.cuda.alloc(size)
+                device_ptr = cp_mem_ptr.ptr
+
+            self.logger.debug(
+                "_CupyCUDAMemoryManager (allocate memory): size = %d, ptr = %d, device_id = %d, stream = %s",
+                size,
+                device_ptr,
+                self.device_id,
+                stream,
+            )
+
             def finalizer():
-                # Note: With UVA there is no need to switch context to the device the memory
-                # belongs to before calling free().
-                cp.cuda.runtime.free(device_ptr)
-                self.logger.debug(f"_RawCUDAMemoryManager (release memory): ptr = {device_ptr}")
+                # The cupy MemoryPointer object is RAII, so we keep a reference to it
+                # until we don't need it anymore.
+                nonlocal cp_mem_ptr, device_ptr
+                self.logger.debug("_CupyCUDAMemoryManager (release memory): ptr = %d", device_ptr)
+                del cp_mem_ptr
 
-            return finalizer
+            return MemoryPointer(device_ptr, size, finalizer=finalizer)
 
-        return MemoryPointer(device_ptr, size, finalizer=create_finalizer())
+    _MEMORY_MANAGER["cupy"] = _CupyCUDAMemoryManager
+
+except ImportError:
+    pass
 
 
-class _CupyCUDAMemoryManager(BaseCUDAMemoryManager):
-    """
-    CuPy device memory allocator.
+try:
+    from torch.cuda import caching_allocator_alloc, caching_allocator_delete
+    from nvmath.internal.package_ifc_torch import TorchPackage
 
-    Args:
-        device_id: The ID (int) of the device on which memory is to be allocated.
-        logger (logging.Logger): Python Logger object.
-    """
-
-    def __init__(self, device_id, logger):
+    class _TorchCUDAMemoryManager(BaseCUDAMemoryManagerAsync):
         """
-        __init__(device_id)
+        Torch caching memory allocator.
+
+        Args:
+            device_id: The ID (int) of the device on which memory is to be allocated.
+            logger (logging.Logger): Python Logger object.
         """
-        self.device_id = device_id
-        self.logger = logger
 
-    def memalloc(self, size):
-        with utils.device_ctx(self.device_id):
-            cp_mem_ptr = cp.cuda.alloc(size)
-            device_ptr = cp_mem_ptr.ptr
+        def __init__(self, device_id: int, logger: logging.Logger):
+            """
+            __init__(device_id)
+            """
+            self.device_id = device_id
+            self.logger = logger
 
-        self.logger.debug(
-            f"_CupyCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
-            f"device = {self.device_id}, stream={cp.cuda.get_current_stream()}"
-        )
+        def memalloc_async(self, size: int, stream: ccx.Stream) -> MemoryPointer:
+            torch_stream = TorchPackage.create_external_stream(self.device_id, CUDAPackage.to_stream_pointer(stream))
+            device_ptr = caching_allocator_alloc(size, device=self.device_id, stream=torch_stream)
 
-        return cp_mem_ptr
+            self.logger.debug(
+                "_TorchCUDAMemoryManager (allocate memory): size = %d, ptr = %d, device_id = %d, stream = %s",
+                size,
+                device_ptr,
+                self.device_id,
+                stream,
+            )
 
-
-class _TorchCUDAMemoryManager(BaseCUDAMemoryManager):
-    """
-    Torch caching memory allocator.
-
-    Args:
-        device_id: The ID (int) of the device on which memory is to be allocated.
-        logger (logging.Logger): Python Logger object.
-    """
-
-    def __init__(self, device_id, logger):
-        """
-        __init__(device_id)
-        """
-        self.device_id = device_id
-        self.logger = logger
-
-    def memalloc(self, size):
-        from torch.cuda import caching_allocator_alloc, caching_allocator_delete, current_stream
-
-        device_ptr = caching_allocator_alloc(size, device=self.device_id)
-
-        self.logger.debug(
-            f"_TorchCUDAMemoryManager (allocate memory): size = {size}, ptr = {device_ptr}, "
-            f"device_id = {self.device_id}, stream={current_stream()}"
-        )
-
-        def create_finalizer():
             def finalizer():
+                nonlocal device_ptr, stream
+                self.logger.debug(
+                    "_TorchCUDAMemoryManager (release memory): ptr = %d, device_id = %d, stream = %s",
+                    device_ptr,
+                    self.device_id,
+                    stream,
+                )
                 caching_allocator_delete(device_ptr)
-                self.logger.debug(f"_TorchCUDAMemoryManager (release memory): ptr = {device_ptr}")
 
-            return finalizer
+            return MemoryPointer(device_ptr, size, finalizer=finalizer)
 
-        return MemoryPointer(device_ptr, size, finalizer=create_finalizer())
+    _MEMORY_MANAGER["torch"] = _TorchCUDAMemoryManager
 
-
-_MEMORY_MANAGER = {"_raw": _RawCUDAMemoryManager, "cupy": _CupyCUDAMemoryManager, "torch": _TorchCUDAMemoryManager}
+except ImportError:
+    pass

@@ -19,7 +19,9 @@ def os_cd(path):
 
 def test_docstrings():
     with os_cd("docs/sphinx"):
-        ret = sphinx.cmd.build.main(["-M", "doctest", ".", os.path.join("../..", "docs/_build/doctest")])
+        ret = sphinx.cmd.build.main(
+            ["-M", "doctest", ".", os.path.join("../..", "docs/_build/doctest"), "--tag", "exclude-nvmath-distributed"]
+        )
         assert ret == 0
 
 

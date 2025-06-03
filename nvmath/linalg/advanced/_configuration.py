@@ -23,10 +23,10 @@ import numpy as _np
 
 from nvmath.bindings import cublas  # type: ignore
 from nvmath.bindings import cublasLt as cublaslt  # type: ignore
-from nvmath._internal import enum_utils
-from nvmath._internal.utils import check_or_create_options
-from nvmath._internal.mem_limit import check_memory_str
-from nvmath.memory import BaseCUDAMemoryManager
+from nvmath.internal import enum_utils
+from nvmath.internal.utils import check_or_create_options
+from nvmath.internal.mem_limit import check_memory_str
+from nvmath.memory import BaseCUDAMemoryManager, BaseCUDAMemoryManagerAsync
 from nvmath._utils import CudaDataType
 
 MatmulEpilog = cublaslt.Epilogue
@@ -69,8 +69,8 @@ class MatmulOptions:
         fast_accumulation (bool) : Enable or disable FP8 fast accumulation mode. The default
             is False (disabled).
 
-        device_id: CUDA device ordinal (used if the MM operands reside on the CPU). Device 0
-            will be used if not specified.
+        device_id: CUDA device ordinal (only used if the operand resides on the CPU). The
+            default value is 0.
 
         handle: Linear algebra library handle. A handle will be created if one is not
             provided.
@@ -106,7 +106,7 @@ class MatmulOptions:
     block_scaling: bool = False
     sm_count_target: int | None = 0
     fast_accumulation: bool | None = False
-    device_id: int | None = None
+    device_id: int = 0
     handle: int | None = None
     logger: Logger | None = None
     memory_limit: int | str | None = r"80%"
@@ -139,7 +139,7 @@ class MatmulOptions:
         if self.blocking not in (True, "auto"):
             raise ValueError("The value specified for blocking must be either True or 'auto'.")
 
-        if self.allocator is not None and not isinstance(self.allocator, BaseCUDAMemoryManager):
+        if self.allocator is not None and not isinstance(self.allocator, BaseCUDAMemoryManager | BaseCUDAMemoryManagerAsync):
             raise TypeError("The allocator must be an object of type that fulfils the BaseCUDAMemoryManager protocol.")
 
 
@@ -290,10 +290,10 @@ class MatmulQuantizationScales:
        :class:`Matmul`, :func:`matmul`
     """
 
-    a : float | None = None
-    b : float | None = None
-    c : float | None = None
-    d : float | None = None
+    a: float | None = None
+    b: float | None = None
+    c: float | None = None
+    d: float | None = None
 
 
 _create_options = enum_utils.create_options_class_from_enum

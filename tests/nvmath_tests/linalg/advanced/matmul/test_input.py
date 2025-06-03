@@ -11,6 +11,11 @@ import numpy as np
 import pytest
 from nvmath.bindings import cublasLt as cublaslt
 
+try:
+    import cupy as cp
+except ModuleNotFoundError:
+    cp = None
+
 from .utils import compare_tensors, random_torch_complex, sample_matrix, assert_tensors_equal, to_numpy, get_framework
 
 
@@ -297,6 +302,17 @@ def test_sliced_batched(slices, framework, use_cuda):
     assert_tensors_equal(matmul(a, b, c, beta=0.2), a @ b + 0.2 * c)
 
 
+def test_sliced_m1_n1():
+    """
+    Tests M=1 and N=1, strides are not 1
+    """
+    a_m1 = sample_matrix("cupy", "float32", (10, 20), True)[2:3, ::2]  # A is [1, 10] with strides [20, 2].
+    b_n1 = sample_matrix("cupy", "float32", (15, 20), True).T[::2, 2:3]  # B is [10, 1] with strides [2, 20]
+
+    result = matmul(a_m1, b_n1)
+    assert_tensors_equal(result, a_m1 @ b_n1)
+
+
 @pytest.mark.parametrize("a_conj", (True, False))
 @pytest.mark.parametrize("b_conj", (True, False))
 @pytest.mark.parametrize("framework", ("torch", "numpy/cupy"))
@@ -451,3 +467,82 @@ def test_unsupported_float8():
     elif (torch.cuda.get_device_properties(0).major, torch.cuda.get_device_properties(0).minor) < (8, 9):
         with pytest.raises(cublaslt.cuBLASLtError):
             matmul(a, b, quantization_scales={"a": 1, "b": 1, "d": 1})
+
+
+@pytest.mark.parametrize(
+    "test_case,expected_error",
+    [
+        ("not_tileable_a", "batch layout for A .* is not tileable"),
+        ("not_tileable_b", "batch layout for B .* is not tileable"),
+        ("batch_shape_mismatch", "batch dimensions of operands A .* and B .* must match"),
+        ("batch_order_mismatch", "batch order of operands A .* and B .* must match"),
+        ("c_m_dimension_mismatch", "The M dimension of the C matrix .* must match the M dimension of A"),
+        ("c_n_dimension_mismatch", "The N dimension of the C matrix .* must match the N dimension of B"),
+        ("c_batch_shape_mismatch", "The batch dimension of operand C .* must match with that of the other operands"),
+        ("c_batch_order_mismatch", "The batch axis order of operand C .* must match with that of the other"),
+        (
+            "c_not_tileable",
+            "The batch layout for C corresponding to shape .* is currently not supported because it is not tileable",
+        ),
+    ],
+)
+def test_batch_matrix_negative(test_case, expected_error):
+    if cp is None:
+        pytest.skip("Cupy is required for this test.")
+    M, K, N = 3, 4, 5
+
+    matrices = {
+        "not_tileable_a": (
+            sample_matrix("cupy", "float32", (2, 3, M, K), True)[:, :2, :, :],
+            sample_matrix("cupy", "float32", (2, 2, K, N), True),
+            None,
+        ),
+        "not_tileable_b": (
+            sample_matrix("cupy", "float32", (2, 2, M, K), True),
+            sample_matrix("cupy", "float32", (2, 3, K, N), True)[:, :2, :, :],
+            None,
+        ),
+        "batch_shape_mismatch": (
+            sample_matrix("cupy", "float32", (2, M, K), True),
+            sample_matrix("cupy", "float32", (3, K, N), True),
+            None,
+        ),
+        "batch_order_mismatch": (
+            sample_matrix("cupy", "float32", (2, 3, M, K), True),
+            cp.transpose(sample_matrix("cupy", "float32", (3, 2, K, N), True), (1, 0, 2, 3)),
+            None,
+        ),
+        "c_m_dimension_mismatch": (
+            sample_matrix("cupy", "float32", (M, K), True),
+            sample_matrix("cupy", "float32", (K, N), True),
+            sample_matrix("cupy", "float32", (M + 1, N), True),
+        ),
+        "c_n_dimension_mismatch": (
+            sample_matrix("cupy", "float32", (M, K), True),
+            sample_matrix("cupy", "float32", (K, N), True),
+            sample_matrix("cupy", "float32", (M, N + 1), True),
+        ),
+        "c_batch_shape_mismatch": (
+            sample_matrix("cupy", "float32", (2, 2, M, K), True),
+            sample_matrix("cupy", "float32", (2, 2, K, N), True),
+            sample_matrix("cupy", "float32", (3, 2, M, N), True),
+        ),
+        "c_batch_order_mismatch": (
+            sample_matrix("cupy", "float32", (2, 3, M, K), True),
+            sample_matrix("cupy", "float32", (2, 3, K, N), True),
+            cp.transpose(sample_matrix("cupy", "float32", (3, 2, M, N), True), (1, 0, 2, 3)),
+        ),
+        "c_not_tileable": (
+            sample_matrix("cupy", "float32", (2, 2, M, K), True),
+            sample_matrix("cupy", "float32", (2, 2, K, N), True),
+            sample_matrix("cupy", "float32", (2, 3, M, N), True)[:, :2, :, :],
+        ),
+    }
+
+    a, b, c = matrices[test_case]
+
+    with pytest.raises(ValueError, match=expected_error):
+        if c is None:
+            matmul(a, b)
+        else:
+            matmul(a, b, c, beta=1.0)

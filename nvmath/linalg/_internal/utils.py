@@ -16,8 +16,10 @@ __all__ = [
     "pointer_aligned_to",
 ]
 
+import typing
+
 from nvmath.bindings import cublasLt as cublaslt
-from nvmath._internal import utils
+from nvmath.internal import utils
 
 HANDLES: dict[int, int] = {}
 
@@ -66,11 +68,11 @@ def axis_order_in_memory(strides):
     return axis_order
 
 
-def calculate_strides(shape, axis_order):
+def calculate_strides(shape: typing.Sequence[int], axis_order: typing.Sequence[int]):
     """
     Calculate the strides for the provided shape and axis order.
     """
-    strides = [None] * len(shape)
+    strides: list[None | int] = [None] * len(shape)
 
     stride = 1
     for axis in axis_order:

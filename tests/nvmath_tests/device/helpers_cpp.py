@@ -2,12 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from cuda import cudart, nvrtc, cuda
 
+from nvmath._utils import PLATFORM_LINUX, PLATFORM_WIN
 from nvmath.device.common_mathdx import CUDA_HOME as _CUDA_HOME
-from nvmath.device.common_mathdx import MATHDX_HOME as _MATHDX_HOME
+from importlib.metadata import files, PackageNotFoundError
 
 from .helpers import CHECK_CUDA, CHECK_CUDART, CHECK_NVRTC, make_args, get_unsigned
+
+_MATHDX_HOME = None
+_CUTLASS_HOME = None
 
 
 def run_and_time(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args):
@@ -58,11 +63,9 @@ def run_and_time(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args
     return time_ms
 
 
-def compile_cpp_kernel(cpp, sm, mangled):
-    print(f"compile_cpp_kernel CUDA_HOME = {_CUDA_HOME}, _MATHDX_HOME = {_MATHDX_HOME}")
+def compile_cpp_kernel(cpp, mangled):
+    print(f"compile_cpp_kernel CUDA_HOME = {_CUDA_HOME}, MATHDX_HOME = {_MATHDX_HOME}")
 
-    # TODO: dx does not support platforms > arch90 for now and version is capped
-    # at 9.0, but we want to compile program against actual architecture.
     err, prop = cudart.cudaGetDeviceProperties(0)
     CHECK_CUDART(err)
     sm = (prop.major, prop.minor)
@@ -71,10 +74,10 @@ def compile_cpp_kernel(cpp, sm, mangled):
         [b"--std=c++17", b"--device-as-default-execution-space", b"-DCUFFTDX_DETAIL_USE_CUDA_STL=1"]
         + [bytes(f"--include-path={h}/include", encoding="ascii") for h in _CUDA_HOME]
         + [
-            bytes(f"--include-path={_MATHDX_HOME}/include/", encoding="ascii"),
+            bytes(f"--include-path={_MATHDX_HOME}/include", encoding="ascii"),
             bytes(f"--include-path={_MATHDX_HOME}/include/cufftdx", encoding="ascii"),
             bytes(f"--include-path={_MATHDX_HOME}/include/cublasdx/include", encoding="ascii"),
-            bytes(f"--include-path={_MATHDX_HOME}/external/cutlass/include/", encoding="ascii"),
+            bytes(f"--include-path={_CUTLASS_HOME}/include", encoding="ascii"),
             bytes(f"--gpu-architecture=sm_{sm[0] * 10 + sm[1]}", encoding="ascii"),
         ]
     )
@@ -113,3 +116,88 @@ def compile_cpp_kernel(cpp, sm, mangled):
     print(f"compile_cpp_kernel shared_memory_size = {shared_memory_size}")
 
     return (module, kernel, shared_memory_size)
+
+
+def check_mathdx_home():
+    # Find mathDx headers
+    global _MATHDX_HOME
+
+    # Try wheel
+    try:
+        _MATHDX_HOME = files("nvidia-mathdx")
+    except PackageNotFoundError:
+        pass
+    else:
+        # use cufftdx.hpp as a proxy
+        _MATHDX_HOME = [f for f in _MATHDX_HOME if "cufftdx.hpp" in str(f)][0]
+        _MATHDX_HOME = os.path.join(os.path.dirname(_MATHDX_HOME.locate()), "..")
+        return
+
+    # Try conda
+    if "CONDA_PREFIX" in os.environ:
+        if PLATFORM_LINUX:
+            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "include")
+        elif PLATFORM_WIN:
+            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "Library", "include")
+        if os.path.isfile(os.path.join(conda_include, "cufftdx.hpp")):
+            _MATHDX_HOME = os.path.join(conda_include, "..")
+            return
+
+    # Try local
+    if "MATHDX_HOME" not in os.environ:
+        raise RuntimeError(
+            "mathDx headers not found. Depending on how you install nvmath-python and other CUDA packages, "
+            "you may need to perform one of the steps below:\n"
+            "   - pip install nvidia-mathdx\n"
+            "   - conda install -c conda-forge mathdx\n"
+            "   - export MATHDX_HOME=/path/to/mathdx"
+        )
+    else:
+        _MATHDX_HOME = os.environ["MATHDX_HOME"]
+
+
+def check_cutlass_home():
+    # Find CUTLASS headers
+    global _CUTLASS_HOME
+
+    # Try bundle
+    if os.path.isdir(os.path.join(_MATHDX_HOME, "external", "cutlass")):
+        _CUTLASS_HOME = os.path.join(_MATHDX_HOME, "external", "cutlass")
+        return
+
+    # Try wheel
+    try:
+        _CUTLASS_HOME = files("nvidia-cutlass")
+    except PackageNotFoundError:
+        pass
+    else:
+        # use cutlass.h as a proxy
+        _CUTLASS_HOME = [f for f in _CUTLASS_HOME if "cutlass.h" in str(f)][0]
+        _CUTLASS_HOME = os.path.join(os.path.dirname(_CUTLASS_HOME.locate()), "../..")
+        return
+
+    # Try conda
+    if "CONDA_PREFIX" in os.environ:
+        if PLATFORM_LINUX:
+            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "include")
+        elif PLATFORM_WIN:
+            conda_include = os.path.join(os.environ["CONDA_PREFIX"], "Library", "include")
+        if os.path.isfile(os.path.join(conda_include, "cutlass", "cutlass.h")):
+            _CUTLASS_HOME = os.path.join(conda_include, "..")
+            return
+
+    # Try local
+    if "CUTLASS_HOME" not in os.environ:
+        raise RuntimeError(
+            "CUTLASS headers not found. Depending on how you install nvmath-python and other CUDA packages, "
+            "you may need to perform one of the steps below:\n"
+            "   - pip install nvidia-cutlass\n"
+            "   - conda install -c conda-forge cutlass\n"
+            "   - export CUTLASS_HOME=/path/to/cutlass"
+        )
+    else:
+        _CUTLASS_HOME = os.environ["CUTLASS_HOME"]
+
+
+check_mathdx_home()
+check_cutlass_home()

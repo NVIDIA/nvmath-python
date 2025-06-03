@@ -36,5 +36,4 @@ API Reference
    CodeType
    ComputeCapability
    CodeType
-   Symbol
    Dim3

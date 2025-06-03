@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["current_device_lto", "ComputeCapability", "CodeType", "ISAVersion", "Code", "Symbol", "Dim3"]
+__all__ = ["current_device_lto", "ComputeCapability", "CodeType", "ISAVersion", "Code", "Dim3"]
 
+from typing import NamedTuple
 from cuda import cudart, cuda
 import logging
 from collections import namedtuple
@@ -37,7 +38,7 @@ class CodeType(namedtuple("CodeType", ("kind", "cc"))):
 
 
 # CC = e.g. SM 9.0 (Hopper)
-class ComputeCapability(namedtuple("ComputeCapability", ("major", "minor"))):
+class ComputeCapability(NamedTuple):
     """
     A namedtuple class that encapsulates the major and minor compute capability.
 
@@ -45,6 +46,14 @@ class ComputeCapability(namedtuple("ComputeCapability", ("major", "minor"))):
         major (int): The major compute capability.
         minor (int): The minor compute capability.
     """
+
+    major: int
+    minor: int
+
+    @property
+    def integer(self) -> int:
+        """Integer representation of the ISAVersion"""
+        return self.major * 100 + self.minor * 10
 
     pass
 
@@ -62,20 +71,8 @@ class Dim3(namedtuple("Dim3", ("x", "y", "z"), defaults=(1, 1, 1))):
     pass
 
 
-class Symbol(namedtuple("symbol", ("variant", "name"))):
-    """
-    A namedtuple class that encapsulates a device function symbol and which API it maps to.
-
-    Attributes:
-        variant (str): A short description of what API this symbol corresponds to.
-        name (str): The (mangled) name of the device function.
-    """
-
-    pass
-
-
 # ISAVersion = e.g. 12.3 (from CUDA 12.3)
-class ISAVersion(namedtuple("ISAVersion", ("major", "minor"))):
+class ISAVersion(NamedTuple):
     """
     A namedtuple class that encapsulates the code version.
 
@@ -84,7 +81,15 @@ class ISAVersion(namedtuple("ISAVersion", ("major", "minor"))):
         minor (int): The minor code version.
     """
 
-    pass
+    major: int
+    minor: int
+
+    @classmethod
+    def from_integer(cls, isa: int):
+        cls.major = isa // 1000
+        cls.minor = (isa % 1000) // 10
+
+        return cls
 
 
 def CHECK_CUDART(err):
@@ -117,14 +122,16 @@ def get_current_device_cc():
     # TODO: dx does not support platforms > arch90 for now
     if (major, minor) > (9, 0):
         logging.info(
-            f"The current device supports compute capability {prop.major}.{prop.minor}, but the generated LTO version is capped at 9.0."
+            "The current device supports compute capability "
+            f"{prop.major}.{prop.minor}, but the generated LTO version is "
+            "capped at 9.0."
         )
         major, minor = 9, 0
     logging.info(f"Using device {device} for default compute capability, found cc = {prop.major}.{prop.minor}")
     return ComputeCapability(major, minor)
 
 
-def get_default_code_type():
+def get_default_code_type() -> CodeType:
     try:
         return CodeType("lto", get_current_device_cc())
     except RuntimeError as e:

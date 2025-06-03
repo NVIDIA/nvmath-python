@@ -43,12 +43,23 @@ def set_device():
     return (prop.major, prop.minor)
 
 
-def random_complex(shape, real_dtype, module=np):
-    return module.random.randn(*shape).astype(real_dtype) + 1.0j * module.random.randn(*shape).astype(real_dtype)
+def random_complex(shape, real_dtype, order="C", module=np) -> np.ndarray:
+    return random_real(shape, real_dtype, order, module=module) + 1.0j * random_real(shape, real_dtype, order, module=module)
 
 
-def random_real(shape, real_dtype, module=np):
-    return module.random.randn(*shape).astype(real_dtype)
+def random_real(shape, real_dtype, order="C", module=np) -> np.ndarray:
+    return module.random.randn(np.prod(shape)).astype(real_dtype).reshape(shape, order=order)
+
+
+def random_int(shape, int_dtype):
+    """
+    Generate random integers in the range [-2, 2) for signed integers and [0, 4)
+    for unsigned integers.
+    """
+    min_val, max_val = 0, 4
+    if issubclass(int_dtype, np.signedinteger):
+        min_val, max_val = -2, 2
+    return np.random.randint(min_val, max_val, size=shape, dtype=int_dtype)
 
 
 def time_this(name, fun, *args, **kwargs):
@@ -75,7 +86,6 @@ def show_FFT_traits(FFT):
     print(f"FFT.size =                 {FFT.size}")
     print(f"FFT.elements_per_thread =  {FFT.elements_per_thread}")
     print(f"FFT.block_dim =            {FFT.block_dim}")
-    print(f"FFT.requires_workspace =   {FFT.requires_workspace}")
     print(f"FFT.workspace_size =       {FFT.workspace_size}")
 
 
@@ -83,9 +93,9 @@ def show_MM_traits(MM):
     print(f"MM.size =                  {MM.size}")
     print(f"MM.files =                 {MM.files}")
     print(f"MM.transpose_mode =        {MM.transpose_mode}")
-    print(f"MM.value_type =            {MM.value_type}")
-    print(f"MM.input_type =            {MM.input_type}")
-    print(f"MM.output_type =           {MM.output_type}")
+    print(f"MM.a_value_type =          {MM.a_value_type}")
+    print(f"MM.b_value_type =          {MM.b_value_type}")
+    print(f"MM.c_value_type =          {MM.c_value_type}")
     print(f"MM.a_dim =                 {MM.a_dim}")
     print(f"MM.b_dim =                 {MM.b_dim}")
     print(f"MM.c_dim =                 {MM.c_dim}")

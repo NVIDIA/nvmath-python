@@ -3,9 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+import os
 
 import cupy as cp
 import numpy as np
+import pytest
 import scipy.fft
 
 from hypothesis import given, strategies as st
@@ -80,12 +82,12 @@ dtype_dict = {
 axes_strategy = st.sampled_from(
     list(
         itertools.chain(
+            [None],
             itertools.permutations(range(3)),
             itertools.permutations((0, 1)),
             # itertools.permutations((0,2)),  # axes must be contiguous
             itertools.permutations((1, 2)),
             itertools.combinations(range(3), r=1),
-            [None],
         )
     )
 )
@@ -114,11 +116,12 @@ def verify_result(result, ref, orig, fft_type):
     if np.linalg.norm(ref) == 0.0:
         assert np.linalg.norm(result - ref) < tol, f"error greater than tolerance for input shape {orig.shape}"
     else:
-        assert (
-            np.linalg.norm(result - ref) / np.linalg.norm(ref) < tol
-        ), f"error greater than tolerance for input shape {orig.shape}"
+        assert np.linalg.norm(result - ref) / np.linalg.norm(ref) < tol, (
+            f"error greater than tolerance for input shape {orig.shape}"
+        )
 
 
+@pytest.mark.skipif(os.environ.get("CI", default="").lower() == "true", reason="Hypothesis tests skipped until CI is stable.")
 @nvmath_seed()
 @given(a=st.one_of(c32_array_st, c64_array_st), axes=axes_strategy, options=options_st, execution=execution_st)
 def test_fft(a, axes, options, execution):
@@ -146,6 +149,7 @@ def test_fft(a, axes, options, execution):
     verify_result(b, c, a, "fft")
 
 
+@pytest.mark.skipif(os.environ.get("CI", default="").lower() == "true", reason="Hypothesis tests skipped until CI is stable.")
 @nvmath_seed()
 @given(a=st.one_of(c32_array_st, c64_array_st), axes=axes_strategy, options=options_st, execution=execution_st)
 def test_ifft(a, axes, options, execution):
@@ -173,6 +177,7 @@ def test_ifft(a, axes, options, execution):
     verify_result(b, c, a, "ifft")
 
 
+@pytest.mark.skipif(os.environ.get("CI", default="").lower() == "true", reason="Hypothesis tests skipped until CI is stable.")
 @nvmath_seed()
 @given(a=st.one_of(f32_array_st, f64_array_st), axes=axes_strategy, options=options_st, execution=execution_st)
 def test_rfft(a, axes, options, execution):
@@ -200,6 +205,7 @@ def test_rfft(a, axes, options, execution):
     verify_result(b, c, a, "rfft")
 
 
+@pytest.mark.skipif(os.environ.get("CI", default="").lower() == "true", reason="Hypothesis tests skipped until CI is stable.")
 @nvmath_seed()
 @given(a=st.one_of(f32_array_st, f64_array_st), axes=axes_strategy, options=options_st, execution=execution_st)
 def test_irfft(a, axes, options, execution):

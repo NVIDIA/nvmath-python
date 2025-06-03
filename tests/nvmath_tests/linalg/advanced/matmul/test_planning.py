@@ -182,16 +182,18 @@ def test_algorithm_not_planned(framework, use_cuda):
     ):
         mm2.execute(algorithm=algos[0])
 
+
 def test_algorithm_ids():
     a = cupy.zeros((10, 10))
     b = cupy.zeros((10, 10))
     with Matmul(a, b) as mm:
         assert len(mm.applicable_algorithm_ids(limit=4)) <= 4
 
+
 def test_algo_attributes():
-    '''
+    """
     Test Algorithm class setter/property
-    '''
+    """
     m, n, k = 24, 24, 24
     a = cupy.random.rand(m, k)
     b = cupy.random.rand(k, n)
@@ -203,52 +205,31 @@ def test_algo_attributes():
         # An attribute may not be supported in all cuBLASLt versions (INVALID_VALUE).
 
         message = "The attribute '{attr}' is not supported in this version."
-        with allow_cublas_unsupported(
-            allow_invalid_value=True,
-            message=message.format(attr='stages')
-        ):
+        with allow_cublas_unsupported(allow_invalid_value=True, message=message.format(attr="stages")):
             if best.capabilities.stages_ids:
                 best.stages = best.capabilities.stages_ids[-1]
                 assert best.stages == best.capabilities.stages_ids[-1]
 
-        with allow_cublas_unsupported(
-            allow_invalid_value=True,
-            message=message.format(attr='split_k')
-        ):
+        with allow_cublas_unsupported(allow_invalid_value=True, message=message.format(attr="split_k")):
             best.split_k = 4
             assert best.split_k == 4
 
-        with allow_cublas_unsupported(
-            allow_invalid_value=True,
-            message=message.format(attr='reduction_scheme')
-        ):
+        with allow_cublas_unsupported(allow_invalid_value=True, message=message.format(attr="reduction_scheme")):
             best.reduction_scheme = best.capabilities.reduction_scheme_mask
             assert best.reduction_scheme == best.capabilities.reduction_scheme_mask
 
-        with allow_cublas_unsupported(
-            allow_invalid_value=True,
-            message=message.format(attr='cta_swizzling')
-        ):
+        with allow_cublas_unsupported(allow_invalid_value=True, message=message.format(attr="cta_swizzling")):
             best.cta_swizzling = True
-            assert best.cta_swizzling == True
+            assert best.cta_swizzling
 
-        with allow_cublas_unsupported(
-            allow_invalid_value=True,
-            message=message.format(attr='custom_option')
-        ):
+        with allow_cublas_unsupported(allow_invalid_value=True, message=message.format(attr="custom_option")):
             best.custom_option = 1
             assert best.custom_option == 1
 
-        with allow_cublas_unsupported(
-            allow_invalid_value=True,
-            message=message.format(attr='inner_shape')
-        ):
+        with allow_cublas_unsupported(allow_invalid_value=True, message=message.format(attr="inner_shape")):
             best.inner_shape = cublaslt.MatmulInnerShape.MMA884
             assert best.inner_shape == cublaslt.MatmulInnerShape.MMA884
 
-        with allow_cublas_unsupported(
-            allow_invalid_value=True,
-            message=message.format(attr='cluster_shape')
-        ):
-            best.cluster_shape = (1,1,1)
-            assert best.cluster_shape == (1,1,1)
+        with allow_cublas_unsupported(allow_invalid_value=True, message=message.format(attr="cluster_shape")):
+            best.cluster_shape = (1, 1, 1)
+            assert best.cluster_shape == (1, 1, 1)

@@ -13,7 +13,7 @@ from nvmath.linalg._internal.matmul_desc_ifc import MatmulDescInterface
 from nvmath.linalg._internal.matrix_layout_ifc import MatrixLayoutInterface
 from nvmath.linalg._internal.matmul_pref_ifc import MatmulPreferenceInterface
 
-from nvmath._internal import typemaps
+from nvmath.internal import typemaps
 
 import pytest
 
@@ -33,22 +33,24 @@ def test_matmul_desc_ifc():
         desc.epilogue = 123
         assert desc.epilogue == 123
 
+
 def test_matrix_layout_ifc():
-    '''
+    """
     Test MatrixLayoutInterface.__getattr__
-    '''
+    """
     a = np.zeros((1, 1), dtype=np.float32)
     with Matmul(a, a) as mm:
-        algorithms = mm.plan()
+        mm.plan()
         layout_a_ifc = MatrixLayoutInterface(mm.a_layout_ptr)
         assert typemaps.DATA_TYPE_TO_NAME[layout_a_ifc.type] == "float32"
 
+
 def test_matmul_pref_ifc():
-    '''
+    """
     Test MatmulPreferenceInterface.__getattr__
-    '''
+    """
     a = np.zeros((1, 1))
     with Matmul(a, a) as mm:
-        algorithms = mm.plan()
+        mm.plan()
         pref_ifc = MatmulPreferenceInterface(mm.preference_ptr)
         assert pref_ifc.max_workspace_bytes == mm.memory_limit

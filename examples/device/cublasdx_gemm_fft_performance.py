@@ -40,7 +40,7 @@ def main():
         size=(m, n, k),
         precision=np.float32,
         data_type="complex",
-        transpose_mode=("non_transposed", "non_transposed"),
+        arrangement=("col_major", "col_major", "col_major"),
         execution="Block",
         block_dim=FFT.block_dim,
         compiler="numba",
@@ -52,17 +52,7 @@ def main():
     storage_size = FFT.storage_size
     stride = FFT.stride
 
-    a_size = MM.a_size
-    b_size = MM.b_size
-
-    a_dim = MM.a_dim
-    b_dim = MM.b_dim
-    c_dim = MM.c_dim
-
-    lda = MM.leading_dimension.a
-    ldb = MM.leading_dimension.b
-    ldc = MM.leading_dimension.c
-    shared_memory_size = max(MM.shared_memory_size, FFT.shared_memory_size)
+    shared_memory_size = max(MM.get_shared_storage_size(), FFT.shared_memory_size)
 
     @cuda.jit(link=MM.files + FFT.files)
     def kernel(a, b, c, alpha, beta, output):
@@ -74,22 +64,23 @@ def main():
         index = cuda.threadIdx.x
 
         smem_a = shared_mem[0:]
-        smem_b = shared_mem[a_size:]
-        smem_c = shared_mem[a_size + b_size :]
+        smem_b = shared_mem[MM.a_size :]
+        smem_c = shared_mem[MM.a_size + MM.b_size :]
+        [lda, ldb, ldc] = MM.leading_dimension
 
         # Load data
-        load_to_shared(a[batch, :, :], smem_a, a_dim, lda)
-        load_to_shared(b[batch, :, :], smem_b, b_dim, ldb)
-        load_to_shared(c[batch, :, :], smem_c, c_dim, ldc)
+        load_to_shared(a[batch, :, :], smem_a, MM.a_dim, lda)
+        load_to_shared(b[batch, :, :], smem_b, MM.b_dim, ldb)
+        load_to_shared(c[batch, :, :], smem_c, MM.c_dim, ldc)
 
         cuda.syncthreads()
 
         # Transform A
-        for i in range(cuda.threadIdx.x, a_size, cuda.blockDim.x):
+        for i in range(cuda.threadIdx.x, MM.a_size, cuda.blockDim.x):
             smem_a[i] = nb_transform(smem_a[i])
 
         # Execute GEMM
-        MM(alpha, smem_a, smem_b, beta, smem_c)
+        MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
         cuda.syncthreads()
 
@@ -110,10 +101,10 @@ def main():
             output[batch, index] = nb_transform(thread_data[i])
             index += stride
 
-    a = cp.array(random_complex((batch_size, *a_dim), np.float32))
-    b = cp.array(random_complex((batch_size, *b_dim), np.float32))
-    c = cp.array(random_complex((batch_size, *c_dim), np.float32))
-    data_test = cp.zeros((batch_size, c_dim[0] * c_dim[1]), dtype=np.complex64)
+    a = cp.array(random_complex((batch_size, *MM.a_dim), np.float32))
+    b = cp.array(random_complex((batch_size, *MM.b_dim), np.float32))
+    c = cp.array(random_complex((batch_size, *MM.c_dim), np.float32))
+    data_test = cp.zeros((batch_size, MM.c_dim[0] * MM.c_dim[1]), dtype=np.complex64)
 
     alpha = 2.0 + 0j
     beta = 3.0 + 0j

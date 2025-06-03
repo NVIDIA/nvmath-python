@@ -121,54 +121,59 @@ class FunctionNotFoundError(RuntimeError): pass
 class NotSupportedError(RuntimeError): pass
 
 
+_err_msg = "The CUDA driver is too old, a driver supporting CUDA >= 11 is required."
+
 cdef tuple get_cublas_dso_version_suffix(int driver_ver):
     # applicable to both cuBLAS and cuBLASLt
-    if 11000 <= driver_ver < 12000:
-        return ('11', '')
-    elif 12000 <= driver_ver < 13000:
+    if 12000 <= driver_ver:
         return ('12', '11', '')
+    elif 11000 <= driver_ver:
+        return ('11', '')
     else:
-        raise NotSupportedError('only CUDA 11/12 driver is supported')
+        raise NotSupportedError(_err_msg)
 
 
 cdef tuple get_cusolver_dso_version_suffix(int driver_ver):
-    if 11000 <= driver_ver < 11010:
-        return ('10', '')
-    elif 11010 <= driver_ver < 13000:
+    if 11010 <= driver_ver:
         return ('11', '10', '')
+    elif 11000 <= driver_ver:
+        return ('10', '')
     else:
-        raise NotSupportedError('only CUDA 11/12 driver is supported')
+        raise NotSupportedError(_err_msg)
 
 
 cdef tuple get_cufft_dso_version_suffix(int driver_ver):
-    if 11000 <= driver_ver < 12000:
-        return ('10', '')
-    elif 12000 <= driver_ver < 13000:
+    if 12000 <= driver_ver:
         return ('11', '10', '')
+    elif 11000 <= driver_ver:
+        return ('10', '')
     else:
-        raise NotSupportedError('only CUDA 11/12 driver is supported')
+        raise NotSupportedError(_err_msg)
 
 
 cdef tuple get_cusparse_dso_version_suffix(int driver_ver):
-    if 11000 <= driver_ver < 12000:
-        return ('11', '')
-    elif 12000 <= driver_ver < 13000:
+    if 12000 <= driver_ver:
         return ('12', '11', '')
+    elif 11000 <= driver_ver:
+        return ('11', '')
     else:
-        raise NotSupportedError('only CUDA 11/12 driver is supported')
+        raise NotSupportedError(_err_msg)
 
 
 cdef tuple get_curand_dso_version_suffix(int driver_ver):
-    if 11000 <= driver_ver < 13000:
+    if 11000 <= driver_ver:
         return ('10', '')
     else:
-        raise NotSupportedError('only CUDA 11/12 driver is supported')
+        raise NotSupportedError(_err_msg)
 
 
 cdef tuple get_nvrtc_dso_version_suffix(int driver_ver):
-    if 11020 <= driver_ver < 12000:
-        return ('11.2',)
-    elif 12000 <= driver_ver < 13000:
+    if 12000 <= driver_ver:
         return ('12', '11.2')
+    elif 11020 <= driver_ver:
+        return ('11.2',)
     else:
-        raise NotSupportedError('only CUDA 11/12 driver is supported')
+        raise NotSupportedError(_err_msg)
+
+cdef tuple get_mathdx_dso_version_suffix(int driver_ver):
+    return ('0',)

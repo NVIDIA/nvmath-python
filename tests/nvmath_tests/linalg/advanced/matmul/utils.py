@@ -70,7 +70,8 @@ def to_numpy(tensor):
     elif isinstance(tensor, np.ndarray):
         return tensor
     else:
-        raise AssertionError()
+        msg = f"Cannot convert to numpy from {type(tensor)}"
+        raise AssertionError(msg)
 
 
 def get_framework(tensor):
@@ -81,7 +82,8 @@ def get_framework(tensor):
     elif isinstance(tensor, np.ndarray):
         return np
     else:
-        raise AssertionError()
+        msg = f"framework of {type(tensor)} is unknown"
+        raise AssertionError(msg)
 
 
 def get_machine_eps(value):
@@ -115,7 +117,7 @@ def assert_tensors_equal(result, reference, atol=None, rtol=None):
     ok = compare_tensors(result, reference, atol=atol, rtol=rtol)
     if not ok:
         print(f"Absdiff: {np.max(np.abs(to_numpy(result) - to_numpy(reference)))}")
-        print(f"Reldiff: {np.max(np.abs(to_numpy(result) - to_numpy(reference)) / (np.abs(to_numpy(reference)) + 0.000001) )}")
+        print(f"Reldiff: {np.max(np.abs(to_numpy(result) - to_numpy(reference)) / (np.abs(to_numpy(reference)) + 0.000001))}")
         print("Result:\n", result)
         print("Reference:\n", reference)
     assert ok
@@ -155,7 +157,7 @@ def matmul_with_random_autotune(*args, p=0.25, **kwargs):
     mm = nvmath.linalg.advanced.Matmul(*args, **{k: kwargs[k] for k in constructor_kwargs if k in kwargs})
     mm.plan(**{k: kwargs[k] for k in plan_kwargs if k in kwargs})
     if matmul_with_random_autotune_rng.random() < p:
-        mm.autotune()
+        mm.autotune(iterations=3)
     return mm.execute(**{k: kwargs[k] for k in execute_kwargs if k in kwargs})
 
 

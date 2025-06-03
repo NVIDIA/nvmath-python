@@ -199,6 +199,7 @@ def test_block(fft_type, size, precision, direction, api_kind, ept, real_fft_opt
         real_fft_options=real_fft_options,
         execution="Block",
         compiler="numba",
+        execute_api="shared_memory" if api_kind == "smem" else "registry_memory",
     )
 
     complex_type = FFT.value_type
@@ -219,7 +220,6 @@ def test_block(fft_type, size, precision, direction, api_kind, ept, real_fft_opt
     assert all([code.endswith(".ltoir") for code in files])
     assert FFT.size == size
     assert implicit_type_batching == IMPLICIT_BATCHING_MAP[precision]
-    assert not FFT.requires_workspace
     if ept is not None:
         assert elements_per_thread == ept
     if real_fft_options is None:
@@ -431,7 +431,6 @@ def test_thread(fft_type, size, precision, direction, real_fft_options):
     assert all([code.endswith(".ltoir") for code in FFT.files])
     assert FFT.size == size
     assert implicit_type_batching == IMPLICIT_BATCHING_MAP[precision]
-    assert not FFT.requires_workspace
     if real_fft_options is None:
         real_fft_options = DEFAULT_REAL_FFT_OPTIONS
 

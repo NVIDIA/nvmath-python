@@ -28,12 +28,12 @@ class FFTConvCpp:
         #include <cufftdx.hpp>
         using namespace cufftdx;
 
-        using Base = decltype(  Size<{ size }>()
-                            + Precision<{ 'float' if precision == np.float32 else 'double' }>()
-                            + Type<fft_type::{ fft_type }>()
-                            + SM<{ sm[0] * 100 + sm[1] * 10 }>()
-                            + FFTsPerBlock<{ ffts_per_block }>()
-                            + ElementsPerThread<{ elements_per_thread }>()
+        using Base = decltype(  Size<{size}>()
+                            + Precision<{"float" if precision == np.float32 else "double"}>()
+                            + Type<fft_type::{fft_type}>()
+                            + SM<{sm[0] * 100 + sm[1] * 10}>()
+                            + FFTsPerBlock<{ffts_per_block}>()
+                            + ElementsPerThread<{elements_per_thread}>()
                             + Block()
                             );
 
@@ -62,12 +62,12 @@ class FFTConvCpp:
             extern __shared__ complex_type shared_mem[];
 
             const unsigned global_fft_id = blockIdx.x * Fwd::ffts_per_block + threadIdx.y;
-            const unsigned offset = global_fft_id * { size };
+            const unsigned offset = global_fft_id * {size};
 
             // Load
             for(unsigned i = 0; i < Fwd::elements_per_thread; i++) {{
                 const unsigned idx = threadIdx.x + i * Fwd::stride;
-                if(idx < { size }) {{
+                if(idx < {size}) {{
                     thread_data[i] = input[offset + idx];
                 }}
             }}
@@ -78,7 +78,7 @@ class FFTConvCpp:
             // Scale values
             for(unsigned i = 0; i < Fwd::elements_per_thread; i++) {{
                 const unsigned idx = threadIdx.x + i * Fwd::stride;
-                if(idx < { size }) {{
+                if(idx < {size}) {{
                     thread_data[i] *= filter[offset + idx];
                 }}
             }}
@@ -89,7 +89,7 @@ class FFTConvCpp:
             // Save results
             for(unsigned i = 0; i < Fwd::elements_per_thread; i++) {{
                 const unsigned idx = threadIdx.x + i * Fwd::stride;
-                if(idx < { size }) {{
+                if(idx < {size}) {{
                     output[offset + idx] = thread_data[i];
                 }}
             }}
@@ -105,7 +105,7 @@ class FFTConvCpp:
         mangled = "_Z6kernelPvS_S_"
 
         self._precision = precision
-        self._module, self._kernel, self._shared_memory_size = compile_cpp_kernel(cpp, sm, mangled)
+        self._module, self._kernel, self._shared_memory_size = compile_cpp_kernel(cpp, mangled)
         self._size = size
         self._block_dim = (size // elements_per_thread, ffts_per_block, 1)
         self._ffts_per_block = ffts_per_block

@@ -67,6 +67,24 @@ needed; the dependencies are pulled via extras).
           FFTW3 (non-guru) API. Ensure ``LD_LIBRARY_PATH`` includes this
           library if it is not already in the PATH.
 
+   * - ``pip install nvmath-python[cu12-distributed]``
+     - Install nvmath-python along with all MGMN optional dependencies (wheels for mpi4py,
+       NVSHMEM, cuFFTMp, ...) to support multi-GPU multi-node APIs.
+
+       **Note**: Users must provide an MPI implementation.
+
+   * - ``pip install nvmath-python[cu12,dx] 'nvidia-cuda-nvcc-cu12==12.8.*' 'nvidia-cuda-nvrtc-cu12==12.8.*' --extra-index-url https://download.pytorch.org/whl/cu128 torch``
+     - Install nvmath-python along with all CUDA 12 optional dependencies to support
+       nvmath.device APIs and a PyTorch built with CTK 12.8.
+
+       **Note**: PyTorch has strict pinnings for some CUDA components, and builds of PyTorch
+       lag behind the latest CUDA component releases. We must therefore explicitly require
+       that the nvcc and nvrtc components installed for device extensions match; otherwise,
+       pip will create a mismatched environment with CTK components from different releases.
+       Verbose installation commands such as the the one here are necessary because of
+       limitations of the current wheel format and Python package index. Please see the
+       PyTorch installation instructions for releases built with other CTK versions.
+
 The options below are for adventurous users who want to manage most of the dependencies
 themselves. The following assumes that **system CTK is installed**.
 
@@ -98,6 +116,13 @@ themselves. The following assumes that **system CTK is installed**.
        2. To use :mod:`nvmath.device` APIs, set ``CUDA_HOME`` (or ``CUDA_PATH``)
           to point to the system CTK.
 
+   * - ``pip install nvmath-python[sysctk12] mpi4py``
+     - Install nvmath-python and mpi4py along with no MGMN optional dependencies to support
+       multi-GPU multi-node APIs.
+
+       **Note**: Users must provide an MPI implementation and the required cuMp libraries
+       and dependencies (NVSHMEM, cuFFTMp, ...).
+
 For system admins or expert users, ``pip install nvmath-python`` would be a bare minimal
 installation (very lightweight). This allows fully explicit control of all dependencies.
 
@@ -115,16 +140,16 @@ Conda packages can be installed from the `conda-forge <https://conda-forge.org>`
      - Description
    * - ``conda install -c conda-forge nvmath-python cuda-version=11``
      - Install nvmath-python along with all CUDA 11 optional
-       dependencies (wheels for cuBLAS/cuFFT/... and CuPy) to support
+       dependencies (packages for cuBLAS/cuFFT/... and CuPy) to support
        nvmath host APIs.
    * - ``conda install -c conda-forge nvmath-python cuda-version=12``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (wheels for cuBLAS/cuFFT/... and CuPy) to support
+       dependencies (packages for cuBLAS/cuFFT/... and CuPy) to support
        nvmath host APIs.
-   * - ``conda install -c conda-forge -c rapidsai nvmath-python-dx "pynvjitlink>=0.2"
+   * - ``conda install -c conda-forge -c rapidsai nvmath-python-dx "pynvjitlink>=0.6"
        cuda-version=12``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (wheels for cuBLAS/cuFFT/..., CuPy, Numba,
+       dependencies (packages for cuBLAS/cuFFT/..., CuPy, Numba,
        pynvjitlink, ...) to support nvmath host & device APIs (which
        only supports CUDA 12).
 
@@ -148,6 +173,14 @@ Conda packages can be installed from the `conda-forge <https://conda-forge.org>`
           provide the path to an alternate shared object which implements the
           FFTW3 (non-guru) API. ``LD_LIBRARY_PATH`` should be set properly to
           include this library if it is not already in the PATH.
+
+   * - ``conda install -c conda-forge nvmath-python-distributed``
+     - Install nvmath-python along with all MGMN optional dependencies (packages for mpi4py,
+       NVSHMEM, cuFFTMp, MPI, ...) to support multi-GPU multi-node APIs.
+
+       **Note**: conda-forge provides a pass-through MPI package variant that may be used in
+       order to use a system-installed MPI instead of the conda-forge-provided MPI
+       implementations.
 
 **Notes**:
 
@@ -220,7 +253,7 @@ Below we provide a summary of requirements to support all nvmath-python function
 dependency is *required* unless stated otherwise.
 
 .. list-table::
-   :widths: 25 25 25 25 25
+   :widths: 25 25 25 25 25 25
    :header-rows: 1
 
    * -
@@ -228,10 +261,12 @@ dependency is *required* unless stated otherwise.
      - When Running - host APIs
      - When Running - device APIs
      - When Running - host API callbacks
+     - When Running - distributed APIs
    * - CPU architecture & OS
      - linux-64, linux-aarch64, win-64
      - linux-64, linux-aarch64, win-64
      - linux-64, linux-aarch64 [1]_
+     - linux-64, linux-aarch64
      - linux-64, linux-aarch64
    * - GPU hardware
      -
@@ -240,6 +275,9 @@ dependency is *required* unless stated otherwise.
        | *Optional*: needed if the execution space is GPU.
      - Compute Capability 7.0+ (Volta and above)
      - Compute Capability 7.0+ (Volta and above)
+     - `Data Center GPU <https://developer.nvidia.com/cuda-gpus>`_
+       with Compute Capability 7.0+ (Volta and above).
+       GPU connectivity: :cufftmp_hw:`requirements`
    * - CUDA driver [2]_
      -
      - | 450.80.02+ (Linux) / 450.39+ (Windows) with CUDA >=11.2
@@ -249,7 +287,9 @@ dependency is *required* unless stated otherwise.
        | *Optional*: needed if the execution space is GPU or for loading any CUDA library.
      - 525.60.13+ (Linux) with CUDA 12.x
      - 525.60.13+ (Linux) with CUDA 12.x
+     - 525.60.13+ (Linux) with CUDA 12.x
    * - Python
+     - 3.10-3.12
      - 3.10-3.12
      - 3.10-3.12
      - 3.10-3.12
@@ -259,8 +299,10 @@ dependency is *required* unless stated otherwise.
      -
      -
      -
+     -
    * - setuptools
-     - >=61.0.0
+     - >=70.0.0
+     -
      -
      -
      -
@@ -269,8 +311,10 @@ dependency is *required* unless stated otherwise.
      -
      -
      -
+     -
    * - Cython
      - >=0.29.22,<3
+     -
      -
      -
      -
@@ -283,8 +327,10 @@ dependency is *required* unless stated otherwise.
      - | CUDA >=12.0,!=12.4.*,!=12.5.0 [7]_
        | (NVRTC, NVVM, CCCL [8]_, CUDART)
      - CUDA 12.x
+     - CUDA 12.x
    * - NumPy
      -
+     - >=1.24
      - >=1.24
      - >=1.24
      - >=1.24
@@ -294,35 +340,48 @@ dependency is *required* unless stated otherwise.
      - >=10.0.0 [4]_
      -
      - >=10.0.0 [4]_
+     - >=10.0.0 [4]_
    * - | PyTorch
        | (see `PyTorch installation guide <https://pytorch.org/get-started/locally/>`_)
      -
      - >=1.10 (optional) [10]_
      -
      - >=1.10 (optional)
-   * - MathDx (cuBLASDx, cuFFTDx, ...)
+     - >=1.10 (optional)
+   * - libmathdx (cuBLASDx, cuFFTDx, ...)
      -
      -
-     - 24.04
+     - 0.2.*
+     -
+     -
+   * - numba-cuda
+     -
+     -
+     - >=0.11.0
+     - >=0.11.0
      -
    * - Numba
      -
      -
-     - 0.60
-     - 0.60
+     - >=0.59.1
+     - >=0.59.1
+     -
    * - pynvjitlink
      -
      -
-     - >=0.2
+     - >=0.6
+     -
      -
    * - Math Kernel Library (MKL)
      -
      - >=2024 (optional)
      -
      -
+     -
    * - NVIDIA Performance Libraries (NVPL)
      -
      - 24.7 (optional)
+     -
      -
      -
 
@@ -339,11 +398,11 @@ nvmath-python is tested in the following environments:
    :widths: 50 50
 
    * - CUDA
-     - 11.x (latest), 12.x (latest)
+     - 11.x (latest), 12.0, 12.8
    * - Driver
      - R520, R525, R570
    * - GPU model
-     - H100, B100, RTX 4090, CG1 (Grace-Hopper)
+     - H100, B200, RTX 4090, CG1 (Grace-Hopper)
    * - Python
      - 3.10, 3.11, 3.12
    * - CPU architecture
@@ -491,6 +550,12 @@ libraries, there are user-visible caveats.
    CTK, and not ``pip``-installed CUDA wheels. nvmath-python can also help Numba use the
    CUDA compilers installed to ``site-packages`` if ``nvmath`` is imported. Same as above,
    this behavior may change in a future release.
+5. PyTorch installed from ``pip`` pins some CUDA wheels packages to version v12.6 (or v12.8
+   depending on the installation method). However, nvmath-python does not pin CUDA wheels
+   packages, so they will float up the latest version. This can cause a mismatch between
+   compiler components when using the ``dx`` extra. In this case, it's recommended to
+   manually constrain ``cuda-cccl``, ``cuda-nvcc``, ``cuda-nvrtc``, and ``cuda-runtime``
+   packages to match the variant of PyTorch installed.
 
 In general, mixing-and-matching CTK packages from ``pip``, ``conda``, and the system is
 possible but can be very fragile, so it's important to understand what you're doing. The
@@ -561,7 +626,7 @@ For more information with regard to the new CUDA 12+ package layout on conda-for
 .. [2] nvmath-python relies on `CUDA minor version compatibility
     <https://docs.nvidia.com/deploy/cuda-compatibility/index.html
     #minor-version-compatibility>`_.
-.. [4] As of beta 3.0 (v0.3.0), CuPy is a required run-time dependency except for CPU-only
+.. [4] As of beta 4.0 (v0.4.0), CuPy is a required run-time dependency except for CPU-only
     execution. In a future release it will be turned into an optional run-time dependency.
 .. [5] For example, Hopper GPUs are supported starting CUDA 11.8, so they would not work
     with libraries from CUDA 11.7 or below.

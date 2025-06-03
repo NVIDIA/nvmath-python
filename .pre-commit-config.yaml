@@ -4,7 +4,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
     - id: check-added-large-files
     - id: check-ast
@@ -22,37 +22,41 @@ repos:
       args: ['--fix=lf']
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.19
+    rev: v0.24
     hooks:
       - id: validate-pyproject
         additional_dependencies: ["validate-pyproject-schema-store[all]"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.4
+    rev: v0.11.2
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
 
-  # FIXME
   # Mypy: static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.13.0"
+    rev: "v1.15.0"
     hooks:
       - id: mypy
+        # Envorce only one source of configuration.
         args: ["--config-file", "pyproject.toml"]
-        files: ^nvmath(.*)\.py$
         additional_dependencies:
           - cuda-python
           - cupy-cuda12x
-          - mpi4py-mpich
+          # TODO: https://github.com/mpi4py/mpi4py/issues/630
+          # - mpi4py
           - numba
+          - numba-cuda
           - numpy
           - pytest
           - scipy
           - torch
           - types-cffi
           - types-pywin32
+          - invoke
+          - cython<3
+          - wheel
 
   # FIXME: Prettier pre-commit plugin is no longer supported
   # Autoformat: YAML, JSON, Markdown, etc.
@@ -63,7 +67,7 @@ repos:
 
   # Spellcheck
   - repo: https://github.com/codespell-project/codespell
-    rev: "v2.3.0"
+    rev: "v2.4.1"
     hooks:
       - id: codespell
         additional_dependencies:
@@ -78,38 +82,32 @@ repos:
 
   # Security: secrets
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.4
+    rev: v8.24.0
     hooks:
       - id: gitleaks
 
-  # FIXME
-  # Security: secrets
-  - repo: https://github.com/thoughtworks/talisman
-    rev: "v1.32.0"
-    hooks:
-      - id: talisman-commit
-        entry: cmd --githook pre-commit
-
-  # FIXME
   # Bash linter
-  # - repo: https://github.com/openstack/bashate
-  #   rev: 2.1.1
-  #   hooks:
-  #     - id: bashate
-  #       args: ["--ignore=E006,E010,E020"]
+  - repo: https://github.com/openstack/bashate
+    rev: 2.1.1
+    hooks:
+      - id: bashate
+        args: ["--ignore=E006,E010,E020"]
 
-  # FIXME
   # Shell script linter
-  # - repo: https://github.com/shellcheck-py/shellcheck-py
-  #   rev: "v0.10.0.1"
-  #   hooks:
-  #     - id: shellcheck
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: "v0.10.0.1"
+    hooks:
+      - id: shellcheck
 
   # Lint: Markdown
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.41.0
+    rev: v0.44.0
     hooks:
       - id: markdownlint
+        # Setting up node version explicitly
+        # https://github.com/igorshubovych/markdownlint-cli/issues/502
+        language: node
+        language_version: "22.14.0"
       # Ignore old internal README that will not be rendered as docs page
         args: ["--fix", "--ignore", "internal/gtc2024/README.md"]
 
@@ -119,6 +117,3 @@ repos:
       - id: sphinx-lint
         args: ["--enable", "all", "--max-line-length", "92"]
         exclude: ^(.*)generated/(.*)\.rst$
-
-default_language_version:
-  python: python310

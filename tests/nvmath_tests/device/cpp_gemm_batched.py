@@ -25,14 +25,14 @@ class MatmulBatchedCpp:
         #include <cublasdx.hpp>
         using namespace cublasdx;
 
-        using GEMM = decltype( Size< { m }, { n }, { k } >()
+        using GEMM = decltype( Size< {m}, {n}, {k} >()
                                + Precision<float>()
-                               + Type< type::{ data_type }>()
+                               + Type< type::{data_type}>()
                                + Function<function::MM>()
                                + TransposeMode< transpose_mode::non_transposed, transpose_mode::non_transposed>()
-                               + BlockDim<{ block_size }>()
+                               + BlockDim<{block_size}>()
                                + Block()
-                               + SM<{ sm[0] * 100 + sm[1] * 10 }>()
+                               + SM<{sm[0] * 100 + sm[1] * 10}>()
                               );
 
         __device__ const unsigned int shared_memory_size = GEMM::shared_memory_size;
@@ -41,11 +41,12 @@ class MatmulBatchedCpp:
                                void* b_void,
                                void* c_void) {{
 
-            const GEMM::value_type* a = (const GEMM::value_type*) a_void;
-            const GEMM::value_type* b = (const GEMM::value_type*) b_void;
-            GEMM::value_type* c = (GEMM::value_type*) c_void;
+            using value_type = float;
 
-            using value_type = GEMM::value_type;
+            const value_type* a = (const value_type*) a_void;
+            const value_type* b = (const value_type*) b_void;
+            value_type* c = (value_type*) c_void;
+
             extern __shared__ __align__(16) char smem[];
 
             value_type* smem_a = reinterpret_cast<value_type*>(smem);
@@ -53,13 +54,13 @@ class MatmulBatchedCpp:
             value_type* smem_c = reinterpret_cast<value_type*>(smem) + GEMM::a_size + GEMM::b_size;
 
             const unsigned bid = blockIdx.x;
-            constexpr unsigned m = { m };
-            constexpr unsigned n = { n };
-            constexpr unsigned k = { k };
+            constexpr unsigned m = {m};
+            constexpr unsigned n = {n};
+            constexpr unsigned k = {k};
             constexpr unsigned lda = GEMM::lda;
             constexpr unsigned ldb = GEMM::ldb;
             constexpr unsigned ldc = GEMM::ldc;
-            constexpr unsigned block_size = { block_size };
+            constexpr unsigned block_size = {block_size};
 
             // Global is row major
             // Shared is column major
@@ -84,8 +85,8 @@ class MatmulBatchedCpp:
 
             __syncthreads();
 
-            for(int r = 0; r < { repeat }; r++) {{
-                GEMM().execute(1.0, smem_a, smem_b, 0.0, smem_c);
+            for(int r = 0; r < {repeat}; r++) {{
+                GEMM().execute(value_type(1.0), smem_a, smem_b, value_type(0.0), smem_c);
             }}
 
             __syncthreads();
@@ -109,7 +110,7 @@ class MatmulBatchedCpp:
         # - cuobjdump --dump-resource-usage ${CUBIN}
         mangled = "_Z6kernelPvS_S_"
 
-        self._module, self._kernel, self._shared_memory_size = compile_cpp_kernel(cpp, sm, mangled)
+        self._module, self._kernel, self._shared_memory_size = compile_cpp_kernel(cpp, mangled)
         self._precision = precision
         self._size = size
         self._block_dim = (block_size, 1, 1)

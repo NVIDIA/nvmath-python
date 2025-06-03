@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from logging import Logger
 from typing import Literal
+import warnings
 
 from nvmath.memory import BaseCUDAMemoryManager
 
@@ -19,8 +20,8 @@ class ExecutionCUDA:
     family of wrapper functions :func:`fft`, :func:`ifft`, :func:`rfft`, and :func:`irfft`.
 
     Attributes:
-        device_id: CUDA device ordinal (used if the operand resides on the CPU). Device 0
-        will be used if not specified.
+        device_id: CUDA device ordinal (only used if the operand resides on the CPU). The
+            default value is 0.
 
     See Also:
        :class:`ExecutionCPU`, :class:`FFT`, :func:`fft`, :func:`ifft`, :func:`rfft`, and
@@ -28,6 +29,8 @@ class ExecutionCUDA:
     """
 
     name: Literal["cuda"] = field(default="cuda", init=False)
+    # If not specified, it defaults to the deprecated FFTOptions.device_id or 0
+    # Keep None as an option to differentiate between the user-provided 0 and the default 0.
     device_id: int | None = None
 
 
@@ -114,8 +117,8 @@ class FFTOptions:
 
     fft_type: Literal["C2C", "C2R", "R2C"] | None = None
     inplace: bool = False
-    last_axis_parity: Literal["even", "odd"] | None = "even"
-    result_layout: Literal["natural", "optimized"] | None = "optimized"
+    last_axis_parity: Literal["even", "odd"] = "even"
+    result_layout: Literal["natural", "optimized"] = "optimized"
     device_id: int | None = None
     logger: Logger | None = None
     blocking: Literal[True, "auto"] = "auto"
@@ -139,6 +142,10 @@ class FFTOptions:
 
         if self.blocking not in (True, "auto"):
             raise ValueError("The value specified for 'blocking' must be either True or 'auto'.")
+
+        if self.device_id is not None:
+            msg = "`FFTOptions.device_id` is deprecated. Use `ExecutionCUDA.device_id` instead."
+            warnings.warn(msg, DeprecationWarning)
 
 
 @dataclass

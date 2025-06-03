@@ -14,7 +14,6 @@ import nvmath
 from .utils.common_axes import (
     Framework,
     ExecBackend,
-    MemBackend,
     DType,
     ShapeKind,
     OptFftLayout,
@@ -39,7 +38,7 @@ from .utils.support_matrix import (
 from .utils.input_fixtures import (
     get_random_input_data,
     init_assert_exec_backend_specified,
-    fx_last_operand_layout,
+    fx_last_operand_layout,  # noqa: F401
 )
 from .utils.check_helpers import (
     is_decreasing,

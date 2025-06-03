@@ -1,9 +1,10 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 # This code was automatically generated with version 0.3.0. Do not modify it directly.
 
+cimport cython
 from libc.stdint cimport intptr_t
 
 from ..._internal.utils import FunctionNotFoundError, NotSupportedError
@@ -365,231 +366,243 @@ cpdef _inspect_function_pointer(str name):
 # Wrapper functions
 ###############################################################################
 
-cdef int _nvpl_fft_get_version() except* nogil:
+cdef int _nvpl_fft_get_version() except?-42 nogil:
     global __nvpl_fft_get_version
     _check_or_init_nvpl_fft()
     if __nvpl_fft_get_version == NULL:
         with gil:
             raise FunctionNotFoundError("function nvpl_fft_get_version is not found")
-    return (<int (*)() nogil>__nvpl_fft_get_version)(
+    return (<int (*)() noexcept nogil>__nvpl_fft_get_version)(
         )
 
 
-cdef fftw_plan _fftw_plan_many_dft(int rank, const int* n, int batch, fftw_complex* in_, const int* inembed, int istride, int idist, fftw_complex* out, const int* onembed, int ostride, int odist, int sign, unsigned flags) except* nogil:
+cdef fftw_plan _fftw_plan_many_dft(int rank, const int* n, int batch, fftw_complex* in_, const int* inembed, int istride, int idist, fftw_complex* out, const int* onembed, int ostride, int odist, int sign, unsigned flags) except?NULL nogil:
     global __fftw_plan_many_dft
     _check_or_init_nvpl_fft()
     if __fftw_plan_many_dft == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_plan_many_dft is not found")
-    return (<fftw_plan (*)(int, const int*, int, fftw_complex*, const int*, int, int, fftw_complex*, const int*, int, int, int, unsigned) nogil>__fftw_plan_many_dft)(
+    return (<fftw_plan (*)(int, const int*, int, fftw_complex*, const int*, int, int, fftw_complex*, const int*, int, int, int, unsigned) noexcept nogil>__fftw_plan_many_dft)(
         rank, n, batch, in_, inembed, istride, idist, out, onembed, ostride, odist, sign, flags)
 
 
-cdef fftw_plan _fftw_plan_many_dft_r2c(int rank, const int* n, int batch, double* in_, const int* inembed, int istride, int idist, fftw_complex* out, const int* onembed, int ostride, int odist, unsigned flags) except* nogil:
+cdef fftw_plan _fftw_plan_many_dft_r2c(int rank, const int* n, int batch, double* in_, const int* inembed, int istride, int idist, fftw_complex* out, const int* onembed, int ostride, int odist, unsigned flags) except?NULL nogil:
     global __fftw_plan_many_dft_r2c
     _check_or_init_nvpl_fft()
     if __fftw_plan_many_dft_r2c == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_plan_many_dft_r2c is not found")
-    return (<fftw_plan (*)(int, const int*, int, double*, const int*, int, int, fftw_complex*, const int*, int, int, unsigned) nogil>__fftw_plan_many_dft_r2c)(
+    return (<fftw_plan (*)(int, const int*, int, double*, const int*, int, int, fftw_complex*, const int*, int, int, unsigned) noexcept nogil>__fftw_plan_many_dft_r2c)(
         rank, n, batch, in_, inembed, istride, idist, out, onembed, ostride, odist, flags)
 
 
-cdef fftw_plan _fftw_plan_many_dft_c2r(int rank, const int* n, int batch, fftw_complex* in_, const int* inembed, int istride, int idist, double* out, const int* onembed, int ostride, int odist, unsigned flags) except* nogil:
+cdef fftw_plan _fftw_plan_many_dft_c2r(int rank, const int* n, int batch, fftw_complex* in_, const int* inembed, int istride, int idist, double* out, const int* onembed, int ostride, int odist, unsigned flags) except?NULL nogil:
     global __fftw_plan_many_dft_c2r
     _check_or_init_nvpl_fft()
     if __fftw_plan_many_dft_c2r == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_plan_many_dft_c2r is not found")
-    return (<fftw_plan (*)(int, const int*, int, fftw_complex*, const int*, int, int, double*, const int*, int, int, unsigned) nogil>__fftw_plan_many_dft_c2r)(
+    return (<fftw_plan (*)(int, const int*, int, fftw_complex*, const int*, int, int, double*, const int*, int, int, unsigned) noexcept nogil>__fftw_plan_many_dft_c2r)(
         rank, n, batch, in_, inembed, istride, idist, out, onembed, ostride, odist, flags)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftw_execute_dft(const fftw_plan plan, fftw_complex* idata, fftw_complex* odata) except* nogil:
     global __fftw_execute_dft
     _check_or_init_nvpl_fft()
     if __fftw_execute_dft == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_execute_dft is not found")
-    (<void (*)(const fftw_plan, fftw_complex*, fftw_complex*) nogil>__fftw_execute_dft)(
+    (<void (*)(const fftw_plan, fftw_complex*, fftw_complex*) noexcept nogil>__fftw_execute_dft)(
         plan, idata, odata)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftw_execute_dft_r2c(const fftw_plan plan, double* idata, fftw_complex* odata) except* nogil:
     global __fftw_execute_dft_r2c
     _check_or_init_nvpl_fft()
     if __fftw_execute_dft_r2c == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_execute_dft_r2c is not found")
-    (<void (*)(const fftw_plan, double*, fftw_complex*) nogil>__fftw_execute_dft_r2c)(
+    (<void (*)(const fftw_plan, double*, fftw_complex*) noexcept nogil>__fftw_execute_dft_r2c)(
         plan, idata, odata)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftw_execute_dft_c2r(const fftw_plan plan, fftw_complex* idata, double* odata) except* nogil:
     global __fftw_execute_dft_c2r
     _check_or_init_nvpl_fft()
     if __fftw_execute_dft_c2r == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_execute_dft_c2r is not found")
-    (<void (*)(const fftw_plan, fftw_complex*, double*) nogil>__fftw_execute_dft_c2r)(
+    (<void (*)(const fftw_plan, fftw_complex*, double*) noexcept nogil>__fftw_execute_dft_c2r)(
         plan, idata, odata)
 
 
-cdef fftwf_plan _fftwf_plan_many_dft(int rank, const int* n, int batch, fftwf_complex* in_, const int* inembed, int istride, int idist, fftwf_complex* out, const int* onembed, int ostride, int odist, int sign, unsigned flags) except* nogil:
+cdef fftwf_plan _fftwf_plan_many_dft(int rank, const int* n, int batch, fftwf_complex* in_, const int* inembed, int istride, int idist, fftwf_complex* out, const int* onembed, int ostride, int odist, int sign, unsigned flags) except?NULL nogil:
     global __fftwf_plan_many_dft
     _check_or_init_nvpl_fft()
     if __fftwf_plan_many_dft == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_plan_many_dft is not found")
-    return (<fftwf_plan (*)(int, const int*, int, fftwf_complex*, const int*, int, int, fftwf_complex*, const int*, int, int, int, unsigned) nogil>__fftwf_plan_many_dft)(
+    return (<fftwf_plan (*)(int, const int*, int, fftwf_complex*, const int*, int, int, fftwf_complex*, const int*, int, int, int, unsigned) noexcept nogil>__fftwf_plan_many_dft)(
         rank, n, batch, in_, inembed, istride, idist, out, onembed, ostride, odist, sign, flags)
 
 
-cdef fftwf_plan _fftwf_plan_many_dft_r2c(int rank, const int* n, int batch, float* in_, const int* inembed, int istride, int idist, fftwf_complex* out, const int* onembed, int ostride, int odist, unsigned flags) except* nogil:
+cdef fftwf_plan _fftwf_plan_many_dft_r2c(int rank, const int* n, int batch, float* in_, const int* inembed, int istride, int idist, fftwf_complex* out, const int* onembed, int ostride, int odist, unsigned flags) except?NULL nogil:
     global __fftwf_plan_many_dft_r2c
     _check_or_init_nvpl_fft()
     if __fftwf_plan_many_dft_r2c == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_plan_many_dft_r2c is not found")
-    return (<fftwf_plan (*)(int, const int*, int, float*, const int*, int, int, fftwf_complex*, const int*, int, int, unsigned) nogil>__fftwf_plan_many_dft_r2c)(
+    return (<fftwf_plan (*)(int, const int*, int, float*, const int*, int, int, fftwf_complex*, const int*, int, int, unsigned) noexcept nogil>__fftwf_plan_many_dft_r2c)(
         rank, n, batch, in_, inembed, istride, idist, out, onembed, ostride, odist, flags)
 
 
-cdef fftwf_plan _fftwf_plan_many_dft_c2r(int rank, const int* n, int batch, fftwf_complex* in_, const int* inembed, int istride, int idist, float* out, const int* onembed, int ostride, int odist, unsigned flags) except* nogil:
+cdef fftwf_plan _fftwf_plan_many_dft_c2r(int rank, const int* n, int batch, fftwf_complex* in_, const int* inembed, int istride, int idist, float* out, const int* onembed, int ostride, int odist, unsigned flags) except?NULL nogil:
     global __fftwf_plan_many_dft_c2r
     _check_or_init_nvpl_fft()
     if __fftwf_plan_many_dft_c2r == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_plan_many_dft_c2r is not found")
-    return (<fftwf_plan (*)(int, const int*, int, fftwf_complex*, const int*, int, int, float*, const int*, int, int, unsigned) nogil>__fftwf_plan_many_dft_c2r)(
+    return (<fftwf_plan (*)(int, const int*, int, fftwf_complex*, const int*, int, int, float*, const int*, int, int, unsigned) noexcept nogil>__fftwf_plan_many_dft_c2r)(
         rank, n, batch, in_, inembed, istride, idist, out, onembed, ostride, odist, flags)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftwf_execute_dft(const fftwf_plan plan, fftwf_complex* idata, fftwf_complex* odata) except* nogil:
     global __fftwf_execute_dft
     _check_or_init_nvpl_fft()
     if __fftwf_execute_dft == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_execute_dft is not found")
-    (<void (*)(const fftwf_plan, fftwf_complex*, fftwf_complex*) nogil>__fftwf_execute_dft)(
+    (<void (*)(const fftwf_plan, fftwf_complex*, fftwf_complex*) noexcept nogil>__fftwf_execute_dft)(
         plan, idata, odata)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftwf_execute_dft_r2c(const fftwf_plan plan, float* idata, fftwf_complex* odata) except* nogil:
     global __fftwf_execute_dft_r2c
     _check_or_init_nvpl_fft()
     if __fftwf_execute_dft_r2c == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_execute_dft_r2c is not found")
-    (<void (*)(const fftwf_plan, float*, fftwf_complex*) nogil>__fftwf_execute_dft_r2c)(
+    (<void (*)(const fftwf_plan, float*, fftwf_complex*) noexcept nogil>__fftwf_execute_dft_r2c)(
         plan, idata, odata)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftwf_execute_dft_c2r(const fftwf_plan plan, fftwf_complex* idata, float* odata) except* nogil:
     global __fftwf_execute_dft_c2r
     _check_or_init_nvpl_fft()
     if __fftwf_execute_dft_c2r == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_execute_dft_c2r is not found")
-    (<void (*)(const fftwf_plan, fftwf_complex*, float*) nogil>__fftwf_execute_dft_c2r)(
+    (<void (*)(const fftwf_plan, fftwf_complex*, float*) noexcept nogil>__fftwf_execute_dft_c2r)(
         plan, idata, odata)
 
 
-cdef int _fftw_init_threads() except* nogil:
+cdef int _fftw_init_threads() except?-42 nogil:
     global __fftw_init_threads
     _check_or_init_nvpl_fft()
     if __fftw_init_threads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_init_threads is not found")
-    return (<int (*)() nogil>__fftw_init_threads)(
+    return (<int (*)() noexcept nogil>__fftw_init_threads)(
         )
 
 
-cdef int _fftwf_init_threads() except* nogil:
+cdef int _fftwf_init_threads() except?-42 nogil:
     global __fftwf_init_threads
     _check_or_init_nvpl_fft()
     if __fftwf_init_threads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_init_threads is not found")
-    return (<int (*)() nogil>__fftwf_init_threads)(
+    return (<int (*)() noexcept nogil>__fftwf_init_threads)(
         )
 
 
+@cython.show_performance_hints(False)
 cdef void _fftw_plan_with_nthreads(int nthreads) except* nogil:
     global __fftw_plan_with_nthreads
     _check_or_init_nvpl_fft()
     if __fftw_plan_with_nthreads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_plan_with_nthreads is not found")
-    (<void (*)(int) nogil>__fftw_plan_with_nthreads)(
+    (<void (*)(int) noexcept nogil>__fftw_plan_with_nthreads)(
         nthreads)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftwf_plan_with_nthreads(int nthreads) except* nogil:
     global __fftwf_plan_with_nthreads
     _check_or_init_nvpl_fft()
     if __fftwf_plan_with_nthreads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_plan_with_nthreads is not found")
-    (<void (*)(int) nogil>__fftwf_plan_with_nthreads)(
+    (<void (*)(int) noexcept nogil>__fftwf_plan_with_nthreads)(
         nthreads)
 
 
-cdef int _fftw_planner_nthreads() except* nogil:
+cdef int _fftw_planner_nthreads() except?-42 nogil:
     global __fftw_planner_nthreads
     _check_or_init_nvpl_fft()
     if __fftw_planner_nthreads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_planner_nthreads is not found")
-    return (<int (*)() nogil>__fftw_planner_nthreads)(
+    return (<int (*)() noexcept nogil>__fftw_planner_nthreads)(
         )
 
 
-cdef int _fftwf_planner_nthreads() except* nogil:
+cdef int _fftwf_planner_nthreads() except?-42 nogil:
     global __fftwf_planner_nthreads
     _check_or_init_nvpl_fft()
     if __fftwf_planner_nthreads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_planner_nthreads is not found")
-    return (<int (*)() nogil>__fftwf_planner_nthreads)(
+    return (<int (*)() noexcept nogil>__fftwf_planner_nthreads)(
         )
 
 
+@cython.show_performance_hints(False)
 cdef void _fftw_cleanup_threads() except* nogil:
     global __fftw_cleanup_threads
     _check_or_init_nvpl_fft()
     if __fftw_cleanup_threads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_cleanup_threads is not found")
-    (<void (*)() nogil>__fftw_cleanup_threads)(
+    (<void (*)() noexcept nogil>__fftw_cleanup_threads)(
         )
 
 
+@cython.show_performance_hints(False)
 cdef void _fftwf_cleanup_threads() except* nogil:
     global __fftwf_cleanup_threads
     _check_or_init_nvpl_fft()
     if __fftwf_cleanup_threads == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_cleanup_threads is not found")
-    (<void (*)() nogil>__fftwf_cleanup_threads)(
+    (<void (*)() noexcept nogil>__fftwf_cleanup_threads)(
         )
 
 
+@cython.show_performance_hints(False)
 cdef void _fftw_destroy_plan(fftw_plan plan) except* nogil:
     global __fftw_destroy_plan
     _check_or_init_nvpl_fft()
     if __fftw_destroy_plan == NULL:
         with gil:
             raise FunctionNotFoundError("function fftw_destroy_plan is not found")
-    (<void (*)(fftw_plan) nogil>__fftw_destroy_plan)(
+    (<void (*)(fftw_plan) noexcept nogil>__fftw_destroy_plan)(
         plan)
 
 
+@cython.show_performance_hints(False)
 cdef void _fftwf_destroy_plan(fftwf_plan plan) except* nogil:
     global __fftwf_destroy_plan
     _check_or_init_nvpl_fft()
     if __fftwf_destroy_plan == NULL:
         with gil:
             raise FunctionNotFoundError("function fftwf_destroy_plan is not found")
-    (<void (*)(fftwf_plan) nogil>__fftwf_destroy_plan)(
+    (<void (*)(fftwf_plan) noexcept nogil>__fftwf_destroy_plan)(
         plan)

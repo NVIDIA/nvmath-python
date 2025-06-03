@@ -1,0 +1,1 @@
+nvidia-mathdx ~= 24.4.0 # for device performance testing

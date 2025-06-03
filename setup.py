@@ -33,11 +33,14 @@ ext_modules = [
     "nvmath.bindings.cufft",
     "nvmath.bindings.cusparse",
     "nvmath.bindings.curand",
+    "nvmath.bindings.mathdx",
 ]
 
 
 if sys.platform == "linux":
     ext_modules.append("nvmath.bindings.nvpl.fft")
+    ext_modules.append("nvmath.bindings.cufftMp")
+    ext_modules.append("nvmath.bindings.nvshmem")
 
 
 # WAR: Check if this is still valid
@@ -120,11 +123,7 @@ cmdclass = {
     "bdist_wheel": utils.bdist_wheel,
 }
 
-# Choose the appropriate setup function based on Cython version
-if cython_version.major >= 3:
-    compiler_directives = {"embedsignature": True, "show_performance_hints": False}
-else:
-    compiler_directives = {"embedsignature": True}
+compiler_directives = {"embedsignature": True}
 
 setup(
     ext_modules=cythonize(ext_modules, verbose=True, language_level=3, compiler_directives=compiler_directives),

@@ -40,7 +40,7 @@ ctypedef libraryPropertyType_t LibraryPropertyType
 # Enum
 ###############################################################################
 
-ctypedef libFormat _LibFormat
+ctypedef libFormat_t _LibFormat
 ctypedef cufftResult _Result
 ctypedef cufftType _Type
 ctypedef cufftCompatibility _Compatibility

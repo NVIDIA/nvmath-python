@@ -43,7 +43,7 @@ def detect_cuda_paths():
 
 def decide_lib_name(ext_name):
     # TODO: move the record of the supported lib list elsewhere?
-    for lib in ("cublas", "cusolver", "cufft", "cusparse", "curand", "nvpl"):
+    for lib in ("cublas", "cusolver", "cufftMp", "cufft", "cusparse", "curand", "nvpl", "nvshmem", "mathdx"):
         if lib in ext_name:
             return lib
     else:
@@ -92,18 +92,23 @@ class build_ext(_build_ext):
             extra_linker_flags = ["-Wl,--strip-all"]
             if lib_name is not None:
                 ldflag = "-Wl,--disable-new-dtags"
-                if lib_name == "nvpl":
-                    # 1. the nvpl bindings land in
-                    # site-packages/nvmath/bindings/nvpl/_internal/ as opposed to other
-                    # packages that have their bindings in
-                    # site-packages/nvmath/bindings/_internal/, so we need one extra `..` to
-                    # get into `site-packages` and then the lib_name=nvpl is not in nvidia
-                    # dir but directly in the site-packages.
-                    # 2. mkl lib is placed directly in the python `lib` directory, not in
-                    # python{ver}/site-packages
-                    ldflag += f",-rpath,$ORIGIN/../../../../{lib_name}/lib:$ORIGIN/../../../../../../"
-                else:
-                    ldflag += f",-rpath,$ORIGIN/../../../nvidia/{lib_name}/lib"
+                match lib_name:
+                    case "nvpl":
+                        # 1. the nvpl bindings land in
+                        # site-packages/nvmath/bindings/nvpl/_internal/ as opposed to other
+                        # packages that have their bindings in
+                        # site-packages/nvmath/bindings/_internal/, so we need one extra
+                        # `..` to get into `site-packages` and then the lib_name=nvpl is not
+                        # in nvidia dir but directly in the site-packages.
+                        # 2. mkl lib is placed directly in the python `lib` directory, not
+                        # in python{ver}/site-packages
+                        ldflag += f",-rpath,$ORIGIN/../../../../{lib_name}/lib:$ORIGIN/../../../../../../"
+                    case "cufftMp":
+                        ldflag += ",-rpath,$ORIGIN/../../../nvidia/cufftmp/cu12/lib"
+                    case "mathdx":
+                        ldflag += ",-rpath,$ORIGIN/../../../nvidia/cu12/lib"
+                    case _:
+                        ldflag += f",-rpath,$ORIGIN/../../../nvidia/{lib_name}/lib"
                 extra_linker_flags.append(ldflag)
 
         return cuda_incl_dir, extra_linker_flags

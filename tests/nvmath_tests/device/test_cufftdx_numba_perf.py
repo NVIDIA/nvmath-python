@@ -85,8 +85,8 @@ def run_conv_perf(test_cases):
         #
         # cupy
         #
-        input = random_complex((batch, size), precision, cupy)
-        filter = random_complex((batch, size), precision, cupy)
+        input = random_complex((batch, size), precision, module=cupy)
+        filter = random_complex((batch, size), precision, module=cupy)
         fun = lambda input, filter: cupy.fft.ifft(cupy.fft.fft(input, axis=-1) * filter, norm="forward", axis=-1)
         reference = fun(input, filter)
 

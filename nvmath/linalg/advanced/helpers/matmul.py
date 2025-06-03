@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from nvmath._internal.tensor_wrapper import wrap_operand
-from nvmath._internal.utils import create_empty_tensor, infer_object_package, get_or_create_stream
+from nvmath.internal.tensor_wrapper import wrap_operand
+from nvmath.internal.utils import create_empty_tensor, infer_object_package, get_or_create_stream
 
 __all__ = ["create_mxfp8_scale", "invert_mxfp8_scale", "get_mxfp8_scale_offset", "apply_mxfp8_scale"]
 
@@ -67,9 +67,9 @@ def create_mxfp8_scale(x, exponent, stream=None):
     if not -127 <= exponent <= 128:
         raise ValueError("The exponent should be an integer from [-127, 128] range.")
 
-    stream_holder = get_or_create_stream(x.device_id, stream, x.name)
+    stream_holder = None if x.device_id == "cpu" else get_or_create_stream(x.device_id, stream, x.name)
     scale = create_empty_tensor(
-        x.__class__, (x.size // 32,), "uint8", device_id=x.device, stream_holder=stream_holder, verify_strides=False
+        x.__class__, (x.size // 32,), "uint8", device_id=x.device_id, stream_holder=stream_holder, verify_strides=False
     )
     scale.tensor[:] = exponent + 127
     return scale.tensor
@@ -96,7 +96,7 @@ def get_mxfp8_scale_offset(x, index):
     Computes the offset of MXFP8 scale used for element ``x[index]``.
 
     Args:
-        x: The tensor to which ``index`` referes.
+        x: The tensor to which ``index`` refers.
 
         index: A tuple of tensor indices. This function supports broadcasting,
             so the `index` can be a tuple of integers or a tuple of tensors.

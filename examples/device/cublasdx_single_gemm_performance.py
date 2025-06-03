@@ -26,47 +26,38 @@ def main():
         size=(m, n, k),
         precision=precision,
         data_type=data_type,
-        transpose_mode=("non_transposed", "transposed"),
+        arrangement=("row_major", "col_major", "col_major"),
         execution="Block",
         block_size=block_size,
         compiler="numba",
         leading_dimension="suggested",
     )
 
-    a_size = MM.a_size
-    b_size = MM.b_size
-    c_size = MM.c_size
-    a_dim = MM.a_dim
-    b_dim = MM.b_dim
-    c_dim = MM.c_dim
-    ld = MM.leading_dimension
-    lda, ldb, ldc = ld.a, ld.b, ld.c
-    block_dim = MM.block_dim
     grid_dim = 1
-    value_type = MM.value_type
 
     @cuda.jit(link=MM.files)
     def f(a, b, c, alpha, beta, output, repeat):
-        smem_a = cuda.shared.array(shape=(a_size,), dtype=value_type)
-        smem_b = cuda.shared.array(shape=(b_size,), dtype=value_type)
-        smem_c = cuda.shared.array(shape=(c_size,), dtype=value_type)
+        smem_a = cuda.shared.array(shape=(MM.a_size,), dtype=MM.a_value_type)
+        smem_b = cuda.shared.array(shape=(MM.b_size,), dtype=MM.b_value_type)
+        smem_c = cuda.shared.array(shape=(MM.c_size,), dtype=MM.c_value_type)
+        [lda, ldb, ldc] = MM.leading_dimension
 
-        load_to_shared_1d_float16x2(a, smem_a, a_dim, lda)
-        load_to_shared_1d_float16x2(b, smem_b, b_dim, ldb)
-        load_to_shared_1d_float16x2(c, smem_c, c_dim, ldc)
+        load_to_shared_1d_float16x2(a, smem_a, MM.a_dim, lda, row_major=True)
+        load_to_shared_1d_float16x2(b, smem_b, MM.b_dim, ldb)
+        load_to_shared_1d_float16x2(c, smem_c, MM.c_dim, ldc)
 
         cuda.syncthreads()
 
         for r in range(repeat):
-            MM(alpha, smem_a, smem_b, beta, smem_c)
+            MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
         cuda.syncthreads()
 
-        store_from_shared_1d_float16x2(smem_c, output, c_dim, ldc)
+        store_from_shared_1d_float16x2(smem_c, output, MM.c_dim, ldc)
 
-    a = random_complex(a_dim, np.float32)
-    b = random_complex(b_dim, np.float32)
-    c = random_complex(c_dim, np.float32)
+    a = random_complex(MM.a_dim, np.float32)
+    b = random_complex(MM.b_dim, np.float32)
+    c = random_complex(MM.c_dim, np.float32)
     o = np.zeros_like(c)
 
     a_d = cuda.to_device(complex64_to_fp16x2(a))
@@ -74,25 +65,25 @@ def main():
     c_d = cuda.to_device(complex64_to_fp16x2(c))
     o_d = cuda.to_device(complex64_to_fp16x2(o))
 
-    time_ms = time_numba(f, grid_dim, block_dim, 0, ncycles, a_d, b_d, c_d, alpha, beta, o_d, repeat)
-    time_2x_ms = time_numba(f, grid_dim, block_dim, 0, ncycles, a_d, b_d, c_d, alpha, beta, o_d, 2 * repeat)
+    time_ms = time_numba(f, grid_dim, MM.block_dim, 0, ncycles, a_d, b_d, c_d, alpha, beta, o_d, repeat)
+    time_2x_ms = time_numba(f, grid_dim, MM.block_dim, 0, ncycles, a_d, b_d, c_d, alpha, beta, o_d, 2 * repeat)
     time_mm_ms = (time_2x_ms - time_ms) / repeat
     perf = mm_perf_GFlops((m, n, k), 1, time_mm_ms)
 
     print(f"Time {time_mm_ms} ms\nPerf {perf} GFlop/s")
 
     print(f"m, n, k: {m}, {n}, {k}")
-    print(f"Data type: {data_type}")
-    print(f"Precision: {precision}")
-    print(f"Block size: {block_size}")
-    print(f"Leading dimensions: {lda}, {ldb}, {ldc}")
-    print(f"Shared memory: {a_size + b_size + c_size} elements")
+    print(f"Data type: {MM.data_type}")
+    print(f"Precision: {MM.precision}")
+    print(f"Block size: {MM.block_size}")
+    print(f"Leading dimensions: {MM.leading_dimension}")
+    print(f"Shared memory: {MM.a_size + MM.b_size + MM.c_size} elements")
     print(f"Avg time [ms]: {time_mm_ms}")
     print(f"Time (all) [ms]: {time_mm_ms * repeat}")
     print(f"Performance [GFLOPS]: {perf}")
 
     data_test = fp16x2_to_complex64(o_d.copy_to_host())
-    data_ref = alpha * (a @ b.T) + beta * c
+    data_ref = alpha * (a @ b) + beta * c
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-2
 
