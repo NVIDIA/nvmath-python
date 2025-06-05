@@ -10,4 +10,4 @@ nvidia-nvjitlink-cu12 ==12.8.*
 # pytorch >=2.3 to ensure numpy 1/2 compatibility
 # torch wheels depend on nvidia wheels; do not add if testing system ctk
 # --pre
-torch ==2.7.0.dev20250215+cu128; platform_system!="Windows"
+torch ==2.7.1; platform_system!="Windows"
