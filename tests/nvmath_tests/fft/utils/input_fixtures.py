@@ -157,7 +157,7 @@ def init_assert_exec_backend_specified():
         _actual_init = nvmath.fft.FFT.__init__
 
         def fft_init(self, *args, **kwargs):
-            assert kwargs.get("execution", None) is not None, "The test must explicitly specify execution backend"
+            assert kwargs.get("execution") is not None, "The test must explicitly specify execution backend"
             _actual_init(self, *args, **kwargs)
 
         monkeypatch.setattr(nvmath.fft.FFT, "__init__", fft_init)
@@ -247,9 +247,9 @@ def fx_last_operand_layout(monkeypatch):
                     res_layout = layouts["result"]
                     res_order = stride_order(*res_layout)
                     least_strided = res_order[: len(axes)]
-                    assert sorted(axes) == sorted(
-                        least_strided
-                    ), f"{sorted(axes)} vs {sorted(least_strided)}: result_layout={res_layout}"
+                    assert sorted(axes) == sorted(least_strided), (
+                        f"{sorted(axes)} vs {sorted(least_strided)}: result_layout={res_layout}"
+                    )
 
     return check_layouts, layouts, ptrs
 

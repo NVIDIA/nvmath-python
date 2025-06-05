@@ -10,20 +10,29 @@ import numpy as np
 from .helpers import SM70, SM72, SM75, SM80, SM86, SM89, SM90
 
 
-def test_third_party_symbols():
-    FFT = fft(fft_type="c2c", size=256, precision=np.float32, direction="forward", code_type=SM90, execution="Block")
+@pytest.mark.parametrize("execute_api", ["shared_memory", "registry_memory"])
+def test_third_party_block_symbol(execute_api):
+    FFT = fft(
+        fft_type="c2c",
+        size=256,
+        precision=np.float32,
+        direction="forward",
+        code_type=SM90,
+        execution="Block",
+        execute_api=execute_api,
+    )
 
-    assert len(FFT.symbols) == 2
-    assert any([symbol.variant == "thread" for symbol in FFT.symbols])
-    assert any([symbol.variant == "smem" for symbol in FFT.symbols])
-    assert any(["function" in symbol.name for symbol in FFT.symbols])
-    assert any(["function" in symbol.name for symbol in FFT.symbols])
+    assert len(FFT.symbol) > 0
 
-    FFT = fft(fft_type="c2c", size=16, precision=np.float32, direction="forward", code_type=SM90, execution="Thread")
 
-    assert len(FFT.symbols) == 1
-    assert any([symbol.variant == "thread" for symbol in FFT.symbols])
-    assert any(["function" in symbol.name for symbol in FFT.symbols])
+@pytest.mark.parametrize(
+    "execution",
+    ["Block", "Thread"],
+)
+def test_third_party_symbol(execution):
+    FFT = fft(fft_type="c2c", size=16, precision=np.float32, direction="forward", code_type=SM90, execution=execution)
+
+    assert len(FFT.symbol) > 0
 
 
 def test_third_party_code():
@@ -264,6 +273,29 @@ def test_valid_knobs_1():
         assert len(FFT.files) > 0
 
     assert count > 0
+
+
+@pytest.mark.parametrize(
+    "code_type, ept, bpb",
+    [
+        (SM80, 2, 128),
+        (SM86, 2, 128),
+        (SM89, 2, 32),
+    ],
+)
+def test_valid_knob_values(code_type, ept, bpb):
+    FO = FFTOptions(
+        fft_type="c2c",
+        size=2,
+        precision=np.float32,
+        direction="forward",
+        code_type=code_type,
+        execution="Block",
+    )
+    valids = FO.valid("elements_per_thread", "ffts_per_block")
+
+    assert len(valids) == 1
+    assert valids[0] == (ept, bpb)
 
 
 @pytest.mark.parametrize(

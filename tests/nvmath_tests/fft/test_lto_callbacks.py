@@ -178,7 +178,7 @@ def skip_unsupported_device(fn=None, dev_count=1, min_cc=70):
         if actual_dev_count < dev_count:
 
             def test_skipped():
-                pytest.skip(f"Test requires at least {dev_count} gpus, " f"got {actual_dev_count}")
+                pytest.skip(f"Test requires at least {dev_count} gpus, got {actual_dev_count}")
 
             return test_skipped
 
@@ -190,7 +190,7 @@ def skip_unsupported_device(fn=None, dev_count=1, min_cc=70):
             if cc < min_cc:
 
                 def test_skipped():
-                    pytest.skip(f"Test requires device {d_id} with comp cap " f"at least {min_cc}, got {cc}")
+                    pytest.skip(f"Test requires device {d_id} with comp cap at least {min_cc}, got {cc}")
 
                 return test_skipped
 
@@ -1210,9 +1210,9 @@ def _operand_filter_dtype_shape_fft_ifft_case(
         if out_strides == get_array_element_strides(epilog_filter_dev):
             epilog_filter_dev_perm = epilog_filter_dev
         else:
-            assert (
-                result_layout == OptFftLayout.optimized
-            ), f"{result_layout}, {out_strides}, {get_array_element_strides(epilog_filter_dev)}"
+            assert result_layout == OptFftLayout.optimized, (
+                f"{result_layout}, {out_strides}, {get_array_element_strides(epilog_filter_dev)}"
+            )
             epilog_filter_dev_perm = permute_copy_like(epilog_filter_dev, out_shape, out_strides)
         try:
             f.plan(
@@ -1470,7 +1470,7 @@ def test_operand_and_filter_shapes_fft_ifft(
             rng.choice(list(LtoCallback)),
         )
         for dtype_0 in lto_callback_supperted_types
-        for shape_0, axes_0, shape_kind_0, shape_1, axes_1, shape_kind_1, in [
+        for shape_0, axes_0, shape_kind_0, shape_1, axes_1, shape_kind_1 in [
             (
                 (4200, 13),
                 (0,),
@@ -1860,14 +1860,18 @@ def test_another_device(framework, exec_backend, mem_backend, dtype, shape, axes
         }
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
+
+    exec_options = {"name": exec_backend.nvname}
+    if mem_backend == MemBackend.cpu:
+        exec_options["device_id"] = device_id
+
     fft_out = fft_fn(
         signal,
         axes=axes,
-        execution=exec_backend.nvname,
+        execution=exec_options,
         options={
             "result_layout": OptFftLayout.natural.value,
             "blocking": "auto",
-            "device_id": device_id,
         },
         **cb_kwargs,
     )
@@ -2051,25 +2055,30 @@ def test_two_devices(
             if callbacks.has_epilog():
                 refs[i] = as_type(refs[i] * ep_flt * ep_scale, epilog_dtype)
 
+    exec_options_0 = {"name": exec_backend.nvname}
+    if mem_backend == MemBackend.cpu:
+        exec_options_0["device_id"] = device_id_0
+
     fft_0 = nvmath.fft.FFT(
         signal_0,
         axes=axes_0,
-        execution=exec_backend.nvname,
+        execution=exec_options_0,
         options={
             "blocking": OptFftBlocking.auto.value,
             "result_layout": OptFftLayout.natural.value,
-            # deduce the id from gpu operand
-            "device_id": device_id_0 if mem_backend == MemBackend.cpu else None,
         },
     )
+
+    exec_options_1 = {"name": exec_backend.nvname}
+    if mem_backend == MemBackend.cpu:
+        exec_options_1["device_id"] = device_id_1
     fft_1 = nvmath.fft.FFT(
         signal_1,
         axes=axes_1,
-        execution=exec_backend.nvname,
+        execution=exec_options_1,
         options={
             "blocking": OptFftBlocking.auto.value,
             "result_layout": OptFftLayout.natural.value,
-            "device_id": device_id_1 if mem_backend == MemBackend.cpu else None,
         },
     )
     fft_0.plan(**cb_kwargs_0)

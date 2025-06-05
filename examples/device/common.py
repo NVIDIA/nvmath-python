@@ -7,12 +7,23 @@ import numpy as np
 import math
 
 
-def random_complex(shape, real_dtype):
-    return np.random.randn(*shape).astype(real_dtype) + 1.0j * np.random.randn(*shape).astype(real_dtype)
+def random_complex(shape, real_dtype, order="C") -> np.ndarray:
+    return random_real(shape, real_dtype, order) + 1.0j * random_real(shape, real_dtype, order)
 
 
-def random_real(shape, real_dtype):
-    return np.random.randn(*shape).astype(real_dtype)
+def random_real(shape, real_dtype, order="C") -> np.ndarray:
+    return np.random.randn(np.prod(shape)).astype(real_dtype).reshape(shape, order=order)
+
+
+def random_int(shape, int_dtype):
+    """
+    Generate random integers in the range [-2, 2) for signed integers and [0, 4)
+    for unsigned integers.
+    """
+    min_val, max_val = 0, 4
+    if issubclass(int_dtype, np.signedinteger):
+        min_val, max_val = -2, 2
+    return np.random.randint(min_val, max_val, size=shape, dtype=int_dtype)
 
 
 def CHECK_CUDART(err):

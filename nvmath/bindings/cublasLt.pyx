@@ -113,6 +113,7 @@ cdef class MatmulAlgo:
         if data.dtype != matmul_algo_dtype:
             raise ValueError("data array must be of dtype matmul_algo_dtype")
         obj._data = data.view(_numpy.recarray)
+
         return obj
 
     @staticmethod
@@ -133,6 +134,7 @@ cdef class MatmulAlgo:
         data = _numpy.ndarray((size,), buffer=buf,
                               dtype=matmul_algo_dtype)
         obj._data = data.view(_numpy.recarray)
+
         return obj
 
 
@@ -268,6 +270,7 @@ cdef class MatmulHeuristicResult:
         if data.dtype != matmul_heuristic_result_dtype:
             raise ValueError("data array must be of dtype matmul_heuristic_result_dtype")
         obj._data = data.view(_numpy.recarray)
+
         return obj
 
     @staticmethod
@@ -288,6 +291,7 @@ cdef class MatmulHeuristicResult:
         data = _numpy.ndarray((size,), buffer=buf,
                               dtype=matmul_heuristic_result_dtype)
         obj._data = data.view(_numpy.recarray)
+
         return obj
 
 

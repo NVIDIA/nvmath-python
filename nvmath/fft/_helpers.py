@@ -6,7 +6,6 @@ __all__ = ["compile_prolog", "compile_epilog"]
 
 import functools
 
-from nvmath import _utils
 from nvmath.bindings import cufft as _cufft  # type: ignore
 
 
@@ -33,19 +32,6 @@ def _get_compiler():
     import numba
     import numba.cuda
 
-    def _get_compiler_engine():
-        version = numba.version_info.short
-        if version == (0, 59):
-            compile_ir = numba.cuda.cudadrv.nvvm.llvm_to_ptx
-        elif version == (0, 60):
-            compile_ir = numba.cuda.cudadrv.nvvm.compile_ir
-        else:
-            raise RuntimeError(
-                f"Unsupported Numba version: {numba.version_info.string}, " f"this feature needs Numba 0.59 or 0.60."
-            )
-
-        return compile_ir
-
     @numba.core.compiler_lock.global_compiler_lock
     def compile_to(function, sig, name, *, compute_capability=None, representation="ltoir"):
         if compute_capability is None:
@@ -56,7 +42,8 @@ def _get_compiler():
                     f"The compute capability must be specified as a string ('80', '89', ...). "
                     f"The provided value {compute_capability} is invalid."
                 )
-            compute_capability = tuple(int(c) for c in compute_capability)
+            cc_number = int(compute_capability)
+            compute_capability = (cc_number // 10, cc_number % 10)
 
         nvvm_options = {"opt": 3, "arch": numba.cuda.cudadrv.nvvm.get_arch_option(*compute_capability)}
 
@@ -80,8 +67,7 @@ def _get_compiler():
 
         lib = numba.cuda.compiler.cabi_wrap_function(cres.target_context, cres.library, cres.fndesc, name, nvvm_options)
 
-        compile_ir = _get_compiler_engine()
-        return compile_ir(lib.llvm_strs, **nvvm_options)
+        return numba.cuda.cudadrv.nvvm.compile_ir(lib.llvm_strs, **nvvm_options)
 
     return compile_to
 
@@ -93,9 +79,6 @@ def _compile(
 
     import numba
     import numba.cuda
-    import numba.cuda.cudadrv.nvvm as nvvm
-
-    _utils.patch_numba_nvvm(nvvm)
 
     assert phase in ["Load", "Store"], "Internal error."
 

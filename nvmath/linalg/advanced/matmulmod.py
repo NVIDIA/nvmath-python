@@ -6,11 +6,15 @@ __all__ = ["MatmulComputeType", "Matmul", "matmul"]
 
 import copy
 from collections import namedtuple
+from collections.abc import Sequence
 from dataclasses import dataclass
 import functools
 import logging
 import operator
-from collections.abc import Sequence
+import typing
+import random
+
+import cuda.core.experimental as ccx
 
 try:
     import cupy as cp
@@ -22,13 +26,13 @@ from nvmath import memory
 
 from nvmath.linalg.advanced import _algorithmmod
 from nvmath.linalg.advanced import _configuration
-from nvmath.bindings import cublas  # type: ignore
+from nvmath.bindings import cublas
 from nvmath.bindings import cublasLt as cublaslt  # type: ignore
 
-from nvmath._internal import formatters
-from nvmath._internal import tensor_wrapper
-from nvmath._internal import typemaps
-from nvmath._internal import utils
+from nvmath.internal import formatters
+from nvmath.internal import tensor_wrapper
+from nvmath.internal import typemaps
+from nvmath.internal import utils
 
 from nvmath.linalg._internal import matmul_desc_ifc, matmul_pref_ifc, matrix_layout_ifc
 from nvmath.linalg._internal.typemaps import (
@@ -50,31 +54,13 @@ from nvmath.linalg._internal.epilog_protocol import (
     EPILOG_OUTPUT_HANDLERS_MAP,
     EPILOG_MINIMUM_VERSIONS_MAP,
     BATCHED_EPILOG_MINIMUM_VERSIONS_MAP,
+    EpilogOutputHandler,
 )
 from nvmath._utils import CudaDataType
 
 MatmulComputeType = cublas.ComputeType
 
 EpilogInputTraits = namedtuple("EpilogInputTraits", ["dtype", "extents", "strides"])
-
-
-@dataclass
-class MMTraits:
-    """An internal data class for capturing the matrix multiplication traits. The
-    result traits are captured separately, because we need to wait for the
-    epilog to be provided.
-    """
-
-    M: int
-    N: int
-    K: int
-    d_mm_shape: Sequence[int]
-    a_layout_traits: object
-    b_layout_traits: object
-    c_layout_traits: object
-    batch_count: int
-    batch_shape: Sequence[int]
-    batch_axis_order: Sequence[int]
 
 
 @dataclass
@@ -131,6 +117,25 @@ class LayoutTraits:
 
 
 @dataclass
+class MMTraits:
+    """An internal data class for capturing the matrix multiplication traits. The
+    result traits are captured separately, because we need to wait for the
+    epilog to be provided.
+    """
+
+    M: int
+    N: int
+    K: int
+    d_mm_shape: Sequence[int]
+    a_layout_traits: LayoutTraits
+    b_layout_traits: LayoutTraits
+    c_layout_traits: LayoutTraits
+    batch_count: int
+    batch_shape: Sequence[int]
+    batch_axis_order: Sequence[int]
+
+
+@dataclass
 class ResultTraits:
     """An internal data class for capturing the result matrix's traits."""
 
@@ -139,7 +144,14 @@ class ResultTraits:
     result_strides: Sequence[int]
 
 
-def get_matrix_layout_traits(mm_shape, mm_strides, batch_strides, col_bcast, ordering=None, orientation=None):
+def get_matrix_layout_traits(
+    mm_shape: Sequence[int],
+    mm_strides: Sequence[int],
+    batch_strides: Sequence[int],
+    col_bcast: bool,
+    ordering: cublaslt.Order | None = None,
+    orientation: cublaslt.Order | None = None,
+) -> tuple[cublaslt.Order, int, int]:
     """
     The 'ordering' option specifies the layout order, if it's not None, as in the case of
     the D matrix whose layout is determined by the other operands' layout. It is required if
@@ -219,7 +231,7 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
 
     Then check C:
 
-    C can be None. If C is passed in, it must be a vector or matrix. Batching rule is the
+    C can be None. If C is passed in, it must be matrix. Batching rule is the
     same as above.
     """
     a_shape, a_strides = list(a_layout.shape), list(a_layout.strides)
@@ -320,7 +332,7 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
     # Process matrix c, if provided.
     c_layout_traits = None
     if c_layout is not None:
-        # 1. C can be a vector of dimension M, which is broadcast.
+        # 1. C cannot be a vector.
         # 2. C can be a matrix of dimension (M, N) or (M, 1), broadcast in the latter case
         #    and has to have contiguous strides.
         # 3. C can be batched matrices of dimension (..., M, N) or (..., M, 1), broadcast in
@@ -330,9 +342,7 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
         c_batch_shape, c_mm_shape = c_shape[:-2], c_shape[-2:]
         c_batch_strides, c_mm_strides = c_strides[:-2], c_strides[-2:]
         if len(c_mm_shape) == 1:
-            s, d = c_mm_shape[0], c_mm_strides[0]
-            c_mm_shape = c_mm_shape + [1]
-            c_mm_strides = c_mm_strides + [s * d]
+            raise ValueError(f"C cannot be a vector. C shape: {c_mm_shape}")
         logger.debug(f"The MM shape for operand C is {c_mm_shape} with strides {c_mm_strides}.")
 
         Mc, Nc = c_mm_shape
@@ -380,7 +390,7 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
     )
 
 
-def get_result_traits(mm_traits, epilog_ordering, logger):
+def get_result_traits(mm_traits: MMTraits, epilog_ordering: cublaslt.Order, logger: logging.Logger) -> ResultTraits:
     """
     epilog_ordering = value of type cublaslt.Order or None.
 
@@ -393,7 +403,7 @@ def get_result_traits(mm_traits, epilog_ordering, logger):
     MM layout can be C or F.
     """
     # The result shape is the batch shape + d_mm_shape.
-    result_shape = mm_traits.batch_shape + mm_traits.d_mm_shape
+    result_shape = (*mm_traits.batch_shape, *mm_traits.d_mm_shape)
 
     if mm_traits.c_layout_traits is not None:
         result_ordering = mm_traits.c_layout_traits.order
@@ -427,7 +437,7 @@ def get_result_traits(mm_traits, epilog_ordering, logger):
         result_strides[: len(mm_traits.batch_shape)],
         result_strides[len(mm_traits.batch_shape) :],
     )
-    d_order, d_ld, d_batch_offset = get_matrix_layout_traits(
+    order, d_ld, d_batch_offset = get_matrix_layout_traits(
         mm_traits.d_mm_shape,
         d_mm_strides,
         d_batch_strides,
@@ -435,11 +445,11 @@ def get_result_traits(mm_traits, epilog_ordering, logger):
         ordering=result_ordering,
         orientation=result_orientation,
     )
-    assert (
-        d_order == result_ordering
-    ), f"Internal Error: d_order = {d_order.name}, result_ordering = {result_ordering.name}, mm_traits = {mm_traits}."
-    d_layout_traits = LayoutTraits(order=d_order, ld=d_ld, batch_offset=d_batch_offset, is_conjugate=False)
-    logger.debug(f"The layout order for operand D is {d_order.name}, with LD {d_ld}, and batch offset {d_batch_offset}.")
+    assert order == result_ordering, (
+        f"Internal Error: d_order = {order.name}, result_ordering = {result_ordering.name}, mm_traits = {mm_traits}."
+    )
+    d_layout_traits = LayoutTraits(order=order, ld=d_ld, batch_offset=d_batch_offset, is_conjugate=False)
+    logger.debug(f"The layout order for operand D is {order.name}, with LD {d_ld}, and batch offset {d_batch_offset}.")
 
     return ResultTraits(result_shape=result_shape, result_strides=result_strides, d_layout_traits=d_layout_traits)
 
@@ -448,15 +458,15 @@ SHARED_MM_DOCUMENTATION = utils.COMMON_SHARED_DOC_MAP.copy()
 SHARED_MM_DOCUMENTATION.update(
     {
         "a": """\
-A tensor representing the first operand to the matrix multiplication (see `Semantics`). The currently supported types
+A tensor representing the first operand to the matrix multiplication (see `Semantics`_). The currently supported types
 are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.""".replace("\n", " "),
         #
         "b": """\
-A tensor representing the second operand to the matrix multiplication (see `Semantics`). The currently supported types
+A tensor representing the second operand to the matrix multiplication (see `Semantics`_). The currently supported types
 are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.""".replace("\n", " "),
         #
         "c": """\
-(Optional) A tensor representing the operand to add to the matrix multiplication result (see `Semantics`). The currently
+(Optional) A tensor representing the operand to add to the matrix multiplication result (see `Semantics`_). The currently
 supported types are :class:`numpy.ndarray`, :class:`cupy.ndarray`, and :class:`torch.Tensor`.""".replace("\n", " "),
         #
         "c_admonitions": """
@@ -559,6 +569,8 @@ being the auxiliary output provided as a `dict`. """.replace("\n", " "),
 """.strip(),
         #
         "semantics": """\
+        .. _semantics:
+
         The semantics of the matrix multiplication follows :func:`numpy.matmul` semantics, with some restrictions on
         broadcasting. In addition, the semantics for the fused matrix addition are described below:
 
@@ -748,9 +760,10 @@ class Matmul:
         qualifiers=None,
         quantization_scales=None,
         options=None,
-        stream=None,
+        stream: utils.AnyStream | int | None = None,
     ):
         options = utils.check_or_create_options(_configuration.MatmulOptions, options, "Matrix multiplication options")
+        assert options is not None
         self.options = options
 
         self.logger = options.logger if options.logger is not None else logging.getLogger()
@@ -801,14 +814,16 @@ class Matmul:
         operands = [a, b]
         if self.num_operands == 3:
             operands.append(c)
-        self.operands = operands
+        self.operands: None | Sequence[utils.TensorHolder | None] = operands
 
         self.package = utils.get_operands_package(operands)
         self.memory_space = "cuda"
         self.device_id = utils.get_operands_device_id(operands)
-        if self.device_id is None:
+        if self.device_id == "cpu":
             if self.package == "numpy":
                 self.package = "cupy"
+                # TODO: remove this call after cupy is dropped
+                tensor_wrapper.maybe_register_package("cupy")
             self.memory_space = "cpu"
             self.device_id = options.device_id
         self.logger.info(
@@ -1073,19 +1088,19 @@ class Matmul:
         self.epilog = None
 
         # Epilog attributes: name-to-operand.
-        self.epilog_operands = dict()
+        self.epilog_operands: dict[str, typing.Any] = dict()
 
         # Epilog attributes: epilog input name-to-handler.
-        self.epilog_input_name_to_handler = dict()
+        self.epilog_input_name_to_handler: dict[str, typing.Any] = dict()
 
         # Epilog attributes: name-to-output tensor.
-        self.epilog_outputs = dict()
+        self.epilog_outputs: dict[str, typing.Any] = dict()
 
         # Keep track of epilog input traits for resetting operands.
-        self.epilog_inputs_traits = dict()
+        self.epilog_inputs_traits: dict[str, typing.Any] = dict()
 
         # Keep track of epilog output handlers to allocate output in execute().
-        self.epilog_output_handlers = []
+        self.epilog_output_handlers: list[EpilogOutputHandler] = []
 
         # Non-epilog aux outputs. Currently, only used for quantization outputs (amax etc.)
         self.aux_outputs = None
@@ -1101,7 +1116,8 @@ class Matmul:
         self.algorithm_objects = None
 
         # Workspace attributes.
-        self.workspace_ptr, self.workspace_size = None, None
+        self.workspace_ptr: None | memory.MemoryPointer = None
+        self.workspace_size = 0
         self.workspace_allocated_size = 0
         self.workspace_allocated_here = False
 
@@ -1110,7 +1126,7 @@ class Matmul:
         self.last_compute_event = None
 
         # Device-side array with the quantization_scales
-        self.quantization_scales_device = {}
+        self.quantization_scales_device: dict[str, utils.TensorHolder] = {}
 
         self.valid_state = True
         self.logger.info("The Matmul operation has been created.")
@@ -1201,7 +1217,7 @@ class Matmul:
 
         # Establish ordering wrt the computation and free workspace if requested.
         if self.last_compute_event is not None:
-            self.workspace_stream.wait_event(self.last_compute_event)
+            self.workspace_stream.wait(self.last_compute_event)
             self.logger.debug("Established ordering with respect to the computation before releasing the workspace.")
 
         self.logger.debug("[_release_workspace_memory_perhaps] The workspace memory will be released.")
@@ -1218,7 +1234,7 @@ class Matmul:
     @utils.precondition(_check_valid_matmul)
     @utils.precondition(_check_planned, "Workspace memory allocation")
     @utils.atomic(_free_workspace_memory, method=True)
-    def _allocate_workspace_memory(self, stream_holder):
+    def _allocate_workspace_memory(self, stream_holder: utils.StreamHolder):
         """
         Allocate workspace memory using the specified allocator.
         """
@@ -1232,7 +1248,10 @@ class Matmul:
             self.logger.debug("Allocating workspace for performing the matrix multiplication...")
             with utils.device_ctx(self.device_id), stream_holder.ctx:
                 try:
-                    self.workspace_ptr = self.allocator.memalloc(self.workspace_size)
+                    if isinstance(self.allocator, memory.BaseCUDAMemoryManagerAsync):
+                        self.workspace_ptr = self.allocator.memalloc_async(self.workspace_size, stream_holder.obj)
+                    else:
+                        self.workspace_ptr = self.allocator.memalloc(self.workspace_size)
                     self.workspace_allocated_here = True
                 except TypeError as e:
                     message = (
@@ -1248,7 +1267,7 @@ class Matmul:
             f"of stream {self.workspace_stream}."
         )
 
-    def _allocate_workspace_memory_perhaps(self, stream_holder):
+    def _allocate_workspace_memory_perhaps(self, stream_holder: utils.StreamHolder):
         """
         Allocate workspace memory using the specified allocator, if it hasn't already been
         done.
@@ -1334,7 +1353,9 @@ class Matmul:
                 "narrow-precision type."
             )
 
-    def _prepare_quantization_scale(self, scale, operand, cublas_operand, operand_size=None):
+    def _prepare_quantization_scale(
+        self, scale, operand: str, cublas_operand, stream_holder: utils.StreamHolder, operand_size=None
+    ):
         if scale is None:
             return
         elif isinstance(scale, int | float):
@@ -1349,13 +1370,13 @@ class Matmul:
                 raise TypeError("The quantization scaling tensors must belong to the same package as the operands.")
             self.quantization_scales_device[operand] = tensor_wrapper.wrap_operand(scale)
             device_id = self.quantization_scales_device[operand].device_id
-            if device_id is not None and self.device_id != device_id:
+            if device_id != "cpu" and self.device_id != device_id:
                 raise ValueError(f"The scales must be on the same device ({device_id}) as the operands ({self.device_id}).")
             if self.quantization_scales_device[operand].device in (None, "cpu"):
                 # If it's on CPU, copy to GPU
                 self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
-                self.quantization_scales_device[operand] = tensor_wrapper.wrap_operand(
-                    self.quantization_scales_device[operand].to(self.device_id)
+                self.quantization_scales_device[operand] = self.quantization_scales_device[operand].to(
+                    self.device_id, stream_holder
                 )
             if not self.options.block_scaling:
                 if self.quantization_scales_device[operand].shape not in ((1,), ()):
@@ -1389,24 +1410,26 @@ class Matmul:
             self.logger.debug(f"Using SCALAR_32F scale mode for operand {operand.upper()}.")
             setattr(self.mm_desc_ifc, f"{cublas_operand}_scale_mode", cublaslt.MatmulMatrixScale.SCALAR_32F)
 
-    def _prepare_operand_quantization_scales(self, scales):
+    def _prepare_operand_quantization_scales(self, scales, stream_holder: utils.StreamHolder):
         """
         Copies the scales to the GPU and updates the pointers in mm_desc_ifc.
         """
         for operand in "abcd":
             scale = getattr(scales, operand)
             if self.options.block_scaling and operand == "a":
-                operand_size = self.operands[0].size
+                operand_size = self.operands[0].size  # type: ignore[union-attr,index]
             elif self.options.block_scaling and operand == "b":
-                operand_size = self.operands[1].size
+                operand_size = self.operands[1].size  # type: ignore[union-attr,index]
             else:
                 operand_size = None
-            self._prepare_quantization_scale(scale, operand, cublas_operand=operand, operand_size=operand_size)
+            self._prepare_quantization_scale(
+                scale, operand, cublas_operand=operand, operand_size=operand_size, stream_holder=stream_holder
+            )
 
     @utils.precondition(_check_valid_matmul)
     @utils.atomic(_free_plan_resources, method=True)
     def plan(
-        self, *, preferences=None, algorithms=None, epilog=None, epilog_inputs=None, stream=None
+        self, *, preferences=None, algorithms=None, epilog=None, epilog_inputs=None, stream: utils.AnyStream | int | None = None
     ):  # Epilog inputs require as many inputs (with specific shapes etc) as required by the epilogue. It's a dict.
         """
         Plan the matrix multiplication operation, considering the epilog (if provided).
@@ -1578,8 +1601,8 @@ class Matmul:
 
             # Get the dtype of auxiliary buffer
             aux_dtype_name = (
-                typemaps.DATA_TYPE_TO_NAME[self.preferences.epilog.aux_type]
-                if self.preferences.epilog.aux_type is not None
+                typemaps.DATA_TYPE_TO_NAME[self.preferences.epilog.aux_type]  # type: ignore[attr-defined]
+                if self.preferences.epilog.aux_type is not None  # type: ignore[attr-defined]
                 else None
             )
 
@@ -1588,7 +1611,9 @@ class Matmul:
                 epilog_inputs.pop("aux_quantization_scale") if "aux_quantization_scale" in epilog_inputs else None
             )
             self._validate_epilog_aux_scale(aux_quantization_scale, required=True)
-            self._prepare_quantization_scale(aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux")
+            self._prepare_quantization_scale(
+                aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux", stream_holder=stream_holder
+            )
 
             epilog_input_handler_types = EPILOG_INPUT_HANDLERS_MAP[epilog]
             if epilog_input_handler_types:
@@ -1627,16 +1652,16 @@ class Matmul:
                 # Check if all epilog inputs all are on the same device, which is the device
                 # of the operands.
                 device_id = utils.get_operands_device_id(list(epilog_inputs.values()))
-                if device_id is not None and self.device_id != device_id:
+                if device_id != "cpu" and self.device_id != device_id:
                     raise ValueError(
                         f"The epilog inputs must be on the same device ({device_id}) as the operands ({self.device_id})."
                     )
 
                 # Move epilog inputs to the GPU, if needed.
-                if device_id is None:
+                if device_id == "cpu":
                     for e in required_epilog_input_names:
                         self.logger.debug(f"The epilog input {e} will be copied to device{self.device_id}.")
-                        self.epilog_operands[e] = tensor_wrapper.to(epilog_inputs[e], self.device_id, stream_holder)
+                        self.epilog_operands[e] = epilog_inputs[e].to(self.device_id, stream_holder)
                 else:
                     for e in required_epilog_input_names:
                         self.epilog_operands[e] = epilog_inputs[e]
@@ -1680,15 +1705,16 @@ class Matmul:
                     assert epilog_ordering == op_epilog_ordering, "Internal error."
 
                 # Update the MM descriptor, except for the device pointer.
-                for handler in epilog_output_handlers:
-                    handler.update(self.mm_desc_ifc)
+                for ohandler in epilog_output_handlers:
+                    ohandler.update(self.mm_desc_ifc)
 
             # Set the epilog. At this point, we're sure that the epilog inputs, if any, are
             # valid and have been set.
             self.mm_desc_ifc.epilogue = epilog
 
         # Fill the result traits, now that we know the epilog.
-        self.result_traits = result_traits = get_result_traits(mm_traits, epilog_ordering, self.logger)
+        self.result_traits = result_traits = get_result_traits(mm_traits, epilog_ordering, self.logger)  # type: ignore[assignment]
+        assert self.result_traits is not None, "Internal Error. self.result_traits should have been set by self.plan()."
         self.logger.info(
             f"The layout order for the result D is {self.result_traits.d_layout_traits.order.name}, with LD "
             f"{self.result_traits.d_layout_traits.ld}, and batch offset "
@@ -1812,9 +1838,9 @@ class Matmul:
             num_algorithms = np.empty((1,), dtype=np.int32)
             self.algorithms_buffer = cublaslt.MatmulHeuristicResult(limit)
         else:
-            assert all(
-                isinstance(algo, _algorithmmod.Algorithm) for algo in algorithms
-            ), "The algorithms passed to plan() are of wrong type."
+            assert all(isinstance(algo, _algorithmmod.Algorithm) for algo in algorithms), (
+                "The algorithms passed to plan() are of wrong type."
+            )
             num_algorithms = len(algorithms)
 
         if self.preference_ptr is None:
@@ -1826,7 +1852,7 @@ class Matmul:
             self.preference_ptr = cublaslt.matmul_preference_create()
 
         if self.input_type_width <= 8:
-            self._prepare_operand_quantization_scales(self.quantization_scales)
+            self._prepare_operand_quantization_scales(self.quantization_scales, stream_holder)
 
         if algorithms is None:
             # Set preferences.
@@ -1851,9 +1877,11 @@ class Matmul:
 
             timing = bool(self.logger and self.logger.handlers)
             self.logger.info("Starting matrix multiplication planning...")
-            with (
-                utils.device_ctx(self.device_id),
-                utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (_, elapsed),
+            assert isinstance(self.device_id, int), self.device_id
+            assert stream_holder is not None
+            with utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (
+                _,
+                elapsed,
             ):
                 cublaslt.matmul_algo_get_heuristic(
                     self.handle,
@@ -1871,6 +1899,9 @@ class Matmul:
             num_algorithms = num_algorithms[0]
             if num_algorithms == 0:
                 raise RuntimeError("Planning failed to find any suitable algorithm.")
+            assert self.algorithms_buffer is not None, (
+                "Internal Error. self.algorithms_buffer should have been set by self.plan()."
+            )
             self.algorithms_buffer = self.algorithms_buffer[:num_algorithms]
 
             # Create algorithm objects.
@@ -1886,6 +1917,8 @@ class Matmul:
         self.algorithm_object_to_buffer = dict(zip(self.algorithm_objects, self.algorithms_buffer, strict=True))
 
         self.workspace_size = int(np.max(self.algorithms_buffer["workspace_size"]))
+        if self.workspace_size > 0 and self.epilog:
+            self.workspace_size += 16  # Workaround for library issue
 
         if algorithms is None:
             self.logger.info(
@@ -1952,7 +1985,7 @@ class Matmul:
             raise ValueError(f"The provided operand {operand_name} has different conjugate flag than the original operand")
 
         device_id = operand.device_id
-        if device_id is None:
+        if device_id == "cpu":
             package = "cupy" if package == "numpy" else package  # Handle the NumPy <=> CuPy asymmetry.
             if self.package != package:
                 message = f"Library package mismatch: '{self.package}' => '{package}'"
@@ -1965,7 +1998,7 @@ class Matmul:
                 o = self.epilog_operands[epilog_name]
             if o is None:  # No buffer, create one.
                 # Copy operand across memory spaces (CPU to GPU).
-                o = tensor_wrapper.to(operand, self.device_id, stream_holder)
+                o = operand.to(self.device_id, stream_holder)
                 if operand_index is not None:
                     self.operands[operand_index] = o
                 else:
@@ -2012,7 +2045,7 @@ class Matmul:
         beta=None,
         quantization_scales=None,
         epilog_inputs=None,
-        stream=None,
+        stream: utils.AnyStream | int | None = None,
     ):
         """
         Reset the operands held by this :class:`Matmul` instance.
@@ -2135,7 +2168,7 @@ class Matmul:
 
         # Future operations on the workspace stream should be ordered after the computation.
         if self.last_compute_event is not None:
-            self.workspace_stream.wait_event(self.last_compute_event)
+            self.workspace_stream.wait(self.last_compute_event)
 
         # Update alpha.
         if alpha is not None:
@@ -2158,6 +2191,8 @@ class Matmul:
                         f"The value provided for beta {beta} is not convertible to dtype '{self.beta.dtype}'."
                     ) from e
 
+        stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
+
         # Update quantization_scales.
         if quantization_scales is not None:
             quantization_scales = self._validate_operand_scales(quantization_scales, all_required=False)
@@ -2169,15 +2204,15 @@ class Matmul:
                 self.quantization_scales.c = quantization_scales.c
             if quantization_scales.d is not None:
                 self.quantization_scales.d = quantization_scales.d
-            self._prepare_operand_quantization_scales(self.quantization_scales)
+            self._prepare_operand_quantization_scales(self.quantization_scales, stream_holder)
 
         if epilog_inputs is not None and "aux_quantization_scale" in epilog_inputs:
             epilog_inputs = epilog_inputs.copy()
             aux_quantization_scale = epilog_inputs.pop("aux_quantization_scale")
             self._validate_epilog_aux_scale(aux_quantization_scale, required=False)
-            self._prepare_quantization_scale(aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux")
-
-        stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
+            self._prepare_quantization_scale(
+                aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux", stream_holder=stream_holder
+            )
 
         # Reset the provided operands.
         if a is not None:
@@ -2242,12 +2277,19 @@ class Matmul:
     @utils.precondition(_check_valid_operands, "Autotuning")
     @utils.atomic(_release_workspace_memory_perhaps_wrapper, method=True)
     def autotune(
-        self, iterations=3, prune=None, release_workspace=False, stream=None
+        self, iterations=10, prune=None, release_workspace=False, stream: utils.AnyStream | int | None = None
     ):  # Prune means keep top N of the algorithms only.
         """
         Autotune the matrix multiplication to order the algorithms from the fastest measured
         execution time to the slowest. Once autotuned, the optimally-ordered algorithm
         sequence can be accessed using :py:attr:`algorithms`.
+
+        .. note::
+            This function will benchmark each of the algorithms and order the algorithms
+            based on the benchmark results. The measurements can be impacted by factors
+            such as GPU temperature, clock settings, or power consumption. Autotuning
+            in an unstable environment can result in a suboptimal algorithm ordering.
+            If you experience performance problems, consider omitting the autotuning.
 
         Args:
             iterations: The number of autotuning iterations to perform.
@@ -2266,7 +2308,11 @@ class Matmul:
         self.logger.info("Starting autotuning...")
         start = timer()
 
+        assert self.algorithm_objects is not None, "Internal Error. self.algorithm_objects should have been set by self.plan()."
         num_algorithms = len(self.algorithm_objects)
+        if num_algorithms == 1:
+            self.logger.info("Skipping the autotuning, because only one algorithm has been returned in the planning phase.")
+            return
         limit = min(prune, num_algorithms) if prune is not None else num_algorithms
         self.logger.info(
             f"The number of algorithms in the plan is {num_algorithms}, from which the top {limit} will be retained."
@@ -2298,6 +2344,7 @@ class Matmul:
             handler.update_ptr(self.mm_desc_ifc, aux.data_ptr)
 
         # Create empty tensor for the result.
+        assert self.result_traits is not None, "Internal Error. self.result_traits should have been set by self.plan()."
         result = utils.create_empty_tensor(
             self.result_class,
             self.result_traits.result_shape,
@@ -2335,21 +2382,30 @@ class Matmul:
             )
 
         # Tune.
-        with (
-            utils.device_ctx(self.device_id),
-            utils.cuda_call_ctx(stream_holder, blocking=False, timing=False) as (self.last_compute_event, elapsed),
+        with utils.cuda_call_ctx(stream_holder, blocking=False, timing=False) as (
+            self.last_compute_event,
+            _,
         ):
-            gpu_times = list()
-            for algorithm_struct in self.algorithms_buffer:
-                algorithm_ptr = algorithm_struct["algo"].ctypes.data
-                t = list()
-                for i in range(iterations):
-                    start0 = stream_holder.obj.record()
+            gpu_times = np.empty(shape=(len(self.algorithms_buffer), iterations), dtype=float)
+            algorithm_idxs = list(range(len(self.algorithms_buffer)))
+            timing_enabled_options = ccx.EventOptions(enable_timing=True)
+            for i in range(iterations):
+                random.shuffle(algorithm_idxs)
+                for algorithm_idx in algorithm_idxs:
+                    algorithm_ptr = self.algorithms_buffer[algorithm_idx]["algo"].ctypes.data
+                    start0 = stream_holder.obj.record(options=timing_enabled_options)
                     execute_matmul(algorithm_ptr=algorithm_ptr)
-                    end0 = stream_holder.obj.record()
-                    end0.synchronize()
-                    t.append(cp.cuda.get_elapsed_time(start0, end0))
-                gpu_times.append(min(t))
+                    end0 = stream_holder.obj.record(options=timing_enabled_options)
+                    # FIXME: @dching Calling sync() here could slow down tuning by forcing
+                    # the device to wait for the host to record the elapsed time. It may be
+                    # faster to store references to 2 * len(iterations) *
+                    # len(algorithms_buffer) Events and compute the elapsed time at the end.
+                    # Or if we are forcing a sync(), then we can reuse the Events instead of
+                    # recreating them for every iteration.
+                    end0.sync()
+                    gpu_times[algorithm_idx, i] = end0 - start0
+
+        gpu_times = np.median(gpu_times, axis=1)
 
         # Establish ordering wrt the computation and free workspace if requested.
         self._release_workspace_memory_perhaps(release_workspace=release_workspace)
@@ -2395,7 +2451,7 @@ class Matmul:
     @utils.precondition(_check_planned, "Execution")
     @utils.precondition(_check_valid_operands, "Execution")
     @utils.atomic(_release_workspace_memory_perhaps_wrapper, method=True)
-    def execute(self, *, algorithm=None, release_workspace=False, stream=None):
+    def execute(self, *, algorithm=None, release_workspace=False, stream: utils.AnyStream | int | None = None):
         """
         Execute a prepared (planned and possibly autotuned) matrix multiplication.
 
@@ -2441,7 +2497,7 @@ class Matmul:
             )
             if log_debug:
                 self.logger.debug(f"The auxiliary output tensor '{name}' has been created.")
-            if self.preferences.epilog.aux_amax:
+            if self.preferences.epilog.aux_amax:  # type: ignore[attr-defined]
                 if "float8" not in dtype_name:
                     raise ValueError("epilog.aux_amax=True is not supported when epilog output type is not FP8.")
                 self.epilog_outputs[f"{name}_amax"] = utils.create_empty_tensor(
@@ -2458,6 +2514,7 @@ class Matmul:
             handler.update_ptr(self.mm_desc_ifc, aux.data_ptr)
 
         # Create empty tensor for the result.
+        assert self.result_traits is not None, "Internal Error. self.result_traits should have been set by self.plan()"
         if log_debug:
             self.logger.debug("Beginning output (empty) tensor creation...")
             self.logger.debug(
@@ -2522,9 +2579,9 @@ class Matmul:
         if log_info:
             self.logger.info("Starting matrix multiplication...")
             self.logger.info(f"{self.call_prologue}")
-        with (
-            utils.device_ctx(self.device_id),
-            utils.cuda_call_ctx(stream_holder, self.blocking, timing) as (self.last_compute_event, elapsed),
+        with utils.cuda_call_ctx(stream_holder, self.blocking, timing) as (
+            self.last_compute_event,
+            elapsed,
         ):
             cublaslt.matmul(
                 self.handle,
@@ -2555,9 +2612,9 @@ class Matmul:
         # Return the result and auxiliary outputs, if present.
         all_outputs = self.epilog_outputs | self.aux_outputs
         if self.memory_space == "cpu":
-            out = self.result.to("cpu", stream_holder=stream_holder)
+            out = self.result.to("cpu", stream_holder=stream_holder).tensor
             # Copy auxiliary output to CPU.
-            aux = {name: all_outputs[name].to("cpu", stream_holder=stream_holder) for name in all_outputs}
+            aux = {name: all_outputs[name].to("cpu", stream_holder=stream_holder).tensor for name in all_outputs}
         else:
             out = self.result.tensor
             # Return the unwrapped epilog output tensor(s).
@@ -2590,7 +2647,7 @@ class Matmul:
             # Future operations on the workspace stream should be ordered after the
             # computation.
             if self.last_compute_event is not None:
-                self.workspace_stream.wait_event(self.last_compute_event)
+                self.workspace_stream.wait(self.last_compute_event)
 
             self._free_workspace_memory()
 
@@ -2624,7 +2681,7 @@ def matmul(
     options=None,
     preferences=None,
     algorithm=None,
-    stream=None,
+    stream: utils.AnyStream | int | None = None,
 ):
     """
     Perform the specified matrix multiplication computation :math:`F(\\alpha a @ b + \\beta

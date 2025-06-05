@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -104,7 +104,7 @@ cdef int _check_or_init_cusolver() except -1 nogil:
             __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
             if __cuDriverGetVersion == NULL:
                 raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) nogil>__cuDriverGetVersion)(&driver_ver)
+        err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
         if err != 0:
             raise RuntimeError('something went wrong')
 
@@ -160,21 +160,21 @@ cpdef _inspect_function_pointer(str name):
 # Wrapper functions
 ###############################################################################
 
-cdef cusolverStatus_t _cusolverGetProperty(libraryPropertyType type, int* value) except* nogil:
+cdef cusolverStatus_t _cusolverGetProperty(libraryPropertyType type, int* value) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverGetProperty
     _check_or_init_cusolver()
     if __cusolverGetProperty == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverGetProperty is not found")
-    return (<cusolverStatus_t (*)(libraryPropertyType, int*) nogil>__cusolverGetProperty)(
+    return (<cusolverStatus_t (*)(libraryPropertyType, int*) noexcept nogil>__cusolverGetProperty)(
         type, value)
 
 
-cdef cusolverStatus_t _cusolverGetVersion(int* version) except* nogil:
+cdef cusolverStatus_t _cusolverGetVersion(int* version) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverGetVersion
     _check_or_init_cusolver()
     if __cusolverGetVersion == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverGetVersion is not found")
-    return (<cusolverStatus_t (*)(int*) nogil>__cusolverGetVersion)(
+    return (<cusolverStatus_t (*)(int*) noexcept nogil>__cusolverGetVersion)(
         version)

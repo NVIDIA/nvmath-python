@@ -59,14 +59,17 @@ requirements are included by the top-level requirements sets.
 | ---------------- | ------- |
 | requirements/pip/build-wheel.txt | Utilities to build and validate wheels |
 | requirements/pip/docs.txt | Build documentation |
+| requirements/pip/mpich.txt | MPICH wheel test dependency. |
 | requirements/pip/nvmath-python.txt | nvmath-python core requirements |
 | requirements/pip/nvmath-python-cpu.txt | nvmath-python `[cpu]` extra requirements.  Enable CPU execution space. |
 | requirements/pip/nvmath-python-cu11.txt | nvmath-python `[cu11]` extra requirements.  Support CUDA-11.x via wheels. |
 | requirements/pip/nvmath-python-cu12.txt | nvmath-python `[cu12]` extra requirements.  Support CUDA-12.x via wheels. |
+| requirements/pip/nvmath-python-cu12-distributed.txt | nvmath-python `[cu12-distributed]` extra requirements.  Used for MGMN libraries + MPI. |
 | requirements/pip/nvmath-python-dx.txt | nvmath-python `[dx]` extra requirements.  Enable device APIs. |
 | requirements/pip/nvmath-python-sysctk11.txt | nvmath-python `[systemctk11]` extra requirements.  Used for system installed CTK-11.x |
 | requirements/pip/nvmath-python-sysctk12.txt | nvmath-python `[systemctk12]` extra requirements.  Used for system installed CTK-12.x |
 | requirements/pip/nvmath-python-sysctk12-dx.txt | nvmath-python `[systemctk12-dx]` extra requirements.  Used for `nvmath.device` with system installed CTK-12.x |
+| requirements/pip/openmpi.txt | OpenMPI wheel test dependency. |
 | requirements/pip/tests.txt | Test dependencies |
 | requirements/pip/torch-cu11.txt | Enable torch use in tests and examples via wheels for CUDA-11.8 |
 | requirements/pip/torch-cu12.txt | Enable torch use in tests and examples via wheels for CUDA-12.1 |

@@ -124,7 +124,7 @@ cdef int _check_or_init_curand() except -1 nogil:
             __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
             if __cuDriverGetVersion == NULL:
                 raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) nogil>__cuDriverGetVersion)(&driver_ver)
+        err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
         if err != 0:
             raise RuntimeError('something went wrong')
 
@@ -423,291 +423,291 @@ cpdef _inspect_function_pointer(str name):
 # Wrapper functions
 ###############################################################################
 
-cdef curandStatus_t _curandCreateGenerator(curandGenerator_t* generator, curandRngType_t rng_type) except* nogil:
+cdef curandStatus_t _curandCreateGenerator(curandGenerator_t* generator, curandRngType_t rng_type) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandCreateGenerator
     _check_or_init_curand()
     if __curandCreateGenerator == NULL:
         with gil:
             raise FunctionNotFoundError("function curandCreateGenerator is not found")
-    return (<curandStatus_t (*)(curandGenerator_t*, curandRngType_t) nogil>__curandCreateGenerator)(
+    return (<curandStatus_t (*)(curandGenerator_t*, curandRngType_t) noexcept nogil>__curandCreateGenerator)(
         generator, rng_type)
 
 
-cdef curandStatus_t _curandCreateGeneratorHost(curandGenerator_t* generator, curandRngType_t rng_type) except* nogil:
+cdef curandStatus_t _curandCreateGeneratorHost(curandGenerator_t* generator, curandRngType_t rng_type) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandCreateGeneratorHost
     _check_or_init_curand()
     if __curandCreateGeneratorHost == NULL:
         with gil:
             raise FunctionNotFoundError("function curandCreateGeneratorHost is not found")
-    return (<curandStatus_t (*)(curandGenerator_t*, curandRngType_t) nogil>__curandCreateGeneratorHost)(
+    return (<curandStatus_t (*)(curandGenerator_t*, curandRngType_t) noexcept nogil>__curandCreateGeneratorHost)(
         generator, rng_type)
 
 
-cdef curandStatus_t _curandDestroyGenerator(curandGenerator_t generator) except* nogil:
+cdef curandStatus_t _curandDestroyGenerator(curandGenerator_t generator) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandDestroyGenerator
     _check_or_init_curand()
     if __curandDestroyGenerator == NULL:
         with gil:
             raise FunctionNotFoundError("function curandDestroyGenerator is not found")
-    return (<curandStatus_t (*)(curandGenerator_t) nogil>__curandDestroyGenerator)(
+    return (<curandStatus_t (*)(curandGenerator_t) noexcept nogil>__curandDestroyGenerator)(
         generator)
 
 
-cdef curandStatus_t _curandGetVersion(int* version) except* nogil:
+cdef curandStatus_t _curandGetVersion(int* version) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGetVersion
     _check_or_init_curand()
     if __curandGetVersion == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGetVersion is not found")
-    return (<curandStatus_t (*)(int*) nogil>__curandGetVersion)(
+    return (<curandStatus_t (*)(int*) noexcept nogil>__curandGetVersion)(
         version)
 
 
-cdef curandStatus_t _curandGetProperty(libraryPropertyType type, int* value) except* nogil:
+cdef curandStatus_t _curandGetProperty(libraryPropertyType type, int* value) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGetProperty
     _check_or_init_curand()
     if __curandGetProperty == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGetProperty is not found")
-    return (<curandStatus_t (*)(libraryPropertyType, int*) nogil>__curandGetProperty)(
+    return (<curandStatus_t (*)(libraryPropertyType, int*) noexcept nogil>__curandGetProperty)(
         type, value)
 
 
-cdef curandStatus_t _curandSetStream(curandGenerator_t generator, cudaStream_t stream) except* nogil:
+cdef curandStatus_t _curandSetStream(curandGenerator_t generator, cudaStream_t stream) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandSetStream
     _check_or_init_curand()
     if __curandSetStream == NULL:
         with gil:
             raise FunctionNotFoundError("function curandSetStream is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, cudaStream_t) nogil>__curandSetStream)(
+    return (<curandStatus_t (*)(curandGenerator_t, cudaStream_t) noexcept nogil>__curandSetStream)(
         generator, stream)
 
 
-cdef curandStatus_t _curandSetPseudoRandomGeneratorSeed(curandGenerator_t generator, unsigned long long seed) except* nogil:
+cdef curandStatus_t _curandSetPseudoRandomGeneratorSeed(curandGenerator_t generator, unsigned long long seed) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandSetPseudoRandomGeneratorSeed
     _check_or_init_curand()
     if __curandSetPseudoRandomGeneratorSeed == NULL:
         with gil:
             raise FunctionNotFoundError("function curandSetPseudoRandomGeneratorSeed is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned long long) nogil>__curandSetPseudoRandomGeneratorSeed)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned long long) noexcept nogil>__curandSetPseudoRandomGeneratorSeed)(
         generator, seed)
 
 
-cdef curandStatus_t _curandSetGeneratorOffset(curandGenerator_t generator, unsigned long long offset) except* nogil:
+cdef curandStatus_t _curandSetGeneratorOffset(curandGenerator_t generator, unsigned long long offset) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandSetGeneratorOffset
     _check_or_init_curand()
     if __curandSetGeneratorOffset == NULL:
         with gil:
             raise FunctionNotFoundError("function curandSetGeneratorOffset is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned long long) nogil>__curandSetGeneratorOffset)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned long long) noexcept nogil>__curandSetGeneratorOffset)(
         generator, offset)
 
 
-cdef curandStatus_t _curandSetGeneratorOrdering(curandGenerator_t generator, curandOrdering_t order) except* nogil:
+cdef curandStatus_t _curandSetGeneratorOrdering(curandGenerator_t generator, curandOrdering_t order) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandSetGeneratorOrdering
     _check_or_init_curand()
     if __curandSetGeneratorOrdering == NULL:
         with gil:
             raise FunctionNotFoundError("function curandSetGeneratorOrdering is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, curandOrdering_t) nogil>__curandSetGeneratorOrdering)(
+    return (<curandStatus_t (*)(curandGenerator_t, curandOrdering_t) noexcept nogil>__curandSetGeneratorOrdering)(
         generator, order)
 
 
-cdef curandStatus_t _curandSetQuasiRandomGeneratorDimensions(curandGenerator_t generator, unsigned int num_dimensions) except* nogil:
+cdef curandStatus_t _curandSetQuasiRandomGeneratorDimensions(curandGenerator_t generator, unsigned int num_dimensions) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandSetQuasiRandomGeneratorDimensions
     _check_or_init_curand()
     if __curandSetQuasiRandomGeneratorDimensions == NULL:
         with gil:
             raise FunctionNotFoundError("function curandSetQuasiRandomGeneratorDimensions is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned int) nogil>__curandSetQuasiRandomGeneratorDimensions)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned int) noexcept nogil>__curandSetQuasiRandomGeneratorDimensions)(
         generator, num_dimensions)
 
 
-cdef curandStatus_t _curandGenerate(curandGenerator_t generator, unsigned int* outputPtr, size_t num) except* nogil:
+cdef curandStatus_t _curandGenerate(curandGenerator_t generator, unsigned int* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerate
     _check_or_init_curand()
     if __curandGenerate == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerate is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t) nogil>__curandGenerate)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t) noexcept nogil>__curandGenerate)(
         generator, outputPtr, num)
 
 
-cdef curandStatus_t _curandGenerateLongLong(curandGenerator_t generator, unsigned long long* outputPtr, size_t num) except* nogil:
+cdef curandStatus_t _curandGenerateLongLong(curandGenerator_t generator, unsigned long long* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateLongLong
     _check_or_init_curand()
     if __curandGenerateLongLong == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateLongLong is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned long long*, size_t) nogil>__curandGenerateLongLong)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned long long*, size_t) noexcept nogil>__curandGenerateLongLong)(
         generator, outputPtr, num)
 
 
-cdef curandStatus_t _curandGenerateUniform(curandGenerator_t generator, float* outputPtr, size_t num) except* nogil:
+cdef curandStatus_t _curandGenerateUniform(curandGenerator_t generator, float* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateUniform
     _check_or_init_curand()
     if __curandGenerateUniform == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateUniform is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, float*, size_t) nogil>__curandGenerateUniform)(
+    return (<curandStatus_t (*)(curandGenerator_t, float*, size_t) noexcept nogil>__curandGenerateUniform)(
         generator, outputPtr, num)
 
 
-cdef curandStatus_t _curandGenerateUniformDouble(curandGenerator_t generator, double* outputPtr, size_t num) except* nogil:
+cdef curandStatus_t _curandGenerateUniformDouble(curandGenerator_t generator, double* outputPtr, size_t num) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateUniformDouble
     _check_or_init_curand()
     if __curandGenerateUniformDouble == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateUniformDouble is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, double*, size_t) nogil>__curandGenerateUniformDouble)(
+    return (<curandStatus_t (*)(curandGenerator_t, double*, size_t) noexcept nogil>__curandGenerateUniformDouble)(
         generator, outputPtr, num)
 
 
-cdef curandStatus_t _curandGenerateNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except* nogil:
+cdef curandStatus_t _curandGenerateNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateNormal
     _check_or_init_curand()
     if __curandGenerateNormal == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateNormal is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, float*, size_t, float, float) nogil>__curandGenerateNormal)(
+    return (<curandStatus_t (*)(curandGenerator_t, float*, size_t, float, float) noexcept nogil>__curandGenerateNormal)(
         generator, outputPtr, n, mean, stddev)
 
 
-cdef curandStatus_t _curandGenerateNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except* nogil:
+cdef curandStatus_t _curandGenerateNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateNormalDouble
     _check_or_init_curand()
     if __curandGenerateNormalDouble == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateNormalDouble is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, double*, size_t, double, double) nogil>__curandGenerateNormalDouble)(
+    return (<curandStatus_t (*)(curandGenerator_t, double*, size_t, double, double) noexcept nogil>__curandGenerateNormalDouble)(
         generator, outputPtr, n, mean, stddev)
 
 
-cdef curandStatus_t _curandGenerateLogNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except* nogil:
+cdef curandStatus_t _curandGenerateLogNormal(curandGenerator_t generator, float* outputPtr, size_t n, float mean, float stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateLogNormal
     _check_or_init_curand()
     if __curandGenerateLogNormal == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateLogNormal is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, float*, size_t, float, float) nogil>__curandGenerateLogNormal)(
+    return (<curandStatus_t (*)(curandGenerator_t, float*, size_t, float, float) noexcept nogil>__curandGenerateLogNormal)(
         generator, outputPtr, n, mean, stddev)
 
 
-cdef curandStatus_t _curandGenerateLogNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except* nogil:
+cdef curandStatus_t _curandGenerateLogNormalDouble(curandGenerator_t generator, double* outputPtr, size_t n, double mean, double stddev) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateLogNormalDouble
     _check_or_init_curand()
     if __curandGenerateLogNormalDouble == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateLogNormalDouble is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, double*, size_t, double, double) nogil>__curandGenerateLogNormalDouble)(
+    return (<curandStatus_t (*)(curandGenerator_t, double*, size_t, double, double) noexcept nogil>__curandGenerateLogNormalDouble)(
         generator, outputPtr, n, mean, stddev)
 
 
-cdef curandStatus_t _curandCreatePoissonDistribution(double lambda_, curandDiscreteDistribution_t* discrete_distribution) except* nogil:
+cdef curandStatus_t _curandCreatePoissonDistribution(double lambda_, curandDiscreteDistribution_t* discrete_distribution) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandCreatePoissonDistribution
     _check_or_init_curand()
     if __curandCreatePoissonDistribution == NULL:
         with gil:
             raise FunctionNotFoundError("function curandCreatePoissonDistribution is not found")
-    return (<curandStatus_t (*)(double, curandDiscreteDistribution_t*) nogil>__curandCreatePoissonDistribution)(
+    return (<curandStatus_t (*)(double, curandDiscreteDistribution_t*) noexcept nogil>__curandCreatePoissonDistribution)(
         lambda_, discrete_distribution)
 
 
-cdef curandStatus_t _curandDestroyDistribution(curandDiscreteDistribution_t discrete_distribution) except* nogil:
+cdef curandStatus_t _curandDestroyDistribution(curandDiscreteDistribution_t discrete_distribution) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandDestroyDistribution
     _check_or_init_curand()
     if __curandDestroyDistribution == NULL:
         with gil:
             raise FunctionNotFoundError("function curandDestroyDistribution is not found")
-    return (<curandStatus_t (*)(curandDiscreteDistribution_t) nogil>__curandDestroyDistribution)(
+    return (<curandStatus_t (*)(curandDiscreteDistribution_t) noexcept nogil>__curandDestroyDistribution)(
         discrete_distribution)
 
 
-cdef curandStatus_t _curandGeneratePoisson(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_) except* nogil:
+cdef curandStatus_t _curandGeneratePoisson(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGeneratePoisson
     _check_or_init_curand()
     if __curandGeneratePoisson == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGeneratePoisson is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, double) nogil>__curandGeneratePoisson)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, double) noexcept nogil>__curandGeneratePoisson)(
         generator, outputPtr, n, lambda_)
 
 
-cdef curandStatus_t _curandGeneratePoissonMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_, curandMethod_t method) except* nogil:
+cdef curandStatus_t _curandGeneratePoissonMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t n, double lambda_, curandMethod_t method) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGeneratePoissonMethod
     _check_or_init_curand()
     if __curandGeneratePoissonMethod == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGeneratePoissonMethod is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, double, curandMethod_t) nogil>__curandGeneratePoissonMethod)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, double, curandMethod_t) noexcept nogil>__curandGeneratePoissonMethod)(
         generator, outputPtr, n, lambda_, method)
 
 
-cdef curandStatus_t _curandGenerateBinomial(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p) except* nogil:
+cdef curandStatus_t _curandGenerateBinomial(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateBinomial
     _check_or_init_curand()
     if __curandGenerateBinomial == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateBinomial is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, unsigned int, double) nogil>__curandGenerateBinomial)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, unsigned int, double) noexcept nogil>__curandGenerateBinomial)(
         generator, outputPtr, num, n, p)
 
 
-cdef curandStatus_t _curandGenerateBinomialMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p, curandMethod_t method) except* nogil:
+cdef curandStatus_t _curandGenerateBinomialMethod(curandGenerator_t generator, unsigned int* outputPtr, size_t num, unsigned int n, double p, curandMethod_t method) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateBinomialMethod
     _check_or_init_curand()
     if __curandGenerateBinomialMethod == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateBinomialMethod is not found")
-    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, unsigned int, double, curandMethod_t) nogil>__curandGenerateBinomialMethod)(
+    return (<curandStatus_t (*)(curandGenerator_t, unsigned int*, size_t, unsigned int, double, curandMethod_t) noexcept nogil>__curandGenerateBinomialMethod)(
         generator, outputPtr, num, n, p, method)
 
 
-cdef curandStatus_t _curandGenerateSeeds(curandGenerator_t generator) except* nogil:
+cdef curandStatus_t _curandGenerateSeeds(curandGenerator_t generator) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGenerateSeeds
     _check_or_init_curand()
     if __curandGenerateSeeds == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGenerateSeeds is not found")
-    return (<curandStatus_t (*)(curandGenerator_t) nogil>__curandGenerateSeeds)(
+    return (<curandStatus_t (*)(curandGenerator_t) noexcept nogil>__curandGenerateSeeds)(
         generator)
 
 
-cdef curandStatus_t _curandGetDirectionVectors32(curandDirectionVectors32_t* vectors[], curandDirectionVectorSet_t set) except* nogil:
+cdef curandStatus_t _curandGetDirectionVectors32(curandDirectionVectors32_t* vectors[], curandDirectionVectorSet_t set) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGetDirectionVectors32
     _check_or_init_curand()
     if __curandGetDirectionVectors32 == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGetDirectionVectors32 is not found")
-    return (<curandStatus_t (*)(curandDirectionVectors32_t**, curandDirectionVectorSet_t) nogil>__curandGetDirectionVectors32)(
+    return (<curandStatus_t (*)(curandDirectionVectors32_t**, curandDirectionVectorSet_t) noexcept nogil>__curandGetDirectionVectors32)(
         vectors, set)
 
 
-cdef curandStatus_t _curandGetScrambleConstants32(unsigned int** constants) except* nogil:
+cdef curandStatus_t _curandGetScrambleConstants32(unsigned int** constants) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGetScrambleConstants32
     _check_or_init_curand()
     if __curandGetScrambleConstants32 == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGetScrambleConstants32 is not found")
-    return (<curandStatus_t (*)(unsigned int**) nogil>__curandGetScrambleConstants32)(
+    return (<curandStatus_t (*)(unsigned int**) noexcept nogil>__curandGetScrambleConstants32)(
         constants)
 
 
-cdef curandStatus_t _curandGetDirectionVectors64(curandDirectionVectors64_t* vectors[], curandDirectionVectorSet_t set) except* nogil:
+cdef curandStatus_t _curandGetDirectionVectors64(curandDirectionVectors64_t* vectors[], curandDirectionVectorSet_t set) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGetDirectionVectors64
     _check_or_init_curand()
     if __curandGetDirectionVectors64 == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGetDirectionVectors64 is not found")
-    return (<curandStatus_t (*)(curandDirectionVectors64_t**, curandDirectionVectorSet_t) nogil>__curandGetDirectionVectors64)(
+    return (<curandStatus_t (*)(curandDirectionVectors64_t**, curandDirectionVectorSet_t) noexcept nogil>__curandGetDirectionVectors64)(
         vectors, set)
 
 
-cdef curandStatus_t _curandGetScrambleConstants64(unsigned long long** constants) except* nogil:
+cdef curandStatus_t _curandGetScrambleConstants64(unsigned long long** constants) except?_CURANDSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __curandGetScrambleConstants64
     _check_or_init_curand()
     if __curandGetScrambleConstants64 == NULL:
         with gil:
             raise FunctionNotFoundError("function curandGetScrambleConstants64 is not found")
-    return (<curandStatus_t (*)(unsigned long long**) nogil>__curandGetScrambleConstants64)(
+    return (<curandStatus_t (*)(unsigned long long**) noexcept nogil>__curandGetScrambleConstants64)(
         constants)

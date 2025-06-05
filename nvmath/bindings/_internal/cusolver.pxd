@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.6.2. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
 from ..cycusolver cimport *
 
@@ -11,5 +11,5 @@ from ..cycusolver cimport *
 # Wrapper functions
 ###############################################################################
 
-cdef cusolverStatus_t _cusolverGetProperty(libraryPropertyType type, int* value) except* nogil
-cdef cusolverStatus_t _cusolverGetVersion(int* version) except* nogil
+cdef cusolverStatus_t _cusolverGetProperty(libraryPropertyType type, int* value) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t _cusolverGetVersion(int* version) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil

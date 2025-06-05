@@ -171,14 +171,8 @@ def test_memory_limit_parsing(memory_limit, expected_result):
     """
     Tests if various forms of memory limits are parsed correctly.
     """
-
-    class MockDevice:
-        def __init__(self, memory):
-            self.mem_info = (None, memory)
-
-    device = MockDevice(1000)
     if isinstance(expected_result, int):
-        assert expected_result == nvmath._internal.utils.get_memory_limit(memory_limit, device)
+        assert expected_result == nvmath.internal.utils._get_memory_limit(memory_limit, 1_000)
     else:
         if isinstance(expected_result, tuple):
             exception, pattern = expected_result
@@ -186,7 +180,7 @@ def test_memory_limit_parsing(memory_limit, expected_result):
             exception, pattern = expected_result, None
 
         with pytest.raises(exception, match=pattern):
-            nvmath._internal.utils.get_memory_limit(memory_limit, device)
+            nvmath.internal.utils._get_memory_limit(memory_limit, 1_000)
 
 
 def test_memory_limit():
@@ -268,10 +262,10 @@ def test_custom_allocator():
             super().__init__(device_id, logger)
             self.counter = 0
 
-        def memalloc(self, size):
+        def memalloc(self, size, *args, **kwargs):
             print("ALLOC", size)
             self.counter += 1
-            return super().memalloc(size)
+            return super().memalloc(size, *args, **kwargs)
 
     allocator = MockAllocator(0, logging.getLogger())
     options = MatmulOptions(allocator=allocator)
@@ -292,6 +286,9 @@ def test_uninstantiated_allocator():
     Tests if reasonable error is produced when an allocator class is provided instead of an
     instance
     """
+    if not is_torch_available():
+        pytest.skip("no pytorch")
+
     from nvmath.memory import _TorchCUDAMemoryManager
 
     try:
@@ -315,5 +312,5 @@ def test_invalid_device_id():
     Tests if specifying negative device id raises an error
     """
     options = MatmulOptions(device_id=-1)
-    with pytest.raises((RuntimeError, cupy_backends.cuda.api.runtime.CUDARuntimeError), match="device"):
+    with pytest.raises((RuntimeError, cupy_backends.cuda.api.runtime.CUDARuntimeError, ValueError), match="device"):
         check_matmul_with_options(10, options)

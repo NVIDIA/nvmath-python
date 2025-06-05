@@ -327,7 +327,7 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         with gil:
             raise RuntimeError('something went wrong')
     cdef int err, driver_ver
-    err = (<int (*)(int*) nogil>__cuDriverGetVersion)(&driver_ver)
+    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
     if err != 0:
         with gil:
             raise RuntimeError('something went wrong')
@@ -2925,2561 +2925,2561 @@ cpdef _inspect_function_pointer(str name):
 # Wrapper functions
 ###############################################################################
 
-cdef cusparseStatus_t _cusparseCreate(cusparseHandle_t* handle) except* nogil:
+cdef cusparseStatus_t _cusparseCreate(cusparseHandle_t* handle) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreate
     _check_or_init_cusparse()
     if __cusparseCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreate is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t*) nogil>__cusparseCreate)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t*) noexcept nogil>__cusparseCreate)(
         handle)
 
 
-cdef cusparseStatus_t _cusparseDestroy(cusparseHandle_t handle) except* nogil:
+cdef cusparseStatus_t _cusparseDestroy(cusparseHandle_t handle) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDestroy
     _check_or_init_cusparse()
     if __cusparseDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDestroy is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t) nogil>__cusparseDestroy)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t) noexcept nogil>__cusparseDestroy)(
         handle)
 
 
-cdef cusparseStatus_t _cusparseGetVersion(cusparseHandle_t handle, int* version) except* nogil:
+cdef cusparseStatus_t _cusparseGetVersion(cusparseHandle_t handle, int* version) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetVersion
     _check_or_init_cusparse()
     if __cusparseGetVersion == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetVersion is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int*) nogil>__cusparseGetVersion)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int*) noexcept nogil>__cusparseGetVersion)(
         handle, version)
 
 
-cdef cusparseStatus_t _cusparseGetProperty(libraryPropertyType type, int* value) except* nogil:
+cdef cusparseStatus_t _cusparseGetProperty(libraryPropertyType type, int* value) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetProperty
     _check_or_init_cusparse()
     if __cusparseGetProperty == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetProperty is not found")
-    return (<cusparseStatus_t (*)(libraryPropertyType, int*) nogil>__cusparseGetProperty)(
+    return (<cusparseStatus_t (*)(libraryPropertyType, int*) noexcept nogil>__cusparseGetProperty)(
         type, value)
 
 
-cdef const char* _cusparseGetErrorName(cusparseStatus_t status) except* nogil:
+cdef const char* _cusparseGetErrorName(cusparseStatus_t status) except?NULL nogil:
     global __cusparseGetErrorName
     _check_or_init_cusparse()
     if __cusparseGetErrorName == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetErrorName is not found")
-    return (<const char* (*)(cusparseStatus_t) nogil>__cusparseGetErrorName)(
+    return (<const char* (*)(cusparseStatus_t) noexcept nogil>__cusparseGetErrorName)(
         status)
 
 
-cdef const char* _cusparseGetErrorString(cusparseStatus_t status) except* nogil:
+cdef const char* _cusparseGetErrorString(cusparseStatus_t status) except?NULL nogil:
     global __cusparseGetErrorString
     _check_or_init_cusparse()
     if __cusparseGetErrorString == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetErrorString is not found")
-    return (<const char* (*)(cusparseStatus_t) nogil>__cusparseGetErrorString)(
+    return (<const char* (*)(cusparseStatus_t) noexcept nogil>__cusparseGetErrorString)(
         status)
 
 
-cdef cusparseStatus_t _cusparseSetStream(cusparseHandle_t handle, cudaStream_t streamId) except* nogil:
+cdef cusparseStatus_t _cusparseSetStream(cusparseHandle_t handle, cudaStream_t streamId) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSetStream
     _check_or_init_cusparse()
     if __cusparseSetStream == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSetStream is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cudaStream_t) nogil>__cusparseSetStream)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cudaStream_t) noexcept nogil>__cusparseSetStream)(
         handle, streamId)
 
 
-cdef cusparseStatus_t _cusparseGetStream(cusparseHandle_t handle, cudaStream_t* streamId) except* nogil:
+cdef cusparseStatus_t _cusparseGetStream(cusparseHandle_t handle, cudaStream_t* streamId) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetStream
     _check_or_init_cusparse()
     if __cusparseGetStream == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetStream is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cudaStream_t*) nogil>__cusparseGetStream)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cudaStream_t*) noexcept nogil>__cusparseGetStream)(
         handle, streamId)
 
 
-cdef cusparseStatus_t _cusparseGetPointerMode(cusparseHandle_t handle, cusparsePointerMode_t* mode) except* nogil:
+cdef cusparseStatus_t _cusparseGetPointerMode(cusparseHandle_t handle, cusparsePointerMode_t* mode) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetPointerMode
     _check_or_init_cusparse()
     if __cusparseGetPointerMode == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetPointerMode is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparsePointerMode_t*) nogil>__cusparseGetPointerMode)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparsePointerMode_t*) noexcept nogil>__cusparseGetPointerMode)(
         handle, mode)
 
 
-cdef cusparseStatus_t _cusparseSetPointerMode(cusparseHandle_t handle, cusparsePointerMode_t mode) except* nogil:
+cdef cusparseStatus_t _cusparseSetPointerMode(cusparseHandle_t handle, cusparsePointerMode_t mode) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSetPointerMode
     _check_or_init_cusparse()
     if __cusparseSetPointerMode == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSetPointerMode is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparsePointerMode_t) nogil>__cusparseSetPointerMode)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparsePointerMode_t) noexcept nogil>__cusparseSetPointerMode)(
         handle, mode)
 
 
-cdef cusparseStatus_t _cusparseCreateMatDescr(cusparseMatDescr_t* descrA) except* nogil:
+cdef cusparseStatus_t _cusparseCreateMatDescr(cusparseMatDescr_t* descrA) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateMatDescr
     _check_or_init_cusparse()
     if __cusparseCreateMatDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateMatDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseMatDescr_t*) nogil>__cusparseCreateMatDescr)(
+    return (<cusparseStatus_t (*)(cusparseMatDescr_t*) noexcept nogil>__cusparseCreateMatDescr)(
         descrA)
 
 
-cdef cusparseStatus_t _cusparseDestroyMatDescr(cusparseMatDescr_t descrA) except* nogil:
+cdef cusparseStatus_t _cusparseDestroyMatDescr(cusparseMatDescr_t descrA) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDestroyMatDescr
     _check_or_init_cusparse()
     if __cusparseDestroyMatDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDestroyMatDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseMatDescr_t) nogil>__cusparseDestroyMatDescr)(
+    return (<cusparseStatus_t (*)(cusparseMatDescr_t) noexcept nogil>__cusparseDestroyMatDescr)(
         descrA)
 
 
-cdef cusparseStatus_t _cusparseSetMatType(cusparseMatDescr_t descrA, cusparseMatrixType_t type) except* nogil:
+cdef cusparseStatus_t _cusparseSetMatType(cusparseMatDescr_t descrA, cusparseMatrixType_t type) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSetMatType
     _check_or_init_cusparse()
     if __cusparseSetMatType == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSetMatType is not found")
-    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseMatrixType_t) nogil>__cusparseSetMatType)(
+    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseMatrixType_t) noexcept nogil>__cusparseSetMatType)(
         descrA, type)
 
 
-cdef cusparseMatrixType_t _cusparseGetMatType(const cusparseMatDescr_t descrA) except* nogil:
+cdef cusparseMatrixType_t _cusparseGetMatType(const cusparseMatDescr_t descrA) except?_CUSPARSEMATRIXTYPE_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetMatType
     _check_or_init_cusparse()
     if __cusparseGetMatType == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetMatType is not found")
-    return (<cusparseMatrixType_t (*)(const cusparseMatDescr_t) nogil>__cusparseGetMatType)(
+    return (<cusparseMatrixType_t (*)(const cusparseMatDescr_t) noexcept nogil>__cusparseGetMatType)(
         descrA)
 
 
-cdef cusparseStatus_t _cusparseSetMatFillMode(cusparseMatDescr_t descrA, cusparseFillMode_t fillMode) except* nogil:
+cdef cusparseStatus_t _cusparseSetMatFillMode(cusparseMatDescr_t descrA, cusparseFillMode_t fillMode) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSetMatFillMode
     _check_or_init_cusparse()
     if __cusparseSetMatFillMode == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSetMatFillMode is not found")
-    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseFillMode_t) nogil>__cusparseSetMatFillMode)(
+    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseFillMode_t) noexcept nogil>__cusparseSetMatFillMode)(
         descrA, fillMode)
 
 
-cdef cusparseFillMode_t _cusparseGetMatFillMode(const cusparseMatDescr_t descrA) except* nogil:
+cdef cusparseFillMode_t _cusparseGetMatFillMode(const cusparseMatDescr_t descrA) except?_CUSPARSEFILLMODE_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetMatFillMode
     _check_or_init_cusparse()
     if __cusparseGetMatFillMode == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetMatFillMode is not found")
-    return (<cusparseFillMode_t (*)(const cusparseMatDescr_t) nogil>__cusparseGetMatFillMode)(
+    return (<cusparseFillMode_t (*)(const cusparseMatDescr_t) noexcept nogil>__cusparseGetMatFillMode)(
         descrA)
 
 
-cdef cusparseStatus_t _cusparseSetMatDiagType(cusparseMatDescr_t descrA, cusparseDiagType_t diagType) except* nogil:
+cdef cusparseStatus_t _cusparseSetMatDiagType(cusparseMatDescr_t descrA, cusparseDiagType_t diagType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSetMatDiagType
     _check_or_init_cusparse()
     if __cusparseSetMatDiagType == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSetMatDiagType is not found")
-    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseDiagType_t) nogil>__cusparseSetMatDiagType)(
+    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseDiagType_t) noexcept nogil>__cusparseSetMatDiagType)(
         descrA, diagType)
 
 
-cdef cusparseDiagType_t _cusparseGetMatDiagType(const cusparseMatDescr_t descrA) except* nogil:
+cdef cusparseDiagType_t _cusparseGetMatDiagType(const cusparseMatDescr_t descrA) except?_CUSPARSEDIAGTYPE_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetMatDiagType
     _check_or_init_cusparse()
     if __cusparseGetMatDiagType == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetMatDiagType is not found")
-    return (<cusparseDiagType_t (*)(const cusparseMatDescr_t) nogil>__cusparseGetMatDiagType)(
+    return (<cusparseDiagType_t (*)(const cusparseMatDescr_t) noexcept nogil>__cusparseGetMatDiagType)(
         descrA)
 
 
-cdef cusparseStatus_t _cusparseSetMatIndexBase(cusparseMatDescr_t descrA, cusparseIndexBase_t base) except* nogil:
+cdef cusparseStatus_t _cusparseSetMatIndexBase(cusparseMatDescr_t descrA, cusparseIndexBase_t base) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSetMatIndexBase
     _check_or_init_cusparse()
     if __cusparseSetMatIndexBase == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSetMatIndexBase is not found")
-    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseIndexBase_t) nogil>__cusparseSetMatIndexBase)(
+    return (<cusparseStatus_t (*)(cusparseMatDescr_t, cusparseIndexBase_t) noexcept nogil>__cusparseSetMatIndexBase)(
         descrA, base)
 
 
-cdef cusparseIndexBase_t _cusparseGetMatIndexBase(const cusparseMatDescr_t descrA) except* nogil:
+cdef cusparseIndexBase_t _cusparseGetMatIndexBase(const cusparseMatDescr_t descrA) except?_CUSPARSEINDEXBASE_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGetMatIndexBase
     _check_or_init_cusparse()
     if __cusparseGetMatIndexBase == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGetMatIndexBase is not found")
-    return (<cusparseIndexBase_t (*)(const cusparseMatDescr_t) nogil>__cusparseGetMatIndexBase)(
+    return (<cusparseIndexBase_t (*)(const cusparseMatDescr_t) noexcept nogil>__cusparseGetMatIndexBase)(
         descrA)
 
 
-cdef cusparseStatus_t _cusparseSgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const float* alpha, const float* A, int lda, int nnz, const float* xVal, const int* xInd, const float* beta, float* y, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const float* alpha, const float* A, int lda, int nnz, const float* xVal, const int* xInd, const float* beta, float* y, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgemvi
     _check_or_init_cusparse()
     if __cusparseSgemvi == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgemvi is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const float*, const float*, int, int, const float*, const int*, const float*, float*, cusparseIndexBase_t, void*) nogil>__cusparseSgemvi)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const float*, const float*, int, int, const float*, const int*, const float*, float*, cusparseIndexBase_t, void*) noexcept nogil>__cusparseSgemvi)(
         handle, transA, m, n, alpha, A, lda, nnz, xVal, xInd, beta, y, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgemvi_bufferSize
     _check_or_init_cusparse()
     if __cusparseSgemvi_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgemvi_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) nogil>__cusparseSgemvi_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) noexcept nogil>__cusparseSgemvi_bufferSize)(
         handle, transA, m, n, nnz, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseDgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const double* alpha, const double* A, int lda, int nnz, const double* xVal, const int* xInd, const double* beta, double* y, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const double* alpha, const double* A, int lda, int nnz, const double* xVal, const int* xInd, const double* beta, double* y, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgemvi
     _check_or_init_cusparse()
     if __cusparseDgemvi == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgemvi is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const double*, const double*, int, int, const double*, const int*, const double*, double*, cusparseIndexBase_t, void*) nogil>__cusparseDgemvi)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const double*, const double*, int, int, const double*, const int*, const double*, double*, cusparseIndexBase_t, void*) noexcept nogil>__cusparseDgemvi)(
         handle, transA, m, n, alpha, A, lda, nnz, xVal, xInd, beta, y, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseDgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgemvi_bufferSize
     _check_or_init_cusparse()
     if __cusparseDgemvi_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgemvi_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) nogil>__cusparseDgemvi_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) noexcept nogil>__cusparseDgemvi_bufferSize)(
         handle, transA, m, n, nnz, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseCgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const cuComplex* alpha, const cuComplex* A, int lda, int nnz, const cuComplex* xVal, const int* xInd, const cuComplex* beta, cuComplex* y, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const cuComplex* alpha, const cuComplex* A, int lda, int nnz, const cuComplex* xVal, const int* xInd, const cuComplex* beta, cuComplex* y, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgemvi
     _check_or_init_cusparse()
     if __cusparseCgemvi == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgemvi is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const cuComplex*, const cuComplex*, int, int, const cuComplex*, const int*, const cuComplex*, cuComplex*, cusparseIndexBase_t, void*) nogil>__cusparseCgemvi)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const cuComplex*, const cuComplex*, int, int, const cuComplex*, const int*, const cuComplex*, cuComplex*, cusparseIndexBase_t, void*) noexcept nogil>__cusparseCgemvi)(
         handle, transA, m, n, alpha, A, lda, nnz, xVal, xInd, beta, y, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseCgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgemvi_bufferSize
     _check_or_init_cusparse()
     if __cusparseCgemvi_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgemvi_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) nogil>__cusparseCgemvi_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) noexcept nogil>__cusparseCgemvi_bufferSize)(
         handle, transA, m, n, nnz, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseZgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda, int nnz, const cuDoubleComplex* xVal, const int* xInd, const cuDoubleComplex* beta, cuDoubleComplex* y, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgemvi(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda, int nnz, const cuDoubleComplex* xVal, const int* xInd, const cuDoubleComplex* beta, cuDoubleComplex* y, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgemvi
     _check_or_init_cusparse()
     if __cusparseZgemvi == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgemvi is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, int, int, const cuDoubleComplex*, const int*, const cuDoubleComplex*, cuDoubleComplex*, cusparseIndexBase_t, void*) nogil>__cusparseZgemvi)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, int, int, const cuDoubleComplex*, const int*, const cuDoubleComplex*, cuDoubleComplex*, cusparseIndexBase_t, void*) noexcept nogil>__cusparseZgemvi)(
         handle, transA, m, n, alpha, A, lda, nnz, xVal, xInd, beta, y, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseZgemvi_bufferSize(cusparseHandle_t handle, cusparseOperation_t transA, int m, int n, int nnz, int* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgemvi_bufferSize
     _check_or_init_cusparse()
     if __cusparseZgemvi_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgemvi_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) nogil>__cusparseZgemvi_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, int, int, int, int*) noexcept nogil>__cusparseZgemvi_bufferSize)(
         handle, transA, m, n, nnz, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseSbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const float* alpha, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const float* x, const float* beta, float* y) except* nogil:
+cdef cusparseStatus_t _cusparseSbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const float* alpha, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const float* x, const float* beta, float* y) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSbsrmv
     _check_or_init_cusparse()
     if __cusparseSbsrmv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSbsrmv is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const float*, const cusparseMatDescr_t, const float*, const int*, const int*, int, const float*, const float*, float*) nogil>__cusparseSbsrmv)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const float*, const cusparseMatDescr_t, const float*, const int*, const int*, int, const float*, const float*, float*) noexcept nogil>__cusparseSbsrmv)(
         handle, dirA, transA, mb, nb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, x, beta, y)
 
 
-cdef cusparseStatus_t _cusparseDbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const double* alpha, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const double* x, const double* beta, double* y) except* nogil:
+cdef cusparseStatus_t _cusparseDbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const double* alpha, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const double* x, const double* beta, double* y) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDbsrmv
     _check_or_init_cusparse()
     if __cusparseDbsrmv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDbsrmv is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const double*, const cusparseMatDescr_t, const double*, const int*, const int*, int, const double*, const double*, double*) nogil>__cusparseDbsrmv)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const double*, const cusparseMatDescr_t, const double*, const int*, const int*, int, const double*, const double*, double*) noexcept nogil>__cusparseDbsrmv)(
         handle, dirA, transA, mb, nb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, x, beta, y)
 
 
-cdef cusparseStatus_t _cusparseCbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const cuComplex* alpha, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cuComplex* x, const cuComplex* beta, cuComplex* y) except* nogil:
+cdef cusparseStatus_t _cusparseCbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const cuComplex* alpha, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cuComplex* x, const cuComplex* beta, cuComplex* y) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCbsrmv
     _check_or_init_cusparse()
     if __cusparseCbsrmv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCbsrmv is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const cuComplex*, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, const cuComplex*, const cuComplex*, cuComplex*) nogil>__cusparseCbsrmv)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const cuComplex*, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, const cuComplex*, const cuComplex*, cuComplex*) noexcept nogil>__cusparseCbsrmv)(
         handle, dirA, transA, mb, nb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, x, beta, y)
 
 
-cdef cusparseStatus_t _cusparseZbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cuDoubleComplex* x, const cuDoubleComplex* beta, cuDoubleComplex* y) except* nogil:
+cdef cusparseStatus_t _cusparseZbsrmv(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, int mb, int nb, int nnzb, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cuDoubleComplex* x, const cuDoubleComplex* beta, cuDoubleComplex* y) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZbsrmv
     _check_or_init_cusparse()
     if __cusparseZbsrmv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZbsrmv is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*) nogil>__cusparseZbsrmv)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, int, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*) noexcept nogil>__cusparseZbsrmv)(
         handle, dirA, transA, mb, nb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, x, beta, y)
 
 
-cdef cusparseStatus_t _cusparseSbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const float* alpha, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const float* B, const int ldb, const float* beta, float* C, int ldc) except* nogil:
+cdef cusparseStatus_t _cusparseSbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const float* alpha, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const float* B, const int ldb, const float* beta, float* C, int ldc) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSbsrmm
     _check_or_init_cusparse()
     if __cusparseSbsrmm == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSbsrmm is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const float*, const cusparseMatDescr_t, const float*, const int*, const int*, const int, const float*, const int, const float*, float*, int) nogil>__cusparseSbsrmm)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const float*, const cusparseMatDescr_t, const float*, const int*, const int*, const int, const float*, const int, const float*, float*, int) noexcept nogil>__cusparseSbsrmm)(
         handle, dirA, transA, transB, mb, n, kb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockSize, B, ldb, beta, C, ldc)
 
 
-cdef cusparseStatus_t _cusparseDbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const double* alpha, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const double* B, const int ldb, const double* beta, double* C, int ldc) except* nogil:
+cdef cusparseStatus_t _cusparseDbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const double* alpha, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const double* B, const int ldb, const double* beta, double* C, int ldc) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDbsrmm
     _check_or_init_cusparse()
     if __cusparseDbsrmm == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDbsrmm is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const double*, const cusparseMatDescr_t, const double*, const int*, const int*, const int, const double*, const int, const double*, double*, int) nogil>__cusparseDbsrmm)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const double*, const cusparseMatDescr_t, const double*, const int*, const int*, const int, const double*, const int, const double*, double*, int) noexcept nogil>__cusparseDbsrmm)(
         handle, dirA, transA, transB, mb, n, kb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockSize, B, ldb, beta, C, ldc)
 
 
-cdef cusparseStatus_t _cusparseCbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const cuComplex* alpha, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const cuComplex* B, const int ldb, const cuComplex* beta, cuComplex* C, int ldc) except* nogil:
+cdef cusparseStatus_t _cusparseCbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const cuComplex* alpha, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const cuComplex* B, const int ldb, const cuComplex* beta, cuComplex* C, int ldc) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCbsrmm
     _check_or_init_cusparse()
     if __cusparseCbsrmm == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCbsrmm is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const cuComplex*, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, const int, const cuComplex*, const int, const cuComplex*, cuComplex*, int) nogil>__cusparseCbsrmm)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const cuComplex*, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, const int, const cuComplex*, const int, const cuComplex*, cuComplex*, int) noexcept nogil>__cusparseCbsrmm)(
         handle, dirA, transA, transB, mb, n, kb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockSize, B, ldb, beta, C, ldc)
 
 
-cdef cusparseStatus_t _cusparseZbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const cuDoubleComplex* B, const int ldb, const cuDoubleComplex* beta, cuDoubleComplex* C, int ldc) except* nogil:
+cdef cusparseStatus_t _cusparseZbsrmm(cusparseHandle_t handle, cusparseDirection_t dirA, cusparseOperation_t transA, cusparseOperation_t transB, int mb, int n, int kb, int nnzb, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, const int blockSize, const cuDoubleComplex* B, const int ldb, const cuDoubleComplex* beta, cuDoubleComplex* C, int ldc) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZbsrmm
     _check_or_init_cusparse()
     if __cusparseZbsrmm == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZbsrmm is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, const int, const cuDoubleComplex*, const int, const cuDoubleComplex*, cuDoubleComplex*, int) nogil>__cusparseZbsrmm)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t, cusparseOperation_t, int, int, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, const int, const cuDoubleComplex*, const int, const cuDoubleComplex*, cuDoubleComplex*, int) noexcept nogil>__cusparseZbsrmm)(
         handle, dirA, transA, transB, mb, n, kb, nnzb, alpha, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockSize, B, ldb, beta, C, ldc)
 
 
-cdef cusparseStatus_t _cusparseSgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, const float* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, const float* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsv2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseSgtsv2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsv2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, int, size_t*) nogil>__cusparseSgtsv2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, int, size_t*) noexcept nogil>__cusparseSgtsv2_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, const double* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, const double* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsv2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDgtsv2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsv2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, int, size_t*) nogil>__cusparseDgtsv2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, int, size_t*) noexcept nogil>__cusparseDgtsv2_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsv2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCgtsv2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsv2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) nogil>__cusparseCgtsv2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) noexcept nogil>__cusparseCgtsv2_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsv2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsv2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZgtsv2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsv2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) nogil>__cusparseZgtsv2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) noexcept nogil>__cusparseZgtsv2_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseSgtsv2(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, float* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsv2(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, float* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsv2
     _check_or_init_cusparse()
     if __cusparseSgtsv2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsv2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, float*, int, void*) nogil>__cusparseSgtsv2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, float*, int, void*) noexcept nogil>__cusparseSgtsv2)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgtsv2(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, double* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsv2(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, double* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsv2
     _check_or_init_cusparse()
     if __cusparseDgtsv2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsv2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, double*, int, void*) nogil>__cusparseDgtsv2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, double*, int, void*) noexcept nogil>__cusparseDgtsv2)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgtsv2(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, cuComplex* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsv2(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, cuComplex* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsv2
     _check_or_init_cusparse()
     if __cusparseCgtsv2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsv2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, cuComplex*, int, void*) nogil>__cusparseCgtsv2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, cuComplex*, int, void*) noexcept nogil>__cusparseCgtsv2)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgtsv2(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, cuDoubleComplex* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsv2(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, cuDoubleComplex* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsv2
     _check_or_init_cusparse()
     if __cusparseZgtsv2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsv2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*, int, void*) nogil>__cusparseZgtsv2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*, int, void*) noexcept nogil>__cusparseZgtsv2)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, const float* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, const float* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsv2_nopivot_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseSgtsv2_nopivot_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsv2_nopivot_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, int, size_t*) nogil>__cusparseSgtsv2_nopivot_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, int, size_t*) noexcept nogil>__cusparseSgtsv2_nopivot_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, const double* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, const double* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsv2_nopivot_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDgtsv2_nopivot_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsv2_nopivot_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, int, size_t*) nogil>__cusparseDgtsv2_nopivot_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, int, size_t*) noexcept nogil>__cusparseDgtsv2_nopivot_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsv2_nopivot_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCgtsv2_nopivot_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsv2_nopivot_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) nogil>__cusparseCgtsv2_nopivot_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) noexcept nogil>__cusparseCgtsv2_nopivot_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* B, int ldb, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsv2_nopivot_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* B, int ldb, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsv2_nopivot_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZgtsv2_nopivot_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsv2_nopivot_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) nogil>__cusparseZgtsv2_nopivot_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) noexcept nogil>__cusparseZgtsv2_nopivot_bufferSizeExt)(
         handle, m, n, dl, d, du, B, ldb, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseSgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, float* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const float* dl, const float* d, const float* du, float* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsv2_nopivot
     _check_or_init_cusparse()
     if __cusparseSgtsv2_nopivot == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsv2_nopivot is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, float*, int, void*) nogil>__cusparseSgtsv2_nopivot)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, float*, int, void*) noexcept nogil>__cusparseSgtsv2_nopivot)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, double* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const double* dl, const double* d, const double* du, double* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsv2_nopivot
     _check_or_init_cusparse()
     if __cusparseDgtsv2_nopivot == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsv2_nopivot is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, double*, int, void*) nogil>__cusparseDgtsv2_nopivot)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, double*, int, void*) noexcept nogil>__cusparseDgtsv2_nopivot)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, cuComplex* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const cuComplex* dl, const cuComplex* d, const cuComplex* du, cuComplex* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsv2_nopivot
     _check_or_init_cusparse()
     if __cusparseCgtsv2_nopivot == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsv2_nopivot is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, cuComplex*, int, void*) nogil>__cusparseCgtsv2_nopivot)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, cuComplex*, int, void*) noexcept nogil>__cusparseCgtsv2_nopivot)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, cuDoubleComplex* B, int ldb, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsv2_nopivot(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, cuDoubleComplex* B, int ldb, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsv2_nopivot
     _check_or_init_cusparse()
     if __cusparseZgtsv2_nopivot == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsv2_nopivot is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*, int, void*) nogil>__cusparseZgtsv2_nopivot)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*, int, void*) noexcept nogil>__cusparseZgtsv2_nopivot)(
         handle, m, n, dl, d, du, B, ldb, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const float* dl, const float* d, const float* du, const float* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const float* dl, const float* d, const float* du, const float* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsv2StridedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseSgtsv2StridedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsv2StridedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const float*, const float*, const float*, const float*, int, int, size_t*) nogil>__cusparseSgtsv2StridedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const float*, const float*, const float*, const float*, int, int, size_t*) noexcept nogil>__cusparseSgtsv2StridedBatch_bufferSizeExt)(
         handle, m, dl, d, du, x, batchCount, batchStride, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const double* dl, const double* d, const double* du, const double* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const double* dl, const double* d, const double* du, const double* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsv2StridedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDgtsv2StridedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsv2StridedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const double*, const double*, const double*, const double*, int, int, size_t*) nogil>__cusparseDgtsv2StridedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const double*, const double*, const double*, const double*, int, int, size_t*) noexcept nogil>__cusparseDgtsv2StridedBatch_bufferSizeExt)(
         handle, m, dl, d, du, x, batchCount, batchStride, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsv2StridedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCgtsv2StridedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsv2StridedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, int, size_t*) nogil>__cusparseCgtsv2StridedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, int, size_t*) noexcept nogil>__cusparseCgtsv2StridedBatch_bufferSizeExt)(
         handle, m, dl, d, du, x, batchCount, batchStride, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsv2StridedBatch_bufferSizeExt(cusparseHandle_t handle, int m, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* x, int batchCount, int batchStride, size_t* bufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsv2StridedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZgtsv2StridedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsv2StridedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, int, size_t*) nogil>__cusparseZgtsv2StridedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, int, size_t*) noexcept nogil>__cusparseZgtsv2StridedBatch_bufferSizeExt)(
         handle, m, dl, d, du, x, batchCount, batchStride, bufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseSgtsv2StridedBatch(cusparseHandle_t handle, int m, const float* dl, const float* d, const float* du, float* x, int batchCount, int batchStride, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsv2StridedBatch(cusparseHandle_t handle, int m, const float* dl, const float* d, const float* du, float* x, int batchCount, int batchStride, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsv2StridedBatch
     _check_or_init_cusparse()
     if __cusparseSgtsv2StridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsv2StridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const float*, const float*, const float*, float*, int, int, void*) nogil>__cusparseSgtsv2StridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const float*, const float*, const float*, float*, int, int, void*) noexcept nogil>__cusparseSgtsv2StridedBatch)(
         handle, m, dl, d, du, x, batchCount, batchStride, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgtsv2StridedBatch(cusparseHandle_t handle, int m, const double* dl, const double* d, const double* du, double* x, int batchCount, int batchStride, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsv2StridedBatch(cusparseHandle_t handle, int m, const double* dl, const double* d, const double* du, double* x, int batchCount, int batchStride, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsv2StridedBatch
     _check_or_init_cusparse()
     if __cusparseDgtsv2StridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsv2StridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const double*, const double*, const double*, double*, int, int, void*) nogil>__cusparseDgtsv2StridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const double*, const double*, const double*, double*, int, int, void*) noexcept nogil>__cusparseDgtsv2StridedBatch)(
         handle, m, dl, d, du, x, batchCount, batchStride, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgtsv2StridedBatch(cusparseHandle_t handle, int m, const cuComplex* dl, const cuComplex* d, const cuComplex* du, cuComplex* x, int batchCount, int batchStride, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsv2StridedBatch(cusparseHandle_t handle, int m, const cuComplex* dl, const cuComplex* d, const cuComplex* du, cuComplex* x, int batchCount, int batchStride, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsv2StridedBatch
     _check_or_init_cusparse()
     if __cusparseCgtsv2StridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsv2StridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuComplex*, const cuComplex*, const cuComplex*, cuComplex*, int, int, void*) nogil>__cusparseCgtsv2StridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuComplex*, const cuComplex*, const cuComplex*, cuComplex*, int, int, void*) noexcept nogil>__cusparseCgtsv2StridedBatch)(
         handle, m, dl, d, du, x, batchCount, batchStride, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgtsv2StridedBatch(cusparseHandle_t handle, int m, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, cuDoubleComplex* x, int batchCount, int batchStride, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsv2StridedBatch(cusparseHandle_t handle, int m, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, cuDoubleComplex* x, int batchCount, int batchStride, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsv2StridedBatch
     _check_or_init_cusparse()
     if __cusparseZgtsv2StridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsv2StridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*, int, int, void*) nogil>__cusparseZgtsv2StridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, cuDoubleComplex*, int, int, void*) noexcept nogil>__cusparseZgtsv2StridedBatch)(
         handle, m, dl, d, du, x, batchCount, batchStride, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const float* dl, const float* d, const float* du, const float* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const float* dl, const float* d, const float* du, const float* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseSgtsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, int, size_t*) nogil>__cusparseSgtsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, int, size_t*) noexcept nogil>__cusparseSgtsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, dl, d, du, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const double* dl, const double* d, const double* du, const double* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const double* dl, const double* d, const double* du, const double* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDgtsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, int, size_t*) nogil>__cusparseDgtsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, int, size_t*) noexcept nogil>__cusparseDgtsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, dl, d, du, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCgtsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) nogil>__cusparseCgtsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) noexcept nogil>__cusparseCgtsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, dl, d, du, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZgtsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) nogil>__cusparseZgtsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) noexcept nogil>__cusparseZgtsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, dl, d, du, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseSgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, float* dl, float* d, float* du, float* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, float* dl, float* d, float* du, float* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgtsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseSgtsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgtsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, float*, float*, float*, float*, int, void*) nogil>__cusparseSgtsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, float*, float*, float*, float*, int, void*) noexcept nogil>__cusparseSgtsvInterleavedBatch)(
         handle, algo, m, dl, d, du, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, double* dl, double* d, double* du, double* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, double* dl, double* d, double* du, double* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgtsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseDgtsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgtsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, double*, double*, double*, double*, int, void*) nogil>__cusparseDgtsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, double*, double*, double*, double*, int, void*) noexcept nogil>__cusparseDgtsvInterleavedBatch)(
         handle, algo, m, dl, d, du, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuComplex* dl, cuComplex* d, cuComplex* du, cuComplex* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuComplex* dl, cuComplex* d, cuComplex* du, cuComplex* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgtsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseCgtsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgtsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuComplex*, cuComplex*, cuComplex*, cuComplex*, int, void*) nogil>__cusparseCgtsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuComplex*, cuComplex*, cuComplex*, cuComplex*, int, void*) noexcept nogil>__cusparseCgtsvInterleavedBatch)(
         handle, algo, m, dl, d, du, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuDoubleComplex* dl, cuDoubleComplex* d, cuDoubleComplex* du, cuDoubleComplex* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgtsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuDoubleComplex* dl, cuDoubleComplex* d, cuDoubleComplex* du, cuDoubleComplex* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgtsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseZgtsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgtsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, int, void*) nogil>__cusparseZgtsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, int, void*) noexcept nogil>__cusparseZgtsvInterleavedBatch)(
         handle, algo, m, dl, d, du, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const float* ds, const float* dl, const float* d, const float* du, const float* dw, const float* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseSgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const float* ds, const float* dl, const float* d, const float* du, const float* dw, const float* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgpsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseSgpsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgpsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, const float*, const float*, int, size_t*) nogil>__cusparseSgpsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const float*, const float*, const float*, const float*, const float*, int, size_t*) noexcept nogil>__cusparseSgpsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const double* ds, const double* dl, const double* d, const double* du, const double* dw, const double* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const double* ds, const double* dl, const double* d, const double* du, const double* dw, const double* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgpsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDgpsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgpsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, const double*, const double*, int, size_t*) nogil>__cusparseDgpsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const double*, const double*, const double*, const double*, const double*, int, size_t*) noexcept nogil>__cusparseDgpsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuComplex* ds, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* dw, const cuComplex* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuComplex* ds, const cuComplex* dl, const cuComplex* d, const cuComplex* du, const cuComplex* dw, const cuComplex* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgpsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCgpsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgpsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) nogil>__cusparseCgpsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, const cuComplex*, int, size_t*) noexcept nogil>__cusparseCgpsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuDoubleComplex* ds, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* dw, const cuDoubleComplex* x, int batchCount, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZgpsvInterleavedBatch_bufferSizeExt(cusparseHandle_t handle, int algo, int m, const cuDoubleComplex* ds, const cuDoubleComplex* dl, const cuDoubleComplex* d, const cuDoubleComplex* du, const cuDoubleComplex* dw, const cuDoubleComplex* x, int batchCount, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgpsvInterleavedBatch_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZgpsvInterleavedBatch_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgpsvInterleavedBatch_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) nogil>__cusparseZgpsvInterleavedBatch_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, int, size_t*) noexcept nogil>__cusparseZgpsvInterleavedBatch_bufferSizeExt)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseSgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, float* ds, float* dl, float* d, float* du, float* dw, float* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, float* ds, float* dl, float* d, float* du, float* dw, float* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgpsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseSgpsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgpsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, float*, float*, float*, float*, float*, float*, int, void*) nogil>__cusparseSgpsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, float*, float*, float*, float*, float*, float*, int, void*) noexcept nogil>__cusparseSgpsvInterleavedBatch)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, double* ds, double* dl, double* d, double* du, double* dw, double* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, double* ds, double* dl, double* d, double* du, double* dw, double* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgpsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseDgpsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgpsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, double*, double*, double*, double*, double*, double*, int, void*) nogil>__cusparseDgpsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, double*, double*, double*, double*, double*, double*, int, void*) noexcept nogil>__cusparseDgpsvInterleavedBatch)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuComplex* ds, cuComplex* dl, cuComplex* d, cuComplex* du, cuComplex* dw, cuComplex* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuComplex* ds, cuComplex* dl, cuComplex* d, cuComplex* du, cuComplex* dw, cuComplex* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgpsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseCgpsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgpsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuComplex*, cuComplex*, cuComplex*, cuComplex*, cuComplex*, cuComplex*, int, void*) nogil>__cusparseCgpsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuComplex*, cuComplex*, cuComplex*, cuComplex*, cuComplex*, cuComplex*, int, void*) noexcept nogil>__cusparseCgpsvInterleavedBatch)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuDoubleComplex* ds, cuDoubleComplex* dl, cuDoubleComplex* d, cuDoubleComplex* du, cuDoubleComplex* dw, cuDoubleComplex* x, int batchCount, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgpsvInterleavedBatch(cusparseHandle_t handle, int algo, int m, cuDoubleComplex* ds, cuDoubleComplex* dl, cuDoubleComplex* d, cuDoubleComplex* du, cuDoubleComplex* dw, cuDoubleComplex* x, int batchCount, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgpsvInterleavedBatch
     _check_or_init_cusparse()
     if __cusparseZgpsvInterleavedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgpsvInterleavedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, int, void*) nogil>__cusparseZgpsvInterleavedBatch)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, int, void*) noexcept nogil>__cusparseZgpsvInterleavedBatch)(
         handle, algo, m, ds, dl, d, du, dw, x, batchCount, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseScsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const float* alpha, const cusparseMatDescr_t descrA, int nnzA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const float* beta, const cusparseMatDescr_t descrB, int nnzB, const float* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const float* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseScsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const float* alpha, const cusparseMatDescr_t descrA, int nnzA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const float* beta, const cusparseMatDescr_t descrB, int nnzB, const float* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const float* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseScsrgeam2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseScsrgeam2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseScsrgeam2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const cusparseMatDescr_t, const float*, const int*, const int*, size_t*) nogil>__cusparseScsrgeam2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const cusparseMatDescr_t, const float*, const int*, const int*, size_t*) noexcept nogil>__cusparseScsrgeam2_bufferSizeExt)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDcsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const double* alpha, const cusparseMatDescr_t descrA, int nnzA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const double* beta, const cusparseMatDescr_t descrB, int nnzB, const double* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const double* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDcsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const double* alpha, const cusparseMatDescr_t descrA, int nnzA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const double* beta, const cusparseMatDescr_t descrB, int nnzB, const double* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const double* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDcsrgeam2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDcsrgeam2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDcsrgeam2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const cusparseMatDescr_t, const double*, const int*, const int*, size_t*) nogil>__cusparseDcsrgeam2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const cusparseMatDescr_t, const double*, const int*, const int*, size_t*) noexcept nogil>__cusparseDcsrgeam2_bufferSizeExt)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCcsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const cuComplex* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCcsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const cuComplex* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCcsrgeam2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCcsrgeam2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCcsrgeam2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, size_t*) nogil>__cusparseCcsrgeam2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, size_t*) noexcept nogil>__cusparseCcsrgeam2_bufferSizeExt)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZcsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuDoubleComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuDoubleComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const cuDoubleComplex* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZcsrgeam2_bufferSizeExt(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuDoubleComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuDoubleComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, const cuDoubleComplex* csrSortedValC, const int* csrSortedRowPtrC, const int* csrSortedColIndC, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZcsrgeam2_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZcsrgeam2_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZcsrgeam2_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, size_t*) nogil>__cusparseZcsrgeam2_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, size_t*) noexcept nogil>__cusparseZcsrgeam2_bufferSizeExt)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseXcsrgeam2Nnz(cusparseHandle_t handle, int m, int n, const cusparseMatDescr_t descrA, int nnzA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrB, int nnzB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, int* csrSortedRowPtrC, int* nnzTotalDevHostPtr, void* workspace) except* nogil:
+cdef cusparseStatus_t _cusparseXcsrgeam2Nnz(cusparseHandle_t handle, int m, int n, const cusparseMatDescr_t descrA, int nnzA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrB, int nnzB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, int* csrSortedRowPtrC, int* nnzTotalDevHostPtr, void* workspace) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcsrgeam2Nnz
     _check_or_init_cusparse()
     if __cusparseXcsrgeam2Nnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcsrgeam2Nnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cusparseMatDescr_t, int, const int*, const int*, const cusparseMatDescr_t, int, const int*, const int*, const cusparseMatDescr_t, int*, int*, void*) nogil>__cusparseXcsrgeam2Nnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cusparseMatDescr_t, int, const int*, const int*, const cusparseMatDescr_t, int, const int*, const int*, const cusparseMatDescr_t, int*, int*, void*) noexcept nogil>__cusparseXcsrgeam2Nnz)(
         handle, m, n, descrA, nnzA, csrSortedRowPtrA, csrSortedColIndA, descrB, nnzB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedRowPtrC, nnzTotalDevHostPtr, workspace)
 
 
-cdef cusparseStatus_t _cusparseScsrgeam2(cusparseHandle_t handle, int m, int n, const float* alpha, const cusparseMatDescr_t descrA, int nnzA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const float* beta, const cusparseMatDescr_t descrB, int nnzB, const float* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, float* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseScsrgeam2(cusparseHandle_t handle, int m, int n, const float* alpha, const cusparseMatDescr_t descrA, int nnzA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const float* beta, const cusparseMatDescr_t descrB, int nnzB, const float* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, float* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseScsrgeam2
     _check_or_init_cusparse()
     if __cusparseScsrgeam2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseScsrgeam2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const cusparseMatDescr_t, float*, int*, int*, void*) nogil>__cusparseScsrgeam2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const float*, const cusparseMatDescr_t, int, const float*, const int*, const int*, const cusparseMatDescr_t, float*, int*, int*, void*) noexcept nogil>__cusparseScsrgeam2)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDcsrgeam2(cusparseHandle_t handle, int m, int n, const double* alpha, const cusparseMatDescr_t descrA, int nnzA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const double* beta, const cusparseMatDescr_t descrB, int nnzB, const double* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, double* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDcsrgeam2(cusparseHandle_t handle, int m, int n, const double* alpha, const cusparseMatDescr_t descrA, int nnzA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const double* beta, const cusparseMatDescr_t descrB, int nnzB, const double* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, double* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDcsrgeam2
     _check_or_init_cusparse()
     if __cusparseDcsrgeam2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDcsrgeam2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const cusparseMatDescr_t, double*, int*, int*, void*) nogil>__cusparseDcsrgeam2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const double*, const cusparseMatDescr_t, int, const double*, const int*, const int*, const cusparseMatDescr_t, double*, int*, int*, void*) noexcept nogil>__cusparseDcsrgeam2)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCcsrgeam2(cusparseHandle_t handle, int m, int n, const cuComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, cuComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCcsrgeam2(cusparseHandle_t handle, int m, int n, const cuComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, cuComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCcsrgeam2
     _check_or_init_cusparse()
     if __cusparseCcsrgeam2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCcsrgeam2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cusparseMatDescr_t, cuComplex*, int*, int*, void*) nogil>__cusparseCcsrgeam2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cuComplex*, const cusparseMatDescr_t, int, const cuComplex*, const int*, const int*, const cusparseMatDescr_t, cuComplex*, int*, int*, void*) noexcept nogil>__cusparseCcsrgeam2)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZcsrgeam2(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuDoubleComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuDoubleComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, cuDoubleComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZcsrgeam2(cusparseHandle_t handle, int m, int n, const cuDoubleComplex* alpha, const cusparseMatDescr_t descrA, int nnzA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cuDoubleComplex* beta, const cusparseMatDescr_t descrB, int nnzB, const cuDoubleComplex* csrSortedValB, const int* csrSortedRowPtrB, const int* csrSortedColIndB, const cusparseMatDescr_t descrC, cuDoubleComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZcsrgeam2
     _check_or_init_cusparse()
     if __cusparseZcsrgeam2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZcsrgeam2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*, void*) nogil>__cusparseZcsrgeam2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cuDoubleComplex*, const cusparseMatDescr_t, int, const cuDoubleComplex*, const int*, const int*, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*, void*) noexcept nogil>__cusparseZcsrgeam2)(
         handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except* nogil:
+cdef cusparseStatus_t _cusparseSnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSnnz
     _check_or_init_cusparse()
     if __cusparseSnnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSnnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, int, int*, int*) nogil>__cusparseSnnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, int, int*, int*) noexcept nogil>__cusparseSnnz)(
         handle, dirA, m, n, descrA, A, lda, nnzPerRowCol, nnzTotalDevHostPtr)
 
 
-cdef cusparseStatus_t _cusparseDnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except* nogil:
+cdef cusparseStatus_t _cusparseDnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnnz
     _check_or_init_cusparse()
     if __cusparseDnnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, int, int*, int*) nogil>__cusparseDnnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, int, int*, int*) noexcept nogil>__cusparseDnnz)(
         handle, dirA, m, n, descrA, A, lda, nnzPerRowCol, nnzTotalDevHostPtr)
 
 
-cdef cusparseStatus_t _cusparseCnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except* nogil:
+cdef cusparseStatus_t _cusparseCnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCnnz
     _check_or_init_cusparse()
     if __cusparseCnnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCnnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, int, int*, int*) nogil>__cusparseCnnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, int, int*, int*) noexcept nogil>__cusparseCnnz)(
         handle, dirA, m, n, descrA, A, lda, nnzPerRowCol, nnzTotalDevHostPtr)
 
 
-cdef cusparseStatus_t _cusparseZnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except* nogil:
+cdef cusparseStatus_t _cusparseZnnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZnnz
     _check_or_init_cusparse()
     if __cusparseZnnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZnnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, int, int*, int*) nogil>__cusparseZnnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, int, int*, int*) noexcept nogil>__cusparseZnnz)(
         handle, dirA, m, n, descrA, A, lda, nnzPerRowCol, nnzTotalDevHostPtr)
 
 
-cdef cusparseStatus_t _cusparseXcoo2csr(cusparseHandle_t handle, const int* cooRowInd, int nnz, int m, int* csrSortedRowPtr, cusparseIndexBase_t idxBase) except* nogil:
+cdef cusparseStatus_t _cusparseXcoo2csr(cusparseHandle_t handle, const int* cooRowInd, int nnz, int m, int* csrSortedRowPtr, cusparseIndexBase_t idxBase) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcoo2csr
     _check_or_init_cusparse()
     if __cusparseXcoo2csr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcoo2csr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, const int*, int, int, int*, cusparseIndexBase_t) nogil>__cusparseXcoo2csr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, const int*, int, int, int*, cusparseIndexBase_t) noexcept nogil>__cusparseXcoo2csr)(
         handle, cooRowInd, nnz, m, csrSortedRowPtr, idxBase)
 
 
-cdef cusparseStatus_t _cusparseXcsr2coo(cusparseHandle_t handle, const int* csrSortedRowPtr, int nnz, int m, int* cooRowInd, cusparseIndexBase_t idxBase) except* nogil:
+cdef cusparseStatus_t _cusparseXcsr2coo(cusparseHandle_t handle, const int* csrSortedRowPtr, int nnz, int m, int* cooRowInd, cusparseIndexBase_t idxBase) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcsr2coo
     _check_or_init_cusparse()
     if __cusparseXcsr2coo == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcsr2coo is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, const int*, int, int, int*, cusparseIndexBase_t) nogil>__cusparseXcsr2coo)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, const int*, int, int, int*, cusparseIndexBase_t) noexcept nogil>__cusparseXcsr2coo)(
         handle, csrSortedRowPtr, nnz, m, cooRowInd, idxBase)
 
 
-cdef cusparseStatus_t _cusparseSbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, float* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except* nogil:
+cdef cusparseStatus_t _cusparseSbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, float* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSbsr2csr
     _check_or_init_cusparse()
     if __cusparseSbsr2csr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSbsr2csr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, const cusparseMatDescr_t, float*, int*, int*) nogil>__cusparseSbsr2csr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, const cusparseMatDescr_t, float*, int*, int*) noexcept nogil>__cusparseSbsr2csr)(
         handle, dirA, mb, nb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC)
 
 
-cdef cusparseStatus_t _cusparseDbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, double* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except* nogil:
+cdef cusparseStatus_t _cusparseDbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, double* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDbsr2csr
     _check_or_init_cusparse()
     if __cusparseDbsr2csr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDbsr2csr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, const cusparseMatDescr_t, double*, int*, int*) nogil>__cusparseDbsr2csr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, const cusparseMatDescr_t, double*, int*, int*) noexcept nogil>__cusparseDbsr2csr)(
         handle, dirA, mb, nb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC)
 
 
-cdef cusparseStatus_t _cusparseCbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, cuComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except* nogil:
+cdef cusparseStatus_t _cusparseCbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, cuComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCbsr2csr
     _check_or_init_cusparse()
     if __cusparseCbsr2csr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCbsr2csr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, const cusparseMatDescr_t, cuComplex*, int*, int*) nogil>__cusparseCbsr2csr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, const cusparseMatDescr_t, cuComplex*, int*, int*) noexcept nogil>__cusparseCbsr2csr)(
         handle, dirA, mb, nb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC)
 
 
-cdef cusparseStatus_t _cusparseZbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, cuDoubleComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except* nogil:
+cdef cusparseStatus_t _cusparseZbsr2csr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const cusparseMatDescr_t descrC, cuDoubleComplex* csrSortedValC, int* csrSortedRowPtrC, int* csrSortedColIndC) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZbsr2csr
     _check_or_init_cusparse()
     if __cusparseZbsr2csr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZbsr2csr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*) nogil>__cusparseZbsr2csr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*) noexcept nogil>__cusparseZbsr2csr)(
         handle, dirA, mb, nb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, blockDim, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC)
 
 
-cdef cusparseStatus_t _cusparseSgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const float* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseSgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const float* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgebsr2gebsc_bufferSize
     _check_or_init_cusparse()
     if __cusparseSgebsr2gebsc_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgebsr2gebsc_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const float*, const int*, const int*, int, int, int*) nogil>__cusparseSgebsr2gebsc_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const float*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseSgebsr2gebsc_bufferSize)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const double* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const double* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgebsr2gebsc_bufferSize
     _check_or_init_cusparse()
     if __cusparseDgebsr2gebsc_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgebsr2gebsc_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const double*, const int*, const int*, int, int, int*) nogil>__cusparseDgebsr2gebsc_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const double*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseDgebsr2gebsc_bufferSize)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgebsr2gebsc_bufferSize
     _check_or_init_cusparse()
     if __cusparseCgebsr2gebsc_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgebsr2gebsc_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuComplex*, const int*, const int*, int, int, int*) nogil>__cusparseCgebsr2gebsc_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuComplex*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseCgebsr2gebsc_bufferSize)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuDoubleComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZgebsr2gebsc_bufferSize(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuDoubleComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgebsr2gebsc_bufferSize
     _check_or_init_cusparse()
     if __cusparseZgebsr2gebsc_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgebsr2gebsc_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuDoubleComplex*, const int*, const int*, int, int, int*) nogil>__cusparseZgebsr2gebsc_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuDoubleComplex*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseZgebsr2gebsc_bufferSize)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseSgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const float* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const float* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgebsr2gebsc_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseSgebsr2gebsc_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgebsr2gebsc_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const float*, const int*, const int*, int, int, size_t*) nogil>__cusparseSgebsr2gebsc_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const float*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseSgebsr2gebsc_bufferSizeExt)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseDgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const double* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseDgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const double* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgebsr2gebsc_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDgebsr2gebsc_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgebsr2gebsc_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const double*, const int*, const int*, int, int, size_t*) nogil>__cusparseDgebsr2gebsc_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const double*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseDgebsr2gebsc_bufferSizeExt)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseCgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseCgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgebsr2gebsc_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCgebsr2gebsc_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgebsr2gebsc_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuComplex*, const int*, const int*, int, int, size_t*) nogil>__cusparseCgebsr2gebsc_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuComplex*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseCgebsr2gebsc_bufferSizeExt)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseZgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuDoubleComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseZgebsr2gebsc_bufferSizeExt(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuDoubleComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgebsr2gebsc_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZgebsr2gebsc_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgebsr2gebsc_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuDoubleComplex*, const int*, const int*, int, int, size_t*) nogil>__cusparseZgebsr2gebsc_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuDoubleComplex*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseZgebsr2gebsc_bufferSizeExt)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseSgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const float* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, float* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const float* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, float* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgebsr2gebsc
     _check_or_init_cusparse()
     if __cusparseSgebsr2gebsc == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgebsr2gebsc is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const float*, const int*, const int*, int, int, float*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) nogil>__cusparseSgebsr2gebsc)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const float*, const int*, const int*, int, int, float*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) noexcept nogil>__cusparseSgebsr2gebsc)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, bscVal, bscRowInd, bscColPtr, copyValues, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const double* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, double* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const double* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, double* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgebsr2gebsc
     _check_or_init_cusparse()
     if __cusparseDgebsr2gebsc == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgebsr2gebsc is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const double*, const int*, const int*, int, int, double*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) nogil>__cusparseDgebsr2gebsc)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const double*, const int*, const int*, int, int, double*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) noexcept nogil>__cusparseDgebsr2gebsc)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, bscVal, bscRowInd, bscColPtr, copyValues, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, cuComplex* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, cuComplex* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgebsr2gebsc
     _check_or_init_cusparse()
     if __cusparseCgebsr2gebsc == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgebsr2gebsc is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuComplex*, const int*, const int*, int, int, cuComplex*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) nogil>__cusparseCgebsr2gebsc)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuComplex*, const int*, const int*, int, int, cuComplex*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) noexcept nogil>__cusparseCgebsr2gebsc)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, bscVal, bscRowInd, bscColPtr, copyValues, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuDoubleComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, cuDoubleComplex* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgebsr2gebsc(cusparseHandle_t handle, int mb, int nb, int nnzb, const cuDoubleComplex* bsrSortedVal, const int* bsrSortedRowPtr, const int* bsrSortedColInd, int rowBlockDim, int colBlockDim, cuDoubleComplex* bscVal, int* bscRowInd, int* bscColPtr, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgebsr2gebsc
     _check_or_init_cusparse()
     if __cusparseZgebsr2gebsc == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgebsr2gebsc is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuDoubleComplex*, const int*, const int*, int, int, cuDoubleComplex*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) nogil>__cusparseZgebsr2gebsc)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cuDoubleComplex*, const int*, const int*, int, int, cuDoubleComplex*, int*, int*, cusparseAction_t, cusparseIndexBase_t, void*) noexcept nogil>__cusparseZgebsr2gebsc)(
         handle, mb, nb, nnzb, bsrSortedVal, bsrSortedRowPtr, bsrSortedColInd, rowBlockDim, colBlockDim, bscVal, bscRowInd, bscColPtr, copyValues, idxBase, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseScsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseScsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseScsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseScsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseScsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, int*) nogil>__cusparseScsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseScsr2gebsr_bufferSize)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDcsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDcsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDcsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseDcsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDcsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, int*) nogil>__cusparseDcsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseDcsr2gebsr_bufferSize)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCcsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCcsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCcsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseCcsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCcsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, int*) nogil>__cusparseCcsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseCcsr2gebsr_bufferSize)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZcsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZcsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZcsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseZcsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZcsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, int*) nogil>__cusparseZcsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, int*) noexcept nogil>__cusparseZcsr2gebsr_bufferSize)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseScsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseScsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseScsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseScsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseScsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, size_t*) nogil>__cusparseScsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseScsr2gebsr_bufferSizeExt)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseDcsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseDcsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDcsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDcsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDcsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, size_t*) nogil>__cusparseDcsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseDcsr2gebsr_bufferSizeExt)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseCcsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseCcsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCcsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCcsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCcsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, size_t*) nogil>__cusparseCcsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseCcsr2gebsr_bufferSizeExt)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseZcsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseZcsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, int rowBlockDim, int colBlockDim, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZcsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZcsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZcsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, size_t*) nogil>__cusparseZcsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, size_t*) noexcept nogil>__cusparseZcsr2gebsr_bufferSizeExt)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, rowBlockDim, colBlockDim, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseXcsr2gebsrNnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, int* bsrSortedRowPtrC, int rowBlockDim, int colBlockDim, int* nnzTotalDevHostPtr, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseXcsr2gebsrNnz(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, int* bsrSortedRowPtrC, int rowBlockDim, int colBlockDim, int* nnzTotalDevHostPtr, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcsr2gebsrNnz
     _check_or_init_cusparse()
     if __cusparseXcsr2gebsrNnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcsr2gebsrNnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const int*, const int*, const cusparseMatDescr_t, int*, int, int, int*, void*) nogil>__cusparseXcsr2gebsrNnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const int*, const int*, const cusparseMatDescr_t, int*, int, int, int*, void*) noexcept nogil>__cusparseXcsr2gebsrNnz)(
         handle, dirA, m, n, descrA, csrSortedRowPtrA, csrSortedColIndA, descrC, bsrSortedRowPtrC, rowBlockDim, colBlockDim, nnzTotalDevHostPtr, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseScsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, float* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseScsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, float* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseScsr2gebsr
     _check_or_init_cusparse()
     if __cusparseScsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseScsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, const cusparseMatDescr_t, float*, int*, int*, int, int, void*) nogil>__cusparseScsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, const cusparseMatDescr_t, float*, int*, int*, int, int, void*) noexcept nogil>__cusparseScsr2gebsr)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDim, colBlockDim, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDcsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, double* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDcsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, double* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDcsr2gebsr
     _check_or_init_cusparse()
     if __cusparseDcsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDcsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, const cusparseMatDescr_t, double*, int*, int*, int, int, void*) nogil>__cusparseDcsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, const cusparseMatDescr_t, double*, int*, int*, int, int, void*) noexcept nogil>__cusparseDcsr2gebsr)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDim, colBlockDim, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCcsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, cuComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCcsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, cuComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCcsr2gebsr
     _check_or_init_cusparse()
     if __cusparseCcsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCcsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, const cusparseMatDescr_t, cuComplex*, int*, int*, int, int, void*) nogil>__cusparseCcsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, const cusparseMatDescr_t, cuComplex*, int*, int*, int, int, void*) noexcept nogil>__cusparseCcsr2gebsr)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDim, colBlockDim, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZcsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, cuDoubleComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZcsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int m, int n, const cusparseMatDescr_t descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, const cusparseMatDescr_t descrC, cuDoubleComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDim, int colBlockDim, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZcsr2gebsr
     _check_or_init_cusparse()
     if __cusparseZcsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZcsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*, int, int, void*) nogil>__cusparseZcsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*, int, int, void*) noexcept nogil>__cusparseZcsr2gebsr)(
         handle, dirA, m, n, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDim, colBlockDim, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseSgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgebsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseSgebsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgebsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, int, int, int*) nogil>__cusparseSgebsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, int, int, int*) noexcept nogil>__cusparseSgebsr2gebsr_bufferSize)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseDgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseDgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgebsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseDgebsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgebsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, int, int, int*) nogil>__cusparseDgebsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, int, int, int*) noexcept nogil>__cusparseDgebsr2gebsr_bufferSize)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseCgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseCgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgebsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseCgebsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgebsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, int, int, int*) nogil>__cusparseCgebsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, int, int, int*) noexcept nogil>__cusparseCgebsr2gebsr_bufferSize)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseZgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseZgebsr2gebsr_bufferSize(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, int* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgebsr2gebsr_bufferSize
     _check_or_init_cusparse()
     if __cusparseZgebsr2gebsr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgebsr2gebsr_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, int, int, int*) nogil>__cusparseZgebsr2gebsr_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, int, int, int*) noexcept nogil>__cusparseZgebsr2gebsr_bufferSize)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseSgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgebsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseSgebsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgebsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, int, int, size_t*) nogil>__cusparseSgebsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, int, int, size_t*) noexcept nogil>__cusparseSgebsr2gebsr_bufferSizeExt)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseDgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseDgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgebsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseDgebsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgebsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, int, int, size_t*) nogil>__cusparseDgebsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, int, int, size_t*) noexcept nogil>__cusparseDgebsr2gebsr_bufferSizeExt)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseCgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseCgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgebsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseCgebsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgebsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, int, int, size_t*) nogil>__cusparseCgebsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, int, int, size_t*) noexcept nogil>__cusparseCgebsr2gebsr_bufferSizeExt)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseZgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseZgebsr2gebsr_bufferSizeExt(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, int rowBlockDimC, int colBlockDimC, size_t* pBufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgebsr2gebsr_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseZgebsr2gebsr_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgebsr2gebsr_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, int, int, size_t*) nogil>__cusparseZgebsr2gebsr_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, int, int, size_t*) noexcept nogil>__cusparseZgebsr2gebsr_bufferSizeExt)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, rowBlockDimC, colBlockDimC, pBufferSize)
 
 
-cdef cusparseStatus_t _cusparseXgebsr2gebsrNnz(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, int* bsrSortedRowPtrC, int rowBlockDimC, int colBlockDimC, int* nnzTotalDevHostPtr, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseXgebsr2gebsrNnz(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, int* bsrSortedRowPtrC, int rowBlockDimC, int colBlockDimC, int* nnzTotalDevHostPtr, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXgebsr2gebsrNnz
     _check_or_init_cusparse()
     if __cusparseXgebsr2gebsrNnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXgebsr2gebsrNnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const int*, const int*, int, int, const cusparseMatDescr_t, int*, int, int, int*, void*) nogil>__cusparseXgebsr2gebsrNnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const int*, const int*, int, int, const cusparseMatDescr_t, int*, int, int, int*, void*) noexcept nogil>__cusparseXgebsr2gebsrNnz)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, descrC, bsrSortedRowPtrC, rowBlockDimC, colBlockDimC, nnzTotalDevHostPtr, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseSgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, float* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, float* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSgebsr2gebsr
     _check_or_init_cusparse()
     if __cusparseSgebsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSgebsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, const cusparseMatDescr_t, float*, int*, int*, int, int, void*) nogil>__cusparseSgebsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const float*, const int*, const int*, int, int, const cusparseMatDescr_t, float*, int*, int*, int, int, void*) noexcept nogil>__cusparseSgebsr2gebsr)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDimC, colBlockDimC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseDgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, double* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const double* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, double* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDgebsr2gebsr
     _check_or_init_cusparse()
     if __cusparseDgebsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDgebsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, const cusparseMatDescr_t, double*, int*, int*, int, int, void*) nogil>__cusparseDgebsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const double*, const int*, const int*, int, int, const cusparseMatDescr_t, double*, int*, int*, int, int, void*) noexcept nogil>__cusparseDgebsr2gebsr)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDimC, colBlockDimC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, cuComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseCgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, cuComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCgebsr2gebsr
     _check_or_init_cusparse()
     if __cusparseCgebsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCgebsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, const cusparseMatDescr_t, cuComplex*, int*, int*, int, int, void*) nogil>__cusparseCgebsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuComplex*, const int*, const int*, int, int, const cusparseMatDescr_t, cuComplex*, int*, int*, int, int, void*) noexcept nogil>__cusparseCgebsr2gebsr)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDimC, colBlockDimC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseZgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, cuDoubleComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseZgebsr2gebsr(cusparseHandle_t handle, cusparseDirection_t dirA, int mb, int nb, int nnzb, const cusparseMatDescr_t descrA, const cuDoubleComplex* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int rowBlockDimA, int colBlockDimA, const cusparseMatDescr_t descrC, cuDoubleComplex* bsrSortedValC, int* bsrSortedRowPtrC, int* bsrSortedColIndC, int rowBlockDimC, int colBlockDimC, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseZgebsr2gebsr
     _check_or_init_cusparse()
     if __cusparseZgebsr2gebsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseZgebsr2gebsr is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*, int, int, void*) nogil>__cusparseZgebsr2gebsr)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseDirection_t, int, int, int, const cusparseMatDescr_t, const cuDoubleComplex*, const int*, const int*, int, int, const cusparseMatDescr_t, cuDoubleComplex*, int*, int*, int, int, void*) noexcept nogil>__cusparseZgebsr2gebsr)(
         handle, dirA, mb, nb, nnzb, descrA, bsrSortedValA, bsrSortedRowPtrA, bsrSortedColIndA, rowBlockDimA, colBlockDimA, descrC, bsrSortedValC, bsrSortedRowPtrC, bsrSortedColIndC, rowBlockDimC, colBlockDimC, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseXcoosort_bufferSizeExt(cusparseHandle_t handle, int m, int n, int nnz, const int* cooRowsA, const int* cooColsA, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseXcoosort_bufferSizeExt(cusparseHandle_t handle, int m, int n, int nnz, const int* cooRowsA, const int* cooColsA, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcoosort_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseXcoosort_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcoosort_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const int*, const int*, size_t*) nogil>__cusparseXcoosort_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const int*, const int*, size_t*) noexcept nogil>__cusparseXcoosort_bufferSizeExt)(
         handle, m, n, nnz, cooRowsA, cooColsA, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseXcoosortByRow(cusparseHandle_t handle, int m, int n, int nnz, int* cooRowsA, int* cooColsA, int* P, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseXcoosortByRow(cusparseHandle_t handle, int m, int n, int nnz, int* cooRowsA, int* cooColsA, int* P, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcoosortByRow
     _check_or_init_cusparse()
     if __cusparseXcoosortByRow == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcoosortByRow is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, int*, int*, int*, void*) nogil>__cusparseXcoosortByRow)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, int*, int*, int*, void*) noexcept nogil>__cusparseXcoosortByRow)(
         handle, m, n, nnz, cooRowsA, cooColsA, P, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseXcoosortByColumn(cusparseHandle_t handle, int m, int n, int nnz, int* cooRowsA, int* cooColsA, int* P, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseXcoosortByColumn(cusparseHandle_t handle, int m, int n, int nnz, int* cooRowsA, int* cooColsA, int* P, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcoosortByColumn
     _check_or_init_cusparse()
     if __cusparseXcoosortByColumn == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcoosortByColumn is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, int*, int*, int*, void*) nogil>__cusparseXcoosortByColumn)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, int*, int*, int*, void*) noexcept nogil>__cusparseXcoosortByColumn)(
         handle, m, n, nnz, cooRowsA, cooColsA, P, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseXcsrsort_bufferSizeExt(cusparseHandle_t handle, int m, int n, int nnz, const int* csrRowPtrA, const int* csrColIndA, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseXcsrsort_bufferSizeExt(cusparseHandle_t handle, int m, int n, int nnz, const int* csrRowPtrA, const int* csrColIndA, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcsrsort_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseXcsrsort_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcsrsort_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const int*, const int*, size_t*) nogil>__cusparseXcsrsort_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const int*, const int*, size_t*) noexcept nogil>__cusparseXcsrsort_bufferSizeExt)(
         handle, m, n, nnz, csrRowPtrA, csrColIndA, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseXcsrsort(cusparseHandle_t handle, int m, int n, int nnz, const cusparseMatDescr_t descrA, const int* csrRowPtrA, int* csrColIndA, int* P, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseXcsrsort(cusparseHandle_t handle, int m, int n, int nnz, const cusparseMatDescr_t descrA, const int* csrRowPtrA, int* csrColIndA, int* P, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcsrsort
     _check_or_init_cusparse()
     if __cusparseXcsrsort == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcsrsort is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cusparseMatDescr_t, const int*, int*, int*, void*) nogil>__cusparseXcsrsort)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cusparseMatDescr_t, const int*, int*, int*, void*) noexcept nogil>__cusparseXcsrsort)(
         handle, m, n, nnz, descrA, csrRowPtrA, csrColIndA, P, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseXcscsort_bufferSizeExt(cusparseHandle_t handle, int m, int n, int nnz, const int* cscColPtrA, const int* cscRowIndA, size_t* pBufferSizeInBytes) except* nogil:
+cdef cusparseStatus_t _cusparseXcscsort_bufferSizeExt(cusparseHandle_t handle, int m, int n, int nnz, const int* cscColPtrA, const int* cscRowIndA, size_t* pBufferSizeInBytes) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcscsort_bufferSizeExt
     _check_or_init_cusparse()
     if __cusparseXcscsort_bufferSizeExt == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcscsort_bufferSizeExt is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const int*, const int*, size_t*) nogil>__cusparseXcscsort_bufferSizeExt)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const int*, const int*, size_t*) noexcept nogil>__cusparseXcscsort_bufferSizeExt)(
         handle, m, n, nnz, cscColPtrA, cscRowIndA, pBufferSizeInBytes)
 
 
-cdef cusparseStatus_t _cusparseXcscsort(cusparseHandle_t handle, int m, int n, int nnz, const cusparseMatDescr_t descrA, const int* cscColPtrA, int* cscRowIndA, int* P, void* pBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseXcscsort(cusparseHandle_t handle, int m, int n, int nnz, const cusparseMatDescr_t descrA, const int* cscColPtrA, int* cscRowIndA, int* P, void* pBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseXcscsort
     _check_or_init_cusparse()
     if __cusparseXcscsort == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseXcscsort is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cusparseMatDescr_t, const int*, int*, int*, void*) nogil>__cusparseXcscsort)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const cusparseMatDescr_t, const int*, int*, int*, void*) noexcept nogil>__cusparseXcscsort)(
         handle, m, n, nnz, descrA, cscColPtrA, cscRowIndA, P, pBuffer)
 
 
-cdef cusparseStatus_t _cusparseCsr2cscEx2(cusparseHandle_t handle, int m, int n, int nnz, const void* csrVal, const int* csrRowPtr, const int* csrColInd, void* cscVal, int* cscColPtr, int* cscRowInd, cudaDataType valType, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, cusparseCsr2CscAlg_t alg, void* buffer) except* nogil:
+cdef cusparseStatus_t _cusparseCsr2cscEx2(cusparseHandle_t handle, int m, int n, int nnz, const void* csrVal, const int* csrRowPtr, const int* csrColInd, void* cscVal, int* cscColPtr, int* cscRowInd, cudaDataType valType, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, cusparseCsr2CscAlg_t alg, void* buffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCsr2cscEx2
     _check_or_init_cusparse()
     if __cusparseCsr2cscEx2 == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCsr2cscEx2 is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const void*, const int*, const int*, void*, int*, int*, cudaDataType, cusparseAction_t, cusparseIndexBase_t, cusparseCsr2CscAlg_t, void*) nogil>__cusparseCsr2cscEx2)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const void*, const int*, const int*, void*, int*, int*, cudaDataType, cusparseAction_t, cusparseIndexBase_t, cusparseCsr2CscAlg_t, void*) noexcept nogil>__cusparseCsr2cscEx2)(
         handle, m, n, nnz, csrVal, csrRowPtr, csrColInd, cscVal, cscColPtr, cscRowInd, valType, copyValues, idxBase, alg, buffer)
 
 
-cdef cusparseStatus_t _cusparseCsr2cscEx2_bufferSize(cusparseHandle_t handle, int m, int n, int nnz, const void* csrVal, const int* csrRowPtr, const int* csrColInd, void* cscVal, int* cscColPtr, int* cscRowInd, cudaDataType valType, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, cusparseCsr2CscAlg_t alg, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseCsr2cscEx2_bufferSize(cusparseHandle_t handle, int m, int n, int nnz, const void* csrVal, const int* csrRowPtr, const int* csrColInd, void* cscVal, int* cscColPtr, int* cscRowInd, cudaDataType valType, cusparseAction_t copyValues, cusparseIndexBase_t idxBase, cusparseCsr2CscAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCsr2cscEx2_bufferSize
     _check_or_init_cusparse()
     if __cusparseCsr2cscEx2_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCsr2cscEx2_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const void*, const int*, const int*, void*, int*, int*, cudaDataType, cusparseAction_t, cusparseIndexBase_t, cusparseCsr2CscAlg_t, size_t*) nogil>__cusparseCsr2cscEx2_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, int, int, int, const void*, const int*, const int*, void*, int*, int*, cudaDataType, cusparseAction_t, cusparseIndexBase_t, cusparseCsr2CscAlg_t, size_t*) noexcept nogil>__cusparseCsr2cscEx2_bufferSize)(
         handle, m, n, nnz, csrVal, csrRowPtr, csrColInd, cscVal, cscColPtr, cscRowInd, valType, copyValues, idxBase, alg, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseCreateSpVec(cusparseSpVecDescr_t* spVecDescr, int64_t size, int64_t nnz, void* indices, void* values, cusparseIndexType_t idxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateSpVec(cusparseSpVecDescr_t* spVecDescr, int64_t size, int64_t nnz, void* indices, void* values, cusparseIndexType_t idxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateSpVec
     _check_or_init_cusparse()
     if __cusparseCreateSpVec == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateSpVec is not found")
-    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t*, int64_t, int64_t, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateSpVec)(
+    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t*, int64_t, int64_t, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateSpVec)(
         spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseDestroySpVec(cusparseConstSpVecDescr_t spVecDescr) except* nogil:
+cdef cusparseStatus_t _cusparseDestroySpVec(cusparseConstSpVecDescr_t spVecDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDestroySpVec
     _check_or_init_cusparse()
     if __cusparseDestroySpVec == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDestroySpVec is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t) nogil>__cusparseDestroySpVec)(
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t) noexcept nogil>__cusparseDestroySpVec)(
         spVecDescr)
 
 
-cdef cusparseStatus_t _cusparseSpVecGet(cusparseSpVecDescr_t spVecDescr, int64_t* size, int64_t* nnz, void** indices, void** values, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseSpVecGet(cusparseSpVecDescr_t spVecDescr, int64_t* size, int64_t* nnz, void** indices, void** values, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpVecGet
     _check_or_init_cusparse()
     if __cusparseSpVecGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpVecGet is not found")
-    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t, int64_t*, int64_t*, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseSpVecGet)(
+    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t, int64_t*, int64_t*, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseSpVecGet)(
         spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseSpVecGetIndexBase(cusparseConstSpVecDescr_t spVecDescr, cusparseIndexBase_t* idxBase) except* nogil:
+cdef cusparseStatus_t _cusparseSpVecGetIndexBase(cusparseConstSpVecDescr_t spVecDescr, cusparseIndexBase_t* idxBase) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpVecGetIndexBase
     _check_or_init_cusparse()
     if __cusparseSpVecGetIndexBase == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpVecGetIndexBase is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, cusparseIndexBase_t*) nogil>__cusparseSpVecGetIndexBase)(
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, cusparseIndexBase_t*) noexcept nogil>__cusparseSpVecGetIndexBase)(
         spVecDescr, idxBase)
 
 
-cdef cusparseStatus_t _cusparseSpVecGetValues(cusparseSpVecDescr_t spVecDescr, void** values) except* nogil:
+cdef cusparseStatus_t _cusparseSpVecGetValues(cusparseSpVecDescr_t spVecDescr, void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpVecGetValues
     _check_or_init_cusparse()
     if __cusparseSpVecGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpVecGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t, void**) nogil>__cusparseSpVecGetValues)(
+    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t, void**) noexcept nogil>__cusparseSpVecGetValues)(
         spVecDescr, values)
 
 
-cdef cusparseStatus_t _cusparseSpVecSetValues(cusparseSpVecDescr_t spVecDescr, void* values) except* nogil:
+cdef cusparseStatus_t _cusparseSpVecSetValues(cusparseSpVecDescr_t spVecDescr, void* values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpVecSetValues
     _check_or_init_cusparse()
     if __cusparseSpVecSetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpVecSetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t, void*) nogil>__cusparseSpVecSetValues)(
+    return (<cusparseStatus_t (*)(cusparseSpVecDescr_t, void*) noexcept nogil>__cusparseSpVecSetValues)(
         spVecDescr, values)
 
 
-cdef cusparseStatus_t _cusparseCreateDnVec(cusparseDnVecDescr_t* dnVecDescr, int64_t size, void* values, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateDnVec(cusparseDnVecDescr_t* dnVecDescr, int64_t size, void* values, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateDnVec
     _check_or_init_cusparse()
     if __cusparseCreateDnVec == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateDnVec is not found")
-    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t*, int64_t, void*, cudaDataType) nogil>__cusparseCreateDnVec)(
+    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t*, int64_t, void*, cudaDataType) noexcept nogil>__cusparseCreateDnVec)(
         dnVecDescr, size, values, valueType)
 
 
-cdef cusparseStatus_t _cusparseDestroyDnVec(cusparseConstDnVecDescr_t dnVecDescr) except* nogil:
+cdef cusparseStatus_t _cusparseDestroyDnVec(cusparseConstDnVecDescr_t dnVecDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDestroyDnVec
     _check_or_init_cusparse()
     if __cusparseDestroyDnVec == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDestroyDnVec is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t) nogil>__cusparseDestroyDnVec)(
+    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t) noexcept nogil>__cusparseDestroyDnVec)(
         dnVecDescr)
 
 
-cdef cusparseStatus_t _cusparseDnVecGet(cusparseDnVecDescr_t dnVecDescr, int64_t* size, void** values, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseDnVecGet(cusparseDnVecDescr_t dnVecDescr, int64_t* size, void** values, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnVecGet
     _check_or_init_cusparse()
     if __cusparseDnVecGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnVecGet is not found")
-    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t, int64_t*, void**, cudaDataType*) nogil>__cusparseDnVecGet)(
+    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t, int64_t*, void**, cudaDataType*) noexcept nogil>__cusparseDnVecGet)(
         dnVecDescr, size, values, valueType)
 
 
-cdef cusparseStatus_t _cusparseDnVecGetValues(cusparseDnVecDescr_t dnVecDescr, void** values) except* nogil:
+cdef cusparseStatus_t _cusparseDnVecGetValues(cusparseDnVecDescr_t dnVecDescr, void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnVecGetValues
     _check_or_init_cusparse()
     if __cusparseDnVecGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnVecGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t, void**) nogil>__cusparseDnVecGetValues)(
+    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t, void**) noexcept nogil>__cusparseDnVecGetValues)(
         dnVecDescr, values)
 
 
-cdef cusparseStatus_t _cusparseDnVecSetValues(cusparseDnVecDescr_t dnVecDescr, void* values) except* nogil:
+cdef cusparseStatus_t _cusparseDnVecSetValues(cusparseDnVecDescr_t dnVecDescr, void* values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnVecSetValues
     _check_or_init_cusparse()
     if __cusparseDnVecSetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnVecSetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t, void*) nogil>__cusparseDnVecSetValues)(
+    return (<cusparseStatus_t (*)(cusparseDnVecDescr_t, void*) noexcept nogil>__cusparseDnVecSetValues)(
         dnVecDescr, values)
 
 
-cdef cusparseStatus_t _cusparseDestroySpMat(cusparseConstSpMatDescr_t spMatDescr) except* nogil:
+cdef cusparseStatus_t _cusparseDestroySpMat(cusparseConstSpMatDescr_t spMatDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDestroySpMat
     _check_or_init_cusparse()
     if __cusparseDestroySpMat == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDestroySpMat is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t) nogil>__cusparseDestroySpMat)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t) noexcept nogil>__cusparseDestroySpMat)(
         spMatDescr)
 
 
-cdef cusparseStatus_t _cusparseSpMatGetFormat(cusparseConstSpMatDescr_t spMatDescr, cusparseFormat_t* format) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatGetFormat(cusparseConstSpMatDescr_t spMatDescr, cusparseFormat_t* format) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatGetFormat
     _check_or_init_cusparse()
     if __cusparseSpMatGetFormat == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatGetFormat is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseFormat_t*) nogil>__cusparseSpMatGetFormat)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseFormat_t*) noexcept nogil>__cusparseSpMatGetFormat)(
         spMatDescr, format)
 
 
-cdef cusparseStatus_t _cusparseSpMatGetIndexBase(cusparseConstSpMatDescr_t spMatDescr, cusparseIndexBase_t* idxBase) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatGetIndexBase(cusparseConstSpMatDescr_t spMatDescr, cusparseIndexBase_t* idxBase) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatGetIndexBase
     _check_or_init_cusparse()
     if __cusparseSpMatGetIndexBase == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatGetIndexBase is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseIndexBase_t*) nogil>__cusparseSpMatGetIndexBase)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseIndexBase_t*) noexcept nogil>__cusparseSpMatGetIndexBase)(
         spMatDescr, idxBase)
 
 
-cdef cusparseStatus_t _cusparseSpMatGetValues(cusparseSpMatDescr_t spMatDescr, void** values) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatGetValues(cusparseSpMatDescr_t spMatDescr, void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatGetValues
     _check_or_init_cusparse()
     if __cusparseSpMatGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void**) nogil>__cusparseSpMatGetValues)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void**) noexcept nogil>__cusparseSpMatGetValues)(
         spMatDescr, values)
 
 
-cdef cusparseStatus_t _cusparseSpMatSetValues(cusparseSpMatDescr_t spMatDescr, void* values) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatSetValues(cusparseSpMatDescr_t spMatDescr, void* values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatSetValues
     _check_or_init_cusparse()
     if __cusparseSpMatSetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatSetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*) nogil>__cusparseSpMatSetValues)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*) noexcept nogil>__cusparseSpMatSetValues)(
         spMatDescr, values)
 
 
-cdef cusparseStatus_t _cusparseSpMatGetSize(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatGetSize(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatGetSize
     _check_or_init_cusparse()
     if __cusparseSpMatGetSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatGetSize is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*) nogil>__cusparseSpMatGetSize)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*) noexcept nogil>__cusparseSpMatGetSize)(
         spMatDescr, rows, cols, nnz)
 
 
-cdef cusparseStatus_t _cusparseSpMatGetStridedBatch(cusparseConstSpMatDescr_t spMatDescr, int* batchCount) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatGetStridedBatch(cusparseConstSpMatDescr_t spMatDescr, int* batchCount) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatGetStridedBatch
     _check_or_init_cusparse()
     if __cusparseSpMatGetStridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatGetStridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int*) nogil>__cusparseSpMatGetStridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int*) noexcept nogil>__cusparseSpMatGetStridedBatch)(
         spMatDescr, batchCount)
 
 
-cdef cusparseStatus_t _cusparseCooSetStridedBatch(cusparseSpMatDescr_t spMatDescr, int batchCount, int64_t batchStride) except* nogil:
+cdef cusparseStatus_t _cusparseCooSetStridedBatch(cusparseSpMatDescr_t spMatDescr, int batchCount, int64_t batchStride) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCooSetStridedBatch
     _check_or_init_cusparse()
     if __cusparseCooSetStridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCooSetStridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int, int64_t) nogil>__cusparseCooSetStridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int, int64_t) noexcept nogil>__cusparseCooSetStridedBatch)(
         spMatDescr, batchCount, batchStride)
 
 
-cdef cusparseStatus_t _cusparseCsrSetStridedBatch(cusparseSpMatDescr_t spMatDescr, int batchCount, int64_t offsetsBatchStride, int64_t columnsValuesBatchStride) except* nogil:
+cdef cusparseStatus_t _cusparseCsrSetStridedBatch(cusparseSpMatDescr_t spMatDescr, int batchCount, int64_t offsetsBatchStride, int64_t columnsValuesBatchStride) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCsrSetStridedBatch
     _check_or_init_cusparse()
     if __cusparseCsrSetStridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCsrSetStridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int, int64_t, int64_t) nogil>__cusparseCsrSetStridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int, int64_t, int64_t) noexcept nogil>__cusparseCsrSetStridedBatch)(
         spMatDescr, batchCount, offsetsBatchStride, columnsValuesBatchStride)
 
 
-cdef cusparseStatus_t _cusparseCreateCsr(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* csrRowOffsets, void* csrColInd, void* csrValues, cusparseIndexType_t csrRowOffsetsType, cusparseIndexType_t csrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateCsr(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* csrRowOffsets, void* csrColInd, void* csrValues, cusparseIndexType_t csrRowOffsetsType, cusparseIndexType_t csrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateCsr
     _check_or_init_cusparse()
     if __cusparseCreateCsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateCsr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateCsr)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateCsr)(
         spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCsrGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** csrRowOffsets, void** csrColInd, void** csrValues, cusparseIndexType_t* csrRowOffsetsType, cusparseIndexType_t* csrColIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCsrGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** csrRowOffsets, void** csrColInd, void** csrValues, cusparseIndexType_t* csrRowOffsetsType, cusparseIndexType_t* csrColIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCsrGet
     _check_or_init_cusparse()
     if __cusparseCsrGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCsrGet is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseCsrGet)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseCsrGet)(
         spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCsrSetPointers(cusparseSpMatDescr_t spMatDescr, void* csrRowOffsets, void* csrColInd, void* csrValues) except* nogil:
+cdef cusparseStatus_t _cusparseCsrSetPointers(cusparseSpMatDescr_t spMatDescr, void* csrRowOffsets, void* csrColInd, void* csrValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCsrSetPointers
     _check_or_init_cusparse()
     if __cusparseCsrSetPointers == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCsrSetPointers is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) nogil>__cusparseCsrSetPointers)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) noexcept nogil>__cusparseCsrSetPointers)(
         spMatDescr, csrRowOffsets, csrColInd, csrValues)
 
 
-cdef cusparseStatus_t _cusparseCreateCoo(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* cooRowInd, void* cooColInd, void* cooValues, cusparseIndexType_t cooIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateCoo(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* cooRowInd, void* cooColInd, void* cooValues, cusparseIndexType_t cooIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateCoo
     _check_or_init_cusparse()
     if __cusparseCreateCoo == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateCoo is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateCoo)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateCoo)(
         spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, cooIdxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCooGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** cooRowInd, void** cooColInd, void** cooValues, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCooGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** cooRowInd, void** cooColInd, void** cooValues, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCooGet
     _check_or_init_cusparse()
     if __cusparseCooGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCooGet is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseCooGet)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseCooGet)(
         spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, idxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCreateDnMat(cusparseDnMatDescr_t* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, void* values, cudaDataType valueType, cusparseOrder_t order) except* nogil:
+cdef cusparseStatus_t _cusparseCreateDnMat(cusparseDnMatDescr_t* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, void* values, cudaDataType valueType, cusparseOrder_t order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateDnMat
     _check_or_init_cusparse()
     if __cusparseCreateDnMat == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateDnMat is not found")
-    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t*, int64_t, int64_t, int64_t, void*, cudaDataType, cusparseOrder_t) nogil>__cusparseCreateDnMat)(
+    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t*, int64_t, int64_t, int64_t, void*, cudaDataType, cusparseOrder_t) noexcept nogil>__cusparseCreateDnMat)(
         dnMatDescr, rows, cols, ld, values, valueType, order)
 
 
-cdef cusparseStatus_t _cusparseDestroyDnMat(cusparseConstDnMatDescr_t dnMatDescr) except* nogil:
+cdef cusparseStatus_t _cusparseDestroyDnMat(cusparseConstDnMatDescr_t dnMatDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDestroyDnMat
     _check_or_init_cusparse()
     if __cusparseDestroyDnMat == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDestroyDnMat is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t) nogil>__cusparseDestroyDnMat)(
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t) noexcept nogil>__cusparseDestroyDnMat)(
         dnMatDescr)
 
 
-cdef cusparseStatus_t _cusparseDnMatGet(cusparseDnMatDescr_t dnMatDescr, int64_t* rows, int64_t* cols, int64_t* ld, void** values, cudaDataType* type, cusparseOrder_t* order) except* nogil:
+cdef cusparseStatus_t _cusparseDnMatGet(cusparseDnMatDescr_t dnMatDescr, int64_t* rows, int64_t* cols, int64_t* ld, void** values, cudaDataType* type, cusparseOrder_t* order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnMatGet
     _check_or_init_cusparse()
     if __cusparseDnMatGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnMatGet is not found")
-    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, int64_t*, int64_t*, int64_t*, void**, cudaDataType*, cusparseOrder_t*) nogil>__cusparseDnMatGet)(
+    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, int64_t*, int64_t*, int64_t*, void**, cudaDataType*, cusparseOrder_t*) noexcept nogil>__cusparseDnMatGet)(
         dnMatDescr, rows, cols, ld, values, type, order)
 
 
-cdef cusparseStatus_t _cusparseDnMatGetValues(cusparseDnMatDescr_t dnMatDescr, void** values) except* nogil:
+cdef cusparseStatus_t _cusparseDnMatGetValues(cusparseDnMatDescr_t dnMatDescr, void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnMatGetValues
     _check_or_init_cusparse()
     if __cusparseDnMatGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnMatGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, void**) nogil>__cusparseDnMatGetValues)(
+    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, void**) noexcept nogil>__cusparseDnMatGetValues)(
         dnMatDescr, values)
 
 
-cdef cusparseStatus_t _cusparseDnMatSetValues(cusparseDnMatDescr_t dnMatDescr, void* values) except* nogil:
+cdef cusparseStatus_t _cusparseDnMatSetValues(cusparseDnMatDescr_t dnMatDescr, void* values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnMatSetValues
     _check_or_init_cusparse()
     if __cusparseDnMatSetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnMatSetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, void*) nogil>__cusparseDnMatSetValues)(
+    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, void*) noexcept nogil>__cusparseDnMatSetValues)(
         dnMatDescr, values)
 
 
-cdef cusparseStatus_t _cusparseDnMatSetStridedBatch(cusparseDnMatDescr_t dnMatDescr, int batchCount, int64_t batchStride) except* nogil:
+cdef cusparseStatus_t _cusparseDnMatSetStridedBatch(cusparseDnMatDescr_t dnMatDescr, int batchCount, int64_t batchStride) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnMatSetStridedBatch
     _check_or_init_cusparse()
     if __cusparseDnMatSetStridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnMatSetStridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, int, int64_t) nogil>__cusparseDnMatSetStridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, int, int64_t) noexcept nogil>__cusparseDnMatSetStridedBatch)(
         dnMatDescr, batchCount, batchStride)
 
 
-cdef cusparseStatus_t _cusparseDnMatGetStridedBatch(cusparseConstDnMatDescr_t dnMatDescr, int* batchCount, int64_t* batchStride) except* nogil:
+cdef cusparseStatus_t _cusparseDnMatGetStridedBatch(cusparseConstDnMatDescr_t dnMatDescr, int* batchCount, int64_t* batchStride) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnMatGetStridedBatch
     _check_or_init_cusparse()
     if __cusparseDnMatGetStridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDnMatGetStridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, int*, int64_t*) nogil>__cusparseDnMatGetStridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, int*, int64_t*) noexcept nogil>__cusparseDnMatGetStridedBatch)(
         dnMatDescr, batchCount, batchStride)
 
 
-cdef cusparseStatus_t _cusparseAxpby(cusparseHandle_t handle, const void* alpha, cusparseConstSpVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY) except* nogil:
+cdef cusparseStatus_t _cusparseAxpby(cusparseHandle_t handle, const void* alpha, cusparseConstSpVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseAxpby
     _check_or_init_cusparse()
     if __cusparseAxpby == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseAxpby is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, const void*, cusparseConstSpVecDescr_t, const void*, cusparseDnVecDescr_t) nogil>__cusparseAxpby)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, const void*, cusparseConstSpVecDescr_t, const void*, cusparseDnVecDescr_t) noexcept nogil>__cusparseAxpby)(
         handle, alpha, vecX, beta, vecY)
 
 
-cdef cusparseStatus_t _cusparseGather(cusparseHandle_t handle, cusparseConstDnVecDescr_t vecY, cusparseSpVecDescr_t vecX) except* nogil:
+cdef cusparseStatus_t _cusparseGather(cusparseHandle_t handle, cusparseConstDnVecDescr_t vecY, cusparseSpVecDescr_t vecX) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseGather
     _check_or_init_cusparse()
     if __cusparseGather == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseGather is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnVecDescr_t, cusparseSpVecDescr_t) nogil>__cusparseGather)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnVecDescr_t, cusparseSpVecDescr_t) noexcept nogil>__cusparseGather)(
         handle, vecY, vecX)
 
 
-cdef cusparseStatus_t _cusparseScatter(cusparseHandle_t handle, cusparseConstSpVecDescr_t vecX, cusparseDnVecDescr_t vecY) except* nogil:
+cdef cusparseStatus_t _cusparseScatter(cusparseHandle_t handle, cusparseConstSpVecDescr_t vecX, cusparseDnVecDescr_t vecY) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseScatter
     _check_or_init_cusparse()
     if __cusparseScatter == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseScatter is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstSpVecDescr_t, cusparseDnVecDescr_t) nogil>__cusparseScatter)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstSpVecDescr_t, cusparseDnVecDescr_t) noexcept nogil>__cusparseScatter)(
         handle, vecX, vecY)
 
 
-cdef cusparseStatus_t _cusparseSpVV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opX, cusparseConstSpVecDescr_t vecX, cusparseConstDnVecDescr_t vecY, const void* result, cudaDataType computeType, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpVV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opX, cusparseConstSpVecDescr_t vecX, cusparseConstDnVecDescr_t vecY, const void* result, cudaDataType computeType, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpVV_bufferSize
     _check_or_init_cusparse()
     if __cusparseSpVV_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpVV_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseConstSpVecDescr_t, cusparseConstDnVecDescr_t, const void*, cudaDataType, size_t*) nogil>__cusparseSpVV_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseConstSpVecDescr_t, cusparseConstDnVecDescr_t, const void*, cudaDataType, size_t*) noexcept nogil>__cusparseSpVV_bufferSize)(
         handle, opX, vecX, vecY, result, computeType, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseSpVV(cusparseHandle_t handle, cusparseOperation_t opX, cusparseConstSpVecDescr_t vecX, cusparseConstDnVecDescr_t vecY, void* result, cudaDataType computeType, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpVV(cusparseHandle_t handle, cusparseOperation_t opX, cusparseConstSpVecDescr_t vecX, cusparseConstDnVecDescr_t vecY, void* result, cudaDataType computeType, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpVV
     _check_or_init_cusparse()
     if __cusparseSpVV == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpVV is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseConstSpVecDescr_t, cusparseConstDnVecDescr_t, void*, cudaDataType, void*) nogil>__cusparseSpVV)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseConstSpVecDescr_t, cusparseConstDnVecDescr_t, void*, cudaDataType, void*) noexcept nogil>__cusparseSpVV)(
         handle, opX, vecX, vecY, result, computeType, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpMV(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpMV(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMV
     _check_or_init_cusparse()
     if __cusparseSpMV == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMV is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, void*) nogil>__cusparseSpMV)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, void*) noexcept nogil>__cusparseSpMV)(
         handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpMV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpMV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMV_bufferSize
     _check_or_init_cusparse()
     if __cusparseSpMV_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMV_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, size_t*) nogil>__cusparseSpMV_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, size_t*) noexcept nogil>__cusparseSpMV_bufferSize)(
         handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseSpMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMM
     _check_or_init_cusparse()
     if __cusparseSpMM == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMM is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) nogil>__cusparseSpMM)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) noexcept nogil>__cusparseSpMM)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMM_bufferSize
     _check_or_init_cusparse()
     if __cusparseSpMM_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMM_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, size_t*) nogil>__cusparseSpMM_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, size_t*) noexcept nogil>__cusparseSpMM_bufferSize)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseSpGEMM_createDescr(cusparseSpGEMMDescr_t* descr) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMM_createDescr(cusparseSpGEMMDescr_t* descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMM_createDescr
     _check_or_init_cusparse()
     if __cusparseSpGEMM_createDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMM_createDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t*) nogil>__cusparseSpGEMM_createDescr)(
+    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t*) noexcept nogil>__cusparseSpGEMM_createDescr)(
         descr)
 
 
-cdef cusparseStatus_t _cusparseSpGEMM_destroyDescr(cusparseSpGEMMDescr_t descr) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMM_destroyDescr(cusparseSpGEMMDescr_t descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMM_destroyDescr
     _check_or_init_cusparse()
     if __cusparseSpGEMM_destroyDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMM_destroyDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t) nogil>__cusparseSpGEMM_destroyDescr)(
+    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t) noexcept nogil>__cusparseSpGEMM_destroyDescr)(
         descr)
 
 
-cdef cusparseStatus_t _cusparseSpGEMM_workEstimation(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize1, void* externalBuffer1) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMM_workEstimation(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize1, void* externalBuffer1) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMM_workEstimation
     _check_or_init_cusparse()
     if __cusparseSpGEMM_workEstimation == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMM_workEstimation is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) nogil>__cusparseSpGEMM_workEstimation)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMM_workEstimation)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, bufferSize1, externalBuffer1)
 
 
-cdef cusparseStatus_t _cusparseSpGEMM_compute(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize2, void* externalBuffer2) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMM_compute(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize2, void* externalBuffer2) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMM_compute
     _check_or_init_cusparse()
     if __cusparseSpGEMM_compute == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMM_compute is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) nogil>__cusparseSpGEMM_compute)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMM_compute)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, bufferSize2, externalBuffer2)
 
 
-cdef cusparseStatus_t _cusparseSpGEMM_copy(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMM_copy(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMM_copy
     _check_or_init_cusparse()
     if __cusparseSpGEMM_copy == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMM_copy is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t) nogil>__cusparseSpGEMM_copy)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t) noexcept nogil>__cusparseSpGEMM_copy)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr)
 
 
-cdef cusparseStatus_t _cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* cscColOffsets, void* cscRowInd, void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* cscColOffsets, void* cscRowInd, void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateCsc
     _check_or_init_cusparse()
     if __cusparseCreateCsc == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateCsc is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateCsc)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateCsc)(
         spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCscSetPointers(cusparseSpMatDescr_t spMatDescr, void* cscColOffsets, void* cscRowInd, void* cscValues) except* nogil:
+cdef cusparseStatus_t _cusparseCscSetPointers(cusparseSpMatDescr_t spMatDescr, void* cscColOffsets, void* cscRowInd, void* cscValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCscSetPointers
     _check_or_init_cusparse()
     if __cusparseCscSetPointers == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCscSetPointers is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) nogil>__cusparseCscSetPointers)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) noexcept nogil>__cusparseCscSetPointers)(
         spMatDescr, cscColOffsets, cscRowInd, cscValues)
 
 
-cdef cusparseStatus_t _cusparseCooSetPointers(cusparseSpMatDescr_t spMatDescr, void* cooRows, void* cooColumns, void* cooValues) except* nogil:
+cdef cusparseStatus_t _cusparseCooSetPointers(cusparseSpMatDescr_t spMatDescr, void* cooRows, void* cooColumns, void* cooValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCooSetPointers
     _check_or_init_cusparse()
     if __cusparseCooSetPointers == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCooSetPointers is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) nogil>__cusparseCooSetPointers)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) noexcept nogil>__cusparseCooSetPointers)(
         spMatDescr, cooRows, cooColumns, cooValues)
 
 
-cdef cusparseStatus_t _cusparseSparseToDense_bufferSize(cusparseHandle_t handle, cusparseConstSpMatDescr_t matA, cusparseDnMatDescr_t matB, cusparseSparseToDenseAlg_t alg, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSparseToDense_bufferSize(cusparseHandle_t handle, cusparseConstSpMatDescr_t matA, cusparseDnMatDescr_t matB, cusparseSparseToDenseAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSparseToDense_bufferSize
     _check_or_init_cusparse()
     if __cusparseSparseToDense_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSparseToDense_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstSpMatDescr_t, cusparseDnMatDescr_t, cusparseSparseToDenseAlg_t, size_t*) nogil>__cusparseSparseToDense_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstSpMatDescr_t, cusparseDnMatDescr_t, cusparseSparseToDenseAlg_t, size_t*) noexcept nogil>__cusparseSparseToDense_bufferSize)(
         handle, matA, matB, alg, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseSparseToDense(cusparseHandle_t handle, cusparseConstSpMatDescr_t matA, cusparseDnMatDescr_t matB, cusparseSparseToDenseAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSparseToDense(cusparseHandle_t handle, cusparseConstSpMatDescr_t matA, cusparseDnMatDescr_t matB, cusparseSparseToDenseAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSparseToDense
     _check_or_init_cusparse()
     if __cusparseSparseToDense == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSparseToDense is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstSpMatDescr_t, cusparseDnMatDescr_t, cusparseSparseToDenseAlg_t, void*) nogil>__cusparseSparseToDense)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstSpMatDescr_t, cusparseDnMatDescr_t, cusparseSparseToDenseAlg_t, void*) noexcept nogil>__cusparseSparseToDense)(
         handle, matA, matB, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseDenseToSparse_bufferSize(cusparseHandle_t handle, cusparseConstDnMatDescr_t matA, cusparseSpMatDescr_t matB, cusparseDenseToSparseAlg_t alg, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseDenseToSparse_bufferSize(cusparseHandle_t handle, cusparseConstDnMatDescr_t matA, cusparseSpMatDescr_t matB, cusparseDenseToSparseAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDenseToSparse_bufferSize
     _check_or_init_cusparse()
     if __cusparseDenseToSparse_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDenseToSparse_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnMatDescr_t, cusparseSpMatDescr_t, cusparseDenseToSparseAlg_t, size_t*) nogil>__cusparseDenseToSparse_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnMatDescr_t, cusparseSpMatDescr_t, cusparseDenseToSparseAlg_t, size_t*) noexcept nogil>__cusparseDenseToSparse_bufferSize)(
         handle, matA, matB, alg, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseDenseToSparse_analysis(cusparseHandle_t handle, cusparseConstDnMatDescr_t matA, cusparseSpMatDescr_t matB, cusparseDenseToSparseAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDenseToSparse_analysis(cusparseHandle_t handle, cusparseConstDnMatDescr_t matA, cusparseSpMatDescr_t matB, cusparseDenseToSparseAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDenseToSparse_analysis
     _check_or_init_cusparse()
     if __cusparseDenseToSparse_analysis == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDenseToSparse_analysis is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnMatDescr_t, cusparseSpMatDescr_t, cusparseDenseToSparseAlg_t, void*) nogil>__cusparseDenseToSparse_analysis)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnMatDescr_t, cusparseSpMatDescr_t, cusparseDenseToSparseAlg_t, void*) noexcept nogil>__cusparseDenseToSparse_analysis)(
         handle, matA, matB, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseDenseToSparse_convert(cusparseHandle_t handle, cusparseConstDnMatDescr_t matA, cusparseSpMatDescr_t matB, cusparseDenseToSparseAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseDenseToSparse_convert(cusparseHandle_t handle, cusparseConstDnMatDescr_t matA, cusparseSpMatDescr_t matB, cusparseDenseToSparseAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDenseToSparse_convert
     _check_or_init_cusparse()
     if __cusparseDenseToSparse_convert == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseDenseToSparse_convert is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnMatDescr_t, cusparseSpMatDescr_t, cusparseDenseToSparseAlg_t, void*) nogil>__cusparseDenseToSparse_convert)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseConstDnMatDescr_t, cusparseSpMatDescr_t, cusparseDenseToSparseAlg_t, void*) noexcept nogil>__cusparseDenseToSparse_convert)(
         handle, matA, matB, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseCreateBlockedEll(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, void* ellColInd, void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateBlockedEll(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, void* ellColInd, void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateBlockedEll
     _check_or_init_cusparse()
     if __cusparseCreateBlockedEll == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateBlockedEll is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateBlockedEll)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateBlockedEll)(
         spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseBlockedEllGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, void** ellColInd, void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseBlockedEllGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, void** ellColInd, void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseBlockedEllGet
     _check_or_init_cusparse()
     if __cusparseBlockedEllGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseBlockedEllGet is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseBlockedEllGet)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseBlockedEllGet)(
         spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseSpMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMM_preprocess
     _check_or_init_cusparse()
     if __cusparseSpMM_preprocess == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMM_preprocess is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) nogil>__cusparseSpMM_preprocess)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) noexcept nogil>__cusparseSpMM_preprocess)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSDDMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSDDMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSDDMM_bufferSize
     _check_or_init_cusparse()
     if __cusparseSDDMM_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSDDMM_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, size_t*) nogil>__cusparseSDDMM_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, size_t*) noexcept nogil>__cusparseSDDMM_bufferSize)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseSDDMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSDDMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSDDMM_preprocess
     _check_or_init_cusparse()
     if __cusparseSDDMM_preprocess == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSDDMM_preprocess is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) nogil>__cusparseSDDMM_preprocess)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) noexcept nogil>__cusparseSDDMM_preprocess)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSDDMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSDDMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSDDMM
     _check_or_init_cusparse()
     if __cusparseSDDMM == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSDDMM is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) nogil>__cusparseSDDMM)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) noexcept nogil>__cusparseSDDMM)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpMatGetAttribute(cusparseConstSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatGetAttribute(cusparseConstSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatGetAttribute
     _check_or_init_cusparse()
     if __cusparseSpMatGetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatGetAttribute is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) nogil>__cusparseSpMatGetAttribute)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) noexcept nogil>__cusparseSpMatGetAttribute)(
         spMatDescr, attribute, data, dataSize)
 
 
-cdef cusparseStatus_t _cusparseSpMatSetAttribute(cusparseSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpMatSetAttribute(cusparseSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatSetAttribute
     _check_or_init_cusparse()
     if __cusparseSpMatSetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMatSetAttribute is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) nogil>__cusparseSpMatSetAttribute)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) noexcept nogil>__cusparseSpMatSetAttribute)(
         spMatDescr, attribute, data, dataSize)
 
 
-cdef cusparseStatus_t _cusparseSpSV_createDescr(cusparseSpSVDescr_t* descr) except* nogil:
+cdef cusparseStatus_t _cusparseSpSV_createDescr(cusparseSpSVDescr_t* descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSV_createDescr
     _check_or_init_cusparse()
     if __cusparseSpSV_createDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSV_createDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpSVDescr_t*) nogil>__cusparseSpSV_createDescr)(
+    return (<cusparseStatus_t (*)(cusparseSpSVDescr_t*) noexcept nogil>__cusparseSpSV_createDescr)(
         descr)
 
 
-cdef cusparseStatus_t _cusparseSpSV_destroyDescr(cusparseSpSVDescr_t descr) except* nogil:
+cdef cusparseStatus_t _cusparseSpSV_destroyDescr(cusparseSpSVDescr_t descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSV_destroyDescr
     _check_or_init_cusparse()
     if __cusparseSpSV_destroyDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSV_destroyDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpSVDescr_t) nogil>__cusparseSpSV_destroyDescr)(
+    return (<cusparseStatus_t (*)(cusparseSpSVDescr_t) noexcept nogil>__cusparseSpSV_destroyDescr)(
         descr)
 
 
-cdef cusparseStatus_t _cusparseSpSV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpSVAlg_t alg, cusparseSpSVDescr_t spsvDescr, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpSV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpSVAlg_t alg, cusparseSpSVDescr_t spsvDescr, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSV_bufferSize
     _check_or_init_cusparse()
     if __cusparseSpSV_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSV_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, cusparseSpSVAlg_t, cusparseSpSVDescr_t, size_t*) nogil>__cusparseSpSV_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, cusparseSpSVAlg_t, cusparseSpSVDescr_t, size_t*) noexcept nogil>__cusparseSpSV_bufferSize)(
         handle, opA, alpha, matA, vecX, vecY, computeType, alg, spsvDescr, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseSpSV_analysis(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpSVAlg_t alg, cusparseSpSVDescr_t spsvDescr, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpSV_analysis(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpSVAlg_t alg, cusparseSpSVDescr_t spsvDescr, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSV_analysis
     _check_or_init_cusparse()
     if __cusparseSpSV_analysis == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSV_analysis is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, cusparseSpSVAlg_t, cusparseSpSVDescr_t, void*) nogil>__cusparseSpSV_analysis)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, cusparseSpSVAlg_t, cusparseSpSVDescr_t, void*) noexcept nogil>__cusparseSpSV_analysis)(
         handle, opA, alpha, matA, vecX, vecY, computeType, alg, spsvDescr, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpSV_solve(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpSVAlg_t alg, cusparseSpSVDescr_t spsvDescr) except* nogil:
+cdef cusparseStatus_t _cusparseSpSV_solve(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpSVAlg_t alg, cusparseSpSVDescr_t spsvDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSV_solve
     _check_or_init_cusparse()
     if __cusparseSpSV_solve == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSV_solve is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, cusparseSpSVAlg_t, cusparseSpSVDescr_t) nogil>__cusparseSpSV_solve)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, cusparseSpSVAlg_t, cusparseSpSVDescr_t) noexcept nogil>__cusparseSpSV_solve)(
         handle, opA, alpha, matA, vecX, vecY, computeType, alg, spsvDescr)
 
 
-cdef cusparseStatus_t _cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) except* nogil:
+cdef cusparseStatus_t _cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSM_createDescr
     _check_or_init_cusparse()
     if __cusparseSpSM_createDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSM_createDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpSMDescr_t*) nogil>__cusparseSpSM_createDescr)(
+    return (<cusparseStatus_t (*)(cusparseSpSMDescr_t*) noexcept nogil>__cusparseSpSM_createDescr)(
         descr)
 
 
-cdef cusparseStatus_t _cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) except* nogil:
+cdef cusparseStatus_t _cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSM_destroyDescr
     _check_or_init_cusparse()
     if __cusparseSpSM_destroyDescr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSM_destroyDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpSMDescr_t) nogil>__cusparseSpSM_destroyDescr)(
+    return (<cusparseStatus_t (*)(cusparseSpSMDescr_t) noexcept nogil>__cusparseSpSM_destroyDescr)(
         descr)
 
 
-cdef cusparseStatus_t _cusparseSpSM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpSMAlg_t alg, cusparseSpSMDescr_t spsmDescr, size_t* bufferSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpSM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpSMAlg_t alg, cusparseSpSMDescr_t spsmDescr, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSM_bufferSize
     _check_or_init_cusparse()
     if __cusparseSpSM_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSM_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpSMAlg_t, cusparseSpSMDescr_t, size_t*) nogil>__cusparseSpSM_bufferSize)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpSMAlg_t, cusparseSpSMDescr_t, size_t*) noexcept nogil>__cusparseSpSM_bufferSize)(
         handle, opA, opB, alpha, matA, matB, matC, computeType, alg, spsmDescr, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseSpSM_analysis(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpSMAlg_t alg, cusparseSpSMDescr_t spsmDescr, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpSM_analysis(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpSMAlg_t alg, cusparseSpSMDescr_t spsmDescr, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSM_analysis
     _check_or_init_cusparse()
     if __cusparseSpSM_analysis == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSM_analysis is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpSMAlg_t, cusparseSpSMDescr_t, void*) nogil>__cusparseSpSM_analysis)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpSMAlg_t, cusparseSpSMDescr_t, void*) noexcept nogil>__cusparseSpSM_analysis)(
         handle, opA, opB, alpha, matA, matB, matC, computeType, alg, spsmDescr, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpSM_solve(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpSMAlg_t alg, cusparseSpSMDescr_t spsmDescr) except* nogil:
+cdef cusparseStatus_t _cusparseSpSM_solve(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpSMAlg_t alg, cusparseSpSMDescr_t spsmDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSM_solve
     _check_or_init_cusparse()
     if __cusparseSpSM_solve == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSM_solve is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpSMAlg_t, cusparseSpSMDescr_t) nogil>__cusparseSpSM_solve)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpSMAlg_t, cusparseSpSMDescr_t) noexcept nogil>__cusparseSpSM_solve)(
         handle, opA, opB, alpha, matA, matB, matC, computeType, alg, spsmDescr)
 
 
-cdef cusparseStatus_t _cusparseSpGEMMreuse_workEstimation(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, cusparseSpMatDescr_t matC, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize1, void* externalBuffer1) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMMreuse_workEstimation(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, cusparseSpMatDescr_t matC, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize1, void* externalBuffer1) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMMreuse_workEstimation
     _check_or_init_cusparse()
     if __cusparseSpGEMMreuse_workEstimation == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMMreuse_workEstimation is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, cusparseSpMatDescr_t, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) nogil>__cusparseSpGEMMreuse_workEstimation)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, cusparseSpMatDescr_t, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMMreuse_workEstimation)(
         handle, opA, opB, matA, matB, matC, alg, spgemmDescr, bufferSize1, externalBuffer1)
 
 
-cdef cusparseStatus_t _cusparseSpGEMMreuse_nnz(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, cusparseSpMatDescr_t matC, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize2, void* externalBuffer2, size_t* bufferSize3, void* externalBuffer3, size_t* bufferSize4, void* externalBuffer4) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMMreuse_nnz(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, cusparseSpMatDescr_t matC, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize2, void* externalBuffer2, size_t* bufferSize3, void* externalBuffer3, size_t* bufferSize4, void* externalBuffer4) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMMreuse_nnz
     _check_or_init_cusparse()
     if __cusparseSpGEMMreuse_nnz == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMMreuse_nnz is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, cusparseSpMatDescr_t, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*, size_t*, void*, size_t*, void*) nogil>__cusparseSpGEMMreuse_nnz)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, cusparseSpMatDescr_t, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*, size_t*, void*, size_t*, void*) noexcept nogil>__cusparseSpGEMMreuse_nnz)(
         handle, opA, opB, matA, matB, matC, alg, spgemmDescr, bufferSize2, externalBuffer2, bufferSize3, externalBuffer3, bufferSize4, externalBuffer4)
 
 
-cdef cusparseStatus_t _cusparseSpGEMMreuse_copy(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, cusparseSpMatDescr_t matC, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize5, void* externalBuffer5) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMMreuse_copy(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, cusparseSpMatDescr_t matC, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize5, void* externalBuffer5) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMMreuse_copy
     _check_or_init_cusparse()
     if __cusparseSpGEMMreuse_copy == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMMreuse_copy is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, cusparseSpMatDescr_t, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) nogil>__cusparseSpGEMMreuse_copy)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, cusparseSpMatDescr_t, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMMreuse_copy)(
         handle, opA, opB, matA, matB, matC, alg, spgemmDescr, bufferSize5, externalBuffer5)
 
 
-cdef cusparseStatus_t _cusparseSpGEMMreuse_compute(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMMreuse_compute(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMMreuse_compute
     _check_or_init_cusparse()
     if __cusparseSpGEMMreuse_compute == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMMreuse_compute is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t) nogil>__cusparseSpGEMMreuse_compute)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t) noexcept nogil>__cusparseSpGEMMreuse_compute)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr)
 
 
-cdef cusparseStatus_t _cusparseLoggerSetCallback(cusparseLoggerCallback_t callback) except* nogil:
+cdef cusparseStatus_t _cusparseLoggerSetCallback(cusparseLoggerCallback_t callback) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseLoggerSetCallback
     _check_or_init_cusparse()
     if __cusparseLoggerSetCallback == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseLoggerSetCallback is not found")
-    return (<cusparseStatus_t (*)(cusparseLoggerCallback_t) nogil>__cusparseLoggerSetCallback)(
+    return (<cusparseStatus_t (*)(cusparseLoggerCallback_t) noexcept nogil>__cusparseLoggerSetCallback)(
         callback)
 
 
-cdef cusparseStatus_t _cusparseLoggerSetFile(FILE* file) except* nogil:
+cdef cusparseStatus_t _cusparseLoggerSetFile(FILE* file) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseLoggerSetFile
     _check_or_init_cusparse()
     if __cusparseLoggerSetFile == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseLoggerSetFile is not found")
-    return (<cusparseStatus_t (*)(FILE*) nogil>__cusparseLoggerSetFile)(
+    return (<cusparseStatus_t (*)(FILE*) noexcept nogil>__cusparseLoggerSetFile)(
         file)
 
 
-cdef cusparseStatus_t _cusparseLoggerOpenFile(const char* logFile) except* nogil:
+cdef cusparseStatus_t _cusparseLoggerOpenFile(const char* logFile) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseLoggerOpenFile
     _check_or_init_cusparse()
     if __cusparseLoggerOpenFile == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseLoggerOpenFile is not found")
-    return (<cusparseStatus_t (*)(const char*) nogil>__cusparseLoggerOpenFile)(
+    return (<cusparseStatus_t (*)(const char*) noexcept nogil>__cusparseLoggerOpenFile)(
         logFile)
 
 
-cdef cusparseStatus_t _cusparseLoggerSetLevel(int level) except* nogil:
+cdef cusparseStatus_t _cusparseLoggerSetLevel(int level) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseLoggerSetLevel
     _check_or_init_cusparse()
     if __cusparseLoggerSetLevel == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseLoggerSetLevel is not found")
-    return (<cusparseStatus_t (*)(int) nogil>__cusparseLoggerSetLevel)(
+    return (<cusparseStatus_t (*)(int) noexcept nogil>__cusparseLoggerSetLevel)(
         level)
 
 
-cdef cusparseStatus_t _cusparseLoggerSetMask(int mask) except* nogil:
+cdef cusparseStatus_t _cusparseLoggerSetMask(int mask) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseLoggerSetMask
     _check_or_init_cusparse()
     if __cusparseLoggerSetMask == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseLoggerSetMask is not found")
-    return (<cusparseStatus_t (*)(int) nogil>__cusparseLoggerSetMask)(
+    return (<cusparseStatus_t (*)(int) noexcept nogil>__cusparseLoggerSetMask)(
         mask)
 
 
-cdef cusparseStatus_t _cusparseLoggerForceDisable() except* nogil:
+cdef cusparseStatus_t _cusparseLoggerForceDisable() except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseLoggerForceDisable
     _check_or_init_cusparse()
     if __cusparseLoggerForceDisable == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseLoggerForceDisable is not found")
-    return (<cusparseStatus_t (*)() nogil>__cusparseLoggerForceDisable)(
+    return (<cusparseStatus_t (*)() noexcept nogil>__cusparseLoggerForceDisable)(
         )
 
 
-cdef cusparseStatus_t _cusparseSpMMOp_createPlan(cusparseHandle_t handle, cusparseSpMMOpPlan_t* plan, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMOpAlg_t alg, const void* addOperationNvvmBuffer, size_t addOperationBufferSize, const void* mulOperationNvvmBuffer, size_t mulOperationBufferSize, const void* epilogueNvvmBuffer, size_t epilogueBufferSize, size_t* SpMMWorkspaceSize) except* nogil:
+cdef cusparseStatus_t _cusparseSpMMOp_createPlan(cusparseHandle_t handle, cusparseSpMMOpPlan_t* plan, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMOpAlg_t alg, const void* addOperationNvvmBuffer, size_t addOperationBufferSize, const void* mulOperationNvvmBuffer, size_t mulOperationBufferSize, const void* epilogueNvvmBuffer, size_t epilogueBufferSize, size_t* SpMMWorkspaceSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMMOp_createPlan
     _check_or_init_cusparse()
     if __cusparseSpMMOp_createPlan == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMMOp_createPlan is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpMMOpPlan_t*, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMOpAlg_t, const void*, size_t, const void*, size_t, const void*, size_t, size_t*) nogil>__cusparseSpMMOp_createPlan)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpMMOpPlan_t*, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMOpAlg_t, const void*, size_t, const void*, size_t, const void*, size_t, size_t*) noexcept nogil>__cusparseSpMMOp_createPlan)(
         handle, plan, opA, opB, matA, matB, matC, computeType, alg, addOperationNvvmBuffer, addOperationBufferSize, mulOperationNvvmBuffer, mulOperationBufferSize, epilogueNvvmBuffer, epilogueBufferSize, SpMMWorkspaceSize)
 
 
-cdef cusparseStatus_t _cusparseSpMMOp(cusparseSpMMOpPlan_t plan, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpMMOp(cusparseSpMMOpPlan_t plan, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMMOp
     _check_or_init_cusparse()
     if __cusparseSpMMOp == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMMOp is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMMOpPlan_t, void*) nogil>__cusparseSpMMOp)(
+    return (<cusparseStatus_t (*)(cusparseSpMMOpPlan_t, void*) noexcept nogil>__cusparseSpMMOp)(
         plan, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpMMOp_destroyPlan(cusparseSpMMOpPlan_t plan) except* nogil:
+cdef cusparseStatus_t _cusparseSpMMOp_destroyPlan(cusparseSpMMOpPlan_t plan) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMMOp_destroyPlan
     _check_or_init_cusparse()
     if __cusparseSpMMOp_destroyPlan == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMMOp_destroyPlan is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMMOpPlan_t) nogil>__cusparseSpMMOp_destroyPlan)(
+    return (<cusparseStatus_t (*)(cusparseSpMMOpPlan_t) noexcept nogil>__cusparseSpMMOp_destroyPlan)(
         plan)
 
 
-cdef cusparseStatus_t _cusparseCscGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** cscColOffsets, void** cscRowInd, void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCscGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** cscColOffsets, void** cscRowInd, void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCscGet
     _check_or_init_cusparse()
     if __cusparseCscGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCscGet is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseCscGet)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseCscGet)(
         spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCreateConstSpVec(cusparseConstSpVecDescr_t* spVecDescr, int64_t size, int64_t nnz, const void* indices, const void* values, cusparseIndexType_t idxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstSpVec(cusparseConstSpVecDescr_t* spVecDescr, int64_t size, int64_t nnz, const void* indices, const void* values, cusparseIndexType_t idxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstSpVec
     _check_or_init_cusparse()
     if __cusparseCreateConstSpVec == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstSpVec is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t*, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateConstSpVec)(
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t*, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstSpVec)(
         spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstSpVecGet(cusparseConstSpVecDescr_t spVecDescr, int64_t* size, int64_t* nnz, const void** indices, const void** values, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseConstSpVecGet(cusparseConstSpVecDescr_t spVecDescr, int64_t* size, int64_t* nnz, const void** indices, const void** values, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstSpVecGet
     _check_or_init_cusparse()
     if __cusparseConstSpVecGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstSpVecGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseConstSpVecGet)(
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstSpVecGet)(
         spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstSpVecGetValues(cusparseConstSpVecDescr_t spVecDescr, const void** values) except* nogil:
+cdef cusparseStatus_t _cusparseConstSpVecGetValues(cusparseConstSpVecDescr_t spVecDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstSpVecGetValues
     _check_or_init_cusparse()
     if __cusparseConstSpVecGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstSpVecGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, const void**) nogil>__cusparseConstSpVecGetValues)(
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, const void**) noexcept nogil>__cusparseConstSpVecGetValues)(
         spVecDescr, values)
 
 
-cdef cusparseStatus_t _cusparseCreateConstDnVec(cusparseConstDnVecDescr_t* dnVecDescr, int64_t size, const void* values, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstDnVec(cusparseConstDnVecDescr_t* dnVecDescr, int64_t size, const void* values, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstDnVec
     _check_or_init_cusparse()
     if __cusparseCreateConstDnVec == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstDnVec is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t*, int64_t, const void*, cudaDataType) nogil>__cusparseCreateConstDnVec)(
+    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t*, int64_t, const void*, cudaDataType) noexcept nogil>__cusparseCreateConstDnVec)(
         dnVecDescr, size, values, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstDnVecGet(cusparseConstDnVecDescr_t dnVecDescr, int64_t* size, const void** values, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseConstDnVecGet(cusparseConstDnVecDescr_t dnVecDescr, int64_t* size, const void** values, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstDnVecGet
     _check_or_init_cusparse()
     if __cusparseConstDnVecGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstDnVecGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, int64_t*, const void**, cudaDataType*) nogil>__cusparseConstDnVecGet)(
+    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, int64_t*, const void**, cudaDataType*) noexcept nogil>__cusparseConstDnVecGet)(
         dnVecDescr, size, values, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstDnVecGetValues(cusparseConstDnVecDescr_t dnVecDescr, const void** values) except* nogil:
+cdef cusparseStatus_t _cusparseConstDnVecGetValues(cusparseConstDnVecDescr_t dnVecDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstDnVecGetValues
     _check_or_init_cusparse()
     if __cusparseConstDnVecGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstDnVecGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, const void**) nogil>__cusparseConstDnVecGetValues)(
+    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, const void**) noexcept nogil>__cusparseConstDnVecGetValues)(
         dnVecDescr, values)
 
 
-cdef cusparseStatus_t _cusparseConstSpMatGetValues(cusparseConstSpMatDescr_t spMatDescr, const void** values) except* nogil:
+cdef cusparseStatus_t _cusparseConstSpMatGetValues(cusparseConstSpMatDescr_t spMatDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstSpMatGetValues
     _check_or_init_cusparse()
     if __cusparseConstSpMatGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstSpMatGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, const void**) nogil>__cusparseConstSpMatGetValues)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, const void**) noexcept nogil>__cusparseConstSpMatGetValues)(
         spMatDescr, values)
 
 
-cdef cusparseStatus_t _cusparseCreateConstCsr(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* csrRowOffsets, const void* csrColInd, const void* csrValues, cusparseIndexType_t csrRowOffsetsType, cusparseIndexType_t csrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstCsr(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* csrRowOffsets, const void* csrColInd, const void* csrValues, cusparseIndexType_t csrRowOffsetsType, cusparseIndexType_t csrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstCsr
     _check_or_init_cusparse()
     if __cusparseCreateConstCsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstCsr is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateConstCsr)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCsr)(
         spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCreateConstCsc(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cscColOffsets, const void* cscRowInd, const void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstCsc(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cscColOffsets, const void* cscRowInd, const void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstCsc
     _check_or_init_cusparse()
     if __cusparseCreateConstCsc == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstCsc is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateConstCsc)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCsc)(
         spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstCsrGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** csrRowOffsets, const void** csrColInd, const void** csrValues, cusparseIndexType_t* csrRowOffsetsType, cusparseIndexType_t* csrColIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseConstCsrGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** csrRowOffsets, const void** csrColInd, const void** csrValues, cusparseIndexType_t* csrRowOffsetsType, cusparseIndexType_t* csrColIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstCsrGet
     _check_or_init_cusparse()
     if __cusparseConstCsrGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstCsrGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseConstCsrGet)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCsrGet)(
         spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstCscGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cscColOffsets, const void** cscRowInd, const void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseConstCscGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cscColOffsets, const void** cscRowInd, const void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstCscGet
     _check_or_init_cusparse()
     if __cusparseConstCscGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstCscGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseConstCscGet)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCscGet)(
         spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCreateConstCoo(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cooRowInd, const void* cooColInd, const void* cooValues, cusparseIndexType_t cooIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstCoo(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cooRowInd, const void* cooColInd, const void* cooValues, cusparseIndexType_t cooIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstCoo
     _check_or_init_cusparse()
     if __cusparseCreateConstCoo == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstCoo is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateConstCoo)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCoo)(
         spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, cooIdxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstCooGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cooRowInd, const void** cooColInd, const void** cooValues, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseConstCooGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cooRowInd, const void** cooColInd, const void** cooValues, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstCooGet
     _check_or_init_cusparse()
     if __cusparseConstCooGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstCooGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseConstCooGet)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCooGet)(
         spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, idxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCreateConstBlockedEll(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, const void* ellColInd, const void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstBlockedEll(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, const void* ellColInd, const void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstBlockedEll
     _check_or_init_cusparse()
     if __cusparseCreateConstBlockedEll == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstBlockedEll is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateConstBlockedEll)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstBlockedEll)(
         spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseConstBlockedEllGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, const void** ellColInd, const void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except* nogil:
+cdef cusparseStatus_t _cusparseConstBlockedEllGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, const void** ellColInd, const void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstBlockedEllGet
     _check_or_init_cusparse()
     if __cusparseConstBlockedEllGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstBlockedEllGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) nogil>__cusparseConstBlockedEllGet)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstBlockedEllGet)(
         spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCreateConstDnMat(cusparseConstDnMatDescr_t* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, const void* values, cudaDataType valueType, cusparseOrder_t order) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstDnMat(cusparseConstDnMatDescr_t* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, const void* values, cudaDataType valueType, cusparseOrder_t order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstDnMat
     _check_or_init_cusparse()
     if __cusparseCreateConstDnMat == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstDnMat is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t*, int64_t, int64_t, int64_t, const void*, cudaDataType, cusparseOrder_t) nogil>__cusparseCreateConstDnMat)(
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t*, int64_t, int64_t, int64_t, const void*, cudaDataType, cusparseOrder_t) noexcept nogil>__cusparseCreateConstDnMat)(
         dnMatDescr, rows, cols, ld, values, valueType, order)
 
 
-cdef cusparseStatus_t _cusparseConstDnMatGet(cusparseConstDnMatDescr_t dnMatDescr, int64_t* rows, int64_t* cols, int64_t* ld, const void** values, cudaDataType* type, cusparseOrder_t* order) except* nogil:
+cdef cusparseStatus_t _cusparseConstDnMatGet(cusparseConstDnMatDescr_t dnMatDescr, int64_t* rows, int64_t* cols, int64_t* ld, const void** values, cudaDataType* type, cusparseOrder_t* order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstDnMatGet
     _check_or_init_cusparse()
     if __cusparseConstDnMatGet == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstDnMatGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, cudaDataType*, cusparseOrder_t*) nogil>__cusparseConstDnMatGet)(
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, cudaDataType*, cusparseOrder_t*) noexcept nogil>__cusparseConstDnMatGet)(
         dnMatDescr, rows, cols, ld, values, type, order)
 
 
-cdef cusparseStatus_t _cusparseConstDnMatGetValues(cusparseConstDnMatDescr_t dnMatDescr, const void** values) except* nogil:
+cdef cusparseStatus_t _cusparseConstDnMatGetValues(cusparseConstDnMatDescr_t dnMatDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseConstDnMatGetValues
     _check_or_init_cusparse()
     if __cusparseConstDnMatGetValues == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseConstDnMatGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, const void**) nogil>__cusparseConstDnMatGetValues)(
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, const void**) noexcept nogil>__cusparseConstDnMatGetValues)(
         dnMatDescr, values)
 
 
-cdef cusparseStatus_t _cusparseSpGEMM_getNumProducts(cusparseSpGEMMDescr_t spgemmDescr, int64_t* num_prods) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMM_getNumProducts(cusparseSpGEMMDescr_t spgemmDescr, int64_t* num_prods) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMM_getNumProducts
     _check_or_init_cusparse()
     if __cusparseSpGEMM_getNumProducts == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMM_getNumProducts is not found")
-    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t, int64_t*) nogil>__cusparseSpGEMM_getNumProducts)(
+    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t, int64_t*) noexcept nogil>__cusparseSpGEMM_getNumProducts)(
         spgemmDescr, num_prods)
 
 
-cdef cusparseStatus_t _cusparseSpGEMM_estimateMemory(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, float chunk_fraction, size_t* bufferSize3, void* externalBuffer3, size_t* bufferSize2) except* nogil:
+cdef cusparseStatus_t _cusparseSpGEMM_estimateMemory(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, float chunk_fraction, size_t* bufferSize3, void* externalBuffer3, size_t* bufferSize2) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMM_estimateMemory
     _check_or_init_cusparse()
     if __cusparseSpGEMM_estimateMemory == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpGEMM_estimateMemory is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, float, size_t*, void*, size_t*) nogil>__cusparseSpGEMM_estimateMemory)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, float, size_t*, void*, size_t*) noexcept nogil>__cusparseSpGEMM_estimateMemory)(
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, chunk_fraction, bufferSize3, externalBuffer3, bufferSize2)
 
 
-cdef cusparseStatus_t _cusparseBsrSetStridedBatch(cusparseSpMatDescr_t spMatDescr, int batchCount, int64_t offsetsBatchStride, int64_t columnsBatchStride, int64_t ValuesBatchStride) except* nogil:
+cdef cusparseStatus_t _cusparseBsrSetStridedBatch(cusparseSpMatDescr_t spMatDescr, int batchCount, int64_t offsetsBatchStride, int64_t columnsBatchStride, int64_t ValuesBatchStride) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseBsrSetStridedBatch
     _check_or_init_cusparse()
     if __cusparseBsrSetStridedBatch == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseBsrSetStridedBatch is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int, int64_t, int64_t, int64_t) nogil>__cusparseBsrSetStridedBatch)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int, int64_t, int64_t, int64_t) noexcept nogil>__cusparseBsrSetStridedBatch)(
         spMatDescr, batchCount, offsetsBatchStride, columnsBatchStride, ValuesBatchStride)
 
 
-cdef cusparseStatus_t _cusparseCreateBsr(cusparseSpMatDescr_t* spMatDescr, int64_t brows, int64_t bcols, int64_t bnnz, int64_t rowBlockSize, int64_t colBlockSize, void* bsrRowOffsets, void* bsrColInd, void* bsrValues, cusparseIndexType_t bsrRowOffsetsType, cusparseIndexType_t bsrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType, cusparseOrder_t order) except* nogil:
+cdef cusparseStatus_t _cusparseCreateBsr(cusparseSpMatDescr_t* spMatDescr, int64_t brows, int64_t bcols, int64_t bnnz, int64_t rowBlockSize, int64_t colBlockSize, void* bsrRowOffsets, void* bsrColInd, void* bsrValues, cusparseIndexType_t bsrRowOffsetsType, cusparseIndexType_t bsrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType, cusparseOrder_t order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateBsr
     _check_or_init_cusparse()
     if __cusparseCreateBsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateBsr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType, cusparseOrder_t) nogil>__cusparseCreateBsr)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType, cusparseOrder_t) noexcept nogil>__cusparseCreateBsr)(
         spMatDescr, brows, bcols, bnnz, rowBlockSize, colBlockSize, bsrRowOffsets, bsrColInd, bsrValues, bsrRowOffsetsType, bsrColIndType, idxBase, valueType, order)
 
 
-cdef cusparseStatus_t _cusparseCreateConstBsr(cusparseConstSpMatDescr_t* spMatDescr, int64_t brows, int64_t bcols, int64_t bnnz, int64_t rowBlockDim, int64_t colBlockDim, const void* bsrRowOffsets, const void* bsrColInd, const void* bsrValues, cusparseIndexType_t bsrRowOffsetsType, cusparseIndexType_t bsrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType, cusparseOrder_t order) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstBsr(cusparseConstSpMatDescr_t* spMatDescr, int64_t brows, int64_t bcols, int64_t bnnz, int64_t rowBlockDim, int64_t colBlockDim, const void* bsrRowOffsets, const void* bsrColInd, const void* bsrValues, cusparseIndexType_t bsrRowOffsetsType, cusparseIndexType_t bsrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType, cusparseOrder_t order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstBsr
     _check_or_init_cusparse()
     if __cusparseCreateConstBsr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstBsr is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType, cusparseOrder_t) nogil>__cusparseCreateConstBsr)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType, cusparseOrder_t) noexcept nogil>__cusparseCreateConstBsr)(
         spMatDescr, brows, bcols, bnnz, rowBlockDim, colBlockDim, bsrRowOffsets, bsrColInd, bsrValues, bsrRowOffsetsType, bsrColIndType, idxBase, valueType, order)
 
 
-cdef cusparseStatus_t _cusparseCreateSlicedEll(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, int64_t sellValuesSize, int64_t sliceSize, void* sellSliceOffsets, void* sellColInd, void* sellValues, cusparseIndexType_t sellSliceOffsetsType, cusparseIndexType_t sellColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateSlicedEll(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, int64_t sellValuesSize, int64_t sliceSize, void* sellSliceOffsets, void* sellColInd, void* sellValues, cusparseIndexType_t sellSliceOffsetsType, cusparseIndexType_t sellColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateSlicedEll
     _check_or_init_cusparse()
     if __cusparseCreateSlicedEll == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateSlicedEll is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateSlicedEll)(
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateSlicedEll)(
         spMatDescr, rows, cols, nnz, sellValuesSize, sliceSize, sellSliceOffsets, sellColInd, sellValues, sellSliceOffsetsType, sellColIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseCreateConstSlicedEll(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, int64_t sellValuesSize, int64_t sliceSize, const void* sellSliceOffsets, const void* sellColInd, const void* sellValues, cusparseIndexType_t sellSliceOffsetsType, cusparseIndexType_t sellColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except* nogil:
+cdef cusparseStatus_t _cusparseCreateConstSlicedEll(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, int64_t sellValuesSize, int64_t sliceSize, const void* sellSliceOffsets, const void* sellColInd, const void* sellValues, cusparseIndexType_t sellSliceOffsetsType, cusparseIndexType_t sellColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateConstSlicedEll
     _check_or_init_cusparse()
     if __cusparseCreateConstSlicedEll == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseCreateConstSlicedEll is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) nogil>__cusparseCreateConstSlicedEll)(
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstSlicedEll)(
         spMatDescr, rows, cols, nnz, sellValuesSize, sliceSize, sellSliceOffsets, sellColInd, sellValues, sellSliceOffsetsType, sellColIndType, idxBase, valueType)
 
 
-cdef cusparseStatus_t _cusparseSpSV_updateMatrix(cusparseHandle_t handle, cusparseSpSVDescr_t spsvDescr, void* newValues, cusparseSpSVUpdate_t updatePart) except* nogil:
+cdef cusparseStatus_t _cusparseSpSV_updateMatrix(cusparseHandle_t handle, cusparseSpSVDescr_t spsvDescr, void* newValues, cusparseSpSVUpdate_t updatePart) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSV_updateMatrix
     _check_or_init_cusparse()
     if __cusparseSpSV_updateMatrix == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSV_updateMatrix is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpSVDescr_t, void*, cusparseSpSVUpdate_t) nogil>__cusparseSpSV_updateMatrix)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpSVDescr_t, void*, cusparseSpSVUpdate_t) noexcept nogil>__cusparseSpSV_updateMatrix)(
         handle, spsvDescr, newValues, updatePart)
 
 
-cdef cusparseStatus_t _cusparseSpMV_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except* nogil:
+cdef cusparseStatus_t _cusparseSpMV_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMV_preprocess
     _check_or_init_cusparse()
     if __cusparseSpMV_preprocess == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMV_preprocess is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, void*) nogil>__cusparseSpMV_preprocess)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, void*) noexcept nogil>__cusparseSpMV_preprocess)(
         handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpSM_updateMatrix(cusparseHandle_t handle, cusparseSpSMDescr_t spsmDescr, void* newValues, cusparseSpSMUpdate_t updatePart) except* nogil:
+cdef cusparseStatus_t _cusparseSpSM_updateMatrix(cusparseHandle_t handle, cusparseSpSMDescr_t spsmDescr, void* newValues, cusparseSpSMUpdate_t updatePart) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpSM_updateMatrix
     _check_or_init_cusparse()
     if __cusparseSpSM_updateMatrix == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpSM_updateMatrix is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpSMDescr_t, void*, cusparseSpSMUpdate_t) nogil>__cusparseSpSM_updateMatrix)(
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpSMDescr_t, void*, cusparseSpSMUpdate_t) noexcept nogil>__cusparseSpSM_updateMatrix)(
         handle, spsmDescr, newValues, updatePart)

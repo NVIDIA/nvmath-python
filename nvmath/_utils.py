@@ -149,6 +149,61 @@ def force_loading_nvrtc(cu_ver):
 
 
 # TODO: unify all loading helpers into one
+_libmathdx_obj: list[ctypes.CDLL] = []
+
+
+def force_loading_libmathdx(cu_ver):
+    # this logic should live in CUDA Python...
+    # TODO: remove this function once NVIDIA/cuda-python#62 is resolved
+    # This logic handles all cases - wheel, conda, and system installations
+    global _libmathdx_obj
+    if len(_libmathdx_obj) > 0:
+        return
+
+    cu_ver = cu_ver.split(".")
+    major = cu_ver[0]
+    if major != "12":
+        raise NotImplementedError(f"CUDA {major} is not supported")
+
+    site_paths = [site.getusersitepackages()] + site.getsitepackages() + [None]
+    for sp in site_paths:
+        if PLATFORM_LINUX:
+            dso_dir = "lib"
+            dso_path = "libmathdx.so.0"
+        elif PLATFORM_WIN:
+            dso_dir = "bin"
+            dso_path = "libmathdx.dll"
+        else:
+            raise AssertionError("Unsupported Platform! Only Linux and Windows are supported.")
+
+        if sp is not None:
+            dso_dir = os.path.join(sp, "nvidia", f"cu{major}", dso_dir)
+            dso_path = os.path.join(dso_dir, dso_path)
+        try:
+            _libmathdx_obj.append(ctypes.CDLL(dso_path, mode=ctypes.RTLD_GLOBAL))
+        except OSError:
+            continue
+        else:
+            if PLATFORM_WIN:
+                # TODO: untested in context of libmathdx.
+                import win32api
+
+                # This absolute path will always be correct regardless of the package source
+                nvrtc_path = win32api.GetModuleFileNameW(_libmathdx_obj[0]._handle)
+                dso_dir = os.path.dirname(nvrtc_path)
+                dso_path = os.path.join(dso_dir, [f for f in os.listdir(dso_dir) if re.match("^nvrtc-builtins.*.dll$", f)][0])
+                _libmathdx_obj.append(ctypes.CDLL(dso_path))
+            break
+    else:
+        raise RuntimeError(
+            f"libmathdx not found. Depending on how you install nvmath-python and other CUDA packages,\n"
+            f"you may need to perform one of the steps below:\n"
+            f"  - pip install nvidia-libmathdx-cu{major}\n"
+            f"  - conda install -c conda-forge libmathdx cuda-version={major}"
+        )
+
+
+# TODO: unify all loading helpers into one
 _nvvm_obj: list[ctypes.CDLL] = []
 
 
@@ -200,45 +255,6 @@ def force_loading_nvvm():
         )
 
 
-_nvjitlink_obj: list[ctypes.CDLL] = []
-
-
-def force_loading_nvjitlink():
-    # this logic should live in CUDA Python...
-    # This logic handles all cases - wheel, conda, and system installations
-    global _nvjitlink_obj
-    if len(_nvjitlink_obj) > 0:
-        return
-    if not PLATFORM_WIN:
-        # pynvjitlink on Linux currently links to nvjitlink statically, so no
-        # need to preload
-        return
-
-    site_paths = [site.getusersitepackages()] + site.getsitepackages() + [None]
-    for sp in site_paths:
-        # The SONAME is taken based on public CTK 12.x releases
-        dso_dir = "bin"
-        dso_path = "nvJitLink_120_0.dll"
-
-        if sp is not None:
-            dso_dir = os.path.join(sp, "nvidia", "nvjitlink", dso_dir)
-            dso_path = os.path.join(dso_dir, dso_path)
-        try:
-            _nvjitlink_obj.append(ctypes.CDLL(dso_path, mode=ctypes.RTLD_GLOBAL))
-        except OSError:
-            continue
-        else:
-            break
-    else:
-        raise RuntimeError(
-            "nvJitLink from CUDA 12 not found. Depending on how you install nvmath-python and other CUDA packages,\n"
-            "you may need to perform one of the steps below:\n"
-            "  - pip install nvidia-nvjitlink-cu12\n"
-            "  - conda install -c conda-forge libnvjitlink cuda-version=12\n"
-            "  - export LD_LIBRARY_PATH=/path/to/CUDA/Toolkit/lib64:$LD_LIBRARY_PATH"
-        )
-
-
 def module_init_force_cupy_lib_load():
     """
     Attempt to preload libraries at module import time.
@@ -258,93 +274,3 @@ def module_init_force_cupy_lib_load():
             return
         except RuntimeError:
             pass
-
-
-_is_numba_nvvm_patched = False
-
-
-def patch_numba_nvvm(nvvm):
-    """Patch Numba to support wheels."""
-    # this function assumes Numba is already imported
-    global _is_numba_nvvm_patched
-    if _is_numba_nvvm_patched:
-        return
-
-    # Patch NVVM object
-    def __nvvm_new__(cls):
-        with nvvm._nvvm_lock:
-            # was: __INSTANCE, changed to _NVVM__INSTANCE due to name mangling...
-            if cls._NVVM__INSTANCE is None:
-                cls._NVVM__INSTANCE = inst = object.__new__(cls)
-                try:
-                    # was: inst.driver = open_cudalib('nvvm')
-                    inst.driver = _nvvm_obj[0]
-                except OSError as e:
-                    cls._NVVM__INSTANCE = None
-                    errmsg = "libNVVM cannot be found. Do `conda install " "cudatoolkit`:\n%s"
-                    raise nvvm.NvvmSupportError(errmsg % e)
-
-                # Find & populate functions
-                for name, proto in inst._PROTOTYPES.items():
-                    func = getattr(inst.driver, name)
-                    func.restype = proto[0]
-                    func.argtypes = proto[1:]
-                    setattr(inst, name, func)
-
-        return cls._NVVM__INSTANCE
-
-    def __nvvm_init__(self):
-        ir_versions = self.get_ir_version()
-        self._majorIR = ir_versions[0]
-        self._minorIR = ir_versions[1]
-        self._majorDbg = ir_versions[2]
-        self._minorDbg = ir_versions[3]
-        # don't overwrite self._supported_ccs!
-
-    force_loading_nvvm()
-    nvvm.NVVM.__new__ = __nvvm_new__
-    nvvm.NVVM.__init__ = __nvvm_init__
-    # Pre-compute supported compute capabilities based on COMPUTE_CAPABILITIES
-    # and CTK_SUPPORTED in numba/cuda/cudadrv/nvvm.py.
-    n = nvvm.NVVM()  # this is a singleton
-    n._supported_ccs = (
-        (3, 5),
-        (3, 7),
-        (5, 0),
-        (5, 2),
-        (5, 3),
-        (6, 0),
-        (6, 1),
-        (6, 2),
-        (7, 0),
-        (7, 2),
-        (7, 5),
-        (8, 0),
-        (8, 6),
-        (8, 7),
-        (8, 9),
-        (9, 0),
-    )
-
-    # Patch libdevice object
-    if _nvvm_obj[0]._name.startswith(("libnvvm", "nvvm64")):
-        # libnvvm found in sys path (ex: LD_LIBRARY_PATH), fall back to Numba's way
-        # way of locating it
-        from numba.cuda.cudadrv.libs import get_libdevice
-
-        libdevice_path = get_libdevice()
-        # custom CUDA path is a corner case
-        if libdevice_path is None:
-            raise RuntimeError(
-                "cannot locate libdevice, perhaps you need to set "
-                "CUDA_HOME? Please follow Numba's instruction at:\n"
-                "https://numba.readthedocs.io/en/stable/cuda/overview.html#setting-cuda-installation-path"
-            )
-    else:
-        # maybe it's pip or conda
-        libdevice_path = os.path.join(os.path.dirname(_nvvm_obj[0]._name), "../libdevice/libdevice.10.bc")
-    assert os.path.isfile(libdevice_path), f"{libdevice_path=}"
-    with open(libdevice_path, "rb") as f:
-        nvvm.LibDevice._cache_ = f.read()
-
-    _is_numba_nvvm_patched = True

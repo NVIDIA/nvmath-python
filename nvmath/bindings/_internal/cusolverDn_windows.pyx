@@ -475,7 +475,7 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
             __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
             if __cuDriverGetVersion == NULL:
                 raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) nogil>__cuDriverGetVersion)(&driver_ver)
+        err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
         if err != 0:
             raise RuntimeError('something went wrong')
 
@@ -3870,3731 +3870,3731 @@ cpdef _inspect_function_pointer(str name):
 # Wrapper functions
 ###############################################################################
 
-cdef cusolverStatus_t _cusolverDnCreate(cusolverDnHandle_t* handle) except* nogil:
+cdef cusolverStatus_t _cusolverDnCreate(cusolverDnHandle_t* handle) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCreate
     _check_or_init_cusolverDn()
     if __cusolverDnCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCreate is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t*) nogil>__cusolverDnCreate)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t*) noexcept nogil>__cusolverDnCreate)(
         handle)
 
 
-cdef cusolverStatus_t _cusolverDnDestroy(cusolverDnHandle_t handle) except* nogil:
+cdef cusolverStatus_t _cusolverDnDestroy(cusolverDnHandle_t handle) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDestroy
     _check_or_init_cusolverDn()
     if __cusolverDnDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDestroy is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t) nogil>__cusolverDnDestroy)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t) noexcept nogil>__cusolverDnDestroy)(
         handle)
 
 
-cdef cusolverStatus_t _cusolverDnSetStream(cusolverDnHandle_t handle, cudaStream_t streamId) except* nogil:
+cdef cusolverStatus_t _cusolverDnSetStream(cusolverDnHandle_t handle, cudaStream_t streamId) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSetStream
     _check_or_init_cusolverDn()
     if __cusolverDnSetStream == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSetStream is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaStream_t) nogil>__cusolverDnSetStream)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaStream_t) noexcept nogil>__cusolverDnSetStream)(
         handle, streamId)
 
 
-cdef cusolverStatus_t _cusolverDnGetStream(cusolverDnHandle_t handle, cudaStream_t* streamId) except* nogil:
+cdef cusolverStatus_t _cusolverDnGetStream(cusolverDnHandle_t handle, cudaStream_t* streamId) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnGetStream
     _check_or_init_cusolverDn()
     if __cusolverDnGetStream == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnGetStream is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaStream_t*) nogil>__cusolverDnGetStream)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaStream_t*) noexcept nogil>__cusolverDnGetStream)(
         handle, streamId)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsCreate(cusolverDnIRSParams_t* params_ptr) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsCreate(cusolverDnIRSParams_t* params_ptr) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsCreate
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsCreate is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t*) nogil>__cusolverDnIRSParamsCreate)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t*) noexcept nogil>__cusolverDnIRSParamsCreate)(
         params_ptr)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsDestroy(cusolverDnIRSParams_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsDestroy(cusolverDnIRSParams_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsDestroy
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsDestroy is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t) nogil>__cusolverDnIRSParamsDestroy)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t) noexcept nogil>__cusolverDnIRSParamsDestroy)(
         params)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetRefinementSolver(cusolverDnIRSParams_t params, cusolverIRSRefinement_t refinement_solver) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetRefinementSolver(cusolverDnIRSParams_t params, cusolverIRSRefinement_t refinement_solver) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetRefinementSolver
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetRefinementSolver == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetRefinementSolver is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverIRSRefinement_t) nogil>__cusolverDnIRSParamsSetRefinementSolver)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverIRSRefinement_t) noexcept nogil>__cusolverDnIRSParamsSetRefinementSolver)(
         params, refinement_solver)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetSolverMainPrecision(cusolverDnIRSParams_t params, cusolverPrecType_t solver_main_precision) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetSolverMainPrecision(cusolverDnIRSParams_t params, cusolverPrecType_t solver_main_precision) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetSolverMainPrecision
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetSolverMainPrecision == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetSolverMainPrecision is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverPrecType_t) nogil>__cusolverDnIRSParamsSetSolverMainPrecision)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverPrecType_t) noexcept nogil>__cusolverDnIRSParamsSetSolverMainPrecision)(
         params, solver_main_precision)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetSolverLowestPrecision(cusolverDnIRSParams_t params, cusolverPrecType_t solver_lowest_precision) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetSolverLowestPrecision(cusolverDnIRSParams_t params, cusolverPrecType_t solver_lowest_precision) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetSolverLowestPrecision
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetSolverLowestPrecision == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetSolverLowestPrecision is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverPrecType_t) nogil>__cusolverDnIRSParamsSetSolverLowestPrecision)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverPrecType_t) noexcept nogil>__cusolverDnIRSParamsSetSolverLowestPrecision)(
         params, solver_lowest_precision)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetSolverPrecisions(cusolverDnIRSParams_t params, cusolverPrecType_t solver_main_precision, cusolverPrecType_t solver_lowest_precision) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetSolverPrecisions(cusolverDnIRSParams_t params, cusolverPrecType_t solver_main_precision, cusolverPrecType_t solver_lowest_precision) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetSolverPrecisions
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetSolverPrecisions == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetSolverPrecisions is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverPrecType_t, cusolverPrecType_t) nogil>__cusolverDnIRSParamsSetSolverPrecisions)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolverPrecType_t, cusolverPrecType_t) noexcept nogil>__cusolverDnIRSParamsSetSolverPrecisions)(
         params, solver_main_precision, solver_lowest_precision)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetTol(cusolverDnIRSParams_t params, double val) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetTol(cusolverDnIRSParams_t params, double val) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetTol
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetTol == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetTol is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, double) nogil>__cusolverDnIRSParamsSetTol)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, double) noexcept nogil>__cusolverDnIRSParamsSetTol)(
         params, val)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetTolInner(cusolverDnIRSParams_t params, double val) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetTolInner(cusolverDnIRSParams_t params, double val) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetTolInner
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetTolInner == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetTolInner is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, double) nogil>__cusolverDnIRSParamsSetTolInner)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, double) noexcept nogil>__cusolverDnIRSParamsSetTolInner)(
         params, val)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetMaxIters(cusolverDnIRSParams_t params, cusolver_int_t maxiters) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetMaxIters(cusolverDnIRSParams_t params, cusolver_int_t maxiters) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetMaxIters
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetMaxIters == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetMaxIters is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolver_int_t) nogil>__cusolverDnIRSParamsSetMaxIters)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolver_int_t) noexcept nogil>__cusolverDnIRSParamsSetMaxIters)(
         params, maxiters)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsSetMaxItersInner(cusolverDnIRSParams_t params, cusolver_int_t maxiters_inner) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsSetMaxItersInner(cusolverDnIRSParams_t params, cusolver_int_t maxiters_inner) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsSetMaxItersInner
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsSetMaxItersInner == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsSetMaxItersInner is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolver_int_t) nogil>__cusolverDnIRSParamsSetMaxItersInner)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolver_int_t) noexcept nogil>__cusolverDnIRSParamsSetMaxItersInner)(
         params, maxiters_inner)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsGetMaxIters(cusolverDnIRSParams_t params, cusolver_int_t* maxiters) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsGetMaxIters(cusolverDnIRSParams_t params, cusolver_int_t* maxiters) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsGetMaxIters
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsGetMaxIters == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsGetMaxIters is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolver_int_t*) nogil>__cusolverDnIRSParamsGetMaxIters)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t, cusolver_int_t*) noexcept nogil>__cusolverDnIRSParamsGetMaxIters)(
         params, maxiters)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsEnableFallback(cusolverDnIRSParams_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsEnableFallback(cusolverDnIRSParams_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsEnableFallback
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsEnableFallback == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsEnableFallback is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t) nogil>__cusolverDnIRSParamsEnableFallback)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t) noexcept nogil>__cusolverDnIRSParamsEnableFallback)(
         params)
 
 
-cdef cusolverStatus_t _cusolverDnIRSParamsDisableFallback(cusolverDnIRSParams_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSParamsDisableFallback(cusolverDnIRSParams_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSParamsDisableFallback
     _check_or_init_cusolverDn()
     if __cusolverDnIRSParamsDisableFallback == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSParamsDisableFallback is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t) nogil>__cusolverDnIRSParamsDisableFallback)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSParams_t) noexcept nogil>__cusolverDnIRSParamsDisableFallback)(
         params)
 
 
-cdef cusolverStatus_t _cusolverDnIRSInfosDestroy(cusolverDnIRSInfos_t infos) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSInfosDestroy(cusolverDnIRSInfos_t infos) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSInfosDestroy
     _check_or_init_cusolverDn()
     if __cusolverDnIRSInfosDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSInfosDestroy is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t) nogil>__cusolverDnIRSInfosDestroy)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t) noexcept nogil>__cusolverDnIRSInfosDestroy)(
         infos)
 
 
-cdef cusolverStatus_t _cusolverDnIRSInfosCreate(cusolverDnIRSInfos_t* infos_ptr) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSInfosCreate(cusolverDnIRSInfos_t* infos_ptr) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSInfosCreate
     _check_or_init_cusolverDn()
     if __cusolverDnIRSInfosCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSInfosCreate is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t*) nogil>__cusolverDnIRSInfosCreate)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t*) noexcept nogil>__cusolverDnIRSInfosCreate)(
         infos_ptr)
 
 
-cdef cusolverStatus_t _cusolverDnIRSInfosGetNiters(cusolverDnIRSInfos_t infos, cusolver_int_t* niters) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSInfosGetNiters(cusolverDnIRSInfos_t infos, cusolver_int_t* niters) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSInfosGetNiters
     _check_or_init_cusolverDn()
     if __cusolverDnIRSInfosGetNiters == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSInfosGetNiters is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, cusolver_int_t*) nogil>__cusolverDnIRSInfosGetNiters)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, cusolver_int_t*) noexcept nogil>__cusolverDnIRSInfosGetNiters)(
         infos, niters)
 
 
-cdef cusolverStatus_t _cusolverDnIRSInfosGetOuterNiters(cusolverDnIRSInfos_t infos, cusolver_int_t* outer_niters) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSInfosGetOuterNiters(cusolverDnIRSInfos_t infos, cusolver_int_t* outer_niters) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSInfosGetOuterNiters
     _check_or_init_cusolverDn()
     if __cusolverDnIRSInfosGetOuterNiters == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSInfosGetOuterNiters is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, cusolver_int_t*) nogil>__cusolverDnIRSInfosGetOuterNiters)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, cusolver_int_t*) noexcept nogil>__cusolverDnIRSInfosGetOuterNiters)(
         infos, outer_niters)
 
 
-cdef cusolverStatus_t _cusolverDnIRSInfosRequestResidual(cusolverDnIRSInfos_t infos) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSInfosRequestResidual(cusolverDnIRSInfos_t infos) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSInfosRequestResidual
     _check_or_init_cusolverDn()
     if __cusolverDnIRSInfosRequestResidual == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSInfosRequestResidual is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t) nogil>__cusolverDnIRSInfosRequestResidual)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t) noexcept nogil>__cusolverDnIRSInfosRequestResidual)(
         infos)
 
 
-cdef cusolverStatus_t _cusolverDnIRSInfosGetResidualHistory(cusolverDnIRSInfos_t infos, void** residual_history) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSInfosGetResidualHistory(cusolverDnIRSInfos_t infos, void** residual_history) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSInfosGetResidualHistory
     _check_or_init_cusolverDn()
     if __cusolverDnIRSInfosGetResidualHistory == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSInfosGetResidualHistory is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, void**) nogil>__cusolverDnIRSInfosGetResidualHistory)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, void**) noexcept nogil>__cusolverDnIRSInfosGetResidualHistory)(
         infos, residual_history)
 
 
-cdef cusolverStatus_t _cusolverDnIRSInfosGetMaxIters(cusolverDnIRSInfos_t infos, cusolver_int_t* maxiters) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSInfosGetMaxIters(cusolverDnIRSInfos_t infos, cusolver_int_t* maxiters) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSInfosGetMaxIters
     _check_or_init_cusolverDn()
     if __cusolverDnIRSInfosGetMaxIters == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSInfosGetMaxIters is not found")
-    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, cusolver_int_t*) nogil>__cusolverDnIRSInfosGetMaxIters)(
+    return (<cusolverStatus_t (*)(cusolverDnIRSInfos_t, cusolver_int_t*) noexcept nogil>__cusolverDnIRSInfosGetMaxIters)(
         infos, maxiters)
 
 
-cdef cusolverStatus_t _cusolverDnZZgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZZgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZZgesv
     _check_or_init_cusolverDn()
     if __cusolverDnZZgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZZgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZZgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZZgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZCgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZCgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZCgesv
     _check_or_init_cusolverDn()
     if __cusolverDnZCgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZCgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZCgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZCgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZKgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZKgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZKgesv
     _check_or_init_cusolverDn()
     if __cusolverDnZKgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZKgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZKgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZKgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZEgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZEgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZEgesv
     _check_or_init_cusolverDn()
     if __cusolverDnZEgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZEgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZEgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZEgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZYgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZYgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZYgesv
     _check_or_init_cusolverDn()
     if __cusolverDnZYgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZYgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZYgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZYgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCCgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCCgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCCgesv
     _check_or_init_cusolverDn()
     if __cusolverDnCCgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCCgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCCgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCCgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCEgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCEgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCEgesv
     _check_or_init_cusolverDn()
     if __cusolverDnCEgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCEgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCEgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCEgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCKgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCKgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCKgesv
     _check_or_init_cusolverDn()
     if __cusolverDnCKgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCKgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCKgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCKgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCYgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCYgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCYgesv
     _check_or_init_cusolverDn()
     if __cusolverDnCYgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCYgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCYgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCYgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDDgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDDgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDDgesv
     _check_or_init_cusolverDn()
     if __cusolverDnDDgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDDgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDDgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDDgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDSgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDSgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDSgesv
     _check_or_init_cusolverDn()
     if __cusolverDnDSgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDSgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDSgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDSgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDHgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDHgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDHgesv
     _check_or_init_cusolverDn()
     if __cusolverDnDHgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDHgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDHgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDHgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDBgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDBgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDBgesv
     _check_or_init_cusolverDn()
     if __cusolverDnDBgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDBgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDBgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDBgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDXgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDXgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDXgesv
     _check_or_init_cusolverDn()
     if __cusolverDnDXgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDXgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDXgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDXgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSSgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSSgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSSgesv
     _check_or_init_cusolverDn()
     if __cusolverDnSSgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSSgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSSgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSSgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSHgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSHgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSHgesv
     _check_or_init_cusolverDn()
     if __cusolverDnSHgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSHgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSHgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSHgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSBgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSBgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSBgesv
     _check_or_init_cusolverDn()
     if __cusolverDnSBgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSBgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSBgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSBgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSXgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSXgesv(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSXgesv
     _check_or_init_cusolverDn()
     if __cusolverDnSXgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSXgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSXgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSXgesv)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZZgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZZgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZZgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZZgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZZgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZZgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZZgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZCgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZCgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZCgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZCgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZCgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZCgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZCgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZKgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZKgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZKgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZKgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZKgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZKgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZKgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZEgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZEgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZEgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZEgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZEgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZEgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZEgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZYgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZYgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZYgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZYgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZYgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZYgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cusolver_int_t*, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZYgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCCgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCCgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCCgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCCgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCCgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCCgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCCgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCKgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCKgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCKgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCKgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCKgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCKgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCKgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCEgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCEgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCEgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCEgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCEgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCEgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCEgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCYgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCYgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCYgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCYgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCYgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCYgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cusolver_int_t*, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCYgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDDgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDDgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDDgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDDgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDDgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDDgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDDgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDSgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDSgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDSgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDSgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDSgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDSgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDSgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDHgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDHgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDHgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDHgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDHgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDHgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDHgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDBgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDBgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDBgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDBgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDBgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDBgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDBgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDXgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDXgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDXgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDXgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDXgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDXgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, cusolver_int_t*, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDXgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSSgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSSgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSSgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSSgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSSgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSSgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSSgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSHgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSHgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSHgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSHgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSHgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSHgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSHgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSBgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSBgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSBgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSBgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSBgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSBgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSBgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSXgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSXgesv_bufferSize(cusolverDnHandle_t handle, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, cusolver_int_t* dipiv, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSXgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSXgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSXgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSXgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, cusolver_int_t*, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSXgesv_bufferSize)(
         handle, n, nrhs, dA, ldda, dipiv, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZZgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZZgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZZgels
     _check_or_init_cusolverDn()
     if __cusolverDnZZgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZZgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZZgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZZgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZCgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZCgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZCgels
     _check_or_init_cusolverDn()
     if __cusolverDnZCgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZCgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZCgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZCgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZKgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZKgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZKgels
     _check_or_init_cusolverDn()
     if __cusolverDnZKgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZKgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZKgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZKgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZEgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZEgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZEgels
     _check_or_init_cusolverDn()
     if __cusolverDnZEgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZEgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZEgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZEgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZYgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZYgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZYgels
     _check_or_init_cusolverDn()
     if __cusolverDnZYgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZYgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnZYgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnZYgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCCgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCCgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCCgels
     _check_or_init_cusolverDn()
     if __cusolverDnCCgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCCgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCCgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCCgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCKgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCKgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCKgels
     _check_or_init_cusolverDn()
     if __cusolverDnCKgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCKgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCKgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCKgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCEgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCEgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCEgels
     _check_or_init_cusolverDn()
     if __cusolverDnCEgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCEgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCEgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCEgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnCYgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCYgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCYgels
     _check_or_init_cusolverDn()
     if __cusolverDnCYgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCYgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnCYgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnCYgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDDgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDDgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDDgels
     _check_or_init_cusolverDn()
     if __cusolverDnDDgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDDgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDDgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDDgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDSgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDSgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDSgels
     _check_or_init_cusolverDn()
     if __cusolverDnDSgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDSgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDSgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDSgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDHgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDHgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDHgels
     _check_or_init_cusolverDn()
     if __cusolverDnDHgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDHgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDHgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDHgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDBgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDBgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDBgels
     _check_or_init_cusolverDn()
     if __cusolverDnDBgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDBgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDBgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDBgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnDXgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDXgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDXgels
     _check_or_init_cusolverDn()
     if __cusolverDnDXgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDXgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnDXgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnDXgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSSgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSSgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSSgels
     _check_or_init_cusolverDn()
     if __cusolverDnSSgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSSgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSSgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSSgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSHgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSHgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSHgels
     _check_or_init_cusolverDn()
     if __cusolverDnSHgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSHgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSHgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSHgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSBgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSBgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSBgels
     _check_or_init_cusolverDn()
     if __cusolverDnSBgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSBgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSBgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSBgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnSXgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSXgels(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* iter, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSXgels
     _check_or_init_cusolverDn()
     if __cusolverDnSXgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSXgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnSXgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnSXgels)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, iter, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnZZgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZZgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZZgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZZgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZZgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZZgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZZgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZCgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZCgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZCgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZCgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZCgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZCgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZCgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZKgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZKgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZKgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZKgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZKgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZKgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZKgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZEgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZEgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZEgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZEgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZEgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZEgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZEgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnZYgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnZYgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuDoubleComplex* dA, cusolver_int_t ldda, cuDoubleComplex* dB, cusolver_int_t lddb, cuDoubleComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZYgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZYgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZYgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnZYgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, cuDoubleComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnZYgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCCgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCCgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCCgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCCgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCCgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCCgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCCgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCKgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCKgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCKgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCKgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCKgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCKgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCKgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCEgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCEgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCEgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCEgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCEgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCEgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCEgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnCYgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnCYgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, cuComplex* dA, cusolver_int_t ldda, cuComplex* dB, cusolver_int_t lddb, cuComplex* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCYgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCYgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCYgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnCYgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, cuComplex*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnCYgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDDgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDDgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDDgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDDgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDDgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDDgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDDgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDSgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDSgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDSgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDSgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDSgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDSgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDSgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDHgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDHgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDHgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDHgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDHgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDHgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDHgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDBgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDBgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDBgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDBgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDBgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDBgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDBgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnDXgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnDXgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, double* dA, cusolver_int_t ldda, double* dB, cusolver_int_t lddb, double* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDXgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDXgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDXgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnDXgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, double*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnDXgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSSgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSSgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSSgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSSgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSSgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSSgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSSgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSHgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSHgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSHgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSHgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSHgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSHgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSHgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSBgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSBgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSBgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSBgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSBgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSBgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSBgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSXgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnSXgels_bufferSize(cusolverDnHandle_t handle, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, float* dA, cusolver_int_t ldda, float* dB, cusolver_int_t lddb, float* dX, cusolver_int_t lddx, void* dWorkspace, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSXgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSXgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSXgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) nogil>__cusolverDnSXgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, float*, cusolver_int_t, void*, size_t*) noexcept nogil>__cusolverDnSXgels_bufferSize)(
         handle, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnIRSXgesv(cusolverDnHandle_t handle, cusolverDnIRSParams_t gesv_irs_params, cusolverDnIRSInfos_t gesv_irs_infos, cusolver_int_t n, cusolver_int_t nrhs, void* dA, cusolver_int_t ldda, void* dB, cusolver_int_t lddb, void* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* niters, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSXgesv(cusolverDnHandle_t handle, cusolverDnIRSParams_t gesv_irs_params, cusolverDnIRSInfos_t gesv_irs_infos, cusolver_int_t n, cusolver_int_t nrhs, void* dA, cusolver_int_t ldda, void* dB, cusolver_int_t lddb, void* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* niters, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSXgesv
     _check_or_init_cusolverDn()
     if __cusolverDnIRSXgesv == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSXgesv is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolverDnIRSInfos_t, cusolver_int_t, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnIRSXgesv)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolverDnIRSInfos_t, cusolver_int_t, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnIRSXgesv)(
         handle, gesv_irs_params, gesv_irs_infos, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, niters, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnIRSXgesv_bufferSize(cusolverDnHandle_t handle, cusolverDnIRSParams_t params, cusolver_int_t n, cusolver_int_t nrhs, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSXgesv_bufferSize(cusolverDnHandle_t handle, cusolverDnIRSParams_t params, cusolver_int_t n, cusolver_int_t nrhs, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSXgesv_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnIRSXgesv_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSXgesv_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolver_int_t, cusolver_int_t, size_t*) nogil>__cusolverDnIRSXgesv_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolver_int_t, cusolver_int_t, size_t*) noexcept nogil>__cusolverDnIRSXgesv_bufferSize)(
         handle, params, n, nrhs, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnIRSXgels(cusolverDnHandle_t handle, cusolverDnIRSParams_t gels_irs_params, cusolverDnIRSInfos_t gels_irs_infos, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, void* dA, cusolver_int_t ldda, void* dB, cusolver_int_t lddb, void* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* niters, cusolver_int_t* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSXgels(cusolverDnHandle_t handle, cusolverDnIRSParams_t gels_irs_params, cusolverDnIRSInfos_t gels_irs_infos, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, void* dA, cusolver_int_t ldda, void* dB, cusolver_int_t lddb, void* dX, cusolver_int_t lddx, void* dWorkspace, size_t lwork_bytes, cusolver_int_t* niters, cusolver_int_t* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSXgels
     _check_or_init_cusolverDn()
     if __cusolverDnIRSXgels == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSXgels is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolverDnIRSInfos_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) nogil>__cusolverDnIRSXgels)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolverDnIRSInfos_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, cusolver_int_t, void*, size_t, cusolver_int_t*, cusolver_int_t*) noexcept nogil>__cusolverDnIRSXgels)(
         handle, gels_irs_params, gels_irs_infos, m, n, nrhs, dA, ldda, dB, lddb, dX, lddx, dWorkspace, lwork_bytes, niters, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnIRSXgels_bufferSize(cusolverDnHandle_t handle, cusolverDnIRSParams_t params, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, size_t* lwork_bytes) except* nogil:
+cdef cusolverStatus_t _cusolverDnIRSXgels_bufferSize(cusolverDnHandle_t handle, cusolverDnIRSParams_t params, cusolver_int_t m, cusolver_int_t n, cusolver_int_t nrhs, size_t* lwork_bytes) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnIRSXgels_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnIRSXgels_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnIRSXgels_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, size_t*) nogil>__cusolverDnIRSXgels_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnIRSParams_t, cusolver_int_t, cusolver_int_t, cusolver_int_t, size_t*) noexcept nogil>__cusolverDnIRSXgels_bufferSize)(
         handle, params, m, n, nrhs, lwork_bytes)
 
 
-cdef cusolverStatus_t _cusolverDnSpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSpotrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSpotrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSpotrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*) nogil>__cusolverDnSpotrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*) noexcept nogil>__cusolverDnSpotrf_bufferSize)(
         handle, uplo, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDpotrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDpotrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDpotrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*) nogil>__cusolverDnDpotrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*) noexcept nogil>__cusolverDnDpotrf_bufferSize)(
         handle, uplo, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCpotrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCpotrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCpotrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*) nogil>__cusolverDnCpotrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCpotrf_bufferSize)(
         handle, uplo, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZpotrf_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZpotrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZpotrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZpotrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZpotrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZpotrf_bufferSize)(
         handle, uplo, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSpotrf
     _check_or_init_cusolverDn()
     if __cusolverDnSpotrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSpotrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, int, int*) nogil>__cusolverDnSpotrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, int, int*) noexcept nogil>__cusolverDnSpotrf)(
         handle, uplo, n, A, lda, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDpotrf
     _check_or_init_cusolverDn()
     if __cusolverDnDpotrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDpotrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, int, int*) nogil>__cusolverDnDpotrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, int, int*) noexcept nogil>__cusolverDnDpotrf)(
         handle, uplo, n, A, lda, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCpotrf
     _check_or_init_cusolverDn()
     if __cusolverDnCpotrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCpotrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, int*) nogil>__cusolverDnCpotrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCpotrf)(
         handle, uplo, n, A, lda, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZpotrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZpotrf
     _check_or_init_cusolverDn()
     if __cusolverDnZpotrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZpotrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZpotrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZpotrf)(
         handle, uplo, n, A, lda, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const float* A, int lda, float* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const float* A, int lda, float* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSpotrs
     _check_or_init_cusolverDn()
     if __cusolverDnSpotrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSpotrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const float*, int, float*, int, int*) nogil>__cusolverDnSpotrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const float*, int, float*, int, int*) noexcept nogil>__cusolverDnSpotrs)(
         handle, uplo, n, nrhs, A, lda, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const double* A, int lda, double* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const double* A, int lda, double* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDpotrs
     _check_or_init_cusolverDn()
     if __cusolverDnDpotrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDpotrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const double*, int, double*, int, int*) nogil>__cusolverDnDpotrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const double*, int, double*, int, int*) noexcept nogil>__cusolverDnDpotrs)(
         handle, uplo, n, nrhs, A, lda, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const cuComplex* A, int lda, cuComplex* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const cuComplex* A, int lda, cuComplex* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCpotrs
     _check_or_init_cusolverDn()
     if __cusolverDnCpotrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCpotrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const cuComplex*, int, cuComplex*, int, int*) nogil>__cusolverDnCpotrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const cuComplex*, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCpotrs)(
         handle, uplo, n, nrhs, A, lda, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZpotrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZpotrs
     _check_or_init_cusolverDn()
     if __cusolverDnZpotrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZpotrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const cuDoubleComplex*, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZpotrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, const cuDoubleComplex*, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZpotrs)(
         handle, uplo, n, nrhs, A, lda, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* Aarray[], int lda, int* infoArray, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* Aarray[], int lda, int* infoArray, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSpotrfBatched
     _check_or_init_cusolverDn()
     if __cusolverDnSpotrfBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSpotrfBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float**, int, int*, int) nogil>__cusolverDnSpotrfBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float**, int, int*, int) noexcept nogil>__cusolverDnSpotrfBatched)(
         handle, uplo, n, Aarray, lda, infoArray, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* Aarray[], int lda, int* infoArray, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* Aarray[], int lda, int* infoArray, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDpotrfBatched
     _check_or_init_cusolverDn()
     if __cusolverDnDpotrfBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDpotrfBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double**, int, int*, int) nogil>__cusolverDnDpotrfBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double**, int, int*, int) noexcept nogil>__cusolverDnDpotrfBatched)(
         handle, uplo, n, Aarray, lda, infoArray, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* Aarray[], int lda, int* infoArray, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* Aarray[], int lda, int* infoArray, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCpotrfBatched
     _check_or_init_cusolverDn()
     if __cusolverDnCpotrfBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCpotrfBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex**, int, int*, int) nogil>__cusolverDnCpotrfBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex**, int, int*, int) noexcept nogil>__cusolverDnCpotrfBatched)(
         handle, uplo, n, Aarray, lda, infoArray, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* Aarray[], int lda, int* infoArray, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZpotrfBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* Aarray[], int lda, int* infoArray, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZpotrfBatched
     _check_or_init_cusolverDn()
     if __cusolverDnZpotrfBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZpotrfBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex**, int, int*, int) nogil>__cusolverDnZpotrfBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex**, int, int*, int) noexcept nogil>__cusolverDnZpotrfBatched)(
         handle, uplo, n, Aarray, lda, infoArray, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnSpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, float* A[], int lda, float* B[], int ldb, int* d_info, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, float* A[], int lda, float* B[], int ldb, int* d_info, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSpotrsBatched
     _check_or_init_cusolverDn()
     if __cusolverDnSpotrsBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSpotrsBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, float**, int, float**, int, int*, int) nogil>__cusolverDnSpotrsBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, float**, int, float**, int, int*, int) noexcept nogil>__cusolverDnSpotrsBatched)(
         handle, uplo, n, nrhs, A, lda, B, ldb, d_info, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, double* A[], int lda, double* B[], int ldb, int* d_info, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, double* A[], int lda, double* B[], int ldb, int* d_info, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDpotrsBatched
     _check_or_init_cusolverDn()
     if __cusolverDnDpotrsBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDpotrsBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, double**, int, double**, int, int*, int) nogil>__cusolverDnDpotrsBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, double**, int, double**, int, int*, int) noexcept nogil>__cusolverDnDpotrsBatched)(
         handle, uplo, n, nrhs, A, lda, B, ldb, d_info, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, cuComplex* A[], int lda, cuComplex* B[], int ldb, int* d_info, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, cuComplex* A[], int lda, cuComplex* B[], int ldb, int* d_info, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCpotrsBatched
     _check_or_init_cusolverDn()
     if __cusolverDnCpotrsBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCpotrsBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, cuComplex**, int, cuComplex**, int, int*, int) nogil>__cusolverDnCpotrsBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, cuComplex**, int, cuComplex**, int, int*, int) noexcept nogil>__cusolverDnCpotrsBatched)(
         handle, uplo, n, nrhs, A, lda, B, ldb, d_info, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, cuDoubleComplex* A[], int lda, cuDoubleComplex* B[], int ldb, int* d_info, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZpotrsBatched(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs, cuDoubleComplex* A[], int lda, cuDoubleComplex* B[], int ldb, int* d_info, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZpotrsBatched
     _check_or_init_cusolverDn()
     if __cusolverDnZpotrsBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZpotrsBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, cuDoubleComplex**, int, cuDoubleComplex**, int, int*, int) nogil>__cusolverDnZpotrsBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, int, cuDoubleComplex**, int, cuDoubleComplex**, int, int*, int) noexcept nogil>__cusolverDnZpotrsBatched)(
         handle, uplo, n, nrhs, A, lda, B, ldb, d_info, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnSpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSpotri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSpotri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSpotri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*) nogil>__cusolverDnSpotri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*) noexcept nogil>__cusolverDnSpotri_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDpotri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDpotri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDpotri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*) nogil>__cusolverDnDpotri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*) noexcept nogil>__cusolverDnDpotri_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCpotri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCpotri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCpotri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*) nogil>__cusolverDnCpotri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCpotri_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZpotri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZpotri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZpotri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZpotri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZpotri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZpotri_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSpotri
     _check_or_init_cusolverDn()
     if __cusolverDnSpotri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSpotri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, int, int*) nogil>__cusolverDnSpotri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, int, int*) noexcept nogil>__cusolverDnSpotri)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDpotri
     _check_or_init_cusolverDn()
     if __cusolverDnDpotri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDpotri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, int, int*) nogil>__cusolverDnDpotri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, int, int*) noexcept nogil>__cusolverDnDpotri)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCpotri
     _check_or_init_cusolverDn()
     if __cusolverDnCpotri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCpotri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, int*) nogil>__cusolverDnCpotri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCpotri)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZpotri
     _check_or_init_cusolverDn()
     if __cusolverDnZpotri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZpotri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZpotri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZpotri)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSlauum_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSlauum_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSlauum_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*) nogil>__cusolverDnSlauum_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*) noexcept nogil>__cusolverDnSlauum_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDlauum_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDlauum_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDlauum_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*) nogil>__cusolverDnDlauum_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*) noexcept nogil>__cusolverDnDlauum_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnClauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnClauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnClauum_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnClauum_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnClauum_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*) nogil>__cusolverDnClauum_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnClauum_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZlauum_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZlauum_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZlauum_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZlauum_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZlauum_bufferSize)(
         handle, uplo, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSlauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSlauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSlauum
     _check_or_init_cusolverDn()
     if __cusolverDnSlauum == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSlauum is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, int, int*) nogil>__cusolverDnSlauum)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, int, int*) noexcept nogil>__cusolverDnSlauum)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDlauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDlauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDlauum
     _check_or_init_cusolverDn()
     if __cusolverDnDlauum == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDlauum is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, int, int*) nogil>__cusolverDnDlauum)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, int, int*) noexcept nogil>__cusolverDnDlauum)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnClauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnClauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnClauum
     _check_or_init_cusolverDn()
     if __cusolverDnClauum == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnClauum is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, int*) nogil>__cusolverDnClauum)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnClauum)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZlauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZlauum(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZlauum
     _check_or_init_cusolverDn()
     if __cusolverDnZlauum == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZlauum is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZlauum)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZlauum)(
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, float* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, float* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgetrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSgetrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgetrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, int*) nogil>__cusolverDnSgetrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, int*) noexcept nogil>__cusolverDnSgetrf_bufferSize)(
         handle, m, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, double* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, double* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgetrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDgetrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgetrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, int*) nogil>__cusolverDnDgetrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, int*) noexcept nogil>__cusolverDnDgetrf_bufferSize)(
         handle, m, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgetrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCgetrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgetrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, int*) nogil>__cusolverDnCgetrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCgetrf_bufferSize)(
         handle, m, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgetrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgetrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZgetrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgetrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZgetrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZgetrf_bufferSize)(
         handle, m, n, A, lda, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSgetrf(cusolverDnHandle_t handle, int m, int n, float* A, int lda, float* Workspace, int* devIpiv, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgetrf(cusolverDnHandle_t handle, int m, int n, float* A, int lda, float* Workspace, int* devIpiv, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgetrf
     _check_or_init_cusolverDn()
     if __cusolverDnSgetrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgetrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, float*, int*, int*) nogil>__cusolverDnSgetrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, float*, int*, int*) noexcept nogil>__cusolverDnSgetrf)(
         handle, m, n, A, lda, Workspace, devIpiv, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDgetrf(cusolverDnHandle_t handle, int m, int n, double* A, int lda, double* Workspace, int* devIpiv, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgetrf(cusolverDnHandle_t handle, int m, int n, double* A, int lda, double* Workspace, int* devIpiv, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgetrf
     _check_or_init_cusolverDn()
     if __cusolverDnDgetrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgetrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, double*, int*, int*) nogil>__cusolverDnDgetrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, double*, int*, int*) noexcept nogil>__cusolverDnDgetrf)(
         handle, m, n, A, lda, Workspace, devIpiv, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCgetrf(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, cuComplex* Workspace, int* devIpiv, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgetrf(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, cuComplex* Workspace, int* devIpiv, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgetrf
     _check_or_init_cusolverDn()
     if __cusolverDnCgetrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgetrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, cuComplex*, int*, int*) nogil>__cusolverDnCgetrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, cuComplex*, int*, int*) noexcept nogil>__cusolverDnCgetrf)(
         handle, m, n, A, lda, Workspace, devIpiv, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZgetrf(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* Workspace, int* devIpiv, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgetrf(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* Workspace, int* devIpiv, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgetrf
     _check_or_init_cusolverDn()
     if __cusolverDnZgetrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgetrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, cuDoubleComplex*, int*, int*) nogil>__cusolverDnZgetrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, cuDoubleComplex*, int*, int*) noexcept nogil>__cusolverDnZgetrf)(
         handle, m, n, A, lda, Workspace, devIpiv, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSlaswp(cusolverDnHandle_t handle, int n, float* A, int lda, int k1, int k2, const int* devIpiv, int incx) except* nogil:
+cdef cusolverStatus_t _cusolverDnSlaswp(cusolverDnHandle_t handle, int n, float* A, int lda, int k1, int k2, const int* devIpiv, int incx) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSlaswp
     _check_or_init_cusolverDn()
     if __cusolverDnSlaswp == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSlaswp is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, float*, int, int, int, const int*, int) nogil>__cusolverDnSlaswp)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, float*, int, int, int, const int*, int) noexcept nogil>__cusolverDnSlaswp)(
         handle, n, A, lda, k1, k2, devIpiv, incx)
 
 
-cdef cusolverStatus_t _cusolverDnDlaswp(cusolverDnHandle_t handle, int n, double* A, int lda, int k1, int k2, const int* devIpiv, int incx) except* nogil:
+cdef cusolverStatus_t _cusolverDnDlaswp(cusolverDnHandle_t handle, int n, double* A, int lda, int k1, int k2, const int* devIpiv, int incx) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDlaswp
     _check_or_init_cusolverDn()
     if __cusolverDnDlaswp == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDlaswp is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, double*, int, int, int, const int*, int) nogil>__cusolverDnDlaswp)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, double*, int, int, int, const int*, int) noexcept nogil>__cusolverDnDlaswp)(
         handle, n, A, lda, k1, k2, devIpiv, incx)
 
 
-cdef cusolverStatus_t _cusolverDnClaswp(cusolverDnHandle_t handle, int n, cuComplex* A, int lda, int k1, int k2, const int* devIpiv, int incx) except* nogil:
+cdef cusolverStatus_t _cusolverDnClaswp(cusolverDnHandle_t handle, int n, cuComplex* A, int lda, int k1, int k2, const int* devIpiv, int incx) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnClaswp
     _check_or_init_cusolverDn()
     if __cusolverDnClaswp == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnClaswp is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuComplex*, int, int, int, const int*, int) nogil>__cusolverDnClaswp)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuComplex*, int, int, int, const int*, int) noexcept nogil>__cusolverDnClaswp)(
         handle, n, A, lda, k1, k2, devIpiv, incx)
 
 
-cdef cusolverStatus_t _cusolverDnZlaswp(cusolverDnHandle_t handle, int n, cuDoubleComplex* A, int lda, int k1, int k2, const int* devIpiv, int incx) except* nogil:
+cdef cusolverStatus_t _cusolverDnZlaswp(cusolverDnHandle_t handle, int n, cuDoubleComplex* A, int lda, int k1, int k2, const int* devIpiv, int incx) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZlaswp
     _check_or_init_cusolverDn()
     if __cusolverDnZlaswp == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZlaswp is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuDoubleComplex*, int, int, int, const int*, int) nogil>__cusolverDnZlaswp)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuDoubleComplex*, int, int, int, const int*, int) noexcept nogil>__cusolverDnZlaswp)(
         handle, n, A, lda, k1, k2, devIpiv, incx)
 
 
-cdef cusolverStatus_t _cusolverDnSgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const float* A, int lda, const int* devIpiv, float* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const float* A, int lda, const int* devIpiv, float* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgetrs
     _check_or_init_cusolverDn()
     if __cusolverDnSgetrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgetrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const float*, int, const int*, float*, int, int*) nogil>__cusolverDnSgetrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const float*, int, const int*, float*, int, int*) noexcept nogil>__cusolverDnSgetrs)(
         handle, trans, n, nrhs, A, lda, devIpiv, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const double* A, int lda, const int* devIpiv, double* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const double* A, int lda, const int* devIpiv, double* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgetrs
     _check_or_init_cusolverDn()
     if __cusolverDnDgetrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgetrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const double*, int, const int*, double*, int, int*) nogil>__cusolverDnDgetrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const double*, int, const int*, double*, int, int*) noexcept nogil>__cusolverDnDgetrs)(
         handle, trans, n, nrhs, A, lda, devIpiv, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const cuComplex* A, int lda, const int* devIpiv, cuComplex* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const cuComplex* A, int lda, const int* devIpiv, cuComplex* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgetrs
     _check_or_init_cusolverDn()
     if __cusolverDnCgetrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgetrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const cuComplex*, int, const int*, cuComplex*, int, int*) nogil>__cusolverDnCgetrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const cuComplex*, int, const int*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCgetrs)(
         handle, trans, n, nrhs, A, lda, devIpiv, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const cuDoubleComplex* A, int lda, const int* devIpiv, cuDoubleComplex* B, int ldb, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgetrs(cusolverDnHandle_t handle, cublasOperation_t trans, int n, int nrhs, const cuDoubleComplex* A, int lda, const int* devIpiv, cuDoubleComplex* B, int ldb, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgetrs
     _check_or_init_cusolverDn()
     if __cusolverDnZgetrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgetrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const cuDoubleComplex*, int, const int*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZgetrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasOperation_t, int, int, const cuDoubleComplex*, int, const int*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZgetrs)(
         handle, trans, n, nrhs, A, lda, devIpiv, B, ldb, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, float* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, float* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgeqrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSgeqrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgeqrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, int*) nogil>__cusolverDnSgeqrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, int*) noexcept nogil>__cusolverDnSgeqrf_bufferSize)(
         handle, m, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, double* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, double* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgeqrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDgeqrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgeqrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, int*) nogil>__cusolverDnDgeqrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, int*) noexcept nogil>__cusolverDnDgeqrf_bufferSize)(
         handle, m, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgeqrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCgeqrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgeqrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, int*) nogil>__cusolverDnCgeqrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCgeqrf_bufferSize)(
         handle, m, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgeqrf_bufferSize(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgeqrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZgeqrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgeqrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZgeqrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZgeqrf_bufferSize)(
         handle, m, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSgeqrf(cusolverDnHandle_t handle, int m, int n, float* A, int lda, float* TAU, float* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgeqrf(cusolverDnHandle_t handle, int m, int n, float* A, int lda, float* TAU, float* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgeqrf
     _check_or_init_cusolverDn()
     if __cusolverDnSgeqrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgeqrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, float*, float*, int, int*) nogil>__cusolverDnSgeqrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, float*, float*, int, int*) noexcept nogil>__cusolverDnSgeqrf)(
         handle, m, n, A, lda, TAU, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDgeqrf(cusolverDnHandle_t handle, int m, int n, double* A, int lda, double* TAU, double* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgeqrf(cusolverDnHandle_t handle, int m, int n, double* A, int lda, double* TAU, double* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgeqrf
     _check_or_init_cusolverDn()
     if __cusolverDnDgeqrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgeqrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, double*, double*, int, int*) nogil>__cusolverDnDgeqrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, double*, double*, int, int*) noexcept nogil>__cusolverDnDgeqrf)(
         handle, m, n, A, lda, TAU, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCgeqrf(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, cuComplex* TAU, cuComplex* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgeqrf(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, cuComplex* TAU, cuComplex* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgeqrf
     _check_or_init_cusolverDn()
     if __cusolverDnCgeqrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgeqrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, cuComplex*, cuComplex*, int, int*) nogil>__cusolverDnCgeqrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, cuComplex*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCgeqrf)(
         handle, m, n, A, lda, TAU, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZgeqrf(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* TAU, cuDoubleComplex* Workspace, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgeqrf(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* TAU, cuDoubleComplex* Workspace, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgeqrf
     _check_or_init_cusolverDn()
     if __cusolverDnZgeqrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgeqrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, cuDoubleComplex*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZgeqrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, cuDoubleComplex*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZgeqrf)(
         handle, m, n, A, lda, TAU, Workspace, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSorgqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const float* A, int lda, const float* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSorgqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const float* A, int lda, const float* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSorgqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSorgqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSorgqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const float*, int, const float*, int*) nogil>__cusolverDnSorgqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const float*, int, const float*, int*) noexcept nogil>__cusolverDnSorgqr_bufferSize)(
         handle, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDorgqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const double* A, int lda, const double* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDorgqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const double* A, int lda, const double* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDorgqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDorgqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDorgqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const double*, int, const double*, int*) nogil>__cusolverDnDorgqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const double*, int, const double*, int*) noexcept nogil>__cusolverDnDorgqr_bufferSize)(
         handle, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCungqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCungqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCungqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCungqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCungqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const cuComplex*, int, const cuComplex*, int*) nogil>__cusolverDnCungqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const cuComplex*, int, const cuComplex*, int*) noexcept nogil>__cusolverDnCungqr_bufferSize)(
         handle, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZungqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZungqr_bufferSize(cusolverDnHandle_t handle, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZungqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZungqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZungqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int*) nogil>__cusolverDnZungqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int*) noexcept nogil>__cusolverDnZungqr_bufferSize)(
         handle, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSorgqr(cusolverDnHandle_t handle, int m, int n, int k, float* A, int lda, const float* tau, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSorgqr(cusolverDnHandle_t handle, int m, int n, int k, float* A, int lda, const float* tau, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSorgqr
     _check_or_init_cusolverDn()
     if __cusolverDnSorgqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSorgqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, float*, int, const float*, float*, int, int*) nogil>__cusolverDnSorgqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, float*, int, const float*, float*, int, int*) noexcept nogil>__cusolverDnSorgqr)(
         handle, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDorgqr(cusolverDnHandle_t handle, int m, int n, int k, double* A, int lda, const double* tau, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDorgqr(cusolverDnHandle_t handle, int m, int n, int k, double* A, int lda, const double* tau, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDorgqr
     _check_or_init_cusolverDn()
     if __cusolverDnDorgqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDorgqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, double*, int, const double*, double*, int, int*) nogil>__cusolverDnDorgqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, double*, int, const double*, double*, int, int*) noexcept nogil>__cusolverDnDorgqr)(
         handle, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCungqr(cusolverDnHandle_t handle, int m, int n, int k, cuComplex* A, int lda, const cuComplex* tau, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCungqr(cusolverDnHandle_t handle, int m, int n, int k, cuComplex* A, int lda, const cuComplex* tau, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCungqr
     _check_or_init_cusolverDn()
     if __cusolverDnCungqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCungqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, cuComplex*, int, const cuComplex*, cuComplex*, int, int*) nogil>__cusolverDnCungqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, cuComplex*, int, const cuComplex*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCungqr)(
         handle, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZungqr(cusolverDnHandle_t handle, int m, int n, int k, cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZungqr(cusolverDnHandle_t handle, int m, int n, int k, cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZungqr
     _check_or_init_cusolverDn()
     if __cusolverDnZungqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZungqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZungqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int, cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZungqr)(
         handle, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSormqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const float* A, int lda, const float* tau, const float* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSormqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const float* A, int lda, const float* tau, const float* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSormqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSormqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSormqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const float*, int, const float*, const float*, int, int*) nogil>__cusolverDnSormqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const float*, int, const float*, const float*, int, int*) noexcept nogil>__cusolverDnSormqr_bufferSize)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDormqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const double* A, int lda, const double* tau, const double* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDormqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const double* A, int lda, const double* tau, const double* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDormqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDormqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDormqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const double*, int, const double*, const double*, int, int*) nogil>__cusolverDnDormqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const double*, int, const double*, const double*, int, int*) noexcept nogil>__cusolverDnDormqr_bufferSize)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCunmqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, const cuComplex* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCunmqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, const cuComplex* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCunmqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCunmqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCunmqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuComplex*, int, const cuComplex*, const cuComplex*, int, int*) nogil>__cusolverDnCunmqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuComplex*, int, const cuComplex*, const cuComplex*, int, int*) noexcept nogil>__cusolverDnCunmqr_bufferSize)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZunmqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, const cuDoubleComplex* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZunmqr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, const cuDoubleComplex* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZunmqr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZunmqr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZunmqr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, const cuDoubleComplex*, int, int*) nogil>__cusolverDnZunmqr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, const cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZunmqr_bufferSize)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSormqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const float* A, int lda, const float* tau, float* C, int ldc, float* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSormqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const float* A, int lda, const float* tau, float* C, int ldc, float* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSormqr
     _check_or_init_cusolverDn()
     if __cusolverDnSormqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSormqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const float*, int, const float*, float*, int, float*, int, int*) nogil>__cusolverDnSormqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const float*, int, const float*, float*, int, float*, int, int*) noexcept nogil>__cusolverDnSormqr)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDormqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const double* A, int lda, const double* tau, double* C, int ldc, double* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDormqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const double* A, int lda, const double* tau, double* C, int ldc, double* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDormqr
     _check_or_init_cusolverDn()
     if __cusolverDnDormqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDormqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const double*, int, const double*, double*, int, double*, int, int*) nogil>__cusolverDnDormqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const double*, int, const double*, double*, int, double*, int, int*) noexcept nogil>__cusolverDnDormqr)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCunmqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, cuComplex* C, int ldc, cuComplex* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCunmqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, cuComplex* C, int ldc, cuComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCunmqr
     _check_or_init_cusolverDn()
     if __cusolverDnCunmqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCunmqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuComplex*, int, const cuComplex*, cuComplex*, int, cuComplex*, int, int*) nogil>__cusolverDnCunmqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuComplex*, int, const cuComplex*, cuComplex*, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCunmqr)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZunmqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* C, int ldc, cuDoubleComplex* work, int lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZunmqr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasOperation_t trans, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* C, int ldc, cuDoubleComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZunmqr
     _check_or_init_cusolverDn()
     if __cusolverDnZunmqr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZunmqr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZunmqr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasOperation_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZunmqr)(
         handle, side, trans, m, n, k, A, lda, tau, C, ldc, work, lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSsytrf_bufferSize(cusolverDnHandle_t handle, int n, float* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsytrf_bufferSize(cusolverDnHandle_t handle, int n, float* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsytrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsytrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsytrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, float*, int, int*) nogil>__cusolverDnSsytrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, float*, int, int*) noexcept nogil>__cusolverDnSsytrf_bufferSize)(
         handle, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDsytrf_bufferSize(cusolverDnHandle_t handle, int n, double* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsytrf_bufferSize(cusolverDnHandle_t handle, int n, double* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsytrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsytrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsytrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, double*, int, int*) nogil>__cusolverDnDsytrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, double*, int, int*) noexcept nogil>__cusolverDnDsytrf_bufferSize)(
         handle, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCsytrf_bufferSize(cusolverDnHandle_t handle, int n, cuComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCsytrf_bufferSize(cusolverDnHandle_t handle, int n, cuComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCsytrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCsytrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCsytrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuComplex*, int, int*) nogil>__cusolverDnCsytrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCsytrf_bufferSize)(
         handle, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZsytrf_bufferSize(cusolverDnHandle_t handle, int n, cuDoubleComplex* A, int lda, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZsytrf_bufferSize(cusolverDnHandle_t handle, int n, cuDoubleComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZsytrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZsytrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZsytrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZsytrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZsytrf_bufferSize)(
         handle, n, A, lda, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* ipiv, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* ipiv, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsytrf
     _check_or_init_cusolverDn()
     if __cusolverDnSsytrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsytrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*, float*, int, int*) nogil>__cusolverDnSsytrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, int*, float*, int, int*) noexcept nogil>__cusolverDnSsytrf)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* ipiv, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* ipiv, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsytrf
     _check_or_init_cusolverDn()
     if __cusolverDnDsytrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsytrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*, double*, int, int*) nogil>__cusolverDnDsytrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, int*, double*, int, int*) noexcept nogil>__cusolverDnDsytrf)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* ipiv, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* ipiv, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCsytrf
     _check_or_init_cusolverDn()
     if __cusolverDnCsytrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCsytrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*, cuComplex*, int, int*) nogil>__cusolverDnCsytrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, int*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCsytrf)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* ipiv, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* ipiv, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZsytrf
     _check_or_init_cusolverDn()
     if __cusolverDnZsytrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZsytrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZsytrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZsytrf)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const int* ipiv, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsytri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsytri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsytri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, const int*, int*) nogil>__cusolverDnSsytri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, const int*, int*) noexcept nogil>__cusolverDnSsytri_bufferSize)(
         handle, uplo, n, A, lda, ipiv, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, const int* ipiv, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsytri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsytri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsytri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, const int*, int*) nogil>__cusolverDnDsytri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, const int*, int*) noexcept nogil>__cusolverDnDsytri_bufferSize)(
         handle, uplo, n, A, lda, ipiv, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, const int* ipiv, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCsytri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCsytri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCsytri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, const int*, int*) nogil>__cusolverDnCsytri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, const int*, int*) noexcept nogil>__cusolverDnCsytri_bufferSize)(
         handle, uplo, n, A, lda, ipiv, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, const int* ipiv, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZsytri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZsytri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZsytri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, const int*, int*) nogil>__cusolverDnZsytri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, const int*, int*) noexcept nogil>__cusolverDnZsytri_bufferSize)(
         handle, uplo, n, A, lda, ipiv, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const int* ipiv, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const int* ipiv, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsytri
     _check_or_init_cusolverDn()
     if __cusolverDnSsytri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsytri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, const int*, float*, int, int*) nogil>__cusolverDnSsytri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, const int*, float*, int, int*) noexcept nogil>__cusolverDnSsytri)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, const int* ipiv, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, const int* ipiv, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsytri
     _check_or_init_cusolverDn()
     if __cusolverDnDsytri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsytri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, const int*, double*, int, int*) nogil>__cusolverDnDsytri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, const int*, double*, int, int*) noexcept nogil>__cusolverDnDsytri)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, const int* ipiv, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, const int* ipiv, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCsytri
     _check_or_init_cusolverDn()
     if __cusolverDnCsytri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCsytri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, const int*, cuComplex*, int, int*) nogil>__cusolverDnCsytri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, const int*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCsytri)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, const int* ipiv, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZsytri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, const int* ipiv, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZsytri
     _check_or_init_cusolverDn()
     if __cusolverDnZsytri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZsytri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, const int*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZsytri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, const int*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZsytri)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgebrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSgebrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgebrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnSgebrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnSgebrd_bufferSize)(
         handle, m, n, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgebrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDgebrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgebrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnDgebrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnDgebrd_bufferSize)(
         handle, m, n, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgebrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCgebrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgebrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnCgebrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnCgebrd_bufferSize)(
         handle, m, n, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgebrd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* Lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgebrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZgebrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgebrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnZgebrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnZgebrd_bufferSize)(
         handle, m, n, Lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSgebrd(cusolverDnHandle_t handle, int m, int n, float* A, int lda, float* D, float* E, float* TAUQ, float* TAUP, float* Work, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgebrd(cusolverDnHandle_t handle, int m, int n, float* A, int lda, float* D, float* E, float* TAUQ, float* TAUP, float* Work, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgebrd
     _check_or_init_cusolverDn()
     if __cusolverDnSgebrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgebrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, float*, float*, float*, float*, float*, int, int*) nogil>__cusolverDnSgebrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, float*, int, float*, float*, float*, float*, float*, int, int*) noexcept nogil>__cusolverDnSgebrd)(
         handle, m, n, A, lda, D, E, TAUQ, TAUP, Work, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnDgebrd(cusolverDnHandle_t handle, int m, int n, double* A, int lda, double* D, double* E, double* TAUQ, double* TAUP, double* Work, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgebrd(cusolverDnHandle_t handle, int m, int n, double* A, int lda, double* D, double* E, double* TAUQ, double* TAUP, double* Work, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgebrd
     _check_or_init_cusolverDn()
     if __cusolverDnDgebrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgebrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, double*, double*, double*, double*, double*, int, int*) nogil>__cusolverDnDgebrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, double*, int, double*, double*, double*, double*, double*, int, int*) noexcept nogil>__cusolverDnDgebrd)(
         handle, m, n, A, lda, D, E, TAUQ, TAUP, Work, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnCgebrd(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, float* D, float* E, cuComplex* TAUQ, cuComplex* TAUP, cuComplex* Work, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgebrd(cusolverDnHandle_t handle, int m, int n, cuComplex* A, int lda, float* D, float* E, cuComplex* TAUQ, cuComplex* TAUP, cuComplex* Work, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgebrd
     _check_or_init_cusolverDn()
     if __cusolverDnCgebrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgebrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, float*, float*, cuComplex*, cuComplex*, cuComplex*, int, int*) nogil>__cusolverDnCgebrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuComplex*, int, float*, float*, cuComplex*, cuComplex*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCgebrd)(
         handle, m, n, A, lda, D, E, TAUQ, TAUP, Work, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnZgebrd(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, double* D, double* E, cuDoubleComplex* TAUQ, cuDoubleComplex* TAUP, cuDoubleComplex* Work, int Lwork, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgebrd(cusolverDnHandle_t handle, int m, int n, cuDoubleComplex* A, int lda, double* D, double* E, cuDoubleComplex* TAUQ, cuDoubleComplex* TAUP, cuDoubleComplex* Work, int Lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgebrd
     _check_or_init_cusolverDn()
     if __cusolverDnZgebrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgebrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, double*, double*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZgebrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, cuDoubleComplex*, int, double*, double*, cuDoubleComplex*, cuDoubleComplex*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZgebrd)(
         handle, m, n, A, lda, D, E, TAUQ, TAUP, Work, Lwork, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnSorgbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const float* A, int lda, const float* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSorgbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const float* A, int lda, const float* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSorgbr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSorgbr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSorgbr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const float*, int, const float*, int*) nogil>__cusolverDnSorgbr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const float*, int, const float*, int*) noexcept nogil>__cusolverDnSorgbr_bufferSize)(
         handle, side, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDorgbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const double* A, int lda, const double* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDorgbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const double* A, int lda, const double* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDorgbr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDorgbr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDorgbr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const double*, int, const double*, int*) nogil>__cusolverDnDorgbr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const double*, int, const double*, int*) noexcept nogil>__cusolverDnDorgbr_bufferSize)(
         handle, side, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCungbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCungbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const cuComplex* A, int lda, const cuComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCungbr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCungbr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCungbr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const cuComplex*, int, const cuComplex*, int*) nogil>__cusolverDnCungbr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const cuComplex*, int, const cuComplex*, int*) noexcept nogil>__cusolverDnCungbr_bufferSize)(
         handle, side, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZungbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZungbr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZungbr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZungbr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZungbr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int*) nogil>__cusolverDnZungbr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int*) noexcept nogil>__cusolverDnZungbr_bufferSize)(
         handle, side, m, n, k, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSorgbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, float* A, int lda, const float* tau, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSorgbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, float* A, int lda, const float* tau, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSorgbr
     _check_or_init_cusolverDn()
     if __cusolverDnSorgbr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSorgbr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, float*, int, const float*, float*, int, int*) nogil>__cusolverDnSorgbr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, float*, int, const float*, float*, int, int*) noexcept nogil>__cusolverDnSorgbr)(
         handle, side, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDorgbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, double* A, int lda, const double* tau, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDorgbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, double* A, int lda, const double* tau, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDorgbr
     _check_or_init_cusolverDn()
     if __cusolverDnDorgbr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDorgbr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, double*, int, const double*, double*, int, int*) nogil>__cusolverDnDorgbr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, double*, int, const double*, double*, int, int*) noexcept nogil>__cusolverDnDorgbr)(
         handle, side, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCungbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, cuComplex* A, int lda, const cuComplex* tau, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCungbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, cuComplex* A, int lda, const cuComplex* tau, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCungbr
     _check_or_init_cusolverDn()
     if __cusolverDnCungbr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCungbr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, cuComplex*, int, const cuComplex*, cuComplex*, int, int*) nogil>__cusolverDnCungbr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, cuComplex*, int, const cuComplex*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCungbr)(
         handle, side, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZungbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZungbr(cusolverDnHandle_t handle, cublasSideMode_t side, int m, int n, int k, cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZungbr
     _check_or_init_cusolverDn()
     if __cusolverDnZungbr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZungbr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZungbr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, int, int, int, cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZungbr)(
         handle, side, m, n, k, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSsytrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const float* A, int lda, const float* d, const float* e, const float* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsytrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const float* A, int lda, const float* d, const float* e, const float* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsytrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsytrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsytrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const float*, int, const float*, const float*, const float*, int*) nogil>__cusolverDnSsytrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const float*, int, const float*, const float*, const float*, int*) noexcept nogil>__cusolverDnSsytrd_bufferSize)(
         handle, uplo, n, A, lda, d, e, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDsytrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const double* A, int lda, const double* d, const double* e, const double* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsytrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const double* A, int lda, const double* d, const double* e, const double* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsytrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsytrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsytrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const double*, int, const double*, const double*, const double*, int*) nogil>__cusolverDnDsytrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const double*, int, const double*, const double*, const double*, int*) noexcept nogil>__cusolverDnDsytrd_bufferSize)(
         handle, uplo, n, A, lda, d, e, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnChetrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* d, const float* e, const cuComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnChetrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* d, const float* e, const cuComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChetrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnChetrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChetrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuComplex*, int, const float*, const float*, const cuComplex*, int*) nogil>__cusolverDnChetrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuComplex*, int, const float*, const float*, const cuComplex*, int*) noexcept nogil>__cusolverDnChetrd_bufferSize)(
         handle, uplo, n, A, lda, d, e, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZhetrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* d, const double* e, const cuDoubleComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhetrd_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* d, const double* e, const cuDoubleComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhetrd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZhetrd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhetrd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, const double*, const cuDoubleComplex*, int*) nogil>__cusolverDnZhetrd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, const double*, const cuDoubleComplex*, int*) noexcept nogil>__cusolverDnZhetrd_bufferSize)(
         handle, uplo, n, A, lda, d, e, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSsytrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* d, float* e, float* tau, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsytrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, float* d, float* e, float* tau, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsytrd
     _check_or_init_cusolverDn()
     if __cusolverDnSsytrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsytrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, float*, float*, float*, int, int*) nogil>__cusolverDnSsytrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, float*, float*, float*, float*, int, int*) noexcept nogil>__cusolverDnSsytrd)(
         handle, uplo, n, A, lda, d, e, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDsytrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* d, double* e, double* tau, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsytrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* d, double* e, double* tau, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsytrd
     _check_or_init_cusolverDn()
     if __cusolverDnDsytrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsytrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, double*, double*, double*, int, int*) nogil>__cusolverDnDsytrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, double*, double*, double*, double*, int, int*) noexcept nogil>__cusolverDnDsytrd)(
         handle, uplo, n, A, lda, d, e, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnChetrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* d, float* e, cuComplex* tau, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnChetrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* d, float* e, cuComplex* tau, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChetrd
     _check_or_init_cusolverDn()
     if __cusolverDnChetrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChetrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, float*, float*, cuComplex*, cuComplex*, int, int*) nogil>__cusolverDnChetrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, float*, float*, cuComplex*, cuComplex*, int, int*) noexcept nogil>__cusolverDnChetrd)(
         handle, uplo, n, A, lda, d, e, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZhetrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* d, double* e, cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhetrd(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* d, double* e, cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhetrd
     _check_or_init_cusolverDn()
     if __cusolverDnZhetrd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhetrd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, double*, cuDoubleComplex*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZhetrd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, double*, cuDoubleComplex*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZhetrd)(
         handle, uplo, n, A, lda, d, e, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSorgtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const float* A, int lda, const float* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSorgtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const float* A, int lda, const float* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSorgtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSorgtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSorgtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const float*, int, const float*, int*) nogil>__cusolverDnSorgtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const float*, int, const float*, int*) noexcept nogil>__cusolverDnSorgtr_bufferSize)(
         handle, uplo, n, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDorgtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const double* A, int lda, const double* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDorgtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const double* A, int lda, const double* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDorgtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDorgtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDorgtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const double*, int, const double*, int*) nogil>__cusolverDnDorgtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const double*, int, const double*, int*) noexcept nogil>__cusolverDnDorgtr_bufferSize)(
         handle, uplo, n, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCungtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCungtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCungtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCungtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCungtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int*) nogil>__cusolverDnCungtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int*) noexcept nogil>__cusolverDnCungtr_bufferSize)(
         handle, uplo, n, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZungtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZungtr_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZungtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZungtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZungtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int*) nogil>__cusolverDnZungtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int*) noexcept nogil>__cusolverDnZungtr_bufferSize)(
         handle, uplo, n, A, lda, tau, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSorgtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const float* tau, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSorgtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const float* tau, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSorgtr
     _check_or_init_cusolverDn()
     if __cusolverDnSorgtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSorgtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, const float*, float*, int, int*) nogil>__cusolverDnSorgtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, float*, int, const float*, float*, int, int*) noexcept nogil>__cusolverDnSorgtr)(
         handle, uplo, n, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDorgtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, const double* tau, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDorgtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, const double* tau, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDorgtr
     _check_or_init_cusolverDn()
     if __cusolverDnDorgtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDorgtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, const double*, double*, int, int*) nogil>__cusolverDnDorgtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, double*, int, const double*, double*, int, int*) noexcept nogil>__cusolverDnDorgtr)(
         handle, uplo, n, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCungtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, const cuComplex* tau, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCungtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, const cuComplex* tau, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCungtr
     _check_or_init_cusolverDn()
     if __cusolverDnCungtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCungtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, const cuComplex*, cuComplex*, int, int*) nogil>__cusolverDnCungtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuComplex*, int, const cuComplex*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCungtr)(
         handle, uplo, n, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZungtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZungtr(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZungtr
     _check_or_init_cusolverDn()
     if __cusolverDnZungtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZungtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZungtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, const cuDoubleComplex*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZungtr)(
         handle, uplo, n, A, lda, tau, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSormtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const float* A, int lda, const float* tau, const float* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSormtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const float* A, int lda, const float* tau, const float* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSormtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSormtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSormtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const float*, int, const float*, const float*, int, int*) nogil>__cusolverDnSormtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const float*, int, const float*, const float*, int, int*) noexcept nogil>__cusolverDnSormtr_bufferSize)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDormtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const double* A, int lda, const double* tau, const double* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDormtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const double* A, int lda, const double* tau, const double* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDormtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDormtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDormtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const double*, int, const double*, const double*, int, int*) nogil>__cusolverDnDormtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const double*, int, const double*, const double*, int, int*) noexcept nogil>__cusolverDnDormtr_bufferSize)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCunmtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const cuComplex* A, int lda, const cuComplex* tau, const cuComplex* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCunmtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const cuComplex* A, int lda, const cuComplex* tau, const cuComplex* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCunmtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCunmtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCunmtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const cuComplex*, int, const cuComplex*, const cuComplex*, int, int*) nogil>__cusolverDnCunmtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const cuComplex*, int, const cuComplex*, const cuComplex*, int, int*) noexcept nogil>__cusolverDnCunmtr_bufferSize)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZunmtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, const cuDoubleComplex* C, int ldc, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZunmtr_bufferSize(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* tau, const cuDoubleComplex* C, int ldc, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZunmtr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZunmtr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZunmtr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, const cuDoubleComplex*, int, int*) nogil>__cusolverDnZunmtr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, const cuDoubleComplex*, int, const cuDoubleComplex*, const cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZunmtr_bufferSize)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSormtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, float* A, int lda, float* tau, float* C, int ldc, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSormtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, float* A, int lda, float* tau, float* C, int ldc, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSormtr
     _check_or_init_cusolverDn()
     if __cusolverDnSormtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSormtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, float*, int, float*, float*, int, float*, int, int*) nogil>__cusolverDnSormtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, float*, int, float*, float*, int, float*, int, int*) noexcept nogil>__cusolverDnSormtr)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDormtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, double* A, int lda, double* tau, double* C, int ldc, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDormtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, double* A, int lda, double* tau, double* C, int ldc, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDormtr
     _check_or_init_cusolverDn()
     if __cusolverDnDormtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDormtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, double*, int, double*, double*, int, double*, int, int*) nogil>__cusolverDnDormtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, double*, int, double*, double*, int, double*, int, int*) noexcept nogil>__cusolverDnDormtr)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCunmtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, cuComplex* A, int lda, cuComplex* tau, cuComplex* C, int ldc, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCunmtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, cuComplex* A, int lda, cuComplex* tau, cuComplex* C, int ldc, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCunmtr
     _check_or_init_cusolverDn()
     if __cusolverDnCunmtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCunmtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, cuComplex*, int, cuComplex*, cuComplex*, int, cuComplex*, int, int*) nogil>__cusolverDnCunmtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, cuComplex*, int, cuComplex*, cuComplex*, int, cuComplex*, int, int*) noexcept nogil>__cusolverDnCunmtr)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZunmtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* tau, cuDoubleComplex* C, int ldc, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZunmtr(cusolverDnHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, int m, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* tau, cuDoubleComplex* C, int ldc, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZunmtr
     _check_or_init_cusolverDn()
     if __cusolverDnZunmtr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZunmtr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, cuDoubleComplex*, int, cuDoubleComplex*, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) nogil>__cusolverDnZunmtr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasSideMode_t, cublasFillMode_t, cublasOperation_t, int, int, cuDoubleComplex*, int, cuDoubleComplex*, cuDoubleComplex*, int, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZunmtr)(
         handle, side, uplo, trans, m, n, A, lda, tau, C, ldc, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnSgesvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnSgesvd_bufferSize)(
         handle, m, n, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnDgesvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnDgesvd_bufferSize)(
         handle, m, n, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnCgesvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnCgesvd_bufferSize)(
         handle, m, n, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvd_bufferSize(cusolverDnHandle_t handle, int m, int n, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) nogil>__cusolverDnZgesvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int, int, int*) noexcept nogil>__cusolverDnZgesvd_bufferSize)(
         handle, m, n, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, float* A, int lda, float* S, float* U, int ldu, float* VT, int ldvt, float* work, int lwork, float* rwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, float* A, int lda, float* S, float* U, int ldu, float* VT, int ldvt, float* work, int lwork, float* rwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvd
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, float*, int, float*, float*, int, float*, int, float*, int, float*, int*) nogil>__cusolverDnSgesvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, float*, int, float*, float*, int, float*, int, float*, int, float*, int*) noexcept nogil>__cusolverDnSgesvd)(
         handle, jobu, jobvt, m, n, A, lda, S, U, ldu, VT, ldvt, work, lwork, rwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, double* A, int lda, double* S, double* U, int ldu, double* VT, int ldvt, double* work, int lwork, double* rwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, double* A, int lda, double* S, double* U, int ldu, double* VT, int ldvt, double* work, int lwork, double* rwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvd
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, double*, int, double*, double*, int, double*, int, double*, int, double*, int*) nogil>__cusolverDnDgesvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, double*, int, double*, double*, int, double*, int, double*, int, double*, int*) noexcept nogil>__cusolverDnDgesvd)(
         handle, jobu, jobvt, m, n, A, lda, S, U, ldu, VT, ldvt, work, lwork, rwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, cuComplex* A, int lda, float* S, cuComplex* U, int ldu, cuComplex* VT, int ldvt, cuComplex* work, int lwork, float* rwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, cuComplex* A, int lda, float* S, cuComplex* U, int ldu, cuComplex* VT, int ldvt, cuComplex* work, int lwork, float* rwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvd
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, cuComplex*, int, float*, cuComplex*, int, cuComplex*, int, cuComplex*, int, float*, int*) nogil>__cusolverDnCgesvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, cuComplex*, int, float*, cuComplex*, int, cuComplex*, int, cuComplex*, int, float*, int*) noexcept nogil>__cusolverDnCgesvd)(
         handle, jobu, jobvt, m, n, A, lda, S, U, ldu, VT, ldvt, work, lwork, rwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* VT, int ldvt, cuDoubleComplex* work, int lwork, double* rwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvd(cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* VT, int ldvt, cuDoubleComplex* work, int lwork, double* rwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvd
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double*, int*) nogil>__cusolverDnZgesvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double*, int*) noexcept nogil>__cusolverDnZgesvd)(
         handle, jobu, jobvt, m, n, A, lda, S, U, ldu, VT, ldvt, work, lwork, rwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int*) nogil>__cusolverDnSsyevd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int*) noexcept nogil>__cusolverDnSsyevd_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int*) nogil>__cusolverDnDsyevd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int*) noexcept nogil>__cusolverDnDsyevd_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCheevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCheevd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const float*, int*) nogil>__cusolverDnCheevd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const float*, int*) noexcept nogil>__cusolverDnCheevd_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZheevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevd_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZheevd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, int*) nogil>__cusolverDnZheevd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, int*) noexcept nogil>__cusolverDnZheevd_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* W, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* W, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevd
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, float*, int, int*) nogil>__cusolverDnSsyevd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, float*, int, int*) noexcept nogil>__cusolverDnSsyevd)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* W, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* W, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevd
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, double*, int, int*) nogil>__cusolverDnDsyevd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, double*, int, int*) noexcept nogil>__cusolverDnDsyevd)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCheevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* W, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* W, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevd
     _check_or_init_cusolverDn()
     if __cusolverDnCheevd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, float*, cuComplex*, int, int*) nogil>__cusolverDnCheevd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, float*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCheevd)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZheevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* W, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevd(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* W, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevd
     _check_or_init_cusolverDn()
     if __cusolverDnZheevd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZheevd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZheevd)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const float* A, int lda, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const float* A, int lda, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const float*, int, float, float, int, int, int*, const float*, int*) nogil>__cusolverDnSsyevdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const float*, int, float, float, int, int, int*, const float*, int*) noexcept nogil>__cusolverDnSsyevdx_bufferSize)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const double* A, int lda, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const double* A, int lda, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const double*, int, double, double, int, int, int*, const double*, int*) nogil>__cusolverDnDsyevdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const double*, int, double, double, int, int, int*, const double*, int*) noexcept nogil>__cusolverDnDsyevdx_bufferSize)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnCheevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCheevdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuComplex*, int, float, float, int, int, int*, const float*, int*) nogil>__cusolverDnCheevdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuComplex*, int, float, float, int, int, int*, const float*, int*) noexcept nogil>__cusolverDnCheevdx_bufferSize)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZheevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevdx_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZheevdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuDoubleComplex*, int, double, double, int, int, int*, const double*, int*) nogil>__cusolverDnZheevdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuDoubleComplex*, int, double, double, int, int, int*, const double*, int*) noexcept nogil>__cusolverDnZheevdx_bufferSize)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, float* A, int lda, float vl, float vu, int il, int iu, int* meig, float* W, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, float* A, int lda, float vl, float vu, int il, int iu, int* meig, float* W, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevdx
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, float*, int, float, float, int, int, int*, float*, float*, int, int*) nogil>__cusolverDnSsyevdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, float*, int, float, float, int, int, int*, float*, float*, int, int*) noexcept nogil>__cusolverDnSsyevdx)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, double* A, int lda, double vl, double vu, int il, int iu, int* meig, double* W, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, double* A, int lda, double vl, double vu, int il, int iu, int* meig, double* W, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevdx
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, double*, int, double, double, int, int, int*, double*, double*, int, int*) nogil>__cusolverDnDsyevdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, double*, int, double, double, int, int, int*, double*, double*, int, int*) noexcept nogil>__cusolverDnDsyevdx)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCheevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float vl, float vu, int il, int iu, int* meig, float* W, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float vl, float vu, int il, int iu, int* meig, float* W, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevdx
     _check_or_init_cusolverDn()
     if __cusolverDnCheevdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuComplex*, int, float, float, int, int, int*, float*, cuComplex*, int, int*) nogil>__cusolverDnCheevdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuComplex*, int, float, float, int, int, int*, float*, cuComplex*, int, int*) noexcept nogil>__cusolverDnCheevdx)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZheevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double vl, double vu, int il, int iu, int* meig, double* W, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevdx(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double vl, double vu, int il, int iu, int* meig, double* W, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevdx
     _check_or_init_cusolverDn()
     if __cusolverDnZheevdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuDoubleComplex*, int, double, double, int, int, int*, double*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZheevdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuDoubleComplex*, int, double, double, int, int, int*, double*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZheevdx)(
         handle, jobz, range, uplo, n, A, lda, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSsygvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const float* A, int lda, const float* B, int ldb, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsygvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const float* A, int lda, const float* B, int ldb, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsygvdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsygvdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsygvdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const float*, int, const float*, int, float, float, int, int, int*, const float*, int*) nogil>__cusolverDnSsygvdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const float*, int, const float*, int, float, float, int, int, int*, const float*, int*) noexcept nogil>__cusolverDnSsygvdx_bufferSize)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDsygvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const double* A, int lda, const double* B, int ldb, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsygvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const double* A, int lda, const double* B, int ldb, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsygvdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsygvdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsygvdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const double*, int, const double*, int, double, double, int, int, int*, const double*, int*) nogil>__cusolverDnDsygvdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const double*, int, const double*, int, double, double, int, int, int*, const double*, int*) noexcept nogil>__cusolverDnDsygvdx_bufferSize)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnChegvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* B, int ldb, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnChegvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* B, int ldb, float vl, float vu, int il, int iu, int* meig, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChegvdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnChegvdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChegvdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int, float, float, int, int, int*, const float*, int*) nogil>__cusolverDnChegvdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int, float, float, int, int, int*, const float*, int*) noexcept nogil>__cusolverDnChegvdx_bufferSize)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZhegvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* B, int ldb, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhegvdx_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* B, int ldb, double vl, double vu, int il, int iu, int* meig, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhegvdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZhegvdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhegvdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int, double, double, int, int, int*, const double*, int*) nogil>__cusolverDnZhegvdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int, double, double, int, int, int*, const double*, int*) noexcept nogil>__cusolverDnZhegvdx_bufferSize)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSsygvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, float* A, int lda, float* B, int ldb, float vl, float vu, int il, int iu, int* meig, float* W, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsygvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, float* A, int lda, float* B, int ldb, float vl, float vu, int il, int iu, int* meig, float* W, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsygvdx
     _check_or_init_cusolverDn()
     if __cusolverDnSsygvdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsygvdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, float*, int, float*, int, float, float, int, int, int*, float*, float*, int, int*) nogil>__cusolverDnSsygvdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, float*, int, float*, int, float, float, int, int, int*, float*, float*, int, int*) noexcept nogil>__cusolverDnSsygvdx)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDsygvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, double* A, int lda, double* B, int ldb, double vl, double vu, int il, int iu, int* meig, double* W, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsygvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, double* A, int lda, double* B, int ldb, double vl, double vu, int il, int iu, int* meig, double* W, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsygvdx
     _check_or_init_cusolverDn()
     if __cusolverDnDsygvdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsygvdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, double*, int, double*, int, double, double, int, int, int*, double*, double*, int, int*) nogil>__cusolverDnDsygvdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, double*, int, double*, int, double, double, int, int, int*, double*, double*, int, int*) noexcept nogil>__cusolverDnDsygvdx)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnChegvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* B, int ldb, float vl, float vu, int il, int iu, int* meig, float* W, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnChegvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* B, int ldb, float vl, float vu, int il, int iu, int* meig, float* W, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChegvdx
     _check_or_init_cusolverDn()
     if __cusolverDnChegvdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChegvdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, float, float, int, int, int*, float*, cuComplex*, int, int*) nogil>__cusolverDnChegvdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, float, float, int, int, int*, float*, cuComplex*, int, int*) noexcept nogil>__cusolverDnChegvdx)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZhegvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, double vl, double vu, int il, int iu, int* meig, double* W, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhegvdx(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, double vl, double vu, int il, int iu, int* meig, double* W, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhegvdx
     _check_or_init_cusolverDn()
     if __cusolverDnZhegvdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhegvdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double, double, int, int, int*, double*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZhegvdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double, double, int, int, int*, double*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZhegvdx)(
         handle, itype, jobz, range, uplo, n, A, lda, B, ldb, vl, vu, il, iu, meig, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnSsygvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* B, int ldb, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsygvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* B, int ldb, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsygvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsygvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsygvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int, const float*, int*) nogil>__cusolverDnSsygvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int, const float*, int*) noexcept nogil>__cusolverDnSsygvd_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnDsygvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* B, int ldb, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsygvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* B, int ldb, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsygvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsygvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsygvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int, const double*, int*) nogil>__cusolverDnDsygvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int, const double*, int*) noexcept nogil>__cusolverDnDsygvd_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnChegvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* B, int ldb, const float* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnChegvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* B, int ldb, const float* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChegvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnChegvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChegvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int, const float*, int*) nogil>__cusolverDnChegvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int, const float*, int*) noexcept nogil>__cusolverDnChegvd_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnZhegvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* B, int ldb, const double* W, int* lwork) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhegvd_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* B, int ldb, const double* W, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhegvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZhegvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhegvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int, const double*, int*) nogil>__cusolverDnZhegvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int, const double*, int*) noexcept nogil>__cusolverDnZhegvd_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork)
 
 
-cdef cusolverStatus_t _cusolverDnSsygvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* B, int ldb, float* W, float* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsygvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* B, int ldb, float* W, float* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsygvd
     _check_or_init_cusolverDn()
     if __cusolverDnSsygvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsygvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, int, float*, float*, int, int*) nogil>__cusolverDnSsygvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, int, float*, float*, int, int*) noexcept nogil>__cusolverDnSsygvd)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnDsygvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* B, int ldb, double* W, double* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsygvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* B, int ldb, double* W, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsygvd
     _check_or_init_cusolverDn()
     if __cusolverDnDsygvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsygvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, int, double*, double*, int, int*) nogil>__cusolverDnDsygvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, int, double*, double*, int, int*) noexcept nogil>__cusolverDnDsygvd)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnChegvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* B, int ldb, float* W, cuComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnChegvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* B, int ldb, float* W, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChegvd
     _check_or_init_cusolverDn()
     if __cusolverDnChegvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChegvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, float*, cuComplex*, int, int*) nogil>__cusolverDnChegvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, float*, cuComplex*, int, int*) noexcept nogil>__cusolverDnChegvd)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnZhegvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, double* W, cuDoubleComplex* work, int lwork, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhegvd(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, double* W, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhegvd
     _check_or_init_cusolverDn()
     if __cusolverDnZhegvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhegvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*) nogil>__cusolverDnZhegvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZhegvd)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info)
 
 
-cdef cusolverStatus_t _cusolverDnCreateSyevjInfo(syevjInfo_t* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCreateSyevjInfo(syevjInfo_t* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCreateSyevjInfo
     _check_or_init_cusolverDn()
     if __cusolverDnCreateSyevjInfo == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCreateSyevjInfo is not found")
-    return (<cusolverStatus_t (*)(syevjInfo_t*) nogil>__cusolverDnCreateSyevjInfo)(
+    return (<cusolverStatus_t (*)(syevjInfo_t*) noexcept nogil>__cusolverDnCreateSyevjInfo)(
         info)
 
 
-cdef cusolverStatus_t _cusolverDnDestroySyevjInfo(syevjInfo_t info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDestroySyevjInfo(syevjInfo_t info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDestroySyevjInfo
     _check_or_init_cusolverDn()
     if __cusolverDnDestroySyevjInfo == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDestroySyevjInfo is not found")
-    return (<cusolverStatus_t (*)(syevjInfo_t) nogil>__cusolverDnDestroySyevjInfo)(
+    return (<cusolverStatus_t (*)(syevjInfo_t) noexcept nogil>__cusolverDnDestroySyevjInfo)(
         info)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevjSetTolerance(syevjInfo_t info, double tolerance) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevjSetTolerance(syevjInfo_t info, double tolerance) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevjSetTolerance
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevjSetTolerance == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevjSetTolerance is not found")
-    return (<cusolverStatus_t (*)(syevjInfo_t, double) nogil>__cusolverDnXsyevjSetTolerance)(
+    return (<cusolverStatus_t (*)(syevjInfo_t, double) noexcept nogil>__cusolverDnXsyevjSetTolerance)(
         info, tolerance)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevjSetMaxSweeps(syevjInfo_t info, int max_sweeps) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevjSetMaxSweeps(syevjInfo_t info, int max_sweeps) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevjSetMaxSweeps
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevjSetMaxSweeps == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevjSetMaxSweeps is not found")
-    return (<cusolverStatus_t (*)(syevjInfo_t, int) nogil>__cusolverDnXsyevjSetMaxSweeps)(
+    return (<cusolverStatus_t (*)(syevjInfo_t, int) noexcept nogil>__cusolverDnXsyevjSetMaxSweeps)(
         info, max_sweeps)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevjSetSortEig(syevjInfo_t info, int sort_eig) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevjSetSortEig(syevjInfo_t info, int sort_eig) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevjSetSortEig
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevjSetSortEig == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevjSetSortEig is not found")
-    return (<cusolverStatus_t (*)(syevjInfo_t, int) nogil>__cusolverDnXsyevjSetSortEig)(
+    return (<cusolverStatus_t (*)(syevjInfo_t, int) noexcept nogil>__cusolverDnXsyevjSetSortEig)(
         info, sort_eig)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevjGetResidual(cusolverDnHandle_t handle, syevjInfo_t info, double* residual) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevjGetResidual(cusolverDnHandle_t handle, syevjInfo_t info, double* residual) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevjGetResidual
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevjGetResidual == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevjGetResidual is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, syevjInfo_t, double*) nogil>__cusolverDnXsyevjGetResidual)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, syevjInfo_t, double*) noexcept nogil>__cusolverDnXsyevjGetResidual)(
         handle, info, residual)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevjGetSweeps(cusolverDnHandle_t handle, syevjInfo_t info, int* executed_sweeps) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevjGetSweeps(cusolverDnHandle_t handle, syevjInfo_t info, int* executed_sweeps) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevjGetSweeps
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevjGetSweeps == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevjGetSweeps is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, syevjInfo_t, int*) nogil>__cusolverDnXsyevjGetSweeps)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, syevjInfo_t, int*) noexcept nogil>__cusolverDnXsyevjGetSweeps)(
         handle, info, executed_sweeps)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* W, int* lwork, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* W, int* lwork, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int*, syevjInfo_t, int) nogil>__cusolverDnSsyevjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnSsyevjBatched_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* W, int* lwork, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* W, int* lwork, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int*, syevjInfo_t, int) nogil>__cusolverDnDsyevjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnDsyevjBatched_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCheevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* W, int* lwork, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* W, int* lwork, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCheevjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const float*, int*, syevjInfo_t, int) nogil>__cusolverDnCheevjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const float*, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnCheevjBatched_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZheevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* W, int* lwork, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* W, int* lwork, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZheevjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, int*, syevjInfo_t, int) nogil>__cusolverDnZheevjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnZheevjBatched_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* W, float* work, int lwork, int* info, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* W, float* work, int lwork, int* info, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, float*, int, int*, syevjInfo_t, int) nogil>__cusolverDnSsyevjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, float*, int, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnSsyevjBatched)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* W, double* work, int lwork, int* info, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* W, double* work, int lwork, int* info, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, double*, int, int*, syevjInfo_t, int) nogil>__cusolverDnDsyevjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, double*, int, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnDsyevjBatched)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCheevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* W, cuComplex* work, int lwork, int* info, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* W, cuComplex* work, int lwork, int* info, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnCheevjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, float*, cuComplex*, int, int*, syevjInfo_t, int) nogil>__cusolverDnCheevjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, float*, cuComplex*, int, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnCheevjBatched)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZheevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* W, cuDoubleComplex* work, int lwork, int* info, syevjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* W, cuDoubleComplex* work, int lwork, int* info, syevjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnZheevjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*, syevjInfo_t, int) nogil>__cusolverDnZheevjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*, syevjInfo_t, int) noexcept nogil>__cusolverDnZheevjBatched)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int*, syevjInfo_t) nogil>__cusolverDnSsyevj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int*, syevjInfo_t) noexcept nogil>__cusolverDnSsyevj_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int*, syevjInfo_t) nogil>__cusolverDnDsyevj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int*, syevjInfo_t) noexcept nogil>__cusolverDnDsyevj_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnCheevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const float* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCheevj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const float*, int*, syevjInfo_t) nogil>__cusolverDnCheevj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const float*, int*, syevjInfo_t) noexcept nogil>__cusolverDnCheevj_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnZheevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const double* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZheevj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, int*, syevjInfo_t) nogil>__cusolverDnZheevj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const double*, int*, syevjInfo_t) noexcept nogil>__cusolverDnZheevj_bufferSize)(
         handle, jobz, uplo, n, A, lda, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnSsyevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* W, float* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsyevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* W, float* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsyevj
     _check_or_init_cusolverDn()
     if __cusolverDnSsyevj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsyevj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, float*, int, int*, syevjInfo_t) nogil>__cusolverDnSsyevj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, float*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnSsyevj)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnDsyevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* W, double* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsyevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* W, double* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsyevj
     _check_or_init_cusolverDn()
     if __cusolverDnDsyevj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsyevj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, double*, int, int*, syevjInfo_t) nogil>__cusolverDnDsyevj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, double*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnDsyevj)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnCheevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* W, cuComplex* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnCheevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, float* W, cuComplex* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCheevj
     _check_or_init_cusolverDn()
     if __cusolverDnCheevj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCheevj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, float*, cuComplex*, int, int*, syevjInfo_t) nogil>__cusolverDnCheevj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, float*, cuComplex*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnCheevj)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnZheevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* W, cuDoubleComplex* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnZheevj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, double* W, cuDoubleComplex* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZheevj
     _check_or_init_cusolverDn()
     if __cusolverDnZheevj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZheevj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*, syevjInfo_t) nogil>__cusolverDnZheevj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnZheevj)(
         handle, jobz, uplo, n, A, lda, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnSsygvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* B, int ldb, const float* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsygvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const float* A, int lda, const float* B, int ldb, const float* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsygvj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSsygvj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsygvj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int, const float*, int*, syevjInfo_t) nogil>__cusolverDnSsygvj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const float*, int, const float*, int, const float*, int*, syevjInfo_t) noexcept nogil>__cusolverDnSsygvj_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnDsygvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* B, int ldb, const double* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsygvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const double* A, int lda, const double* B, int ldb, const double* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsygvj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDsygvj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsygvj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int, const double*, int*, syevjInfo_t) nogil>__cusolverDnDsygvj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const double*, int, const double*, int, const double*, int*, syevjInfo_t) noexcept nogil>__cusolverDnDsygvj_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnChegvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* B, int ldb, const float* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnChegvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuComplex* A, int lda, const cuComplex* B, int ldb, const float* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChegvj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnChegvj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChegvj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int, const float*, int*, syevjInfo_t) nogil>__cusolverDnChegvj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuComplex*, int, const cuComplex*, int, const float*, int*, syevjInfo_t) noexcept nogil>__cusolverDnChegvj_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnZhegvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* B, int ldb, const double* W, int* lwork, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhegvj_bufferSize(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* B, int ldb, const double* W, int* lwork, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhegvj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZhegvj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhegvj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int, const double*, int*, syevjInfo_t) nogil>__cusolverDnZhegvj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, const cuDoubleComplex*, int, const cuDoubleComplex*, int, const double*, int*, syevjInfo_t) noexcept nogil>__cusolverDnZhegvj_bufferSize)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnSsygvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* B, int ldb, float* W, float* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnSsygvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, float* A, int lda, float* B, int ldb, float* W, float* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSsygvj
     _check_or_init_cusolverDn()
     if __cusolverDnSsygvj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSsygvj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, int, float*, float*, int, int*, syevjInfo_t) nogil>__cusolverDnSsygvj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, float*, int, float*, int, float*, float*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnSsygvj)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnDsygvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* B, int ldb, double* W, double* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnDsygvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, double* A, int lda, double* B, int ldb, double* W, double* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDsygvj
     _check_or_init_cusolverDn()
     if __cusolverDnDsygvj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDsygvj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, int, double*, double*, int, int*, syevjInfo_t) nogil>__cusolverDnDsygvj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, double*, int, double*, int, double*, double*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnDsygvj)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnChegvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* B, int ldb, float* W, cuComplex* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnChegvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* B, int ldb, float* W, cuComplex* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnChegvj
     _check_or_init_cusolverDn()
     if __cusolverDnChegvj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnChegvj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, float*, cuComplex*, int, int*, syevjInfo_t) nogil>__cusolverDnChegvj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuComplex*, int, cuComplex*, int, float*, cuComplex*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnChegvj)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnZhegvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, double* W, cuDoubleComplex* work, int lwork, int* info, syevjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnZhegvj(cusolverDnHandle_t handle, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb, double* W, cuDoubleComplex* work, int lwork, int* info, syevjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZhegvj
     _check_or_init_cusolverDn()
     if __cusolverDnZhegvj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZhegvj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*, syevjInfo_t) nogil>__cusolverDnZhegvj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int, cuDoubleComplex*, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, int*, syevjInfo_t) noexcept nogil>__cusolverDnZhegvj)(
         handle, itype, jobz, uplo, n, A, lda, B, ldb, W, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnCreateGesvdjInfo(gesvdjInfo_t* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnCreateGesvdjInfo(gesvdjInfo_t* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCreateGesvdjInfo
     _check_or_init_cusolverDn()
     if __cusolverDnCreateGesvdjInfo == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCreateGesvdjInfo is not found")
-    return (<cusolverStatus_t (*)(gesvdjInfo_t*) nogil>__cusolverDnCreateGesvdjInfo)(
+    return (<cusolverStatus_t (*)(gesvdjInfo_t*) noexcept nogil>__cusolverDnCreateGesvdjInfo)(
         info)
 
 
-cdef cusolverStatus_t _cusolverDnDestroyGesvdjInfo(gesvdjInfo_t info) except* nogil:
+cdef cusolverStatus_t _cusolverDnDestroyGesvdjInfo(gesvdjInfo_t info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDestroyGesvdjInfo
     _check_or_init_cusolverDn()
     if __cusolverDnDestroyGesvdjInfo == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDestroyGesvdjInfo is not found")
-    return (<cusolverStatus_t (*)(gesvdjInfo_t) nogil>__cusolverDnDestroyGesvdjInfo)(
+    return (<cusolverStatus_t (*)(gesvdjInfo_t) noexcept nogil>__cusolverDnDestroyGesvdjInfo)(
         info)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdjSetTolerance(gesvdjInfo_t info, double tolerance) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdjSetTolerance(gesvdjInfo_t info, double tolerance) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdjSetTolerance
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdjSetTolerance == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdjSetTolerance is not found")
-    return (<cusolverStatus_t (*)(gesvdjInfo_t, double) nogil>__cusolverDnXgesvdjSetTolerance)(
+    return (<cusolverStatus_t (*)(gesvdjInfo_t, double) noexcept nogil>__cusolverDnXgesvdjSetTolerance)(
         info, tolerance)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdjSetMaxSweeps(gesvdjInfo_t info, int max_sweeps) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdjSetMaxSweeps(gesvdjInfo_t info, int max_sweeps) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdjSetMaxSweeps
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdjSetMaxSweeps == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdjSetMaxSweeps is not found")
-    return (<cusolverStatus_t (*)(gesvdjInfo_t, int) nogil>__cusolverDnXgesvdjSetMaxSweeps)(
+    return (<cusolverStatus_t (*)(gesvdjInfo_t, int) noexcept nogil>__cusolverDnXgesvdjSetMaxSweeps)(
         info, max_sweeps)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdjSetSortEig(gesvdjInfo_t info, int sort_svd) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdjSetSortEig(gesvdjInfo_t info, int sort_svd) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdjSetSortEig
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdjSetSortEig == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdjSetSortEig is not found")
-    return (<cusolverStatus_t (*)(gesvdjInfo_t, int) nogil>__cusolverDnXgesvdjSetSortEig)(
+    return (<cusolverStatus_t (*)(gesvdjInfo_t, int) noexcept nogil>__cusolverDnXgesvdjSetSortEig)(
         info, sort_svd)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdjGetResidual(cusolverDnHandle_t handle, gesvdjInfo_t info, double* residual) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdjGetResidual(cusolverDnHandle_t handle, gesvdjInfo_t info, double* residual) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdjGetResidual
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdjGetResidual == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdjGetResidual is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, gesvdjInfo_t, double*) nogil>__cusolverDnXgesvdjGetResidual)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, gesvdjInfo_t, double*) noexcept nogil>__cusolverDnXgesvdjGetResidual)(
         handle, info, residual)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdjGetSweeps(cusolverDnHandle_t handle, gesvdjInfo_t info, int* executed_sweeps) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdjGetSweeps(cusolverDnHandle_t handle, gesvdjInfo_t info, int* executed_sweeps) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdjGetSweeps
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdjGetSweeps == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdjGetSweeps is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, gesvdjInfo_t, int*) nogil>__cusolverDnXgesvdjGetSweeps)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, gesvdjInfo_t, int*) noexcept nogil>__cusolverDnXgesvdjGetSweeps)(
         handle, info, executed_sweeps)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const float* A, int lda, const float* S, const float* U, int ldu, const float* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const float* A, int lda, const float* S, const float* U, int ldu, const float* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvdjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvdjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvdjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const float*, int, const float*, const float*, int, const float*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnSgesvdjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const float*, int, const float*, const float*, int, const float*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnSgesvdjBatched_bufferSize)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const double* A, int lda, const double* S, const double* U, int ldu, const double* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const double* A, int lda, const double* S, const double* U, int ldu, const double* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvdjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvdjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvdjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const double*, int, const double*, const double*, int, const double*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnDgesvdjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const double*, int, const double*, const double*, int, const double*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnDgesvdjBatched_bufferSize)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const cuComplex* A, int lda, const float* S, const cuComplex* U, int ldu, const cuComplex* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const cuComplex* A, int lda, const float* S, const cuComplex* U, int ldu, const cuComplex* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvdjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvdjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvdjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const cuComplex*, int, const float*, const cuComplex*, int, const cuComplex*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnCgesvdjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const cuComplex*, int, const float*, const cuComplex*, int, const cuComplex*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnCgesvdjBatched_bufferSize)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const cuDoubleComplex* A, int lda, const double* S, const cuDoubleComplex* U, int ldu, const cuDoubleComplex* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvdjBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, const cuDoubleComplex* A, int lda, const double* S, const cuDoubleComplex* U, int ldu, const cuDoubleComplex* V, int ldv, int* lwork, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvdjBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvdjBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvdjBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const cuDoubleComplex*, int, const double*, const cuDoubleComplex*, int, const cuDoubleComplex*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnZgesvdjBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, const cuDoubleComplex*, int, const double*, const cuDoubleComplex*, int, const cuDoubleComplex*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnZgesvdjBatched_bufferSize)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, lwork, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, float* A, int lda, float* S, float* U, int ldu, float* V, int ldv, float* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, float* A, int lda, float* S, float* U, int ldu, float* V, int ldv, float* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvdjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvdjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvdjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, float*, int, float*, float*, int, float*, int, float*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnSgesvdjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, float*, int, float*, float*, int, float*, int, float*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnSgesvdjBatched)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, double* A, int lda, double* S, double* U, int ldu, double* V, int ldv, double* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, double* A, int lda, double* S, double* U, int ldu, double* V, int ldv, double* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvdjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvdjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvdjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, double*, int, double*, double*, int, double*, int, double*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnDgesvdjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, double*, int, double*, double*, int, double*, int, double*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnDgesvdjBatched)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, cuComplex* A, int lda, float* S, cuComplex* U, int ldu, cuComplex* V, int ldv, cuComplex* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, cuComplex* A, int lda, float* S, cuComplex* U, int ldu, cuComplex* V, int ldv, cuComplex* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvdjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvdjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvdjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, cuComplex*, int, float*, cuComplex*, int, cuComplex*, int, cuComplex*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnCgesvdjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, cuComplex*, int, float*, cuComplex*, int, cuComplex*, int, cuComplex*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnCgesvdjBatched)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* V, int ldv, cuDoubleComplex* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvdjBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int m, int n, cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* V, int ldv, cuDoubleComplex* work, int lwork, int* info, gesvdjInfo_t params, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvdjBatched
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvdjBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvdjBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*, gesvdjInfo_t, int) nogil>__cusolverDnZgesvdjBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*, gesvdjInfo_t, int) noexcept nogil>__cusolverDnZgesvdjBatched)(
         handle, jobz, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const float* A, int lda, const float* S, const float* U, int ldu, const float* V, int ldv, int* lwork, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const float* A, int lda, const float* S, const float* U, int ldu, const float* V, int ldv, int* lwork, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvdj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvdj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvdj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const float*, int, const float*, const float*, int, const float*, int, int*, gesvdjInfo_t) nogil>__cusolverDnSgesvdj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const float*, int, const float*, const float*, int, const float*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnSgesvdj_bufferSize)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const double* A, int lda, const double* S, const double* U, int ldu, const double* V, int ldv, int* lwork, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const double* A, int lda, const double* S, const double* U, int ldu, const double* V, int ldv, int* lwork, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvdj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvdj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvdj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const double*, int, const double*, const double*, int, const double*, int, int*, gesvdjInfo_t) nogil>__cusolverDnDgesvdj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const double*, int, const double*, const double*, int, const double*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnDgesvdj_bufferSize)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const cuComplex* A, int lda, const float* S, const cuComplex* U, int ldu, const cuComplex* V, int ldv, int* lwork, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const cuComplex* A, int lda, const float* S, const cuComplex* U, int ldu, const cuComplex* V, int ldv, int* lwork, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvdj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvdj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvdj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuComplex*, int, const float*, const cuComplex*, int, const cuComplex*, int, int*, gesvdjInfo_t) nogil>__cusolverDnCgesvdj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuComplex*, int, const float*, const cuComplex*, int, const cuComplex*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnCgesvdj_bufferSize)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const cuDoubleComplex* A, int lda, const double* S, const cuDoubleComplex* U, int ldu, const cuDoubleComplex* V, int ldv, int* lwork, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvdj_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, const cuDoubleComplex* A, int lda, const double* S, const cuDoubleComplex* U, int ldu, const cuDoubleComplex* V, int ldv, int* lwork, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvdj_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvdj_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvdj_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuDoubleComplex*, int, const double*, const cuDoubleComplex*, int, const cuDoubleComplex*, int, int*, gesvdjInfo_t) nogil>__cusolverDnZgesvdj_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuDoubleComplex*, int, const double*, const cuDoubleComplex*, int, const cuDoubleComplex*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnZgesvdj_bufferSize)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, lwork, params)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, float* A, int lda, float* S, float* U, int ldu, float* V, int ldv, float* work, int lwork, int* info, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, float* A, int lda, float* S, float* U, int ldu, float* V, int ldv, float* work, int lwork, int* info, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvdj
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvdj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvdj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, float*, int, float*, float*, int, float*, int, float*, int, int*, gesvdjInfo_t) nogil>__cusolverDnSgesvdj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, float*, int, float*, float*, int, float*, int, float*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnSgesvdj)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, double* A, int lda, double* S, double* U, int ldu, double* V, int ldv, double* work, int lwork, int* info, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, double* A, int lda, double* S, double* U, int ldu, double* V, int ldv, double* work, int lwork, int* info, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvdj
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvdj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvdj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, double*, int, double*, double*, int, double*, int, double*, int, int*, gesvdjInfo_t) nogil>__cusolverDnDgesvdj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, double*, int, double*, double*, int, double*, int, double*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnDgesvdj)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, cuComplex* A, int lda, float* S, cuComplex* U, int ldu, cuComplex* V, int ldv, cuComplex* work, int lwork, int* info, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, cuComplex* A, int lda, float* S, cuComplex* U, int ldu, cuComplex* V, int ldv, cuComplex* work, int lwork, int* info, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvdj
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvdj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvdj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, cuComplex*, int, float*, cuComplex*, int, cuComplex*, int, cuComplex*, int, int*, gesvdjInfo_t) nogil>__cusolverDnCgesvdj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, cuComplex*, int, float*, cuComplex*, int, cuComplex*, int, cuComplex*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnCgesvdj)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* V, int ldv, cuDoubleComplex* work, int lwork, int* info, gesvdjInfo_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvdj(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int econ, int m, int n, cuDoubleComplex* A, int lda, double* S, cuDoubleComplex* U, int ldu, cuDoubleComplex* V, int ldv, cuDoubleComplex* work, int lwork, int* info, gesvdjInfo_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvdj
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvdj == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvdj is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*, gesvdjInfo_t) nogil>__cusolverDnZgesvdj)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, cuDoubleComplex*, int, double*, cuDoubleComplex*, int, cuDoubleComplex*, int, cuDoubleComplex*, int, int*, gesvdjInfo_t) noexcept nogil>__cusolverDnZgesvdj)(
         handle, jobz, econ, m, n, A, lda, S, U, ldu, V, ldv, work, lwork, info, params)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const float* d_A, int lda, long long int strideA, const float* d_S, long long int strideS, const float* d_U, int ldu, long long int strideU, const float* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const float* d_A, int lda, long long int strideA, const float* d_S, long long int strideS, const float* d_U, int ldu, long long int strideU, const float* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvdaStridedBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvdaStridedBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvdaStridedBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const float*, int, long long int, const float*, long long int, const float*, int, long long int, const float*, int, long long int, int*, int) nogil>__cusolverDnSgesvdaStridedBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const float*, int, long long int, const float*, long long int, const float*, int, long long int, const float*, int, long long int, int*, int) noexcept nogil>__cusolverDnSgesvdaStridedBatched_bufferSize)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, lwork, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const double* d_A, int lda, long long int strideA, const double* d_S, long long int strideS, const double* d_U, int ldu, long long int strideU, const double* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const double* d_A, int lda, long long int strideA, const double* d_S, long long int strideS, const double* d_U, int ldu, long long int strideU, const double* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvdaStridedBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvdaStridedBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvdaStridedBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const double*, int, long long int, const double*, long long int, const double*, int, long long int, const double*, int, long long int, int*, int) nogil>__cusolverDnDgesvdaStridedBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const double*, int, long long int, const double*, long long int, const double*, int, long long int, const double*, int, long long int, int*, int) noexcept nogil>__cusolverDnDgesvdaStridedBatched_bufferSize)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, lwork, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuComplex* d_A, int lda, long long int strideA, const float* d_S, long long int strideS, const cuComplex* d_U, int ldu, long long int strideU, const cuComplex* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuComplex* d_A, int lda, long long int strideA, const float* d_S, long long int strideS, const cuComplex* d_U, int ldu, long long int strideU, const cuComplex* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvdaStridedBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvdaStridedBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvdaStridedBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuComplex*, int, long long int, const float*, long long int, const cuComplex*, int, long long int, const cuComplex*, int, long long int, int*, int) nogil>__cusolverDnCgesvdaStridedBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuComplex*, int, long long int, const float*, long long int, const cuComplex*, int, long long int, const cuComplex*, int, long long int, int*, int) noexcept nogil>__cusolverDnCgesvdaStridedBatched_bufferSize)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, lwork, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuDoubleComplex* d_A, int lda, long long int strideA, const double* d_S, long long int strideS, const cuDoubleComplex* d_U, int ldu, long long int strideU, const cuDoubleComplex* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvdaStridedBatched_bufferSize(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuDoubleComplex* d_A, int lda, long long int strideA, const double* d_S, long long int strideS, const cuDoubleComplex* d_U, int ldu, long long int strideU, const cuDoubleComplex* d_V, int ldv, long long int strideV, int* lwork, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvdaStridedBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvdaStridedBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvdaStridedBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuDoubleComplex*, int, long long int, const double*, long long int, const cuDoubleComplex*, int, long long int, const cuDoubleComplex*, int, long long int, int*, int) nogil>__cusolverDnZgesvdaStridedBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuDoubleComplex*, int, long long int, const double*, long long int, const cuDoubleComplex*, int, long long int, const cuDoubleComplex*, int, long long int, int*, int) noexcept nogil>__cusolverDnZgesvdaStridedBatched_bufferSize)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, lwork, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnSgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const float* d_A, int lda, long long int strideA, float* d_S, long long int strideS, float* d_U, int ldu, long long int strideU, float* d_V, int ldv, long long int strideV, float* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnSgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const float* d_A, int lda, long long int strideA, float* d_S, long long int strideS, float* d_U, int ldu, long long int strideU, float* d_V, int ldv, long long int strideV, float* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSgesvdaStridedBatched
     _check_or_init_cusolverDn()
     if __cusolverDnSgesvdaStridedBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSgesvdaStridedBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const float*, int, long long int, float*, long long int, float*, int, long long int, float*, int, long long int, float*, int, int*, double*, int) nogil>__cusolverDnSgesvdaStridedBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const float*, int, long long int, float*, long long int, float*, int, long long int, float*, int, long long int, float*, int, int*, double*, int) noexcept nogil>__cusolverDnSgesvdaStridedBatched)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, d_work, lwork, d_info, h_R_nrmF, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnDgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const double* d_A, int lda, long long int strideA, double* d_S, long long int strideS, double* d_U, int ldu, long long int strideU, double* d_V, int ldv, long long int strideV, double* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnDgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const double* d_A, int lda, long long int strideA, double* d_S, long long int strideS, double* d_U, int ldu, long long int strideU, double* d_V, int ldv, long long int strideV, double* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDgesvdaStridedBatched
     _check_or_init_cusolverDn()
     if __cusolverDnDgesvdaStridedBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDgesvdaStridedBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const double*, int, long long int, double*, long long int, double*, int, long long int, double*, int, long long int, double*, int, int*, double*, int) nogil>__cusolverDnDgesvdaStridedBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const double*, int, long long int, double*, long long int, double*, int, long long int, double*, int, long long int, double*, int, int*, double*, int) noexcept nogil>__cusolverDnDgesvdaStridedBatched)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, d_work, lwork, d_info, h_R_nrmF, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuComplex* d_A, int lda, long long int strideA, float* d_S, long long int strideS, cuComplex* d_U, int ldu, long long int strideU, cuComplex* d_V, int ldv, long long int strideV, cuComplex* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnCgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuComplex* d_A, int lda, long long int strideA, float* d_S, long long int strideS, cuComplex* d_U, int ldu, long long int strideU, cuComplex* d_V, int ldv, long long int strideV, cuComplex* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCgesvdaStridedBatched
     _check_or_init_cusolverDn()
     if __cusolverDnCgesvdaStridedBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCgesvdaStridedBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuComplex*, int, long long int, float*, long long int, cuComplex*, int, long long int, cuComplex*, int, long long int, cuComplex*, int, int*, double*, int) nogil>__cusolverDnCgesvdaStridedBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuComplex*, int, long long int, float*, long long int, cuComplex*, int, long long int, cuComplex*, int, long long int, cuComplex*, int, int*, double*, int) noexcept nogil>__cusolverDnCgesvdaStridedBatched)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, d_work, lwork, d_info, h_R_nrmF, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnZgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuDoubleComplex* d_A, int lda, long long int strideA, double* d_S, long long int strideS, cuDoubleComplex* d_U, int ldu, long long int strideU, cuDoubleComplex* d_V, int ldv, long long int strideV, cuDoubleComplex* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnZgesvdaStridedBatched(cusolverDnHandle_t handle, cusolverEigMode_t jobz, int rank, int m, int n, const cuDoubleComplex* d_A, int lda, long long int strideA, double* d_S, long long int strideS, cuDoubleComplex* d_U, int ldu, long long int strideU, cuDoubleComplex* d_V, int ldv, long long int strideV, cuDoubleComplex* d_work, int lwork, int* d_info, double* h_R_nrmF, int batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnZgesvdaStridedBatched
     _check_or_init_cusolverDn()
     if __cusolverDnZgesvdaStridedBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnZgesvdaStridedBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuDoubleComplex*, int, long long int, double*, long long int, cuDoubleComplex*, int, long long int, cuDoubleComplex*, int, long long int, cuDoubleComplex*, int, int*, double*, int) nogil>__cusolverDnZgesvdaStridedBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverEigMode_t, int, int, int, const cuDoubleComplex*, int, long long int, double*, long long int, cuDoubleComplex*, int, long long int, cuDoubleComplex*, int, long long int, cuDoubleComplex*, int, int*, double*, int) noexcept nogil>__cusolverDnZgesvdaStridedBatched)(
         handle, jobz, rank, m, n, d_A, lda, strideA, d_S, strideS, d_U, ldu, strideU, d_V, ldv, strideV, d_work, lwork, d_info, h_R_nrmF, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnCreateParams(cusolverDnParams_t* params) except* nogil:
+cdef cusolverStatus_t _cusolverDnCreateParams(cusolverDnParams_t* params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnCreateParams
     _check_or_init_cusolverDn()
     if __cusolverDnCreateParams == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnCreateParams is not found")
-    return (<cusolverStatus_t (*)(cusolverDnParams_t*) nogil>__cusolverDnCreateParams)(
+    return (<cusolverStatus_t (*)(cusolverDnParams_t*) noexcept nogil>__cusolverDnCreateParams)(
         params)
 
 
-cdef cusolverStatus_t _cusolverDnDestroyParams(cusolverDnParams_t params) except* nogil:
+cdef cusolverStatus_t _cusolverDnDestroyParams(cusolverDnParams_t params) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnDestroyParams
     _check_or_init_cusolverDn()
     if __cusolverDnDestroyParams == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnDestroyParams is not found")
-    return (<cusolverStatus_t (*)(cusolverDnParams_t) nogil>__cusolverDnDestroyParams)(
+    return (<cusolverStatus_t (*)(cusolverDnParams_t) noexcept nogil>__cusolverDnDestroyParams)(
         params)
 
 
-cdef cusolverStatus_t _cusolverDnSetAdvOptions(cusolverDnParams_t params, cusolverDnFunction_t function, cusolverAlgMode_t algo) except* nogil:
+cdef cusolverStatus_t _cusolverDnSetAdvOptions(cusolverDnParams_t params, cusolverDnFunction_t function, cusolverAlgMode_t algo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSetAdvOptions
     _check_or_init_cusolverDn()
     if __cusolverDnSetAdvOptions == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSetAdvOptions is not found")
-    return (<cusolverStatus_t (*)(cusolverDnParams_t, cusolverDnFunction_t, cusolverAlgMode_t) nogil>__cusolverDnSetAdvOptions)(
+    return (<cusolverStatus_t (*)(cusolverDnParams_t, cusolverDnFunction_t, cusolverAlgMode_t) noexcept nogil>__cusolverDnSetAdvOptions)(
         params, function, algo)
 
 
-cdef cusolverStatus_t _cusolverDnXpotrf_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXpotrf_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXpotrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXpotrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXpotrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXpotrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXpotrf_bufferSize)(
         handle, params, uplo, n, dataTypeA, A, lda, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXpotrf(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXpotrf(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXpotrf
     _check_or_init_cusolverDn()
     if __cusolverDnXpotrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXpotrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXpotrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXpotrf)(
         handle, params, uplo, n, dataTypeA, A, lda, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
-cdef cusolverStatus_t _cusolverDnXpotrs(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeB, void* B, int64_t ldb, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXpotrs(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeB, void* B, int64_t ldb, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXpotrs
     _check_or_init_cusolverDn()
     if __cusolverDnXpotrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXpotrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, void*, int64_t, int*) nogil>__cusolverDnXpotrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, void*, int64_t, int*) noexcept nogil>__cusolverDnXpotrs)(
         handle, params, uplo, n, nrhs, dataTypeA, A, lda, dataTypeB, B, ldb, info)
 
 
-cdef cusolverStatus_t _cusolverDnXgeqrf_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeTau, const void* tau, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgeqrf_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeTau, const void* tau, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgeqrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXgeqrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgeqrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXgeqrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXgeqrf_bufferSize)(
         handle, params, m, n, dataTypeA, A, lda, dataTypeTau, tau, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXgeqrf(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeTau, void* tau, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgeqrf(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeTau, void* tau, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgeqrf
     _check_or_init_cusolverDn()
     if __cusolverDnXgeqrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgeqrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXgeqrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXgeqrf)(
         handle, params, m, n, dataTypeA, A, lda, dataTypeTau, tau, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
-cdef cusolverStatus_t _cusolverDnXgetrf_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgetrf_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgetrf_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXgetrf_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgetrf_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXgetrf_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXgetrf_bufferSize)(
         handle, params, m, n, dataTypeA, A, lda, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXgetrf(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, int64_t* ipiv, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgetrf(cusolverDnHandle_t handle, cusolverDnParams_t params, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, int64_t* ipiv, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgetrf
     _check_or_init_cusolverDn()
     if __cusolverDnXgetrf == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgetrf is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, void*, int64_t, int64_t*, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXgetrf)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, int64_t, int64_t, cudaDataType, void*, int64_t, int64_t*, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXgetrf)(
         handle, params, m, n, dataTypeA, A, lda, ipiv, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
-cdef cusolverStatus_t _cusolverDnXgetrs(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasOperation_t trans, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgetrs(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasOperation_t trans, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgetrs
     _check_or_init_cusolverDn()
     if __cusolverDnXgetrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgetrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasOperation_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, int*) nogil>__cusolverDnXgetrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasOperation_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, int*) noexcept nogil>__cusolverDnXgetrs)(
         handle, params, trans, n, nrhs, dataTypeA, A, lda, ipiv, dataTypeB, B, ldb, info)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevd_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevd_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXsyevd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXsyevd_bufferSize)(
         handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevd(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevd(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevd
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXsyevd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXsyevd)(
         handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevdx_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, void* vl, void* vu, int64_t il, int64_t iu, int64_t* h_meig, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevdx_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, void* vl, void* vu, int64_t il, int64_t iu, int64_t* h_meig, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevdx_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevdx_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevdx_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, void*, void*, int64_t, int64_t, int64_t*, cudaDataType, const void*, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXsyevdx_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, void*, void*, int64_t, int64_t, int64_t*, cudaDataType, const void*, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXsyevdx_bufferSize)(
         handle, params, jobz, range, uplo, n, dataTypeA, A, lda, vl, vu, il, iu, h_meig, dataTypeW, W, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevdx(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* vl, void* vu, int64_t il, int64_t iu, int64_t* meig64, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevdx(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* vl, void* vu, int64_t il, int64_t iu, int64_t* meig64, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevdx
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevdx == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevdx is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, void*, void*, int64_t, int64_t, int64_t*, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXsyevdx)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, void*, void*, int64_t, int64_t, int64_t*, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXsyevdx)(
         handle, params, jobz, range, uplo, n, dataTypeA, A, lda, vl, vu, il, iu, meig64, dataTypeW, W, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvd_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobvt, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeS, const void* S, cudaDataType dataTypeU, const void* U, int64_t ldu, cudaDataType dataTypeVT, const void* VT, int64_t ldvt, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvd_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobvt, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeS, const void* S, cudaDataType dataTypeU, const void* U, int64_t ldu, cudaDataType dataTypeVT, const void* VT, int64_t ldvt, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvd_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvd_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvd_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXgesvd_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXgesvd_bufferSize)(
         handle, params, jobu, jobvt, m, n, dataTypeA, A, lda, dataTypeS, S, dataTypeU, U, ldu, dataTypeVT, VT, ldvt, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvd(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobvt, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeS, void* S, cudaDataType dataTypeU, void* U, int64_t ldu, cudaDataType dataTypeVT, void* VT, int64_t ldvt, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvd(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobvt, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeS, void* S, cudaDataType dataTypeU, void* U, int64_t ldu, cudaDataType dataTypeVT, void* VT, int64_t ldvt, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvd
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvd == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvd is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXgesvd)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXgesvd)(
         handle, params, jobu, jobvt, m, n, dataTypeA, A, lda, dataTypeS, S, dataTypeU, U, ldu, dataTypeVT, VT, ldvt, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdp_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, int econ, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeS, const void* S, cudaDataType dataTypeU, const void* U, int64_t ldu, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdp_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, int econ, int64_t m, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeS, const void* S, cudaDataType dataTypeU, const void* U, int64_t ldu, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdp_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdp_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdp_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, int, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXgesvdp_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, int, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXgesvdp_bufferSize)(
         handle, params, jobz, econ, m, n, dataTypeA, A, lda, dataTypeS, S, dataTypeU, U, ldu, dataTypeV, V, ldv, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdp(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, int econ, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeS, void* S, cudaDataType dataTypeU, void* U, int64_t ldu, cudaDataType dataTypeV, void* V, int64_t ldv, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info, double* h_err_sigma) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdp(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, int econ, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeS, void* S, cudaDataType dataTypeU, void* U, int64_t ldu, cudaDataType dataTypeV, void* V, int64_t ldv, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info, double* h_err_sigma) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdp
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdp == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdp is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, int, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*, double*) nogil>__cusolverDnXgesvdp)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, int, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*, double*) noexcept nogil>__cusolverDnXgesvdp)(
         handle, params, jobz, econ, m, n, dataTypeA, A, lda, dataTypeS, S, dataTypeU, U, ldu, dataTypeV, V, ldv, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, d_info, h_err_sigma)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdr_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeSrand, const void* Srand, cudaDataType dataTypeUrand, const void* Urand, int64_t ldUrand, cudaDataType dataTypeVrand, const void* Vrand, int64_t ldVrand, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdr_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeSrand, const void* Srand, cudaDataType dataTypeUrand, const void* Urand, int64_t ldUrand, cudaDataType dataTypeVrand, const void* Vrand, int64_t ldVrand, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdr_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdr_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdr_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, int64_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXgesvdr_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, int64_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXgesvdr_bufferSize)(
         handle, params, jobu, jobv, m, n, k, p, niters, dataTypeA, A, lda, dataTypeSrand, Srand, dataTypeUrand, Urand, ldUrand, dataTypeVrand, Vrand, ldVrand, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXgesvdr(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeSrand, void* Srand, cudaDataType dataTypeUrand, void* Urand, int64_t ldUrand, cudaDataType dataTypeVrand, void* Vrand, int64_t ldVrand, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgesvdr(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeSrand, void* Srand, cudaDataType dataTypeUrand, void* Urand, int64_t ldUrand, cudaDataType dataTypeVrand, void* Vrand, int64_t ldVrand, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgesvdr
     _check_or_init_cusolverDn()
     if __cusolverDnXgesvdr == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgesvdr is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, int64_t, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXgesvdr)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, signed char, signed char, int64_t, int64_t, int64_t, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXgesvdr)(
         handle, params, jobu, jobv, m, n, k, p, niters, dataTypeA, A, lda, dataTypeSrand, Srand, dataTypeUrand, Urand, ldUrand, dataTypeVrand, Vrand, ldVrand, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnXsytrs_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsytrs_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsytrs_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXsytrs_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsytrs_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, size_t*, size_t*) nogil>__cusolverDnXsytrs_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, size_t*, size_t*) noexcept nogil>__cusolverDnXsytrs_bufferSize)(
         handle, uplo, n, nrhs, dataTypeA, A, lda, ipiv, dataTypeB, B, ldb, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXsytrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsytrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsytrs
     _check_or_init_cusolverDn()
     if __cusolverDnXsytrs == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsytrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXsytrs)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXsytrs)(
         handle, uplo, n, nrhs, dataTypeA, A, lda, ipiv, dataTypeB, B, ldb, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
-cdef cusolverStatus_t _cusolverDnXtrtri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXtrtri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXtrtri_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXtrtri_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXtrtri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, size_t*, size_t*) nogil>__cusolverDnXtrtri_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, size_t*, size_t*) noexcept nogil>__cusolverDnXtrtri_bufferSize)(
         handle, uplo, diag, n, dataTypeA, A, lda, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXtrtri(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* devInfo) except* nogil:
+cdef cusolverStatus_t _cusolverDnXtrtri(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXtrtri
     _check_or_init_cusolverDn()
     if __cusolverDnXtrtri == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXtrtri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXtrtri)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXtrtri)(
         handle, uplo, diag, n, dataTypeA, A, lda, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, devInfo)
 
 
-cdef cusolverStatus_t _cusolverDnLoggerSetCallback(cusolverDnLoggerCallback_t callback) except* nogil:
+cdef cusolverStatus_t _cusolverDnLoggerSetCallback(cusolverDnLoggerCallback_t callback) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnLoggerSetCallback
     _check_or_init_cusolverDn()
     if __cusolverDnLoggerSetCallback == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnLoggerSetCallback is not found")
-    return (<cusolverStatus_t (*)(cusolverDnLoggerCallback_t) nogil>__cusolverDnLoggerSetCallback)(
+    return (<cusolverStatus_t (*)(cusolverDnLoggerCallback_t) noexcept nogil>__cusolverDnLoggerSetCallback)(
         callback)
 
 
-cdef cusolverStatus_t _cusolverDnLoggerSetFile(FILE* file) except* nogil:
+cdef cusolverStatus_t _cusolverDnLoggerSetFile(FILE* file) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnLoggerSetFile
     _check_or_init_cusolverDn()
     if __cusolverDnLoggerSetFile == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnLoggerSetFile is not found")
-    return (<cusolverStatus_t (*)(FILE*) nogil>__cusolverDnLoggerSetFile)(
+    return (<cusolverStatus_t (*)(FILE*) noexcept nogil>__cusolverDnLoggerSetFile)(
         file)
 
 
-cdef cusolverStatus_t _cusolverDnLoggerOpenFile(const char* logFile) except* nogil:
+cdef cusolverStatus_t _cusolverDnLoggerOpenFile(const char* logFile) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnLoggerOpenFile
     _check_or_init_cusolverDn()
     if __cusolverDnLoggerOpenFile == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnLoggerOpenFile is not found")
-    return (<cusolverStatus_t (*)(const char*) nogil>__cusolverDnLoggerOpenFile)(
+    return (<cusolverStatus_t (*)(const char*) noexcept nogil>__cusolverDnLoggerOpenFile)(
         logFile)
 
 
-cdef cusolverStatus_t _cusolverDnLoggerSetLevel(int level) except* nogil:
+cdef cusolverStatus_t _cusolverDnLoggerSetLevel(int level) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnLoggerSetLevel
     _check_or_init_cusolverDn()
     if __cusolverDnLoggerSetLevel == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnLoggerSetLevel is not found")
-    return (<cusolverStatus_t (*)(int) nogil>__cusolverDnLoggerSetLevel)(
+    return (<cusolverStatus_t (*)(int) noexcept nogil>__cusolverDnLoggerSetLevel)(
         level)
 
 
-cdef cusolverStatus_t _cusolverDnLoggerSetMask(int mask) except* nogil:
+cdef cusolverStatus_t _cusolverDnLoggerSetMask(int mask) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnLoggerSetMask
     _check_or_init_cusolverDn()
     if __cusolverDnLoggerSetMask == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnLoggerSetMask is not found")
-    return (<cusolverStatus_t (*)(int) nogil>__cusolverDnLoggerSetMask)(
+    return (<cusolverStatus_t (*)(int) noexcept nogil>__cusolverDnLoggerSetMask)(
         mask)
 
 
-cdef cusolverStatus_t _cusolverDnLoggerForceDisable() except* nogil:
+cdef cusolverStatus_t _cusolverDnLoggerForceDisable() except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnLoggerForceDisable
     _check_or_init_cusolverDn()
     if __cusolverDnLoggerForceDisable == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnLoggerForceDisable is not found")
-    return (<cusolverStatus_t (*)() nogil>__cusolverDnLoggerForceDisable)(
+    return (<cusolverStatus_t (*)() noexcept nogil>__cusolverDnLoggerForceDisable)(
         )
 
 
-cdef cusolverStatus_t _cusolverDnSetDeterministicMode(cusolverDnHandle_t handle, cusolverDeterministicMode_t mode) except* nogil:
+cdef cusolverStatus_t _cusolverDnSetDeterministicMode(cusolverDnHandle_t handle, cusolverDeterministicMode_t mode) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSetDeterministicMode
     _check_or_init_cusolverDn()
     if __cusolverDnSetDeterministicMode == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnSetDeterministicMode is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDeterministicMode_t) nogil>__cusolverDnSetDeterministicMode)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDeterministicMode_t) noexcept nogil>__cusolverDnSetDeterministicMode)(
         handle, mode)
 
 
-cdef cusolverStatus_t _cusolverDnGetDeterministicMode(cusolverDnHandle_t handle, cusolverDeterministicMode_t* mode) except* nogil:
+cdef cusolverStatus_t _cusolverDnGetDeterministicMode(cusolverDnHandle_t handle, cusolverDeterministicMode_t* mode) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnGetDeterministicMode
     _check_or_init_cusolverDn()
     if __cusolverDnGetDeterministicMode == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnGetDeterministicMode is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDeterministicMode_t*) nogil>__cusolverDnGetDeterministicMode)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDeterministicMode_t*) noexcept nogil>__cusolverDnGetDeterministicMode)(
         handle, mode)
 
 
-cdef cusolverStatus_t _cusolverDnXlarft_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXlarft_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXlarft_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXlarft_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXlarft_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverDirectMode_t, cusolverStorevMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXlarft_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverDirectMode_t, cusolverStorevMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXlarft_bufferSize)(
         handle, params, direct, storev, n, k, dataTypeV, V, ldv, dataTypeTau, tau, dataTypeT, T, ldt, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXlarft(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXlarft(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverDirectMode_t direct, cusolverStorevMode_t storev, int64_t n, int64_t k, cudaDataType dataTypeV, const void* V, int64_t ldv, cudaDataType dataTypeTau, const void* tau, cudaDataType dataTypeT, void* T, int64_t ldt, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXlarft
     _check_or_init_cusolverDn()
     if __cusolverDnXlarft == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXlarft is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverDirectMode_t, cusolverStorevMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t) nogil>__cusolverDnXlarft)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverDirectMode_t, cusolverStorevMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t) noexcept nogil>__cusolverDnXlarft)(
         handle, params, direct, storev, n, k, dataTypeV, V, ldv, dataTypeTau, tau, dataTypeT, T, ldt, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevBatched_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost, int64_t batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevBatched_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost, int64_t batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevBatched_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevBatched_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevBatched_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*, int64_t) nogil>__cusolverDnXsyevBatched_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*, int64_t) noexcept nogil>__cusolverDnXsyevBatched_bufferSize)(
         handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnXsyevBatched(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info, int64_t batchSize) except* nogil:
+cdef cusolverStatus_t _cusolverDnXsyevBatched(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info, int64_t batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXsyevBatched
     _check_or_init_cusolverDn()
     if __cusolverDnXsyevBatched == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXsyevBatched is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*, int64_t) nogil>__cusolverDnXsyevBatched)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*, int64_t) noexcept nogil>__cusolverDnXsyevBatched)(
         handle, params, jobz, uplo, n, dataTypeA, A, lda, dataTypeW, W, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info, batchSize)
 
 
-cdef cusolverStatus_t _cusolverDnXgeev_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType dataTypeVL, const void* VL, int64_t ldvl, cudaDataType dataTypeVR, const void* VR, int64_t ldvr, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgeev_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType dataTypeVL, const void* VL, int64_t ldvl, cudaDataType dataTypeVR, const void* VR, int64_t ldvr, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgeev_bufferSize
     _check_or_init_cusolverDn()
     if __cusolverDnXgeev_bufferSize == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgeev_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) nogil>__cusolverDnXgeev_bufferSize)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXgeev_bufferSize)(
         handle, params, jobvl, jobvr, n, dataTypeA, A, lda, dataTypeW, W, dataTypeVL, VL, ldvl, dataTypeVR, VR, ldvr, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
 
 
-cdef cusolverStatus_t _cusolverDnXgeev(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType dataTypeVL, void* VL, int64_t ldvl, cudaDataType dataTypeVR, void* VR, int64_t ldvr, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except* nogil:
+cdef cusolverStatus_t _cusolverDnXgeev(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType dataTypeVL, void* VL, int64_t ldvl, cudaDataType dataTypeVR, void* VR, int64_t ldvr, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnXgeev
     _check_or_init_cusolverDn()
     if __cusolverDnXgeev == NULL:
         with gil:
             raise FunctionNotFoundError("function cusolverDnXgeev is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) nogil>__cusolverDnXgeev)(
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXgeev)(
         handle, params, jobvl, jobvr, n, dataTypeA, A, lda, dataTypeW, W, dataTypeVL, VL, ldvl, dataTypeVR, VR, ldvr, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)

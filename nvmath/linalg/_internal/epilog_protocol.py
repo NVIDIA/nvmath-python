@@ -22,7 +22,7 @@ import math
 from typing import Protocol, runtime_checkable
 
 from nvmath.bindings import cublasLt as cublaslt
-from nvmath._internal import typemaps
+from nvmath.internal import typemaps
 from nvmath.linalg._internal.utils import axis_order_in_memory, calculate_strides, check_batch_tileable
 
 Epilog = cublaslt.Epilogue
@@ -34,6 +34,10 @@ class EpilogInputHandler(Protocol):
     Protocol for epilog handler input validation and setting the appropriate MM descriptor
     attributes.
     """
+
+    @abstractmethod
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -82,6 +86,10 @@ class EpilogOutputHandler(Protocol):
     Protocol for epilog handler output validation and setting the appropriate MM descriptor
     attributes.
     """
+
+    @abstractmethod
+    def __init__(self, logger, mm_traits, enumerator, c_dtype_name, d_dtype_name, aux_dtype_name):
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -195,6 +203,11 @@ class BiasHandler(EpilogInputHandler):
             raise ValueError(
                 f"The batch dimensions of the bias {bias_batch_shape} must match with that of the matrix multiplication "
                 f"definition {mm_traits.batch_shape}."
+            )
+
+        if self.version < 110902 and len(bias_batch_shape) == 0 and len(mm_traits.batch_shape) > 0:
+            raise ValueError(
+                f"Bias broadcasting is not supported in cuBLASLt version < 110902 (you have version {self.version})."
             )
 
         if len(bias_batch_shape) > 0:
@@ -642,7 +655,7 @@ class DGeluAuxHandler(EpilogInputHandler):
             mm_desc_ifc.epilogue_aux_data_type = typemaps.NAME_TO_DATA_TYPE[gelu_aux_tensor.dtype]
 
 
-EPILOG_INPUT_HANDLERS_MAP = {
+EPILOG_INPUT_HANDLERS_MAP: dict[cublaslt.Epilogue, list[type[EpilogInputHandler]]] = {
     Epilog.RELU: [],
     Epilog.RELU_AUX: [],
     Epilog.GELU: [],
@@ -660,7 +673,7 @@ EPILOG_INPUT_HANDLERS_MAP = {
     Epilog.BGRADB: [],
 }
 
-EPILOG_OUTPUT_HANDLERS_MAP = {
+EPILOG_OUTPUT_HANDLERS_MAP: dict[cublaslt.Epilogue, list[type[EpilogOutputHandler]]] = {
     Epilog.RELU: [],
     Epilog.RELU_AUX: [ReluAuxHandler],
     Epilog.GELU: [],
@@ -678,7 +691,7 @@ EPILOG_OUTPUT_HANDLERS_MAP = {
     Epilog.BGRADB: [BgradHandler],
 }
 
-EPILOG_MINIMUM_VERSIONS_MAP = {
+EPILOG_MINIMUM_VERSIONS_MAP: dict[cublaslt.Epilogue, dict[str, int | str]] = {
     None: {"cublaslt": 00000, "ctk": ""},
     # RELU was the first implemented epilog
     Epilog.RELU: {"cublaslt": 11000, "ctk": "11.0.1"},

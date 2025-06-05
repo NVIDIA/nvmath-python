@@ -45,6 +45,7 @@ Contents
 
    Host APIs <host-apis/index.rst>
    Device APIs <device-apis/index.rst>
+   Distributed APIs <distributed-apis/index.rst>
    Bindings <bindings/index.rst>
 
 .. toctree::

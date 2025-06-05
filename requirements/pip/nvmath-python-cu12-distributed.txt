@@ -1,0 +1,4 @@
+mpi4py
+nvidia-cublasmp-cu12 >= 0.4.0
+nvidia-cufftmp-cu12
+nvidia-nvshmem-cu12 >= 3.2.5

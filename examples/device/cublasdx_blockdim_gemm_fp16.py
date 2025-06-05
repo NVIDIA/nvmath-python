@@ -35,53 +35,42 @@ def main():
             size=(m, n, k),
             precision=precision,
             data_type="real",
-            transpose_mode=("non_transposed", "transposed"),
+            arrangement=("row_major", "col_major", "col_major"),
             execution="Block",
             compiler="numba",
             block_dim=blas_block_dim,
         )
 
-        value_type = MM.value_type
-        a_size = MM.a_size
-        b_size = MM.b_size
-        a_dim = MM.a_dim
-        b_dim = MM.b_dim
-        c_dim = MM.c_dim
-        shared_memory_size = MM.shared_memory_size
-        ld = MM.leading_dimension
-        lda, ldb, ldc = (ld.a, ld.b, ld.c)
-
         @cuda.jit(link=MM.files)
         def f(a, b, c, alpha, beta, output):
-            smem = cuda.shared.array(shape=(0,), dtype=value_type)
+            smem_a = cuda.shared.array(shape=MM.a_size, dtype=MM.a_value_type)
+            smem_b = cuda.shared.array(shape=MM.b_size, dtype=MM.b_value_type)
+            smem_c = cuda.shared.array(shape=MM.c_size, dtype=MM.c_value_type)
+            [lda, ldb, ldc] = MM.leading_dimension
 
-            smem_a = smem[0:]
-            smem_b = smem[a_size:]
-            smem_c = smem[a_size + b_size :]
-
-            load_to_shared(a, smem_a, a_dim, lda)
-            load_to_shared(b, smem_b, b_dim, ldb)
-            load_to_shared(c, smem_c, c_dim, ldc)
+            load_to_shared(a, smem_a, MM.a_dim, lda, row_major=True)
+            load_to_shared(b, smem_b, MM.b_dim, ldb)
+            load_to_shared(c, smem_c, MM.c_dim, ldc)
 
             cuda.syncthreads()
 
             match scenario:
                 case 0 | 1:
-                    MM(alpha, smem_a, smem_b, beta, smem_c)
+                    MM.execute(alpha, smem_a, smem_b, beta, smem_c)
                 case 2:
                     if cuda.threadIdx.y == 0:
-                        MM(alpha, smem_a, smem_b, beta, smem_c)
+                        MM.execute(alpha, smem_a, smem_b, beta, smem_c)
                 case 3:
                     if cuda.threadIdx.z == 0:
-                        MM(alpha, smem_a, smem_b, beta, smem_c)
+                        MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
             cuda.syncthreads()
 
-            store_from_shared(smem_c, output, c_dim, ldc)
+            store_from_shared(smem_c, output, MM.c_dim, ldc)
 
-        a = random_real(a_dim, precision)
-        b = random_real(b_dim, precision)
-        c = random_real(c_dim, precision)
+        a = random_real(MM.a_dim, precision)
+        b = random_real(MM.b_dim, precision)
+        c = random_real(MM.c_dim, precision)
         o = np.zeros_like(c)
 
         a_d = cuda.to_device(a)
@@ -92,11 +81,11 @@ def main():
         alpha = 1.0
         beta = 2.0
 
-        f[1, kernel_block_dim, 0, shared_memory_size](a_d, b_d, c_d, alpha, beta, o_d)
+        f[1, kernel_block_dim](a_d, b_d, c_d, alpha, beta, o_d)
         cuda.synchronize()
 
         data_test = o_d.copy_to_host()
-        data_ref = alpha * (a @ b.T) + beta * c
+        data_ref = alpha * (a @ b) + beta * c
         error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
         assert error < 1e-2
 

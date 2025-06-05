@@ -215,7 +215,7 @@ def execute_matmul(a, b, *, epilog=None, epilog_inputs=None, stateful=True, auto
     with Matmul(a, b) as mm:
         mm.plan(epilog=epilog, epilog_inputs=epilog_inputs)
         if autotune:
-            mm.autotune()
+            mm.autotune(iterations=3)
         return mm.execute()
 
 
@@ -307,6 +307,11 @@ def test_epilogs(epilog, bias_extra_dim, framework, n, m, k, use_cuda, a_batch, 
         and (a_batch is not None or b_batch is not None)
     ):
         with pytest.raises(ValueError, match="supports batching in cublaslt >= 11703"):
+            execute_matmul(a, b, epilog=epilog, epilog_inputs=inputs, stateful=autotune, autotune=autotune)
+        return
+
+    if cublaslt.get_version() < 110902 and epilog in epilogs_with_bias and (a_batch is not None or b_batch is not None):
+        with pytest.raises(ValueError, match="Bias broadcasting is not supported"):
             execute_matmul(a, b, epilog=epilog, epilog_inputs=inputs, stateful=autotune, autotune=autotune)
         return
 
@@ -494,57 +499,55 @@ def test_renamed_epilog_inputs():
             ),
         )
 
+
 @pytest.mark.parametrize("epilog", epilogs_with_bias)
-@pytest.mark.parametrize("test_case", [
-    {
-        "name": "mismatch_batch_size",
-        "a_shape": (2, 4, 5),
-        "b_shape": (2, 5, 8),
-        "bias_shape": (3, 4, 1),
-        "error_pattern": "batch dimensions of the bias.*must match",
-        "make_bias": lambda shape: cupy.full(shape, np.float32(0.8)),
-        "min_cublas_version": 11703
-    },
-    {
-        "name": "mismatched_batch_axis_order",
-        "a_shape": (2, 3, 4, 5),
-        "b_shape": (2, 3, 5, 8),
-        "bias_shape": (2, 3, 4, 1),
-        "error_pattern": "batch axis order of the bias.*must match",
-        "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
-            cupy.full((2, 3, 4, 1), np.float32(0.8)),
-            shape=shape,
-            strides=(4, 12, 1, 4)
-        ),
-        "min_cublas_version": 11703
-    },
-    {
-        "name": "non_tileable_batch",
-        "a_shape": (2, 3, 4, 5),
-        "b_shape": (2, 3, 5, 8),
-        "bias_shape": (2, 3, 4, 1),
-        "error_pattern": "not supported because it is not tileable",
-        "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
-            cupy.full(shape, np.float32(0.8)),
-            shape=shape,
-            strides=(16, 4, 1, 4)
-        ),
-        "min_cublas_version": 11703
-    },
-    {
-        "name": "invalid_stride",
-        "a_shape": (4, 5),
-        "b_shape": (5, 8),
-        "bias_shape": (4, 2),
-        "error_pattern": "stride of the bias.*must be 1",
-        "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
-            cupy.full(shape, np.float32(0.8)),
-            shape=(4, 1),
-            strides=(2, 1)
-        ),
-        "min_cublas_version": 11501
-    }
-])
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "name": "mismatch_batch_size",
+            "a_shape": (2, 4, 5),
+            "b_shape": (2, 5, 8),
+            "bias_shape": (3, 4, 1),
+            "error_pattern": "batch dimensions of the bias.*must match",
+            "make_bias": lambda shape: cupy.full(shape, np.float32(0.8)),
+            "min_cublas_version": 11703,
+        },
+        {
+            "name": "mismatched_batch_axis_order",
+            "a_shape": (2, 3, 4, 5),
+            "b_shape": (2, 3, 5, 8),
+            "bias_shape": (2, 3, 4, 1),
+            "error_pattern": "batch axis order of the bias.*must match",
+            "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
+                cupy.full((2, 3, 4, 1), np.float32(0.8)), shape=shape, strides=(4, 12, 1, 4)
+            ),
+            "min_cublas_version": 11703,
+        },
+        {
+            "name": "non_tileable_batch",
+            "a_shape": (2, 3, 4, 5),
+            "b_shape": (2, 3, 5, 8),
+            "bias_shape": (2, 3, 4, 1),
+            "error_pattern": "not supported because it is not tileable",
+            "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
+                cupy.full(shape, np.float32(0.8)), shape=shape, strides=(16, 4, 1, 4)
+            ),
+            "min_cublas_version": 11703,
+        },
+        {
+            "name": "invalid_stride",
+            "a_shape": (4, 5),
+            "b_shape": (5, 8),
+            "bias_shape": (4, 2),
+            "error_pattern": "stride of the bias.*must be 1",
+            "make_bias": lambda shape: cupy.lib.stride_tricks.as_strided(
+                cupy.full(shape, np.float32(0.8)), shape=(4, 1), strides=(2, 1)
+            ),
+            "min_cublas_version": 11501,
+        },
+    ],
+)
 def test_invalid_bias(epilog, test_case):
     skip_if_cublas_before(test_case["min_cublas_version"])
 

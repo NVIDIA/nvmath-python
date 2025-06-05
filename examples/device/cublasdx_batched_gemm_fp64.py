@@ -22,55 +22,46 @@ def main():
         size=(m, n, k),
         precision=np.float64,
         data_type="real",
-        transpose_mode=("non_transposed", "transposed"),
+        arrangement=("row_major", "col_major", "col_major"),
         execution="Block",
         compiler="numba",
         block_size=block_size,
     )
 
-    value_type = MM.value_type
-    a_size = MM.a_size
-    b_size = MM.b_size
-    c_size = MM.c_size
-    a_dim = MM.a_dim
-    b_dim = MM.b_dim
-    c_dim = MM.c_dim
-    shared_memory_size = MM.shared_memory_size
     assert MM.block_dim == (block_size, 1, 1)
     block_dim = (block_size, batches, 1)
-
-    ld = MM.leading_dimension
-    lda, ldb, ldc = (ld.a, ld.b, ld.c)
+    a_size_batched = batches * MM.a_size
+    b_size_batched = batches * MM.b_size
+    c_size_batched = batches * MM.c_size
 
     @cuda.jit(link=MM.files)
     def f(a, b, c, alpha, beta, output):
         bid = cuda.threadIdx.y
 
-        smem = cuda.shared.array(shape=(0,), dtype=value_type)
+        smem_a = cuda.shared.array(shape=a_size_batched, dtype=MM.a_value_type)
+        smem_b = cuda.shared.array(shape=b_size_batched, dtype=MM.b_value_type)
+        smem_c = cuda.shared.array(shape=c_size_batched, dtype=MM.c_value_type)
+        [lda, ldb, ldc] = MM.leading_dimension
 
-        smem_a = smem[0:]
-        smem_b = smem[batches * a_size :]
-        smem_c = smem[batches * (a_size + b_size) :]
+        batch_smem_a = smem_a[bid * MM.a_size :]
+        batch_smem_b = smem_b[bid * MM.b_size :]
+        batch_smem_c = smem_c[bid * MM.c_size :]
 
-        batch_smem_a = smem_a[bid * a_size :]
-        batch_smem_b = smem_b[bid * b_size :]
-        batch_smem_c = smem_c[bid * c_size :]
-
-        load_to_shared_batched(a, smem_a, bid, a_dim, lda)
-        load_to_shared_batched(b, smem_b, bid, b_dim, ldb)
-        load_to_shared_batched(c, smem_c, bid, c_dim, ldc)
-
-        cuda.syncthreads()
-
-        MM(alpha, batch_smem_a, batch_smem_b, beta, batch_smem_c)
+        load_to_shared_batched(a, smem_a, bid, MM.a_dim, lda, row_major=True)
+        load_to_shared_batched(b, smem_b, bid, MM.b_dim, ldb)
+        load_to_shared_batched(c, smem_c, bid, MM.c_dim, ldc)
 
         cuda.syncthreads()
 
-        store_from_shared_batched(smem_c, output, bid, c_dim, ldc)
+        MM.execute(alpha, batch_smem_a, batch_smem_b, beta, batch_smem_c)
 
-    a = random_real((batches, *a_dim), np.float64)
-    b = random_real((batches, *b_dim), np.float64)
-    c = random_real((batches, *c_dim), np.float64)
+        cuda.syncthreads()
+
+        store_from_shared_batched(smem_c, output, bid, MM.c_dim, ldc)
+
+    a = random_real((batches, *MM.a_dim), np.float64)
+    b = random_real((batches, *MM.b_dim), np.float64)
+    c = random_real((batches, *MM.c_dim), np.float64)
     o = np.zeros_like(c)
 
     a_d = cuda.to_device(a)
@@ -81,11 +72,11 @@ def main():
     alpha = 1.0
     beta = 2.0
 
-    f[1, block_dim, 0, batches * shared_memory_size](a_d, b_d, c_d, alpha, beta, o_d)
+    f[1, block_dim, 0, batches * MM.get_shared_storage_size()](a_d, b_d, c_d, alpha, beta, o_d)
     cuda.synchronize()
 
     data_test = o_d.copy_to_host()
-    data_ref = alpha * np.einsum("bij,bkj->bik", a, b) + beta * c
+    data_ref = alpha * np.einsum("bij,bjk->bik", a, b) + beta * c
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-10
 

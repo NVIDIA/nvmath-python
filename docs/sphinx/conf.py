@@ -34,7 +34,7 @@ from enum_tools.autoenum import EnumDocumenter
 
 try:
     import nvmath
-    from nvmath._internal.enum_utils import snake_to_camel
+    from nvmath.internal.enum_utils import snake_to_camel
 except ImportError:
     warnings.warn(
         "\n\n\n"
@@ -93,6 +93,13 @@ extensions = [
     "nbsphinx_link",
 ]
 
+extlinks = {
+    "cufftmp_hw": (
+        "https://docs.nvidia.com/cuda/cufftmp/usage/requirements.html#hardware-%s",
+        "p2p or GPUDirect RDMA over IB %s",
+    )
+}
+
 imgmath_latex_preamble = r"\usepackage{braket}"
 
 imgmath_image_format = "svg"
@@ -125,6 +132,9 @@ language = "en"
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+if tags.has("exclude-nvmath-distributed"):  # noqa: F821
+    exclude_patterns += ["distributed-apis"]
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 default_role = "cpp:any"  # cpp:any
@@ -169,6 +179,11 @@ favicons = [
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "nvmath-python-doc"
+
+# TODO: remove this once examples are published.
+linkcheck_ignore = [
+    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/.*",
+]
 
 
 def autodoc_process_docstring(app, what, name, obj, options, lines):
@@ -303,6 +318,8 @@ autosummary_filename_map = {
     # avoid name clash with the fft func
     "nvmath.fft.FFT": "nvmath.fft.FFT-class",
     "nvmath.linalg.advanced.Matmul": "nvmath.linalg.advanced.Matmul-class",
+    "nvmath.distributed.fft.FFT": "nvmath.distributed.fft.FFT-class",
+    "nvmath.distributed.reshape.Reshape": "nvmath.distributed.reshape.Reshape-class",
 }
 
 intersphinx_mapping = {

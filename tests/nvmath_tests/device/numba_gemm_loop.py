@@ -25,11 +25,12 @@ class NumbaGemmLoop:
             compiler="numba",
         )
 
-        input_type = MM.input_type
-        output_type = MM.output_type
+        a_value_type = MM.a_value_type
+        b_value_type = MM.b_value_type
+        c_value_type = MM.c_value_type
         block_dim = MM.block_dim
         block_size = MM.block_size
-        shared_memory_size = MM.shared_memory_size
+        shared_memory_size = MM.get_shared_storage_size()
         a_size = MM.a_size
         b_size = MM.b_size
         c_size = MM.c_size
@@ -43,9 +44,9 @@ class NumbaGemmLoop:
         @cuda.jit(link=MM.files)
         def f(a_global, b_global, c_global):
             # Input/output
-            a_smem = cuda.shared.array(shape=(a_size,), dtype=input_type)
-            b_smem = cuda.shared.array(shape=(b_size,), dtype=input_type)
-            c_smem = cuda.shared.array(shape=(c_size,), dtype=output_type)
+            a_smem = cuda.shared.array(shape=(a_size,), dtype=a_value_type)
+            b_smem = cuda.shared.array(shape=(b_size,), dtype=b_value_type)
+            c_smem = cuda.shared.array(shape=(c_size,), dtype=c_value_type)
 
             # Load global --> shared
             if cuda.threadIdx.x == 0 and cuda.threadIdx.y == 0 and cuda.threadIdx.z == 0:

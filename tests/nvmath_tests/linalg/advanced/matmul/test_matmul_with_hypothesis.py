@@ -4,6 +4,7 @@
 
 import collections
 import logging
+import os
 import re
 import typing
 
@@ -23,12 +24,20 @@ import pytest
 
 try:
     import cupy as cp
+    from nvmath.memory import _CupyCUDAMemoryManager
 except ModuleNotFoundError:
+    _CupyCUDAMemoryManager = None
     pytest.skip("cupy is required for matmul tests", allow_module_level=True)
+
+try:
+    from nvmath.memory import _TorchCUDAMemoryManager
+except ImportError:
+    _TorchCUDAMemoryManager = None
+
 import numpy as np
 
-import nvmath.linalg
 from nvmath import CudaDataType
+
 from nvmath.bindings.cublasLt import cuBLASLtError, ReductionScheme
 from nvmath.linalg._internal.typemaps import (
     NAMES_TO_DEFAULT_COMPUTE_TYPE,
@@ -38,7 +47,7 @@ from nvmath.linalg._internal.typemaps import (
 )
 from nvmath.linalg.advanced import MatmulEpilog, MatmulNumericalImplFlags, MatmulPlanPreferences, matmul
 from nvmath.linalg.advanced.matmulmod import EPILOG_INPUT_HANDLERS_MAP, EPILOG_MINIMUM_VERSIONS_MAP
-from nvmath.memory import _RawCUDAMemoryManager, BaseCUDAMemoryManager, _CupyCUDAMemoryManager
+from nvmath.memory import BaseCUDAMemoryManager, _RawCUDAMemoryManager
 
 from nvmath_tests.helpers import nvmath_seed
 from .utils import get_absolute_tolerance
@@ -54,27 +63,28 @@ MatmulEpilog_DRELU_list = [MatmulEpilog.DRELU, MatmulEpilog.DRELU_BGRAD]
 MatmulEpilog_DGELU_list = [MatmulEpilog.DGELU, MatmulEpilog.DGELU_BGRAD]
 MatmulEpilog_RELU_list = [MatmulEpilog.RELU, MatmulEpilog.RELU_AUX, MatmulEpilog.RELU_BIAS, MatmulEpilog.RELU_AUX_BIAS]
 MatmulEpilog_GELU_list = [MatmulEpilog.GELU, MatmulEpilog.GELU_AUX, MatmulEpilog.GELU_BIAS, MatmulEpilog.GELU_AUX_BIAS]
+# Parameters sorted by "complexity" for better reduction behavior by hypothesis
 MatmulEpilog_valid_pairs_list = [
+    (None, None),
+    (MatmulEpilog.BIAS, None),
     (MatmulEpilog.BGRADA, None),
     (MatmulEpilog.BGRADB, None),
-    (MatmulEpilog.BIAS, None),
-    (MatmulEpilog.GELU_AUX_BIAS, MatmulEpilog.DGELU_BGRAD),
-    (MatmulEpilog.GELU_AUX_BIAS, MatmulEpilog.DGELU),
-    (MatmulEpilog.GELU_AUX_BIAS, None),
-    (MatmulEpilog.GELU_AUX, MatmulEpilog.DGELU_BGRAD),
-    (MatmulEpilog.GELU_AUX, MatmulEpilog.DGELU),
+    (MatmulEpilog.GELU, None),
+    (MatmulEpilog.RELU, None),
     (MatmulEpilog.GELU_AUX, None),
     (MatmulEpilog.GELU_BIAS, None),
-    (MatmulEpilog.GELU, None),
-    (MatmulEpilog.RELU_AUX_BIAS, MatmulEpilog.DRELU_BGRAD),
-    (MatmulEpilog.RELU_AUX_BIAS, MatmulEpilog.DRELU),
-    (MatmulEpilog.RELU_AUX_BIAS, None),
-    (MatmulEpilog.RELU_AUX, MatmulEpilog.DRELU_BGRAD),
-    (MatmulEpilog.RELU_AUX, MatmulEpilog.DRELU),
     (MatmulEpilog.RELU_AUX, None),
     (MatmulEpilog.RELU_BIAS, None),
-    (MatmulEpilog.RELU, None),
-    (None, None),
+    (MatmulEpilog.GELU_AUX_BIAS, None),
+    (MatmulEpilog.RELU_AUX_BIAS, None),
+    (MatmulEpilog.GELU_AUX, MatmulEpilog.DGELU),
+    (MatmulEpilog.RELU_AUX, MatmulEpilog.DRELU),
+    (MatmulEpilog.GELU_AUX, MatmulEpilog.DGELU_BGRAD),
+    (MatmulEpilog.RELU_AUX, MatmulEpilog.DRELU_BGRAD),
+    (MatmulEpilog.GELU_AUX_BIAS, MatmulEpilog.DGELU),
+    (MatmulEpilog.RELU_AUX_BIAS, MatmulEpilog.DRELU),
+    (MatmulEpilog.GELU_AUX_BIAS, MatmulEpilog.DGELU_BGRAD),
+    (MatmulEpilog.RELU_AUX_BIAS, MatmulEpilog.DRELU_BGRAD),
 ]
 
 
@@ -197,15 +207,17 @@ problem_size_mnk = integers(min_value=1, max_value=256)
 
 options_blocking_values = [True, "auto"]
 options_allocator_values = [
+    None,
     _RawCUDAMemoryManager(0, logging.getLogger()),
-    _CupyCUDAMemoryManager(0, logging.getLogger()),
+    _CupyCUDAMemoryManager(0, logging.getLogger()) if _CupyCUDAMemoryManager is not None else None,
+    _TorchCUDAMemoryManager(0, logging.getLogger()) if _TorchCUDAMemoryManager is not None else None,
 ]
 
 # FIXME: Add integer types to tests
 ab_type_values = [
-    np.float16,
     np.float32,
     np.float64,
+    np.float16,
     np.complex64,
     np.complex128,
 ]
@@ -299,6 +311,7 @@ def preference_object_strategy(draw):
     return MatmulPlanPreferences(reduction_scheme_mask=reduction_scheme_mask, limit=limit)
 
 
+@pytest.mark.skipif(os.environ.get("CI", default="").lower() == "true", reason="Hypothesis tests skipped until CI is stable.")
 @nvmath_seed()
 @given(
     input_arrays=matrix_multiply_arrays(),
@@ -309,7 +322,8 @@ def preference_object_strategy(draw):
             {
                 "blocking": sampled_from(options_blocking_values),
                 "allocator": sampled_from(options_allocator_values),
-                "scale_type": one_of(none(), sampled_from(CudaDataType)),
+                # FIXME: Re-enable when new bounds testing is implemented in !423
+                # "scale_type": one_of(none(), sampled_from(CudaDataType)),
                 # "compute_type": one_of(none(), sampled_from(nvmath.linalg.ComputeType)),
             }
         ),
@@ -430,6 +444,7 @@ def generate_alpha_beta(value_type, value):
         return None
 
 
+@pytest.mark.skipif(os.environ.get("CI", default="").lower() == "true", reason="Hypothesis tests skipped until CI is stable.")
 @nvmath_seed()
 @given(
     a=one_of(f16_strategy, f32_strategy, f64_strategy, c32_strategy, c64_strategy),

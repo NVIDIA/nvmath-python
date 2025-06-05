@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 import os
 
 from nvmath.bindings import cufft  # type: ignore
@@ -108,16 +107,10 @@ def _cross_setup_execution_and_options(
         _check_init_cufft()
         if execution.device_id is None:
             execution.device_id = options.device_id or 0
-        if options.device_id is not None:
-            if execution.device_id == options.device_id:
-                warnings.warn(
-                    "Passing the 'device_id' in an object of type 'FFTOptions' is deprecated. "
-                    "It should be passed as a part of 'execution' configuration."
-                )
-            else:
-                raise ValueError(
-                    f"Got conflicting 'device_id' passed in 'execution' ({execution.device_id}) "
-                    f"and 'options' ({options.device_id}). It should be passed as 'execution' "
-                    f"configuration only."
-                )
+        elif options.device_id is not None and execution.device_id != options.device_id:
+            raise ValueError(
+                f"Got conflicting 'device_id' passed in 'execution' ({execution.device_id}) "
+                f"and 'options' ({options.device_id}). It should be passed as 'execution' "
+                f"configuration only."
+            )
     return options, execution

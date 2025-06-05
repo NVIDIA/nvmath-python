@@ -1,1 +1,2 @@
+cuda-core[cu12] == 0.2.*
 cupy-cuda12x

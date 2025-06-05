@@ -21,6 +21,7 @@ def main():
         ffts_per_block=2,
         execution="Block",
         compiler="numba",
+        execute_api="shared_memory",
     )
 
     size = FFT.size

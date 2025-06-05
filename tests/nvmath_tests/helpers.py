@@ -1,8 +1,7 @@
 # Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-import datetime
+import os
 
 import cupy
 import numpy as np
@@ -11,13 +10,17 @@ import hypothesis
 
 
 def nvmath_seed():
-    """A decorator which sets a hypothesis seed to a hash of today's date.
+    """Sets the hypothesis seed from the environment variable RANDOM_SEED."""
+    if (seed := os.environ.get("RANDOM_SEED", default=None)) is not None:
+        print(f"The nvmath-python hypothesis seed is '{seed}' from environment RANDOM_SEED")
+        return hypothesis.seed(hash(seed))
 
-    Setting the seed once per day allows random exploration of the parameter
-    space, but having all runners in a pipeline use the same seed helps
-    identify when failures are device/environment related.
-    """
-    return hypothesis.seed(hash(datetime.date.today()))
+    print("The nvmath-python hypothesis seed is unset.")
+
+    def do_nothing(x):
+        return x
+
+    return do_nothing
 
 
 def numpy_type_to_str(np_dtype):

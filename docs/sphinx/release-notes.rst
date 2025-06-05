@@ -1,12 +1,33 @@
 nvmath-python Release Notes
 ***************************
 
+nvmath-python v0.4.0
+====================
+
+Beta4 release.
+
+* New distributed FFT APIs to run on multi-node/multi-GPU systems.
+* New device matrix multiplication tensor APIs.
+* Transition from CuPy to `cuda-python (cuda.core)
+  <https://nvidia.github.io/cuda-python/cuda-core/latest/>`_ for core CUDA constructs.
+
+Bugs Fixed
+----------
+
+* FFT prolog or epilog fails to compile on ``SM >= 100``.
+
+Known Issues
+------------
+
+* Python overhead for matmul host-APIs has increased since v0.3.0 by 21 microseconds on
+  average. We are investigating.
+
 nvmath-python v0.3.0
 ====================
 
 Beta3 release.
 
-* FP8 and MXFP8 support for the advanced matrix multiplication API. 
+* FP8 and MXFP8 support for the advanced matrix multiplication API.
 * Notebook to illustrate use of FP8 and MXFP8 in the advanced matrix multiplication API.
 * Added bindings for new APIs introduced in CTK version 12.8.
 

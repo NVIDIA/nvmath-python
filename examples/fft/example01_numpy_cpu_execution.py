@@ -35,4 +35,4 @@ b = nvmath.fft.fft(a, axes=axes)
 # For cpu arrays, the two calls are equivalent.
 c = nvmath.fft.fft(a, axes=axes, execution="cpu")
 
-print(f"Input type = {type(a)}, " f"FFT b output type = {type(b)}, " f"FFT c output type = {type(c)}.")
+print(f"Input type = {type(a)}, FFT b output type = {type(b)}, FFT c output type = {type(c)}.")

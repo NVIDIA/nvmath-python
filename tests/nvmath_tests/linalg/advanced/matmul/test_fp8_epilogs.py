@@ -11,7 +11,7 @@ import pytest
 from .utils import sample_matrix, allow_cublas_unsupported, matmul_with_random_autotune
 from .fp8_utils import assert_fp8_equal, fp8_matmul_reference, simple_scales, generate_inputs, choose_scales
 from nvmath.linalg.advanced import Matmul, MatmulEpilog as Epilog
-from nvmath._internal.typemaps import NAME_TO_DATA_TYPE
+from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
 from nvmath.bindings import cublasLt as cublaslt
 from .test_fp8 import SUPPORTED_TYPE_COMBINATIONS, expected_result_type
 from contextlib import nullcontext

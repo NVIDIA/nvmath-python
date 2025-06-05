@@ -4,6 +4,7 @@
 
 import gc
 import os
+import re
 import subprocess
 import sys
 
@@ -38,7 +39,7 @@ def parse_python_script(filepath):
     return script
 
 
-def run_sample(samples_path, filename, env=None, use_subprocess=False):
+def run_sample(samples_path, filename, env=None, use_subprocess=False, use_mpi=False):
     requires_mgpu = filename.endswith("_mgpu.py")
     if DEVICE_COUNT == 0 and "cpu_execution" not in filename:
         raise SystemError("No active device found")
@@ -51,8 +52,21 @@ def run_sample(samples_path, filename, env=None, use_subprocess=False):
         sys.argv = [fullpath]
         SYS_PATH_BACKUP = sys.path.copy()
         sys.path.append(samples_path)
+        if use_mpi:
+            assert use_subprocess
+            # Check if the filename indicates with how many processes to run, for example:
+            # `example_something_4p.py` is to be run with 4 processes.
+            m = re.search(r".*_(\d+)p.py$", filename)
+            if m:
+                num_procs = m.group(1)
+            else:
+                # Run with 2 processes by default.
+                num_procs = "2"
+            cmd = ["mpiexec", "-n", num_procs, sys.executable, fullpath]
+        else:
+            cmd = [sys.executable, fullpath]
         if use_subprocess:
-            result = subprocess.run([sys.executable, fullpath], capture_output=True, text=True, env=os.environ)
+            result = subprocess.run(cmd, capture_output=True, text=True, env=os.environ)
             if result.returncode != 0:
                 if "ModuleNotFoundError" in result.stderr:
                     raise ModuleNotFoundError(result.stderr)

@@ -27,7 +27,7 @@ def main():
     kwargs = {
         "precision": precision,
         "data_type": "complex",
-        "transpose_mode": ("non_transposed", "non_transposed"),
+        "arrangement": ("col_major", "col_major", "col_major"),
         "execution": "Block",
         "block_size": block_size,
         "compiler": "numba",
@@ -37,7 +37,7 @@ def main():
 
     MM2 = matmul(size=(m2, n2, k2), **kwargs)
 
-    value_type = MM1.value_type
+    value_type = MM1.a_value_type  # all value types are the same
 
     a_size = MM1.a_size
     c_size = MM1.c_size
@@ -51,19 +51,16 @@ def main():
     d_dim = MM2.b_dim
     f_dim = MM2.c_dim
 
-    lda = MM1.leading_dimension.a
-    ldb = MM1.leading_dimension.b
-    ldc = MM1.leading_dimension.c
-
-    ldd = MM1.leading_dimension.b
-    ldf = MM1.leading_dimension.c
-
     block_dim = MM1.block_dim
-    shared_memory_size = max(MM1.shared_memory_size, MM2.shared_memory_size)
+    shared_memory_size = max(
+        MM1.get_shared_storage_size(),
+        MM2.get_shared_storage_size(),
+    )
 
     assert MM2.a_dim == MM1.c_dim
     assert MM2.block_dim == MM1.block_dim
     assert MM1.c_size == MM2.a_size
+    assert MM1.leading_dimension.c == MM2.leading_dimension.a
 
     @cuda.jit(link=MM1.files)
     def kernel(alpha1, a, b, beta1, c, alpha2, d, beta2, f, output):
@@ -80,6 +77,9 @@ def main():
         smem_d = smem[c_size:]
         smem_f = smem[c_size + d_size :]
 
+        [lda, ldb, ldc] = MM1.leading_dimension
+        [ldc, ldd, ldf] = MM2.leading_dimension
+
         # Load MM1's A (a)
         load_to_shared(a, smem_a, a_dim, lda)
 
@@ -91,7 +91,7 @@ def main():
 
         cuda.syncthreads()
 
-        MM1(alpha1, smem_a, smem_b, beta1, smem_c)
+        MM1.execute(alpha1, smem_a, smem_b, beta1, smem_c)
 
         cuda.syncthreads()
 
@@ -103,7 +103,7 @@ def main():
 
         cuda.syncthreads()
 
-        MM2(alpha2, smem_c, smem_d, beta2, smem_f)
+        MM2.execute(alpha2, smem_c, smem_d, beta2, smem_f)
 
         cuda.syncthreads()
 

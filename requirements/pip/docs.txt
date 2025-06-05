@@ -2,6 +2,7 @@ breathe
 enum-tools
 grip
 jupyter
+mpi4py
 myst-parser
 nbsphinx
 nbsphinx-link

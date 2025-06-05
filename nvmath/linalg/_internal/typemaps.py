@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 from nvmath.bindings import cublas  # type: ignore
-from nvmath._internal.typemaps import cudaDataType
+from nvmath.internal.typemaps import cudaDataType
 
 
 def create_default_scale_type_map():

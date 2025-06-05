@@ -12,16 +12,31 @@ from nvmath.bindings import cusolverDn
 from nvmath.bindings import cusparse
 
 try:
+    # nvpl is Linux-only.
     from nvmath.bindings import nvpl
 except ImportError:
     nvpl = None
 
+try:
+    # cufftMp is Linux-only.
+    from nvmath.bindings import cufftMp
+except ImportError:
+    cufftMp = None
+
+try:
+    # nvshmem is Linux-only.
+    from nvmath.bindings import nvshmem
+except ImportError:
+    nvshmem = None
+
 __all__ = [
     "cublas",
     "cufft",
+    "cufftMp",
     "curand",
     "cusolver",
     "cusolverDn",
     "cusparse",
     "nvpl",
+    "nvshmem",
 ]

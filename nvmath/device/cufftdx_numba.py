@@ -4,52 +4,9 @@
 
 from numba import types
 from numba.core.typing import signature
-from numba.extending import typeof_impl, models, register_model, make_attribute_wrapper, intrinsic, overload
+from numba.extending import intrinsic, overload
 from .common_numba import NUMBA_FE_TYPES_TO_NUMBA_IR, make_function_call
 from .common import check_in
-from .cufftdx_workspace import Workspace
-
-##
-##  Numba Workspace type
-##
-
-
-class WorkspaceType(types.Type):
-    def __init__(self):
-        super().__init__(name="Workspace")
-
-
-workspace_type = WorkspaceType()
-
-make_attribute_wrapper(WorkspaceType, "workspace", "workspace")
-
-
-@register_model(WorkspaceType)
-class WorkspaceModel(models.StructModel):
-    def __init__(self, dmm, fe_type):
-        members = [
-            ("workspace", types.uint64),  # Workspace
-        ]
-        models.StructModel.__init__(self, dmm, fe_type, members)
-
-
-##
-## Register custom Workspace type
-##
-
-
-@typeof_impl.register(Workspace)
-def typeof_workspace(val, c):
-    return workspace_type
-
-
-class WorkspaceArgHandler:
-    def prepare_args(self, ty, val, **kwargs):
-        if isinstance(val, Workspace):
-            assert ty == workspace_type
-            return types.uint64, val.workspace
-        else:
-            return ty, val
 
 
 #
@@ -59,15 +16,12 @@ class WorkspaceArgHandler:
 # value_type = real or complex numpy type of the input/output thread-private and shared
 # memory
 # symbols = name of the function, as a string
-# requires_workspace whether we require workspace, or not, as a bool.
 #
-def make_codegen(io, execution, value_type, symbol, requires_workspace):
+def make_codegen(io, execution, value_type, symbol):
     check_in("io", io, ["thread", "smem"])  # input in thread-private vs shared memory
     check_in("execution", execution, ["Thread", "Block"])  # Thread() or Block() APIs
-    check_in("requires_workspace", requires_workspace, [False])  # Workspace not supported yet
 
     array_type = types.Array(value_type, 1, "C")
-    workspace_ty = types.int64  # Used to pass void*
     return_type = types.void
 
     # Thread() APIs only work on a single thread-private array
@@ -77,113 +31,93 @@ def make_codegen(io, execution, value_type, symbol, requires_workspace):
     if execution == "Thread" and io == "thread":
         return signature(return_type, array_type), make_function_call(symbol)
 
-    # Block() APIs have four variants
+    # Block() APIs have two variants
     # (void) ( (value_type*)thread array,         (value_type*)shared memory array               )  # noqa: W505
     # (void) ( (value_type*)shared memory array                                                  )  # noqa: W505
-    # (void) ( (value_type*)thread array,         (value_type*)shared memory array,    workspace )  # noqa: W505
-    # (void) ( (value_type*)shared memory array,                                       workspace )  # noqa: W505
-    # In all cases we pass 3 arguments, with appropriate nullptrs or 0's where needed
 
     elif execution == "Block" and io == "thread":
         codegen = make_function_call(symbol)
 
         def wrap_codegen(context, builder, sig, args):
             assert len(args) == 2
-            assert len(sig.args) == 3
-            codegen(context, builder, sig, [args[0], args[1], None])
+            assert len(sig.args) == 2
+            codegen(context, builder, sig, [args[0], args[1]])
 
-        return signature(return_type, array_type, array_type, workspace_ty), wrap_codegen
+        return signature(return_type, array_type, array_type), wrap_codegen
 
     elif execution == "Block" and io == "smem":
         codegen = make_function_call(symbol)
 
         def wrap_codegen(context, builder, sig, args):
             assert len(args) == 1
-            assert len(sig.args) == 3
-            codegen(context, builder, sig, [None, args[0], None])
+            assert len(sig.args) == 1
+            codegen(context, builder, sig, args)
 
-        return signature(return_type, array_type, array_type, workspace_ty), wrap_codegen
+        return signature(return_type, array_type), wrap_codegen
 
 
-def codegen(description, func_to_overload, Workspace):
-    value_type = NUMBA_FE_TYPES_TO_NUMBA_IR[description["value_type"]]
+def codegen(description, func_to_overload):
     execution = description["execution"]
-    requires_workspace = description["requires_workspace"]
-    symbols = description["symbols"]
+    execute_api = description["execute_api"]
 
     check_in("execution", execution, ["Block", "Thread"])
-    check_in("requires_workspace", requires_workspace, [True, False])
-
-    extensions = [WorkspaceArgHandler()]
 
     if execution == "Thread":
-
-        @intrinsic
-        def intrinsic_1(typingctx, thread):
-            return make_codegen("thread", "Thread", value_type, symbols["thread"], False)
-
-        @overload(func_to_overload, target="cuda")
-        def fft_1(thread):
-            def impl(thread):
-                return intrinsic_1(thread)
-
-            return impl
-
-        return {"fft_thread": fft_1, "fft_smem": None, "extensions": None}
-
+        codegen_thread(description, func_to_overload)
     else:
-        if requires_workspace:
+        assert execution == "Block"
 
-            @intrinsic
-            def intrinsic_3(typingctx, thread, smem, workspace):
-                return make_codegen("thread", "Block", value_type, symbols["thread"], True)
-
-            @overload(func_to_overload, target="cuda")
-            def fft_3(thread, smem, workspace):
-                def impl(thread, smem, workspace):
-                    return intrinsic_3(thread, smem, workspace)
-
-                return impl
-
-            ####
-
-            @intrinsic
-            def intrinsic_2(typingctx, smem, workspace):
-                return make_codegen("smem", "Block", value_type, symbols["smem"], True)
-
-            @overload(func_to_overload, target="cuda")
-            def fft_2(smem, workspace):
-                def impl(smem, workspace):
-                    return intrinsic_2(smem, workspace)
-
-                return impl
-
-            return {"fft_thread": fft_3, "fft_smem": fft_2, "extensions": extensions}
-
+        if execute_api == "registry_memory":
+            codegen_block_lmem(description, func_to_overload)
         else:
+            assert execute_api == "shared_memory"
 
-            @intrinsic
-            def intrinsic_2(typingctx, thread, smem):
-                return make_codegen("thread", "Block", value_type, symbols["thread"], False)
+            codegen_block_smem(description, func_to_overload)
 
-            @overload(func_to_overload, target="cuda")
-            def fft_2(thread, smem):
-                def impl(thread, smem):
-                    return intrinsic_2(thread, smem)
 
-                return impl
+def codegen_thread(description, func_to_overload):
+    value_type = NUMBA_FE_TYPES_TO_NUMBA_IR[description["value_type"]]
+    symbol = description["symbol"]
 
-            ####
+    @intrinsic
+    def intrinsic_1(typingctx, thread):
+        return make_codegen("thread", "Thread", value_type, symbol)
 
-            @intrinsic
-            def intrinsic_1(typingctx, smem):
-                return make_codegen("smem", "Block", value_type, symbols["smem"], False)
+    @overload(func_to_overload, target="cuda")
+    def fft(thread):
+        def impl(thread):
+            return intrinsic_1(thread)
 
-            @overload(func_to_overload, target="cuda")
-            def fft_1(smem):
-                def impl(smem):
-                    return intrinsic_1(smem)
+        return impl
 
-                return impl
 
-            return {"fft_thread": fft_2, "fft_smem": fft_1, "extensions": None}
+def codegen_block_lmem(description, func_to_overload):
+    value_type = NUMBA_FE_TYPES_TO_NUMBA_IR[description["value_type"]]
+    symbol = description["symbol"]
+
+    @intrinsic
+    def intrinsic_2(typingctx, thread, smem):
+        return make_codegen("thread", "Block", value_type, symbol)
+
+    @overload(func_to_overload, target="cuda")
+    def fft(thread, smem):
+        def impl(thread, smem):
+            return intrinsic_2(thread, smem)
+
+        return impl
+
+
+def codegen_block_smem(description, func_to_overload):
+    value_type = NUMBA_FE_TYPES_TO_NUMBA_IR[description["value_type"]]
+    symbol = description["symbol"]
+
+    @intrinsic
+    def intrinsic_1(typingctx, smem):
+        return make_codegen("smem", "Block", value_type, symbol)
+
+    @overload(func_to_overload, target="cuda")
+    def fft(smem):
+        def impl(smem):
+            return intrinsic_1(smem)
+
+        return impl

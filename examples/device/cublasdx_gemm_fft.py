@@ -31,7 +31,7 @@ def main():
         size=(m, n, k),
         precision=np.float32,
         data_type="complex",
-        transpose_mode=("non_transposed", "non_transposed"),
+        arrangement=("col_major", "col_major", "col_major"),
         execution="Block",
         block_dim=FFT.block_dim,
         compiler="numba",
@@ -43,17 +43,7 @@ def main():
     storage_size = FFT.storage_size
     stride = FFT.stride
 
-    a_size = MM.a_size
-    b_size = MM.b_size
-
-    a_dim = MM.a_dim
-    b_dim = MM.b_dim
-    c_dim = MM.c_dim
-
-    lda = MM.leading_dimension.a
-    ldb = MM.leading_dimension.b
-    ldc = MM.leading_dimension.c
-    shared_memory_size = max(MM.shared_memory_size, FFT.shared_memory_size)
+    shared_memory_size = max(MM.get_shared_storage_size(), FFT.shared_memory_size)
 
     @cuda.jit(link=MM.files + FFT.files)
     def kernel(a, b, c, alpha, beta, output):
@@ -64,19 +54,20 @@ def main():
         index = cuda.threadIdx.x
 
         smem_a = shared_mem[0:]
-        smem_b = shared_mem[a_size:]
-        smem_c = shared_mem[a_size + b_size :]
+        smem_b = shared_mem[MM.a_size :]
+        smem_c = shared_mem[MM.a_size + MM.b_size :]
+        [lda, ldb, ldc] = MM.leading_dimension
 
-        load_to_shared(a, smem_a, a_dim, lda)
-        load_to_shared(b, smem_b, b_dim, ldb)
-        load_to_shared(c, smem_c, c_dim, ldc)
+        load_to_shared(a, smem_a, MM.a_dim, lda)
+        load_to_shared(b, smem_b, MM.b_dim, ldb)
+        load_to_shared(c, smem_c, MM.c_dim, ldc)
 
         cuda.syncthreads()
 
         # smem_a is 8 * 8
         # smem_b is 8 * 8
         # -> smem_c is 8 * 8 = 64 elements
-        MM(alpha, smem_a, smem_b, beta, smem_c)
+        MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
         cuda.syncthreads()
 
@@ -94,10 +85,10 @@ def main():
             output[index] = thread_data[i]
             index += stride
 
-    a = random_complex(a_dim, np.float32)
-    b = random_complex(b_dim, np.float32)
-    c = random_complex(c_dim, np.float32)
-    o = np.zeros((c_dim[0] * c_dim[1],), dtype=np.complex64)
+    a = random_complex(MM.a_dim, np.float32)
+    b = random_complex(MM.b_dim, np.float32)
+    c = random_complex(MM.c_dim, np.float32)
+    o = np.zeros((MM.c_dim[0] * MM.c_dim[1],), dtype=np.complex64)
 
     a_d = cuda.to_device(a)
     b_d = cuda.to_device(b)

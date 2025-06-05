@@ -54,40 +54,49 @@ def set_max_dynamic_shared_size_bytes(kernel, max_dynamic_smem_size, *args):
 # matrix is always in C-order (cupy/numpy) but smem should always be in F-order (expected by
 # cuBLASDx)
 @cuda.jit(inline="always")
-def load_to_shared_batched(matrix, smem, batch, dim, ld):
+def load_to_shared_batched(matrix, smem, batch, dim, ld, row_major=False):
     start = cuda.threadIdx.x
     step = cuda.blockDim.x
     stop = dim[0] * dim[1]
     for index in range(start, stop, step):
         col = index % dim[1]
         row = index // dim[1]
-        smem[batch * dim[1] * ld + col * ld + row] = matrix[batch, row, col]
+        if row_major:
+            smem[batch * dim[1] * ld + row * ld + col] = matrix[batch, row, col]
+        else:
+            smem[batch * dim[1] * ld + col * ld + row] = matrix[batch, row, col]
 
 
 @cuda.jit(inline="always")
-def load_to_shared(matrix, smem, dim, ld):
+def load_to_shared(matrix, smem, dim, ld, row_major=False):
     start = cuda.threadIdx.x + cuda.threadIdx.y * cuda.blockDim.x + cuda.threadIdx.z * (cuda.blockDim.x * cuda.blockDim.y)
     step = cuda.blockDim.x * cuda.blockDim.y * cuda.blockDim.z
     stop = dim[0] * dim[1]
     for index in range(start, stop, step):
         col = index % dim[1]
         row = index // dim[1]
-        smem[col * ld + row] = matrix[row, col]
+        if row_major:
+            smem[row * ld + col] = matrix[row, col]
+        else:
+            smem[col * ld + row] = matrix[row, col]
 
 
 @cuda.jit(inline="always")
-def load_to_shared_2d(matrix, smem, dim):
+def load_to_shared_2d(matrix, smem, dim, row_major=False):
     start = cuda.threadIdx.x + cuda.threadIdx.y * cuda.blockDim.x + cuda.threadIdx.z * (cuda.blockDim.x * cuda.blockDim.y)
     step = cuda.blockDim.x * cuda.blockDim.y * cuda.blockDim.z
     stop = dim[0] * dim[1]
     for index in range(start, stop, step):
         col = index % dim[1]
         row = index // dim[1]
-        smem[col, row] = matrix[row, col]
+        if row_major:
+            smem[row, col] = matrix[row, col]
+        else:
+            smem[col, row] = matrix[row, col]
 
 
 @cuda.jit(inline="always")
-def load_to_shared_1d_float16x2(matrix, smem, dim, ld):
+def load_to_shared_1d_float16x2(matrix, smem, dim, ld, row_major=False):
     start = cuda.threadIdx.x + cuda.threadIdx.y * cuda.blockDim.x + cuda.threadIdx.z * (cuda.blockDim.x * cuda.blockDim.y)
     step = cuda.blockDim.x * cuda.blockDim.y * cuda.blockDim.z
     stop = dim[0] * dim[1]
@@ -96,7 +105,10 @@ def load_to_shared_1d_float16x2(matrix, smem, dim, ld):
         row = index // dim[1]
         r = matrix[row, 2 * col + 0]
         i = matrix[row, 2 * col + 1]
-        smem[col * ld + row] = float16x2(r, i)
+        if row_major:
+            smem[row * ld + col] = float16x2(r, i)
+        else:
+            smem[col * ld + row] = float16x2(r, i)
 
 
 @cuda.jit(inline="always")
@@ -111,14 +123,17 @@ def store_from_shared_batched(smem, matrix, batch, dim, ld):
 
 
 @cuda.jit(inline="always")
-def store_from_shared(smem, matrix, dim, ld):
+def store_from_shared(smem, matrix, dim, ld, row_major=False):
     start = cuda.threadIdx.x + cuda.threadIdx.y * cuda.blockDim.x + cuda.threadIdx.z * (cuda.blockDim.x * cuda.blockDim.y)
     step = cuda.blockDim.x * cuda.blockDim.y * cuda.blockDim.z
     stop = dim[0] * dim[1]
     for index in range(start, stop, step):
         col = index % dim[1]
         row = index // dim[1]
-        matrix[row, col] = smem[col * ld + row]
+        if row_major:
+            matrix[row, col] = smem[row * ld + col]
+        else:
+            matrix[row, col] = smem[col * ld + row]
 
 
 @cuda.jit(inline="always")

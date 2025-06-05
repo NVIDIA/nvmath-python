@@ -2,18 +2,80 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .caching import json_hash
+from collections.abc import Sequence
+from functools import lru_cache
+from typing import Protocol
+
+import numpy
+
+from nvmath.device.common_backend import DescriptorWrapper
+from nvmath.device.common_cuda import ComputeCapability
 from .common import check_contains, check_in, check_not_in, check_code_type
-from .common_cpp import generate_type_map, NP_TYPES_TO_CPP_TYPES
+from .common_backend import NP_TYPES_TO_MATHDX_PRECISION, EXECUTION_STR_TO_MATHDX, build_get_int_traits, build_get_str_trait
 from .types import REAL_NP_TYPES
 
+from nvmath.bindings import mathdx
 
-def validate(size, precision, fft_type, execution, direction, ffts_per_block, elements_per_thread, real_fft_options, code_type):
+
+_FFT_TYPE_TO_MATHDX = {t.name.lower(): t for t in mathdx.CufftdxType}
+
+_FFT_DIRECTION_TO_MATHDX = {d.name.lower(): d for d in mathdx.CufftdxDirection}
+
+_FFT_COMPLEX_LAYOUT_TO_MATHDX = {cl.name.lower(): cl for cl in mathdx.CufftdxComplexLayout}
+
+_FFT_REAL_MODE_TO_MATHDX = {m.name.lower(): m for m in mathdx.CufftdxRealMode}
+
+_FFT_API_STR_TO_MATHDX = {
+    "registry_memory": mathdx.CufftdxApi.LMEM,
+    "shared_memory": mathdx.CufftdxApi.SMEM,
+}
+
+_FFT_KNOB_TYPE_TO_MATHDX = {t.name.lower(): t for t in mathdx.CufftdxKnobType}
+
+
+class CallableGetIntTraits(Protocol):
+    def __call__(self, handle: int, trait_type: mathdx.CufftdxTraitType, size: int) -> tuple: ...
+
+
+class CallableGetStrTrait(Protocol):
+    def __call__(self, handle: int, trait_type: mathdx.CufftdxTraitType) -> str: ...
+
+
+get_int_traits: CallableGetIntTraits = build_get_int_traits(mathdx.cufftdx_get_trait_int64s)
+
+get_str_trait: CallableGetStrTrait = build_get_str_trait(mathdx.cufftdx_get_trait_str_size, mathdx.cufftdx_get_trait_str)
+
+
+def get_int_trait(handle: int, trait_type: mathdx.CufftdxTraitType) -> int:
+    return int(mathdx.cufftdx_get_trait_int64(handle, trait_type))
+
+
+def get_data_type_trait(handle: int, trait_type: mathdx.CufftdxTraitType) -> mathdx.CommondxValueType:
+    return mathdx.CommondxValueType(mathdx.cufftdx_get_trait_commondx_data_type(handle, trait_type))
+
+
+def validate(
+    size,
+    precision,
+    fft_type,
+    execution,
+    direction,
+    ffts_per_block,
+    elements_per_thread,
+    real_fft_options,
+    code_type,
+    execute_api,
+):
     if size <= 0:
         raise ValueError(f"size must be > 0. Got {size}")
     check_in("precision", precision, REAL_NP_TYPES)
     check_in("fft_type", fft_type, ["c2c", "c2r", "r2c"])
     check_in("execution", execution, ["Block", "Thread"])
+    if execution == "Block":
+        check_in("execute_api", execute_api, list(_FFT_API_STR_TO_MATHDX.keys()) + [None])
+    else:
+        if execute_api is not None:
+            raise ValueError(f"api may be set only for block execution ; got api = {execute_api}")
     if direction is not None:
         check_in("direction", direction, ["forward", "inverse"])
     if ffts_per_block in (None, "suggested"):
@@ -41,156 +103,80 @@ def validate(size, precision, fft_type, execution, direction, ffts_per_block, el
     check_code_type(code_type)
 
 
+@lru_cache
 def generate_FFT(
-    size, precision, fft_type, direction, code_type, execution, ffts_per_block, elements_per_thread, real_fft_options
+    size,
+    precision,
+    fft_type,
+    direction,
+    code_type,
+    execution,
+    ffts_per_block,
+    elements_per_thread,
+    real_fft_options,
+    execute_api,
 ):
     check_not_in("ffts_per_block", ffts_per_block, ["suggested"])
     check_not_in("elements_per_thread", elements_per_thread, ["suggested"])
 
-    if real_fft_options is not None:
+    h = mathdx.cufftdx_create_descriptor()
+
+    if execute_api:
+        mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.API, _FFT_API_STR_TO_MATHDX[execute_api])
+
+    mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.SIZE, size)
+    mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.PRECISION, NP_TYPES_TO_MATHDX_PRECISION[precision])
+    mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.TYPE, _FFT_TYPE_TO_MATHDX[fft_type])
+    mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.DIRECTION, _FFT_DIRECTION_TO_MATHDX[direction])
+
+    if real_fft_options:
+        real_fft_options = dict(real_fft_options)
         ll = real_fft_options["complex_layout"]
         mm = real_fft_options["real_mode"]
-        real_fft_options_str = f"+ RealFFTOptions<complex_layout::{ll}, real_mode::{mm}>()"
-    else:
-        real_fft_options_str = ""
+        mathdx.cufftdx_set_operator_int64s(
+            h, mathdx.CufftdxOperatorType.REAL_FFT_OPTIONS, 2, [_FFT_COMPLEX_LAYOUT_TO_MATHDX[ll], _FFT_REAL_MODE_TO_MATHDX[mm]]
+        )
 
-    if execution == "Block":
-        execution = "+ Block()"
-    elif execution == "Thread":
-        execution = "+ Thread()"
-    else:
-        raise ValueError(f"execution should be Block or Thread ; got execution = {execution}")
+    mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.EXECUTION, EXECUTION_STR_TO_MATHDX[execution])
 
-    if code_type is not None:
-        sm = f"+ SM<{ code_type.cc.major * 100 + code_type.cc.minor * 10 }>()"
-    else:
-        sm = ""
+    if code_type:
+        mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.SM, code_type.cc.major * 100 + code_type.cc.minor * 10)
 
-    if ffts_per_block is not None:
-        ffts_per_block = f"+ FFTsPerBlock<{ ffts_per_block }>()"
-    else:
-        ffts_per_block = ""
+    if ffts_per_block:
+        mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.FFTS_PER_BLOCK, ffts_per_block)
 
-    if elements_per_thread is not None:
-        elements_per_thread = f"+ ElementsPerThread<{ elements_per_thread }>()"
-    else:
-        elements_per_thread = ""
+    if elements_per_thread:
+        mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.ELEMENTS_PER_THREAD, elements_per_thread)
 
-    cpp = f"""\
-    using FFT = decltype(  Size<{ size }>() + Precision<{ NP_TYPES_TO_CPP_TYPES[precision] }>()
-                         + Type<fft_type::{ fft_type }>() + Direction<fft_direction::{ direction }>()
-                         { sm }
-                         { real_fft_options_str }
-                         { ffts_per_block }
-                         { elements_per_thread }
-                         { execution }
-                         );
-    """
+    return DescriptorWrapper(h, mathdx.cufftdx_destroy_descriptor)
 
-    name = json_hash(
-        size=size,
-        precision=NP_TYPES_TO_CPP_TYPES[precision],
-        fft_type=fft_type,
-        direction=direction,
-        sm=sm,
-        ffts_per_block=ffts_per_block,
-        elements_per_thread=elements_per_thread,
-        real_fft_options=real_fft_options,
+
+@lru_cache
+def generate_code(handle, version: ComputeCapability):
+    code = mathdx.commondx_create_code()
+
+    mathdx.commondx_set_code_option_int64(code, mathdx.CommondxOption.TARGET_SM, version.integer)
+    mathdx.cufftdx_finalize_code(code, handle)
+
+    return DescriptorWrapper(code, mathdx.commondx_destroy_code)
+
+
+@lru_cache
+def get_knobs(handle, knobs: Sequence[str]):
+    knobs_dx: list[mathdx.CufftdxKnobType] = [_FFT_KNOB_TYPE_TO_MATHDX[k] for k in knobs]
+    knobs_size = mathdx.cufftdx_get_knob_int64size(handle, len(knobs), knobs_dx)
+
+    knobs_result_dx = numpy.empty(knobs_size, dtype=numpy.int64)
+    mathdx.cufftdx_get_knob_int64s(
+        handle,
+        len(knobs),
+        knobs_dx,
+        knobs_size,
+        knobs_result_dx.ctypes.data,
     )
 
-    return cpp, name
+    knobs_result = [
+        tuple(int(knobs_result_dx[j]) for j in range(i, i + len(knobs))) for i in range(0, len(knobs_result_dx), len(knobs))
+    ]
 
-
-def generate_block(size, precision, fft_type, direction, code_type, ffts_per_block, elements_per_thread, real_fft_options):
-    FFT, name = generate_FFT(
-        size=size,
-        precision=precision,
-        fft_type=fft_type,
-        direction=direction,
-        code_type=code_type,
-        execution="Block",
-        ffts_per_block=ffts_per_block,
-        elements_per_thread=elements_per_thread,
-        real_fft_options=real_fft_options,
-    )
-
-    TYPE_MAP, type_map_name = generate_type_map(name=name)
-
-    thread_api_name = f"libmathdx_function_fft_thread_{name}"
-    smem_api_name = f"libmathdx_function_fft_smem_{name}"
-
-    cpp = f"""\
-    #include <cufftdx.hpp>
-    using namespace cufftdx;
-
-    { TYPE_MAP }
-
-    { FFT }
-
-    __device__ constexpr unsigned  block_dim_x = FFT::block_dim.x;
-    __device__ constexpr unsigned  block_dim_y = FFT::block_dim.y;
-    __device__ constexpr unsigned  block_dim_z = FFT::block_dim.z;
-    __device__ constexpr unsigned  storage_size = FFT::storage_size;
-    __device__ constexpr unsigned  shared_memory_size = FFT::shared_memory_size;
-    __device__ constexpr unsigned  suggested_ffts_per_block = FFT::suggested_ffts_per_block;
-    __device__ constexpr unsigned  stride = FFT::stride;
-    __device__ constexpr unsigned  ffts_per_block = FFT::ffts_per_block;
-    __device__ constexpr unsigned  elements_per_thread = FFT::elements_per_thread;
-    __device__ constexpr unsigned  implicit_type_batching = FFT::implicit_type_batching;
-    __device__ constexpr bool      requires_workspace = FFT::requires_workspace;
-    __device__ constexpr unsigned  workspace_size = FFT::workspace_size;
-    __device__ constexpr unsigned  value_type = {type_map_name}<FFT::value_type>::value;
-    __device__ constexpr unsigned  input_type = {type_map_name}<FFT::input_type>::value;
-    __device__ constexpr unsigned  output_type = {type_map_name}<FFT::output_type>::value;
-
-    __device__ void { thread_api_name }(FFT::value_type* rmem, FFT::value_type* smem, void* handle) {{
-        FFT().execute(rmem, smem);
-    }}
-
-    __device__ void { smem_api_name }(FFT::value_type* rmem, FFT::value_type* smem, void* handle) {{
-        FFT().execute(smem);
-    }}
-
-    """
-
-    return {"cpp": cpp, "names": {"thread": thread_api_name, "smem": smem_api_name}}
-
-
-def generate_thread(size, precision, fft_type, direction, code_type, real_fft_options):
-    FFT, name = generate_FFT(
-        size=size,
-        precision=precision,
-        fft_type=fft_type,
-        direction=direction,
-        code_type=code_type,
-        execution="Thread",
-        ffts_per_block=None,
-        elements_per_thread=None,
-        real_fft_options=real_fft_options,
-    )
-    thread_api_name = f"libmathdx_function_fft_thread_{name}"
-
-    TYPE_MAP, type_map_name = generate_type_map(name=name)
-
-    cpp = f"""\
-    #include <cufftdx.hpp>
-    using namespace cufftdx;
-
-    { TYPE_MAP }
-
-    { FFT }
-
-    __device__ constexpr unsigned  storage_size = FFT::storage_size;
-    __device__ constexpr unsigned  stride = FFT::stride;
-    __device__ constexpr unsigned  elements_per_thread = FFT::elements_per_thread;
-    __device__ constexpr unsigned  implicit_type_batching = FFT::implicit_type_batching;
-    __device__ constexpr unsigned  value_type = {type_map_name}<FFT::value_type>::value;
-    __device__ constexpr unsigned  input_type = {type_map_name}<FFT::input_type>::value;
-    __device__ constexpr unsigned  output_type = {type_map_name}<FFT::output_type>::value;
-
-    __device__ void { thread_api_name }(FFT::value_type* rmem) {{
-        FFT().execute(rmem);
-    }}
-    """
-
-    return {"cpp": cpp, "names": {"thread": thread_api_name}}
+    return knobs_result

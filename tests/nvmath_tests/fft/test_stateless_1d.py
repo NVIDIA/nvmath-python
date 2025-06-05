@@ -9,6 +9,9 @@ from ast import literal_eval
 import pytest
 import numpy as np
 
+from cuda.core.experimental._event import Event
+from nvmath.memory import BaseCUDAMemoryManager, MemoryPointer
+
 try:
     import cupy as cp
 except ImportError:
@@ -401,14 +404,14 @@ def test_fft_ifft_overlap(
 )
 def test_ifft_fft_blocking(monkeypatch, framework, exec_backend, mem_backend, dtype, blocking, shape_kind, shape):
     synchronization_num = 0
-    _actual_sync = cp.cuda.Event.synchronize
+    _actual_sync = Event.sync
 
     def _synchronize(self):
         nonlocal synchronization_num
         synchronization_num += 1
         _actual_sync(self)
 
-    monkeypatch.setattr(cp.cuda.Event, "synchronize", _synchronize)
+    monkeypatch.setattr(Event, "sync", _synchronize)
 
     sample = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=33)
     sample_fft_ref = get_fft_ref(sample)
@@ -881,7 +884,7 @@ def test_incompatible_fft_type_direction(framework, fft_type, direction, exec_ba
     sample = get_random_input_data(framework, (128,), dtype, mem_backend, seed=15)
     with pytest.raises(
         ValueError,
-        match=(f"The specified direction {direction.value} " f"is not compatible with the FFT type '{fft_type.value}'"),
+        match=(f"The specified direction {direction.value} is not compatible with the FFT type '{fft_type.value}'"),
     ):
         fn(sample, execution=exec_backend.nvname, options={"fft_type": fft_type.value})
 
@@ -1309,3 +1312,48 @@ def test_fft_wrong_device_stream(framework, exec_backend, mem_backend, dtype):
         match="cudaErrorInvalidResourceHandle: invalid resource handle",
     ):
         nvmath.fft.fft(signal, stream=stream, execution=exec_backend.nvname)
+
+
+class CustomMemoryManager(BaseCUDAMemoryManager):
+    """
+    This test class implements a mock memory manager that simulates memory allocation
+    and deallocation without actually performing them.
+
+    The class tracks whether its finalizer was called to verify proper cleanup behavior.
+    It uses a fake pointer value since no real memory is allocated.
+    """
+
+    def __init__(self, use_finalizer):
+        self._finalizer_called = False
+        self._use_finalizer = use_finalizer
+
+    def memalloc(self, size):
+        def create_finalizer():
+            def finalizer():
+                # Ensure the finalizer would be called only once
+                assert self._finalizer_called is False
+                self._finalizer_called = True
+
+            return finalizer
+
+        fake_ptr = 123  # We don't actually allocate memory, so just use a fake pointer for simplicity
+        return MemoryPointer(fake_ptr, size, finalizer=create_finalizer() if self._use_finalizer else None)
+
+
+@pytest.mark.parametrize("use_finalizer", [True, False])
+def test_memory_manager_explicit_free(use_finalizer):
+    custom_mgr = CustomMemoryManager(use_finalizer)
+    assert custom_mgr._finalizer_called is False
+    ptr = custom_mgr.memalloc(1000)
+    ptr.free()  # Explicitly release the resource
+    assert custom_mgr._finalizer_called == use_finalizer  # Verify the finalizer was called or not
+
+    # Test double-free
+    if use_finalizer:
+        with pytest.raises(RuntimeError, match="The buffer has already been freed."):
+            ptr.free()  # double-free should raise an error
+    else:
+        ptr.free()  # Nothing bad happened if the finalizer is not provided
+
+    ptr = None  # This should NOT trigger another finalizer even when GC'ed,
+    # verified by the finalizer being called only once above

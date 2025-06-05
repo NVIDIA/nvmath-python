@@ -100,7 +100,7 @@ Older CTKs
 
 Adventurous users who want to try callback functionality and cannot upgrade the CUDA Toolkit
 to 12.6U2, can download and install the older preview release `cuFFT LTO EA version 11.1.3.0
-<https://docs.nvidia.com/cuda/cufft/ltoea/release_notes.html
+<https://docs.nvidia.com/cuda/archive/12.6.1/cufft/ltoea/release_notes.html
 #cufft-lto-ea-preview-11-1-3-0>`_ from `here <https://developer.nvidia.com/cufftea>`_, which
 requires at least CUDA Toolkit 12.2. When using LTO EA, setting environmental variables may
 be needed for nvmath to pick the desired cuFFT version. Users should adjust the
@@ -119,8 +119,8 @@ Execution space
 FFT transforms can be executed either on NVIDIA GPU or CPU. By default, the execution space
 is selected based on the memory space of the operand passed to the FFT call, but it can be
 explicitly controlled with :class:`~nvmath.fft.ExecutionCUDA` and
-:class:`~nvmath.fft.ExecutionCPU` passed as the ``execution`` option to the call (for example
-:class:`~nvmath.fft.FFT` or :func:`~nvmath.fft.fft`).
+:class:`~nvmath.fft.ExecutionCPU` passed as the ``execution`` option to the call (for
+example :class:`~nvmath.fft.FFT` or :func:`~nvmath.fft.fft`).
 
 .. note::
 

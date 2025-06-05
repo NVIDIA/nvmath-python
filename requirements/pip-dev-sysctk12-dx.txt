@@ -1,4 +1,3 @@
--r pip/dev-tools.txt
 -r pip/docs.txt
 -r pip/tests.txt
 -r pip/nvmath-python.txt

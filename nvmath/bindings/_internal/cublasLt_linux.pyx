@@ -112,7 +112,7 @@ cdef int _check_or_init_cublasLt() except -1 nogil:
         with gil:
             raise RuntimeError('something went wrong')
     cdef int err, driver_ver
-    err = (<int (*)(int*) nogil>__cuDriverGetVersion)(&driver_ver)
+    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
     if err != 0:
         with gil:
             raise RuntimeError('something went wrong')
@@ -560,411 +560,411 @@ cpdef _inspect_function_pointer(str name):
 # Wrapper functions
 ###############################################################################
 
-cdef cublasStatus_t _cublasLtCreate(cublasLtHandle_t* lightHandle) except* nogil:
+cdef cublasStatus_t _cublasLtCreate(cublasLtHandle_t* lightHandle) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtCreate
     _check_or_init_cublasLt()
     if __cublasLtCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtCreate is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t*) nogil>__cublasLtCreate)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t*) noexcept nogil>__cublasLtCreate)(
         lightHandle)
 
 
-cdef cublasStatus_t _cublasLtDestroy(cublasLtHandle_t lightHandle) except* nogil:
+cdef cublasStatus_t _cublasLtDestroy(cublasLtHandle_t lightHandle) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtDestroy
     _check_or_init_cublasLt()
     if __cublasLtDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtDestroy is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t) nogil>__cublasLtDestroy)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t) noexcept nogil>__cublasLtDestroy)(
         lightHandle)
 
 
-cdef size_t _cublasLtGetVersion() except* nogil:
+cdef size_t _cublasLtGetVersion() except?0 nogil:
     global __cublasLtGetVersion
     _check_or_init_cublasLt()
     if __cublasLtGetVersion == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtGetVersion is not found")
-    return (<size_t (*)() nogil>__cublasLtGetVersion)(
+    return (<size_t (*)() noexcept nogil>__cublasLtGetVersion)(
         )
 
 
-cdef size_t _cublasLtGetCudartVersion() except* nogil:
+cdef size_t _cublasLtGetCudartVersion() except?0 nogil:
     global __cublasLtGetCudartVersion
     _check_or_init_cublasLt()
     if __cublasLtGetCudartVersion == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtGetCudartVersion is not found")
-    return (<size_t (*)() nogil>__cublasLtGetCudartVersion)(
+    return (<size_t (*)() noexcept nogil>__cublasLtGetCudartVersion)(
         )
 
 
-cdef cublasStatus_t _cublasLtGetProperty(libraryPropertyType type, int* value) except* nogil:
+cdef cublasStatus_t _cublasLtGetProperty(libraryPropertyType type, int* value) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtGetProperty
     _check_or_init_cublasLt()
     if __cublasLtGetProperty == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtGetProperty is not found")
-    return (<cublasStatus_t (*)(libraryPropertyType, int*) nogil>__cublasLtGetProperty)(
+    return (<cublasStatus_t (*)(libraryPropertyType, int*) noexcept nogil>__cublasLtGetProperty)(
         type, value)
 
 
-cdef cublasStatus_t _cublasLtMatmul(cublasLtHandle_t lightHandle, cublasLtMatmulDesc_t computeDesc, const void* alpha, const void* A, cublasLtMatrixLayout_t Adesc, const void* B, cublasLtMatrixLayout_t Bdesc, const void* beta, const void* C, cublasLtMatrixLayout_t Cdesc, void* D, cublasLtMatrixLayout_t Ddesc, const cublasLtMatmulAlgo_t* algo, void* workspace, size_t workspaceSizeInBytes, cudaStream_t stream) except* nogil:
+cdef cublasStatus_t _cublasLtMatmul(cublasLtHandle_t lightHandle, cublasLtMatmulDesc_t computeDesc, const void* alpha, const void* A, cublasLtMatrixLayout_t Adesc, const void* B, cublasLtMatrixLayout_t Bdesc, const void* beta, const void* C, cublasLtMatrixLayout_t Cdesc, void* D, cublasLtMatrixLayout_t Ddesc, const cublasLtMatmulAlgo_t* algo, void* workspace, size_t workspaceSizeInBytes, cudaStream_t stream) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmul
     _check_or_init_cublasLt()
     if __cublasLtMatmul == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmul is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatmulDesc_t, const void*, const void*, cublasLtMatrixLayout_t, const void*, cublasLtMatrixLayout_t, const void*, const void*, cublasLtMatrixLayout_t, void*, cublasLtMatrixLayout_t, const cublasLtMatmulAlgo_t*, void*, size_t, cudaStream_t) nogil>__cublasLtMatmul)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatmulDesc_t, const void*, const void*, cublasLtMatrixLayout_t, const void*, cublasLtMatrixLayout_t, const void*, const void*, cublasLtMatrixLayout_t, void*, cublasLtMatrixLayout_t, const cublasLtMatmulAlgo_t*, void*, size_t, cudaStream_t) noexcept nogil>__cublasLtMatmul)(
         lightHandle, computeDesc, alpha, A, Adesc, B, Bdesc, beta, C, Cdesc, D, Ddesc, algo, workspace, workspaceSizeInBytes, stream)
 
 
-cdef cublasStatus_t _cublasLtMatrixTransform(cublasLtHandle_t lightHandle, cublasLtMatrixTransformDesc_t transformDesc, const void* alpha, const void* A, cublasLtMatrixLayout_t Adesc, const void* beta, const void* B, cublasLtMatrixLayout_t Bdesc, void* C, cublasLtMatrixLayout_t Cdesc, cudaStream_t stream) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixTransform(cublasLtHandle_t lightHandle, cublasLtMatrixTransformDesc_t transformDesc, const void* alpha, const void* A, cublasLtMatrixLayout_t Adesc, const void* beta, const void* B, cublasLtMatrixLayout_t Bdesc, void* C, cublasLtMatrixLayout_t Cdesc, cudaStream_t stream) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixTransform
     _check_or_init_cublasLt()
     if __cublasLtMatrixTransform == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixTransform is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatrixTransformDesc_t, const void*, const void*, cublasLtMatrixLayout_t, const void*, const void*, cublasLtMatrixLayout_t, void*, cublasLtMatrixLayout_t, cudaStream_t) nogil>__cublasLtMatrixTransform)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatrixTransformDesc_t, const void*, const void*, cublasLtMatrixLayout_t, const void*, const void*, cublasLtMatrixLayout_t, void*, cublasLtMatrixLayout_t, cudaStream_t) noexcept nogil>__cublasLtMatrixTransform)(
         lightHandle, transformDesc, alpha, A, Adesc, beta, B, Bdesc, C, Cdesc, stream)
 
 
-cdef cublasStatus_t _cublasLtMatrixLayoutCreate(cublasLtMatrixLayout_t* matLayout, cudaDataType type, uint64_t rows, uint64_t cols, int64_t ld) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixLayoutCreate(cublasLtMatrixLayout_t* matLayout, cudaDataType type, uint64_t rows, uint64_t cols, int64_t ld) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixLayoutCreate
     _check_or_init_cublasLt()
     if __cublasLtMatrixLayoutCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixLayoutCreate is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t*, cudaDataType, uint64_t, uint64_t, int64_t) nogil>__cublasLtMatrixLayoutCreate)(
+    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t*, cudaDataType, uint64_t, uint64_t, int64_t) noexcept nogil>__cublasLtMatrixLayoutCreate)(
         matLayout, type, rows, cols, ld)
 
 
-cdef cublasStatus_t _cublasLtMatrixLayoutDestroy(cublasLtMatrixLayout_t matLayout) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixLayoutDestroy(cublasLtMatrixLayout_t matLayout) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixLayoutDestroy
     _check_or_init_cublasLt()
     if __cublasLtMatrixLayoutDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixLayoutDestroy is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t) nogil>__cublasLtMatrixLayoutDestroy)(
+    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t) noexcept nogil>__cublasLtMatrixLayoutDestroy)(
         matLayout)
 
 
-cdef cublasStatus_t _cublasLtMatrixLayoutSetAttribute(cublasLtMatrixLayout_t matLayout, cublasLtMatrixLayoutAttribute_t attr, const void* buf, size_t sizeInBytes) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixLayoutSetAttribute(cublasLtMatrixLayout_t matLayout, cublasLtMatrixLayoutAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixLayoutSetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatrixLayoutSetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixLayoutSetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t, cublasLtMatrixLayoutAttribute_t, const void*, size_t) nogil>__cublasLtMatrixLayoutSetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t, cublasLtMatrixLayoutAttribute_t, const void*, size_t) noexcept nogil>__cublasLtMatrixLayoutSetAttribute)(
         matLayout, attr, buf, sizeInBytes)
 
 
-cdef cublasStatus_t _cublasLtMatrixLayoutGetAttribute(cublasLtMatrixLayout_t matLayout, cublasLtMatrixLayoutAttribute_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixLayoutGetAttribute(cublasLtMatrixLayout_t matLayout, cublasLtMatrixLayoutAttribute_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixLayoutGetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatrixLayoutGetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixLayoutGetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t, cublasLtMatrixLayoutAttribute_t, void*, size_t, size_t*) nogil>__cublasLtMatrixLayoutGetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t, cublasLtMatrixLayoutAttribute_t, void*, size_t, size_t*) noexcept nogil>__cublasLtMatrixLayoutGetAttribute)(
         matLayout, attr, buf, sizeInBytes, sizeWritten)
 
 
-cdef cublasStatus_t _cublasLtMatmulDescCreate(cublasLtMatmulDesc_t* matmulDesc, cublasComputeType_t computeType, cudaDataType_t scaleType) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulDescCreate(cublasLtMatmulDesc_t* matmulDesc, cublasComputeType_t computeType, cudaDataType_t scaleType) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulDescCreate
     _check_or_init_cublasLt()
     if __cublasLtMatmulDescCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulDescCreate is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t*, cublasComputeType_t, cudaDataType_t) nogil>__cublasLtMatmulDescCreate)(
+    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t*, cublasComputeType_t, cudaDataType_t) noexcept nogil>__cublasLtMatmulDescCreate)(
         matmulDesc, computeType, scaleType)
 
 
-cdef cublasStatus_t _cublasLtMatmulDescDestroy(cublasLtMatmulDesc_t matmulDesc) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulDescDestroy(cublasLtMatmulDesc_t matmulDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulDescDestroy
     _check_or_init_cublasLt()
     if __cublasLtMatmulDescDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulDescDestroy is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t) nogil>__cublasLtMatmulDescDestroy)(
+    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t) noexcept nogil>__cublasLtMatmulDescDestroy)(
         matmulDesc)
 
 
-cdef cublasStatus_t _cublasLtMatmulDescSetAttribute(cublasLtMatmulDesc_t matmulDesc, cublasLtMatmulDescAttributes_t attr, const void* buf, size_t sizeInBytes) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulDescSetAttribute(cublasLtMatmulDesc_t matmulDesc, cublasLtMatmulDescAttributes_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulDescSetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatmulDescSetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulDescSetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t, cublasLtMatmulDescAttributes_t, const void*, size_t) nogil>__cublasLtMatmulDescSetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t, cublasLtMatmulDescAttributes_t, const void*, size_t) noexcept nogil>__cublasLtMatmulDescSetAttribute)(
         matmulDesc, attr, buf, sizeInBytes)
 
 
-cdef cublasStatus_t _cublasLtMatmulDescGetAttribute(cublasLtMatmulDesc_t matmulDesc, cublasLtMatmulDescAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulDescGetAttribute(cublasLtMatmulDesc_t matmulDesc, cublasLtMatmulDescAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulDescGetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatmulDescGetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulDescGetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t, cublasLtMatmulDescAttributes_t, void*, size_t, size_t*) nogil>__cublasLtMatmulDescGetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatmulDesc_t, cublasLtMatmulDescAttributes_t, void*, size_t, size_t*) noexcept nogil>__cublasLtMatmulDescGetAttribute)(
         matmulDesc, attr, buf, sizeInBytes, sizeWritten)
 
 
-cdef cublasStatus_t _cublasLtMatrixTransformDescCreate(cublasLtMatrixTransformDesc_t* transformDesc, cudaDataType scaleType) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixTransformDescCreate(cublasLtMatrixTransformDesc_t* transformDesc, cudaDataType scaleType) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixTransformDescCreate
     _check_or_init_cublasLt()
     if __cublasLtMatrixTransformDescCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixTransformDescCreate is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t*, cudaDataType) nogil>__cublasLtMatrixTransformDescCreate)(
+    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t*, cudaDataType) noexcept nogil>__cublasLtMatrixTransformDescCreate)(
         transformDesc, scaleType)
 
 
-cdef cublasStatus_t _cublasLtMatrixTransformDescDestroy(cublasLtMatrixTransformDesc_t transformDesc) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixTransformDescDestroy(cublasLtMatrixTransformDesc_t transformDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixTransformDescDestroy
     _check_or_init_cublasLt()
     if __cublasLtMatrixTransformDescDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixTransformDescDestroy is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t) nogil>__cublasLtMatrixTransformDescDestroy)(
+    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t) noexcept nogil>__cublasLtMatrixTransformDescDestroy)(
         transformDesc)
 
 
-cdef cublasStatus_t _cublasLtMatrixTransformDescSetAttribute(cublasLtMatrixTransformDesc_t transformDesc, cublasLtMatrixTransformDescAttributes_t attr, const void* buf, size_t sizeInBytes) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixTransformDescSetAttribute(cublasLtMatrixTransformDesc_t transformDesc, cublasLtMatrixTransformDescAttributes_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixTransformDescSetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatrixTransformDescSetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixTransformDescSetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t, cublasLtMatrixTransformDescAttributes_t, const void*, size_t) nogil>__cublasLtMatrixTransformDescSetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t, cublasLtMatrixTransformDescAttributes_t, const void*, size_t) noexcept nogil>__cublasLtMatrixTransformDescSetAttribute)(
         transformDesc, attr, buf, sizeInBytes)
 
 
-cdef cublasStatus_t _cublasLtMatrixTransformDescGetAttribute(cublasLtMatrixTransformDesc_t transformDesc, cublasLtMatrixTransformDescAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except* nogil:
+cdef cublasStatus_t _cublasLtMatrixTransformDescGetAttribute(cublasLtMatrixTransformDesc_t transformDesc, cublasLtMatrixTransformDescAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatrixTransformDescGetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatrixTransformDescGetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatrixTransformDescGetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t, cublasLtMatrixTransformDescAttributes_t, void*, size_t, size_t*) nogil>__cublasLtMatrixTransformDescGetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatrixTransformDesc_t, cublasLtMatrixTransformDescAttributes_t, void*, size_t, size_t*) noexcept nogil>__cublasLtMatrixTransformDescGetAttribute)(
         transformDesc, attr, buf, sizeInBytes, sizeWritten)
 
 
-cdef cublasStatus_t _cublasLtMatmulPreferenceCreate(cublasLtMatmulPreference_t* pref) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulPreferenceCreate(cublasLtMatmulPreference_t* pref) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulPreferenceCreate
     _check_or_init_cublasLt()
     if __cublasLtMatmulPreferenceCreate == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulPreferenceCreate is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t*) nogil>__cublasLtMatmulPreferenceCreate)(
+    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t*) noexcept nogil>__cublasLtMatmulPreferenceCreate)(
         pref)
 
 
-cdef cublasStatus_t _cublasLtMatmulPreferenceDestroy(cublasLtMatmulPreference_t pref) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulPreferenceDestroy(cublasLtMatmulPreference_t pref) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulPreferenceDestroy
     _check_or_init_cublasLt()
     if __cublasLtMatmulPreferenceDestroy == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulPreferenceDestroy is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t) nogil>__cublasLtMatmulPreferenceDestroy)(
+    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t) noexcept nogil>__cublasLtMatmulPreferenceDestroy)(
         pref)
 
 
-cdef cublasStatus_t _cublasLtMatmulPreferenceSetAttribute(cublasLtMatmulPreference_t pref, cublasLtMatmulPreferenceAttributes_t attr, const void* buf, size_t sizeInBytes) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulPreferenceSetAttribute(cublasLtMatmulPreference_t pref, cublasLtMatmulPreferenceAttributes_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulPreferenceSetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatmulPreferenceSetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulPreferenceSetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t, cublasLtMatmulPreferenceAttributes_t, const void*, size_t) nogil>__cublasLtMatmulPreferenceSetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t, cublasLtMatmulPreferenceAttributes_t, const void*, size_t) noexcept nogil>__cublasLtMatmulPreferenceSetAttribute)(
         pref, attr, buf, sizeInBytes)
 
 
-cdef cublasStatus_t _cublasLtMatmulPreferenceGetAttribute(cublasLtMatmulPreference_t pref, cublasLtMatmulPreferenceAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulPreferenceGetAttribute(cublasLtMatmulPreference_t pref, cublasLtMatmulPreferenceAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulPreferenceGetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatmulPreferenceGetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulPreferenceGetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t, cublasLtMatmulPreferenceAttributes_t, void*, size_t, size_t*) nogil>__cublasLtMatmulPreferenceGetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatmulPreference_t, cublasLtMatmulPreferenceAttributes_t, void*, size_t, size_t*) noexcept nogil>__cublasLtMatmulPreferenceGetAttribute)(
         pref, attr, buf, sizeInBytes, sizeWritten)
 
 
-cdef cublasStatus_t _cublasLtMatmulAlgoGetHeuristic(cublasLtHandle_t lightHandle, cublasLtMatmulDesc_t operationDesc, cublasLtMatrixLayout_t Adesc, cublasLtMatrixLayout_t Bdesc, cublasLtMatrixLayout_t Cdesc, cublasLtMatrixLayout_t Ddesc, cublasLtMatmulPreference_t preference, int requestedAlgoCount, cublasLtMatmulHeuristicResult_t heuristicResultsArray[], int* returnAlgoCount) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulAlgoGetHeuristic(cublasLtHandle_t lightHandle, cublasLtMatmulDesc_t operationDesc, cublasLtMatrixLayout_t Adesc, cublasLtMatrixLayout_t Bdesc, cublasLtMatrixLayout_t Cdesc, cublasLtMatrixLayout_t Ddesc, cublasLtMatmulPreference_t preference, int requestedAlgoCount, cublasLtMatmulHeuristicResult_t heuristicResultsArray[], int* returnAlgoCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulAlgoGetHeuristic
     _check_or_init_cublasLt()
     if __cublasLtMatmulAlgoGetHeuristic == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulAlgoGetHeuristic is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatmulDesc_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatmulPreference_t, int, cublasLtMatmulHeuristicResult_t*, int*) nogil>__cublasLtMatmulAlgoGetHeuristic)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatmulDesc_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatmulPreference_t, int, cublasLtMatmulHeuristicResult_t*, int*) noexcept nogil>__cublasLtMatmulAlgoGetHeuristic)(
         lightHandle, operationDesc, Adesc, Bdesc, Cdesc, Ddesc, preference, requestedAlgoCount, heuristicResultsArray, returnAlgoCount)
 
 
-cdef cublasStatus_t _cublasLtMatmulAlgoGetIds(cublasLtHandle_t lightHandle, cublasComputeType_t computeType, cudaDataType_t scaleType, cudaDataType_t Atype, cudaDataType_t Btype, cudaDataType_t Ctype, cudaDataType_t Dtype, int requestedAlgoCount, int algoIdsArray[], int* returnAlgoCount) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulAlgoGetIds(cublasLtHandle_t lightHandle, cublasComputeType_t computeType, cudaDataType_t scaleType, cudaDataType_t Atype, cudaDataType_t Btype, cudaDataType_t Ctype, cudaDataType_t Dtype, int requestedAlgoCount, int algoIdsArray[], int* returnAlgoCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulAlgoGetIds
     _check_or_init_cublasLt()
     if __cublasLtMatmulAlgoGetIds == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulAlgoGetIds is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasComputeType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, int, int*, int*) nogil>__cublasLtMatmulAlgoGetIds)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasComputeType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, int, int*, int*) noexcept nogil>__cublasLtMatmulAlgoGetIds)(
         lightHandle, computeType, scaleType, Atype, Btype, Ctype, Dtype, requestedAlgoCount, algoIdsArray, returnAlgoCount)
 
 
-cdef cublasStatus_t _cublasLtMatmulAlgoInit(cublasLtHandle_t lightHandle, cublasComputeType_t computeType, cudaDataType_t scaleType, cudaDataType_t Atype, cudaDataType_t Btype, cudaDataType_t Ctype, cudaDataType_t Dtype, int algoId, cublasLtMatmulAlgo_t* algo) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulAlgoInit(cublasLtHandle_t lightHandle, cublasComputeType_t computeType, cudaDataType_t scaleType, cudaDataType_t Atype, cudaDataType_t Btype, cudaDataType_t Ctype, cudaDataType_t Dtype, int algoId, cublasLtMatmulAlgo_t* algo) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulAlgoInit
     _check_or_init_cublasLt()
     if __cublasLtMatmulAlgoInit == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulAlgoInit is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasComputeType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, int, cublasLtMatmulAlgo_t*) nogil>__cublasLtMatmulAlgoInit)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasComputeType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, cudaDataType_t, int, cublasLtMatmulAlgo_t*) noexcept nogil>__cublasLtMatmulAlgoInit)(
         lightHandle, computeType, scaleType, Atype, Btype, Ctype, Dtype, algoId, algo)
 
 
-cdef cublasStatus_t _cublasLtMatmulAlgoCheck(cublasLtHandle_t lightHandle, cublasLtMatmulDesc_t operationDesc, cublasLtMatrixLayout_t Adesc, cublasLtMatrixLayout_t Bdesc, cublasLtMatrixLayout_t Cdesc, cublasLtMatrixLayout_t Ddesc, const cublasLtMatmulAlgo_t* algo, cublasLtMatmulHeuristicResult_t* result) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulAlgoCheck(cublasLtHandle_t lightHandle, cublasLtMatmulDesc_t operationDesc, cublasLtMatrixLayout_t Adesc, cublasLtMatrixLayout_t Bdesc, cublasLtMatrixLayout_t Cdesc, cublasLtMatrixLayout_t Ddesc, const cublasLtMatmulAlgo_t* algo, cublasLtMatmulHeuristicResult_t* result) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulAlgoCheck
     _check_or_init_cublasLt()
     if __cublasLtMatmulAlgoCheck == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulAlgoCheck is not found")
-    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatmulDesc_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, const cublasLtMatmulAlgo_t*, cublasLtMatmulHeuristicResult_t*) nogil>__cublasLtMatmulAlgoCheck)(
+    return (<cublasStatus_t (*)(cublasLtHandle_t, cublasLtMatmulDesc_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, cublasLtMatrixLayout_t, const cublasLtMatmulAlgo_t*, cublasLtMatmulHeuristicResult_t*) noexcept nogil>__cublasLtMatmulAlgoCheck)(
         lightHandle, operationDesc, Adesc, Bdesc, Cdesc, Ddesc, algo, result)
 
 
-cdef cublasStatus_t _cublasLtMatmulAlgoCapGetAttribute(const cublasLtMatmulAlgo_t* algo, cublasLtMatmulAlgoCapAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulAlgoCapGetAttribute(const cublasLtMatmulAlgo_t* algo, cublasLtMatmulAlgoCapAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulAlgoCapGetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatmulAlgoCapGetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulAlgoCapGetAttribute is not found")
-    return (<cublasStatus_t (*)(const cublasLtMatmulAlgo_t*, cublasLtMatmulAlgoCapAttributes_t, void*, size_t, size_t*) nogil>__cublasLtMatmulAlgoCapGetAttribute)(
+    return (<cublasStatus_t (*)(const cublasLtMatmulAlgo_t*, cublasLtMatmulAlgoCapAttributes_t, void*, size_t, size_t*) noexcept nogil>__cublasLtMatmulAlgoCapGetAttribute)(
         algo, attr, buf, sizeInBytes, sizeWritten)
 
 
-cdef cublasStatus_t _cublasLtMatmulAlgoConfigSetAttribute(cublasLtMatmulAlgo_t* algo, cublasLtMatmulAlgoConfigAttributes_t attr, const void* buf, size_t sizeInBytes) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulAlgoConfigSetAttribute(cublasLtMatmulAlgo_t* algo, cublasLtMatmulAlgoConfigAttributes_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulAlgoConfigSetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatmulAlgoConfigSetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulAlgoConfigSetAttribute is not found")
-    return (<cublasStatus_t (*)(cublasLtMatmulAlgo_t*, cublasLtMatmulAlgoConfigAttributes_t, const void*, size_t) nogil>__cublasLtMatmulAlgoConfigSetAttribute)(
+    return (<cublasStatus_t (*)(cublasLtMatmulAlgo_t*, cublasLtMatmulAlgoConfigAttributes_t, const void*, size_t) noexcept nogil>__cublasLtMatmulAlgoConfigSetAttribute)(
         algo, attr, buf, sizeInBytes)
 
 
-cdef cublasStatus_t _cublasLtMatmulAlgoConfigGetAttribute(const cublasLtMatmulAlgo_t* algo, cublasLtMatmulAlgoConfigAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except* nogil:
+cdef cublasStatus_t _cublasLtMatmulAlgoConfigGetAttribute(const cublasLtMatmulAlgo_t* algo, cublasLtMatmulAlgoConfigAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtMatmulAlgoConfigGetAttribute
     _check_or_init_cublasLt()
     if __cublasLtMatmulAlgoConfigGetAttribute == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtMatmulAlgoConfigGetAttribute is not found")
-    return (<cublasStatus_t (*)(const cublasLtMatmulAlgo_t*, cublasLtMatmulAlgoConfigAttributes_t, void*, size_t, size_t*) nogil>__cublasLtMatmulAlgoConfigGetAttribute)(
+    return (<cublasStatus_t (*)(const cublasLtMatmulAlgo_t*, cublasLtMatmulAlgoConfigAttributes_t, void*, size_t, size_t*) noexcept nogil>__cublasLtMatmulAlgoConfigGetAttribute)(
         algo, attr, buf, sizeInBytes, sizeWritten)
 
 
-cdef cublasStatus_t _cublasLtLoggerSetCallback(cublasLtLoggerCallback_t callback) except* nogil:
+cdef cublasStatus_t _cublasLtLoggerSetCallback(cublasLtLoggerCallback_t callback) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtLoggerSetCallback
     _check_or_init_cublasLt()
     if __cublasLtLoggerSetCallback == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtLoggerSetCallback is not found")
-    return (<cublasStatus_t (*)(cublasLtLoggerCallback_t) nogil>__cublasLtLoggerSetCallback)(
+    return (<cublasStatus_t (*)(cublasLtLoggerCallback_t) noexcept nogil>__cublasLtLoggerSetCallback)(
         callback)
 
 
-cdef cublasStatus_t _cublasLtLoggerSetFile(FILE* file) except* nogil:
+cdef cublasStatus_t _cublasLtLoggerSetFile(FILE* file) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtLoggerSetFile
     _check_or_init_cublasLt()
     if __cublasLtLoggerSetFile == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtLoggerSetFile is not found")
-    return (<cublasStatus_t (*)(FILE*) nogil>__cublasLtLoggerSetFile)(
+    return (<cublasStatus_t (*)(FILE*) noexcept nogil>__cublasLtLoggerSetFile)(
         file)
 
 
-cdef cublasStatus_t _cublasLtLoggerOpenFile(const char* logFile) except* nogil:
+cdef cublasStatus_t _cublasLtLoggerOpenFile(const char* logFile) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtLoggerOpenFile
     _check_or_init_cublasLt()
     if __cublasLtLoggerOpenFile == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtLoggerOpenFile is not found")
-    return (<cublasStatus_t (*)(const char*) nogil>__cublasLtLoggerOpenFile)(
+    return (<cublasStatus_t (*)(const char*) noexcept nogil>__cublasLtLoggerOpenFile)(
         logFile)
 
 
-cdef cublasStatus_t _cublasLtLoggerSetLevel(int level) except* nogil:
+cdef cublasStatus_t _cublasLtLoggerSetLevel(int level) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtLoggerSetLevel
     _check_or_init_cublasLt()
     if __cublasLtLoggerSetLevel == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtLoggerSetLevel is not found")
-    return (<cublasStatus_t (*)(int) nogil>__cublasLtLoggerSetLevel)(
+    return (<cublasStatus_t (*)(int) noexcept nogil>__cublasLtLoggerSetLevel)(
         level)
 
 
-cdef cublasStatus_t _cublasLtLoggerSetMask(int mask) except* nogil:
+cdef cublasStatus_t _cublasLtLoggerSetMask(int mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtLoggerSetMask
     _check_or_init_cublasLt()
     if __cublasLtLoggerSetMask == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtLoggerSetMask is not found")
-    return (<cublasStatus_t (*)(int) nogil>__cublasLtLoggerSetMask)(
+    return (<cublasStatus_t (*)(int) noexcept nogil>__cublasLtLoggerSetMask)(
         mask)
 
 
-cdef cublasStatus_t _cublasLtLoggerForceDisable() except* nogil:
+cdef cublasStatus_t _cublasLtLoggerForceDisable() except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtLoggerForceDisable
     _check_or_init_cublasLt()
     if __cublasLtLoggerForceDisable == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtLoggerForceDisable is not found")
-    return (<cublasStatus_t (*)() nogil>__cublasLtLoggerForceDisable)(
+    return (<cublasStatus_t (*)() noexcept nogil>__cublasLtLoggerForceDisable)(
         )
 
 
-cdef const char* _cublasLtGetStatusName(cublasStatus_t status) except* nogil:
+cdef const char* _cublasLtGetStatusName(cublasStatus_t status) except?NULL nogil:
     global __cublasLtGetStatusName
     _check_or_init_cublasLt()
     if __cublasLtGetStatusName == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtGetStatusName is not found")
-    return (<const char* (*)(cublasStatus_t) nogil>__cublasLtGetStatusName)(
+    return (<const char* (*)(cublasStatus_t) noexcept nogil>__cublasLtGetStatusName)(
         status)
 
 
-cdef const char* _cublasLtGetStatusString(cublasStatus_t status) except* nogil:
+cdef const char* _cublasLtGetStatusString(cublasStatus_t status) except?NULL nogil:
     global __cublasLtGetStatusString
     _check_or_init_cublasLt()
     if __cublasLtGetStatusString == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtGetStatusString is not found")
-    return (<const char* (*)(cublasStatus_t) nogil>__cublasLtGetStatusString)(
+    return (<const char* (*)(cublasStatus_t) noexcept nogil>__cublasLtGetStatusString)(
         status)
 
 
-cdef cublasStatus_t _cublasLtHeuristicsCacheGetCapacity(size_t* capacity) except* nogil:
+cdef cublasStatus_t _cublasLtHeuristicsCacheGetCapacity(size_t* capacity) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtHeuristicsCacheGetCapacity
     _check_or_init_cublasLt()
     if __cublasLtHeuristicsCacheGetCapacity == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtHeuristicsCacheGetCapacity is not found")
-    return (<cublasStatus_t (*)(size_t*) nogil>__cublasLtHeuristicsCacheGetCapacity)(
+    return (<cublasStatus_t (*)(size_t*) noexcept nogil>__cublasLtHeuristicsCacheGetCapacity)(
         capacity)
 
 
-cdef cublasStatus_t _cublasLtHeuristicsCacheSetCapacity(size_t capacity) except* nogil:
+cdef cublasStatus_t _cublasLtHeuristicsCacheSetCapacity(size_t capacity) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasLtHeuristicsCacheSetCapacity
     _check_or_init_cublasLt()
     if __cublasLtHeuristicsCacheSetCapacity == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtHeuristicsCacheSetCapacity is not found")
-    return (<cublasStatus_t (*)(size_t) nogil>__cublasLtHeuristicsCacheSetCapacity)(
+    return (<cublasStatus_t (*)(size_t) noexcept nogil>__cublasLtHeuristicsCacheSetCapacity)(
         capacity)
 
 
-cdef unsigned _cublasLtDisableCpuInstructionsSetMask(unsigned mask) except* nogil:
+cdef unsigned _cublasLtDisableCpuInstructionsSetMask(unsigned mask) except?0 nogil:
     global __cublasLtDisableCpuInstructionsSetMask
     _check_or_init_cublasLt()
     if __cublasLtDisableCpuInstructionsSetMask == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasLtDisableCpuInstructionsSetMask is not found")
-    return (<unsigned (*)(unsigned) nogil>__cublasLtDisableCpuInstructionsSetMask)(
+    return (<unsigned (*)(unsigned) noexcept nogil>__cublasLtDisableCpuInstructionsSetMask)(
         mask)

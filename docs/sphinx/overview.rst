@@ -20,11 +20,13 @@ the following groups of users:
 
 The APIs provided by nvmath-python can be categorized into:
 
-- **Host APIs**: Invoked from the host and executed in the chosen space (currently limited
-  to single GPUs).
+- **Host APIs**: Invoked from the host and executed in the chosen space. While all host
+  APIs support the GPU execution space, select APIs also support CPU and distributed
+  (multi-node multi-GPU) execution spaces.
 - **Device APIs**: Called directly from within CUDA kernels.
 
-nvmath-python is dedicated to delivering the following key features and commitments:
+The nvmath-python library is dedicated to delivering the following key features and
+commitments:
 
 1. **Logical Feature Parity**: While the Pythonic API surface (the number of APIs and the
    complexity of each) is more concise compared to that of the C libraries, it provides

@@ -4,26 +4,30 @@
 
 __all__ = ["fft", "FFTOptions"]
 from functools import cached_property
-import os
+import warnings
 
 from .common import (
     make_binary_tempfile,
     check_in,
-    find_unsigned,
-    find_dim3,
-    find_mangled_name,
     SHARED_DEVICE_DOCSTRINGS,
 )
-from .common_cuda import get_default_code_type, Code, CodeType, Symbol, ComputeCapability, Dim3
-from .common_cpp import enum_to_np
-from .common_mathdx import MATHDX_HOME
+from .common_cuda import get_default_code_type, Code, CodeType, ComputeCapability, Dim3
+from .common_backend import MATHDX_TYPES_TO_NP, get_isa_version, get_lto
 from .common_numba import NP_TYPES_TO_NUMBA_FE_TYPES
-from .cufftdx_backend import validate, generate_block, generate_thread
-from .cufftdx_db import cuFFTDxDatabase
+from .cufftdx_backend import (
+    generate_code,
+    get_int_trait,
+    get_knobs,
+    get_str_trait,
+    get_int_traits,
+    get_data_type_trait,
+    validate,
+    generate_FFT,
+)
 from .cufftdx_numba import codegen
-from .cufftdx_workspace import Workspace
-from .nvrtc import compile
-from .._internal.utils import docstring_decorator
+from nvmath.internal.utils import docstring_decorator
+
+from nvmath.bindings import mathdx
 
 CUFFTDX_DATABASE = None
 
@@ -50,7 +54,14 @@ set to a suggested value. """.replace("\n", " "),
         #
         "real_fft_options": """\
 A dictionary specifying the options for real FFT operation, optional.""".replace("\n", " "),
+        "execute_api": """\
+A string specifying the signature of the function that handles problems with input in register or in shared memory buffers.
+Could be ``'shared_memory'`` or ``'registry_memory'``.""".replace("\n", " "),
     }
+)
+
+_workspace_deprecation_warning = lambda: warnings.warn(
+    "Using workspaces is deprecated and will be removed in future release.", DeprecationWarning
 )
 
 
@@ -58,8 +69,8 @@ A dictionary specifying the options for real FFT operation, optional.""".replace
 class FFTOptions:
     """
     A class that encapsulates a partial FFT device function. A partial device function can
-    be queried for available or optimal values for the some knobs (such as
-    `leading_dimension` or `block_dim`). It does not contain a compiled, ready-to-use,
+    be queried for available or optimal values for some knobs (such as `ffts_per_block`
+    or `elements_per_thread`). It does not contain a compiled, ready-to-use,
     device function until finalized using :meth:`create`.
 
     Args:
@@ -86,6 +97,8 @@ class FFTOptions:
               ``'full'``.
             - ``'real_mode'``, currently supports ``'normal'`` and ``'folded``.
 
+        execute_api (str): {execute_api}
+
     Note:
         The class is not meant to be used directly with its constructor. Users are instead
         advised to use :func:`fft` to create the object.
@@ -108,6 +121,7 @@ class FFTOptions:
         ffts_per_block=None,
         elements_per_thread=None,
         real_fft_options=None,
+        execute_api=None,
     ):
         if len(code_type) != 2:
             raise ValueError(f"code_type should be an instance of CodeType or a 2-tuple ; got code_type = {code_type}")
@@ -119,7 +133,8 @@ class FFTOptions:
         # TODO: cufftdx does not support platforms > arch90 for now
         if (code_type.cc.major, code_type.cc.minor) > (9, 0):
             raise RuntimeError(
-                f"The maximum compute capability currently supported by device APIs is 9.0, got {code_type.cc.major}.{code_type.cc.minor}"
+                "The maximum compute capability currently supported by device "
+                f"APIs is 9.0, got {code_type.cc.major}.{code_type.cc.minor}"
             )
 
         #
@@ -136,12 +151,16 @@ class FFTOptions:
             ffts_per_block=ffts_per_block,
             elements_per_thread=elements_per_thread,
             real_fft_options=real_fft_options,
+            execute_api=execute_api,
         )
 
         if direction is None and fft_type == "r2c":
             direction = "forward"
         elif direction is None and fft_type == "c2r":
             direction = "inverse"
+
+        if not execute_api:
+            execute_api = "registry_memory"
 
         #
         # Traits set by input
@@ -156,6 +175,7 @@ class FFTOptions:
         self._elements_per_thread = elements_per_thread
         self._real_fft_options = real_fft_options
         self._code_type = code_type
+        self._execute_api = execute_api
 
         #
         # Update suggested traits
@@ -200,6 +220,10 @@ class FFTOptions:
         return self._real_fft_options
 
     @property
+    def execute_api(self):
+        return self._execute_api
+
+    @property
     def code_type(self):
         return self._code_type
 
@@ -211,26 +235,7 @@ class FFTOptions:
         if not (set(knobs) <= {"ffts_per_block", "elements_per_thread"}):
             raise ValueError(f"Unsupported knob. Only valid knobs are ffts_per_block and elements_per_thread but got {knobs}")
 
-        constraints = {
-            "fft_type": self.fft_type,
-            "size": self.size,
-            "execution": self.execution,
-            "arch": self.code_type.cc,
-            "precision": self.precision,
-            "direction": self.direction,
-        }
-        if self.real_fft_options is not None:
-            constraints["real_fft_options"] = self.real_fft_options
-        if self.elements_per_thread is not None:
-            constraints["elements_per_thread"] = self.elements_per_thread
-        if self.ffts_per_block is not None:
-            constraints["ffts_per_block"] = self.ffts_per_block
-
-        global CUFFTDX_DATABASE
-        if CUFFTDX_DATABASE is None:
-            CUFFTDX_DATABASE = cuFFTDxDatabase.create(os.path.join(MATHDX_HOME, "include/cufftdx/include/database/records/"))
-
-        return CUFFTDX_DATABASE.query(knobs, constraints)
+        return self._get_knobs(*knobs)
 
     def create(self, **kwargs):
         dd = {
@@ -253,18 +258,26 @@ class FFTOptions:
 
     def _suggested(self, what):
         # Generate full PTX
-        cpp = generate_block(
+        h = generate_FFT(
             size=self.size,
             precision=self.precision,
             fft_type=self.fft_type,
             direction=self.direction,
             ffts_per_block=(None if self.ffts_per_block == "suggested" else self.ffts_per_block),
             elements_per_thread=(None if self.elements_per_thread == "suggested" else self.elements_per_thread),
-            real_fft_options=self.real_fft_options,
+            real_fft_options=frozenset(self.real_fft_options.items()) if self.real_fft_options else None,
             code_type=self.code_type,
+            execution=self.execution,
+            execute_api=self.execute_api,
         )
-        _, ptx = compile(cpp=cpp["cpp"], cc=self.code_type.cc, rdc=True, code="ptx")
-        return find_unsigned(what, ptx)
+
+        if what == "elements_per_thread":
+            return get_int_trait(h.descriptor, mathdx.CufftdxTraitType.ELEMENTS_PER_THREAD)
+
+        if what == "suggested_ffts_per_block":
+            return get_int_trait(h.descriptor, mathdx.CufftdxTraitType.SUGGESTED_FFTS_PER_BLOCK)
+
+        raise Exception(f"Unknown suggested option '{what}'")
 
     @cached_property
     def _suggested_ffts_per_block(self):
@@ -274,48 +287,59 @@ class FFTOptions:
     def _suggested_elements_per_thread(self):
         return self._suggested("elements_per_thread")
 
+    def _get_knobs(self, *knobs):
+        if not (set(knobs) <= {"ffts_per_block", "elements_per_thread"}):
+            raise ValueError(f"Unsupported knob. Only valid knobs are ffts_per_block and elements_per_thread but got {knobs}")
+
+        h = generate_FFT(
+            size=self.size,
+            precision=self.precision,
+            fft_type=self.fft_type,
+            direction=self.direction,
+            ffts_per_block=self.ffts_per_block,
+            elements_per_thread=self.elements_per_thread,
+            real_fft_options=frozenset(self.real_fft_options.items()) if self.real_fft_options else None,
+            code_type=self.code_type,
+            execution=self.execution,
+            execute_api=self.execute_api,
+        )
+
+        return get_knobs(h.descriptor, knobs)
+
 
 class FFTOptionsComplete(FFTOptions):
     def __init__(self, **kwargs):
         FFTOptions.__init__(self, **kwargs)
 
-        if self.execution == "Block":
-            self._cpp = generate_block(
-                size=self.size,
-                precision=self.precision,
-                fft_type=self.fft_type,
-                direction=self.direction,
-                code_type=self.code_type,
-                ffts_per_block=self.ffts_per_block,
-                elements_per_thread=self.elements_per_thread,
-                real_fft_options=self.real_fft_options,
-            )
-        else:
-            self._cpp = generate_thread(
-                size=self.size,
-                precision=self.precision,
-                fft_type=self.fft_type,
-                direction=self.direction,
-                code_type=self.code_type,
-                real_fft_options=self.real_fft_options,
-            )
+        self._handle = generate_FFT(
+            size=self.size,
+            precision=self.precision,
+            fft_type=self.fft_type,
+            direction=self.direction,
+            code_type=self.code_type,
+            execution=self.execution,
+            ffts_per_block=self.ffts_per_block if self.execution == "Block" else None,
+            elements_per_thread=self.elements_per_thread if self.execution == "Block" else None,
+            real_fft_options=frozenset(self.real_fft_options.items()) if self.real_fft_options else None,
+            execute_api=self.execute_api,
+        )
 
-        _, self._ptx = compile(cpp=self._cpp["cpp"], cc=self.code_type.cc, rdc=True, code="ptx")
+        h = self._handle.descriptor
 
-        # Look into PTX for traits
-        self._value_type = enum_to_np(find_unsigned("value_type", self._ptx))
-        self._input_type = enum_to_np(find_unsigned("input_type", self._ptx))
-        self._output_type = enum_to_np(find_unsigned("output_type", self._ptx))
-        self._storage_size = find_unsigned("storage_size", self._ptx)
-        self._stride = find_unsigned("stride", self._ptx)
-        self._elements_per_thread = find_unsigned("elements_per_thread", self._ptx)
-        self._implicit_type_batching = find_unsigned("implicit_type_batching", self._ptx)
+        self._value_type = MATHDX_TYPES_TO_NP[get_data_type_trait(h, mathdx.CufftdxTraitType.VALUE_TYPE)]
+        self._input_type = MATHDX_TYPES_TO_NP[get_data_type_trait(h, mathdx.CufftdxTraitType.INPUT_TYPE)]
+        self._output_type = MATHDX_TYPES_TO_NP[get_data_type_trait(h, mathdx.CufftdxTraitType.OUTPUT_TYPE)]
+
+        self._storage_size = get_int_trait(h, mathdx.CufftdxTraitType.STORAGE_SIZE)
+        self._stride = get_int_trait(h, mathdx.CufftdxTraitType.STRIDE)
+        self._elements_per_thread = get_int_trait(h, mathdx.CufftdxTraitType.ELEMENTS_PER_THREAD)
+        self._implicit_type_batching = get_int_trait(h, mathdx.CufftdxTraitType.IMPLICIT_TYPE_BATCHING)
+
         self._workspace_size = 0
-        self._requires_workspace = False
         if self.execution == "Block":
-            self._block_dim = Dim3(*find_dim3("block_dim", self._ptx))
-            self._shared_memory_size = find_unsigned("shared_memory_size", self._ptx)
-            self._ffts_per_block = find_unsigned("ffts_per_block", self._ptx)
+            self._block_dim = Dim3(*get_int_traits(h, mathdx.CufftdxTraitType.BLOCK_DIM, 3))
+            self._shared_memory_size = get_int_trait(h, mathdx.CufftdxTraitType.SHARED_MEMORY_SIZE)
+            self._ffts_per_block = get_int_trait(h, mathdx.CufftdxTraitType.FFTS_PER_BLOCK)
         else:
             self._block_dim = None
             self._shared_memory_size = None
@@ -351,7 +375,8 @@ class FFTOptionsComplete(FFTOptions):
 
     @property
     def requires_workspace(self):
-        return self._requires_workspace
+        _workspace_deprecation_warning()
+        return False
 
     @property
     def workspace_size(self):
@@ -366,14 +391,19 @@ class FFTCompiled(FFTOptionsComplete):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        version, lto_fn = compile(cpp=self._cpp["cpp"], cc=self.code_type.cc, rdc=True, code="lto")
-        self._ltos = [Code(self.code_type, version, lto_fn)]
+        # Now compile the LTO device function
+        h = self._handle.descriptor
 
-        if self.execution == "Block":
-            apis = ["thread", "smem"]
-        else:
-            apis = ["thread"]
-        self._symbols = {api: find_mangled_name(self._cpp["names"][api], self._ptx) for api in apis}
+        code = generate_code(h, self.code_type.cc)
+
+        # Compile
+        lto_fn = get_lto(code.descriptor)
+        isa_version = get_isa_version(code.descriptor)
+
+        self._ltos = [Code(self.code_type, isa_version, lto_fn)]
+
+        self._symbol = get_str_trait(h, mathdx.CufftdxTraitType.SYMBOL_NAME)
+
         self._tempfiles = [make_binary_tempfile(lto_fn, ".ltoir")]
 
     @property
@@ -381,14 +411,15 @@ class FFTCompiled(FFTOptionsComplete):
         return list(v.name for v in self._tempfiles)
 
     @property
-    def symbols(self):
-        return [Symbol(k, v) for k, v in self._symbols.items()]
+    def symbol(self):
+        return self._symbol
 
     @property
     def codes(self):
         return self._ltos
 
     def workspace(self):
+        _workspace_deprecation_warning()
         raise NotImplementedError("Workspace not supported yet")
 
 
@@ -399,16 +430,14 @@ class FFTNumba(FFTCompiled):
 
         FFTCompiled.__init__(self, **kwargs)
 
-        self._codegened = codegen(
+        codegen(
             {
                 "value_type": self.value_type,
-                "scale": None,
-                "symbols": self._symbols,
-                "requires_workspace": self.requires_workspace,
+                "symbol": self._symbol,
+                "execute_api": self._execute_api,
                 "execution": self.execution,
             },
             self,
-            Workspace,
         )
 
     def __call__(self, *args):
@@ -457,11 +486,13 @@ def fft(*, compiler=None, **kwargs):
         elements_per_thread (int): {elements_per_thread}
 
         real_fft_options (dict): {real_fft_options} User may specify the following options
-        in the dictionary:
+            in the dictionary:
 
             - ``'complex_layout'``, currently supports ``'natural'``, ``'packed'``, and
               ``'full'``.
             - ``'real_mode'``, currently supports ``'normal'`` and ``'folded'``.
+
+        execute_api (str): {execute_api}
 
     See Also:
         The attributes of :class:`FFTOptions` provide a 1:1 mapping with the CUDA C++
