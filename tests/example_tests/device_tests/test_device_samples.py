@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import glob
+import importlib
 import os
 
 import pytest
@@ -22,4 +23,8 @@ class TestDeviceSamples:
             # Skip the test if libmathdx version is less than 0.2.1 because we
             # are using global memory alignment in the sample.
             pytest.skip("Skipping test for cublasdx_device_gemm_performance.py, requires libmathdx >= 0.2.1")
+        if os.path.basename(sample) == "cublasdx_fp64_emulation.py":
+            spec = importlib.util.find_spec("cuda.cooperative")
+            if spec is None:
+                pytest.skip("Skipping test for cublasdx_fp64_emulation.py, requires cuda.cooperative module")
         run_sample(samples_path, sample, {"__name__": "__main__"})
