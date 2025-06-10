@@ -23,7 +23,7 @@ from numba import cuda
 import numpy as np
 from numba import int32, int8, int16, float64, int64, types
 from numba.types import Tuple
-import cuda.cooperative.experimental as cudax
+import cuda.cccl.cooperative.experimental as cudax
 
 from common import mm_perf_GFlops, random_real
 from common_numba import time_numba
