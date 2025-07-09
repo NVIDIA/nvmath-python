@@ -11,7 +11,13 @@ import numpy
 from nvmath.device.common_backend import DescriptorWrapper
 from nvmath.device.common_cuda import ComputeCapability
 from .common import check_contains, check_in, check_not_in, check_code_type
-from .common_backend import NP_TYPES_TO_MATHDX_PRECISION, EXECUTION_STR_TO_MATHDX, build_get_int_traits, build_get_str_trait
+from .common_backend import (
+    NP_TYPES_TO_MATHDX_PRECISION,
+    EXECUTION_STR_TO_MATHDX,
+    NVARG_GEN_OPT_LTO,
+    build_get_int_traits,
+    build_get_str_trait,
+)
 from .types import REAL_NP_TYPES
 
 from nvmath.bindings import mathdx
@@ -26,7 +32,7 @@ _FFT_COMPLEX_LAYOUT_TO_MATHDX = {cl.name.lower(): cl for cl in mathdx.CufftdxCom
 _FFT_REAL_MODE_TO_MATHDX = {m.name.lower(): m for m in mathdx.CufftdxRealMode}
 
 _FFT_API_STR_TO_MATHDX = {
-    "registry_memory": mathdx.CufftdxApi.LMEM,
+    "register_memory": mathdx.CufftdxApi.LMEM,
     "shared_memory": mathdx.CufftdxApi.SMEM,
 }
 
@@ -64,18 +70,12 @@ def validate(
     elements_per_thread,
     real_fft_options,
     code_type,
-    execute_api,
 ):
     if size <= 0:
         raise ValueError(f"size must be > 0. Got {size}")
     check_in("precision", precision, REAL_NP_TYPES)
     check_in("fft_type", fft_type, ["c2c", "c2r", "r2c"])
     check_in("execution", execution, ["Block", "Thread"])
-    if execution == "Block":
-        check_in("execute_api", execute_api, list(_FFT_API_STR_TO_MATHDX.keys()) + [None])
-    else:
-        if execute_api is not None:
-            raise ValueError(f"api may be set only for block execution ; got api = {execute_api}")
     if direction is not None:
         check_in("direction", direction, ["forward", "inverse"])
     if ffts_per_block in (None, "suggested"):
@@ -103,6 +103,17 @@ def validate(
     check_code_type(code_type)
 
 
+def validate_execute_api(execution: str, execute_api: str | None):
+    """
+    Validate the execute_api argument.
+    """
+    if execution == "Block":
+        check_in("execute_api", execute_api, list(_FFT_API_STR_TO_MATHDX.keys()) + [None])
+    else:
+        if execute_api is not None:
+            raise ValueError(f"api may be set only for block execution ; got execution = {execution}")
+
+
 @lru_cache
 def generate_FFT(
     size,
@@ -114,14 +125,14 @@ def generate_FFT(
     ffts_per_block,
     elements_per_thread,
     real_fft_options,
-    execute_api,
+    execute_api=None,
 ):
     check_not_in("ffts_per_block", ffts_per_block, ["suggested"])
     check_not_in("elements_per_thread", elements_per_thread, ["suggested"])
 
     h = mathdx.cufftdx_create_descriptor()
 
-    if execute_api:
+    if execute_api is not None:
         mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.API, _FFT_API_STR_TO_MATHDX[execute_api])
 
     mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.SIZE, size)
@@ -156,6 +167,7 @@ def generate_code(handle, version: ComputeCapability):
     code = mathdx.commondx_create_code()
 
     mathdx.commondx_set_code_option_int64(code, mathdx.CommondxOption.TARGET_SM, version.integer)
+    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
     mathdx.cufftdx_finalize_code(code, handle)
 
     return DescriptorWrapper(code, mathdx.commondx_destroy_code)

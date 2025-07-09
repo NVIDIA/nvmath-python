@@ -48,6 +48,7 @@ ctypedef enum commondxStatusType "commondxStatusType":
     COMMONDX_INVALID_VALUE "COMMONDX_INVALID_VALUE" = 1
     COMMONDX_INTERNAL_ERROR "COMMONDX_INTERNAL_ERROR" = 2
     COMMONDX_COMPILATION_ERROR "COMMONDX_COMPILATION_ERROR" = 3
+    COMMONDX_CUFFT_ERROR "COMMONDX_CUFFT_ERROR" = 4
     _COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR "_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR" = -42
 
 ctypedef enum commondxPrecision "commondxPrecision":
@@ -72,6 +73,7 @@ ctypedef enum commondxOption "commondxOption":
     COMMONDX_OPTION_TARGET_SM "COMMONDX_OPTION_TARGET_SM" = 1
     COMMONDX_OPTION_CODE_CONTAINER "COMMONDX_OPTION_CODE_CONTAINER" = 2
     COMMONDX_OPTION_CODE_ISA "COMMONDX_OPTION_CODE_ISA" = 3
+    COMMONDX_OPTION_EXTRA_NVTRC_ARGS "COMMONDX_OPTION_EXTRA_NVTRC_ARGS" = 4
 
 ctypedef enum commondxExecution "commondxExecution":
     COMMONDX_EXECUTION_THREAD "COMMONDX_EXECUTION_THREAD" = 0
@@ -187,6 +189,10 @@ ctypedef enum cufftdxRealMode "cufftdxRealMode":
     CUFFTDX_REAL_MODE_NORMAL "CUFFTDX_REAL_MODE_NORMAL" = 0
     CUFFTDX_REAL_MODE_FOLDED "CUFFTDX_REAL_MODE_FOLDED" = 1
 
+ctypedef enum cufftdxCodeType "cufftdxCodeType":
+    CUFFTDX_CODE_TYPE_PTX "CUFFTDX_CODE_TYPE_PTX" = 0
+    CUFFTDX_CODE_TYPE_LTOIR "CUFFTDX_CODE_TYPE_LTOIR" = 1
+
 ctypedef enum cufftdxOperatorType "cufftdxOperatorType":
     CUFFTDX_OPERATOR_SIZE "CUFFTDX_OPERATOR_SIZE" = 0
     CUFFTDX_OPERATOR_DIRECTION "CUFFTDX_OPERATOR_DIRECTION" = 1
@@ -199,6 +205,7 @@ ctypedef enum cufftdxOperatorType "cufftdxOperatorType":
     CUFFTDX_OPERATOR_BLOCK_DIM "CUFFTDX_OPERATOR_BLOCK_DIM" = 8
     CUFFTDX_OPERATOR_REAL_FFT_OPTIONS "CUFFTDX_OPERATOR_REAL_FFT_OPTIONS" = 9
     CUFFTDX_OPERATOR_API "CUFFTDX_OPERATOR_API" = 10
+    CUFFTDX_OPERATOR_CODE_TYPE "CUFFTDX_OPERATOR_CODE_TYPE" = 11
 
 ctypedef enum cufftdxKnobType "cufftdxKnobType":
     CUFFTDX_KNOB_ELEMENTS_PER_THREAD "CUFFTDX_KNOB_ELEMENTS_PER_THREAD" = 0
@@ -245,6 +252,14 @@ ctypedef enum cusolverdxFillMode "cusolverdxFillMode":
     CUSOLVERDX_FILL_MODE_UPPER "CUSOLVERDX_FILL_MODE_UPPER" = 0
     CUSOLVERDX_FILL_MODE_LOWER "CUSOLVERDX_FILL_MODE_LOWER" = 1
 
+ctypedef enum cusolverdxSide "cusolverdxSide":
+    CUSOLVERDX_SIDE_LEFT "CUSOLVERDX_SIDE_LEFT" = 0
+    CUSOLVERDX_SIDE_RIGHT "CUSOLVERDX_SIDE_RIGHT" = 1
+
+ctypedef enum cusolverdxDiag "cusolverdxDiag":
+    CUSOLVERDX_DIAG_UNIT "CUSOLVERDX_DIAG_UNIT" = 0
+    CUSOLVERDX_DIAG_NON_UNIT "CUSOLVERDX_DIAG_NON_UNIT" = 1
+
 ctypedef enum cusolverdxOperatorType "cusolverdxOperatorType":
     CUSOLVERDX_OPERATOR_SIZE "CUSOLVERDX_OPERATOR_SIZE" = 0
     CUSOLVERDX_OPERATOR_TYPE "CUSOLVERDX_OPERATOR_TYPE" = 1
@@ -256,6 +271,8 @@ ctypedef enum cusolverdxOperatorType "cusolverdxOperatorType":
     CUSOLVERDX_OPERATOR_FUNCTION "CUSOLVERDX_OPERATOR_FUNCTION" = 7
     CUSOLVERDX_OPERATOR_ARRANGEMENT "CUSOLVERDX_OPERATOR_ARRANGEMENT" = 8
     CUSOLVERDX_OPERATOR_FILL_MODE "CUSOLVERDX_OPERATOR_FILL_MODE" = 9
+    CUSOLVERDX_OPERATOR_SIDE "CUSOLVERDX_OPERATOR_SIDE" = 10
+    CUSOLVERDX_OPERATOR_DIAG "CUSOLVERDX_OPERATOR_DIAG" = 11
 
 ctypedef enum cusolverdxTraitType "cusolverdxTraitType":
     CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE "CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE" = 1
@@ -276,12 +293,18 @@ ctypedef long long int cusolverdxDescriptor 'cusolverdxDescriptor'
 
 cdef commondxStatusType commondxCreateCode(commondxCode* code) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxSetCodeOptionInt64(commondxCode code, commondxOption option, long long int value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType commondxSetCodeOptionStr(commondxCode code, commondxOption option, const char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxGetCodeOptionInt64(commondxCode code, commondxOption option, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxGetCodeOptionsInt64s(commondxCode code, commondxOption option, size_t size, long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxGetCodeLTOIRSize(commondxCode code, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxGetCodeLTOIR(commondxCode code, size_t size, void* out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType commondxGetCodeNumLTOIRs(commondxCode code, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType commondxGetCodeLTOIRSizes(commondxCode code, size_t size, size_t* out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType commondxGetCodeLTOIRs(commondxCode code, size_t size, void** out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxDestroyCode(commondxCode code) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef const char* commondxStatusToStr(commondxStatusType status) except?NULL nogil
+cdef commondxStatusType mathdxGetVersion(int* version) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType mathdxGetVersionEx(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxCreateDescriptor(cublasdxDescriptor* handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxSetOptionStr(cublasdxDescriptor handle, commondxOption option, const char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxSetOperatorInt64(cublasdxDescriptor handle, cublasdxOperatorType op, long long int value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
@@ -338,5 +361,3 @@ cdef commondxStatusType cusolverdxFinalizeCode(commondxCode code, cusolverdxDesc
 cdef commondxStatusType cusolverdxDestroyDescriptor(cusolverdxDescriptor handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef const char* cusolverdxOperatorTypeToStr(cusolverdxOperatorType op) except?NULL nogil
 cdef const char* cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NULL nogil
-cdef commondxStatusType mathdxGetVersion(int* version) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType mathdxGetVersionEx(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil

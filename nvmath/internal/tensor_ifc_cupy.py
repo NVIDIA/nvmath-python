@@ -72,7 +72,9 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
         return NumpyTensor(out)
 
     @classmethod
-    def empty(cls, shape, device_id="cpu", *, dtype="float32", strides=None, **context):
+    def empty(
+        cls, shape, device_id="cpu", *, dtype="float32", strides=None, stream_holder: StreamHolder | None = None, **context
+    ):
         """
         Create an empty tensor of the specified shape and data type.
 
@@ -95,7 +97,8 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
                 elif strides[0] == shape[1] and strides[1] == 1:
                     strides = None
 
-        with utils.device_ctx(device_id):
+        assert isinstance(stream_holder, StreamHolder), "Internal Error: CupyTensors must be allocated on a stream."
+        with utils.device_ctx(device_id), stream_holder.ctx:
             if strides:
                 # need an explicit allocation due to cupy/cupy#7818
                 size = dtype.itemsize

@@ -220,7 +220,7 @@ An example illustrating the use of the global Python logger is shown below:
       level=logging.DEBUG,
       format='%(asctime)s %(levelname)-8s %(message)s',
       datefmt='%m-%d %H:%M:%S'
-   )
+    )
 
     # Call nvmath-python Pythonic APIs
     out = nvmath.linalg.advanced.matmul(...)

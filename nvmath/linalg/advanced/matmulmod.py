@@ -1088,16 +1088,16 @@ class Matmul:
         self.epilog = None
 
         # Epilog attributes: name-to-operand.
-        self.epilog_operands: dict[str, typing.Any] = dict()
+        self.epilog_operands: dict[str, typing.Any] = {}
 
         # Epilog attributes: epilog input name-to-handler.
-        self.epilog_input_name_to_handler: dict[str, typing.Any] = dict()
+        self.epilog_input_name_to_handler: dict[str, typing.Any] = {}
 
         # Epilog attributes: name-to-output tensor.
-        self.epilog_outputs: dict[str, typing.Any] = dict()
+        self.epilog_outputs: dict[str, typing.Any] = {}
 
         # Keep track of epilog input traits for resetting operands.
-        self.epilog_inputs_traits: dict[str, typing.Any] = dict()
+        self.epilog_inputs_traits: dict[str, typing.Any] = {}
 
         # Keep track of epilog output handlers to allocate output in execute().
         self.epilog_output_handlers: list[EpilogOutputHandler] = []
@@ -1114,6 +1114,7 @@ class Matmul:
         # Algorithm attributes.
         self.algorithms_buffer = None
         self.algorithm_objects = None
+        self.cached_best_algorithm_struct = None
 
         # Workspace attributes.
         self.workspace_ptr: None | memory.MemoryPointer = None
@@ -1219,6 +1220,7 @@ class Matmul:
         if self.last_compute_event is not None:
             self.workspace_stream.wait(self.last_compute_event)
             self.logger.debug("Established ordering with respect to the computation before releasing the workspace.")
+            self.last_compute_event = None
 
         self.logger.debug("[_release_workspace_memory_perhaps] The workspace memory will be released.")
         return self._free_workspace_memory()
@@ -1513,15 +1515,17 @@ class Matmul:
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul>`_
         directory.
         """
+        log_info = self.logger.isEnabledFor(logging.INFO)
+
         self.logger.info("= PLANNING PHASE =")
 
         # Clear epilog operands, since different epilogs can be provided in different calls.
         # We don't need to worry about ordering, since it's the user's responsibility to
         # order calls that accept a stream argument. This applies to CPU operands as well,
         # even though we move them to the GPU, since the execution is blocking.
-        self.epilog_operands = dict()  # Clear operands in case of repeated planning.
-        self.epilog_input_name_to_handler = dict()  # Clear input name to handler map as well,
-        self.epilog_inputs_traits = dict()  # ... and the input traits as well.
+        self.epilog_operands = {}  # Clear operands in case of repeated planning.
+        self.epilog_input_name_to_handler = {}  # Clear input name to handler map as well,
+        self.epilog_inputs_traits = {}  # ... and the input traits as well.
 
         preferences = utils.check_or_create_options(
             _configuration.MatmulPlanPreferences, preferences, "Matrix multiplication plan preferences"
@@ -1875,11 +1879,10 @@ class Matmul:
             # The result alignment should be 256 bytes.
             self.logger.debug("The minimum alignment for the result D is the default 256 bytes.")
 
-            timing = bool(self.logger and self.logger.handlers)
             self.logger.info("Starting matrix multiplication planning...")
             assert isinstance(self.device_id, int), self.device_id
             assert stream_holder is not None
-            with utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (
+            with utils.cuda_call_ctx(stream_holder, blocking=True, timing=log_info) as (
                 _,
                 elapsed,
             ):
@@ -1912,6 +1915,9 @@ class Matmul:
             for i, algo in enumerate(algorithms):
                 # we wrap it too well that it's hard to copy-construct...
                 self.algorithms_buffer[i] = algo.algorithm._data
+
+        # Cache the first (best) algorithm struct.
+        self.cached_best_algorithm_struct = self.algorithms_buffer[0]["algo"]
 
         # Create the map from object to buffer.
         self.algorithm_object_to_buffer = dict(zip(self.algorithm_objects, self.algorithms_buffer, strict=True))
@@ -2140,7 +2146,7 @@ class Matmul:
 
         if a is None and b is None and c is None and epilog_inputs is None and alpha is None and beta is None:
             self.operands = None
-            self.epilog_operands = dict()
+            self.epilog_operands = {}
             self.logger.info("The operands have been reset to None.")
             return
 
@@ -2164,11 +2170,12 @@ class Matmul:
                         f"{epilog_inputs.keys()}."
                     )
             self.operands = [None] * self.num_operands
-            self.epilog_operands = {name: None for name in epilog_names}
+            self.epilog_operands = dict.fromkeys(epilog_names)
 
         # Future operations on the workspace stream should be ordered after the computation.
         if self.last_compute_event is not None:
             self.workspace_stream.wait(self.last_compute_event)
+            self.last_compute_event = None
 
         # Update alpha.
         if alpha is not None:
@@ -2326,7 +2333,7 @@ class Matmul:
         self._allocate_workspace_memory_perhaps(stream_holder)
 
         # Create empty tensors for auxiliary output.
-        epilog_outputs = dict()
+        epilog_outputs = {}
         for handler in self.epilog_output_handlers:
             name = handler.name
             shape, strides, dtype_name = handler.attributes()
@@ -2389,19 +2396,19 @@ class Matmul:
             gpu_times = np.empty(shape=(len(self.algorithms_buffer), iterations), dtype=float)
             algorithm_idxs = list(range(len(self.algorithms_buffer)))
             timing_enabled_options = ccx.EventOptions(enable_timing=True)
+            start0 = stream_holder.obj.device.create_event(options=timing_enabled_options)
+            end0 = stream_holder.obj.device.create_event(options=timing_enabled_options)
             for i in range(iterations):
                 random.shuffle(algorithm_idxs)
                 for algorithm_idx in algorithm_idxs:
                     algorithm_ptr = self.algorithms_buffer[algorithm_idx]["algo"].ctypes.data
-                    start0 = stream_holder.obj.record(options=timing_enabled_options)
+                    stream_holder.obj.record(start0)
                     execute_matmul(algorithm_ptr=algorithm_ptr)
-                    end0 = stream_holder.obj.record(options=timing_enabled_options)
+                    stream_holder.obj.record(end0)
                     # FIXME: @dching Calling sync() here could slow down tuning by forcing
                     # the device to wait for the host to record the elapsed time. It may be
                     # faster to store references to 2 * len(iterations) *
                     # len(algorithms_buffer) Events and compute the elapsed time at the end.
-                    # Or if we are forcing a sync(), then we can reuse the Events instead of
-                    # recreating them for every iteration.
                     end0.sync()
                     gpu_times[algorithm_idx, i] = end0 - start0
 
@@ -2419,6 +2426,9 @@ class Matmul:
         sort_order = sort_order[:limit]
         self.algorithms_buffer = self.algorithms_buffer[list(sort_order)]
         self.algorithm_objects = tuple(self.algorithm_objects[i] for i in sort_order)
+
+        # Update cached first (best) algorithm struct after tuning.
+        self.cached_best_algorithm_struct = self.algorithms_buffer[0]["algo"]
 
         # Create the map from object to buffer.
         self.algorithm_object_to_buffer = dict(zip(self.algorithm_objects, self.algorithms_buffer, strict=True))
@@ -2533,7 +2543,7 @@ class Matmul:
         if log_debug:
             self.logger.debug("The output (empty) tensor has been created.")
 
-        self.aux_outputs = dict()
+        self.aux_outputs = {}
 
         if self.options.result_amax:
             self.aux_outputs["result_amax"] = utils.create_empty_tensor(
@@ -2559,7 +2569,7 @@ class Matmul:
 
         # Select the first (best) algorithm if one is not provided.
         if algorithm is None:
-            algorithm_struct = self.algorithms_buffer[0]["algo"]
+            algorithm_struct = self.cached_best_algorithm_struct
             if log_info:
                 self.logger.info(
                     "The highest ranked algorithm in the plan (algorithm id = "
@@ -2575,11 +2585,10 @@ class Matmul:
         c_ptr = self.operands[2].data_ptr if self.num_operands == 3 else self.result.data_ptr
         a, b = self.operands[0], self.operands[1]
         raw_workspace_ptr = utils.get_ptr_from_memory_pointer(self.workspace_ptr)
-        timing = bool(self.logger and self.logger.handlers)
         if log_info:
             self.logger.info("Starting matrix multiplication...")
             self.logger.info(f"{self.call_prologue}")
-        with utils.cuda_call_ctx(stream_holder, self.blocking, timing) as (
+        with utils.cuda_call_ctx(stream_holder, self.blocking, timing=log_info) as (
             self.last_compute_event,
             elapsed,
         ):
@@ -2622,8 +2631,8 @@ class Matmul:
 
         # Release internal reference to the result to permit recycling of memory.
         self.result = None
-        self.aux_outputs = dict()
-        self.epilog_outputs = dict()
+        self.aux_outputs = {}
+        self.epilog_outputs = {}
         self._reset_workspace_allocation_tracking()
 
         if aux:
@@ -2648,6 +2657,7 @@ class Matmul:
             # computation.
             if self.last_compute_event is not None:
                 self.workspace_stream.wait(self.last_compute_event)
+                self.last_compute_event = None
 
             self._free_workspace_memory()
 

@@ -31,6 +31,8 @@ follows:
      - :mod:`nvmath.bindings.cublas`
    * - cuBLASLt
      - :mod:`nvmath.bindings.cublasLt`
+   * - cuDSS
+     - :mod:`nvmath.bindings.cudss`
    * - cuFFT
      - :mod:`nvmath.bindings.cufft`
    * - cuRAND
@@ -186,6 +188,7 @@ This reference describes all nvmath-python's math primitives.
 
    cublas
    cublasLt
+   cudss
    cufft
    cusolver
    cusolverDn

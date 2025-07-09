@@ -4,6 +4,7 @@
 
 import ctypes
 from enum import IntEnum
+import logging
 import os
 import re
 import site
@@ -202,6 +203,12 @@ def force_loading_libmathdx(cu_ver):
             f"  - conda install -c conda-forge libmathdx cuda-version={major}"
         )
 
+    from nvmath.bindings import mathdx
+
+    version = mathdx.get_version()
+    if version < 201 or version >= 300:
+        raise ValueError(f"libmathdx version must be >= 0.2.1 and < 0.3.0 ; got {version}")
+
 
 # TODO: unify all loading helpers into one
 _nvvm_obj: list[ctypes.CDLL] = []
@@ -255,6 +262,52 @@ def force_loading_nvvm():
         )
 
 
+# TODO: unify all loading helpers into one
+_libcudss_obj: list[ctypes.CDLL] = []
+
+
+def force_loading_cudss(cu_ver):
+    # this logic should live in CUDA Python...
+    global _libcudss_obj
+    if len(_libcudss_obj) > 0:
+        return
+
+    cu_ver = cu_ver.split(".")
+    major = cu_ver[0]
+    if major != "12":
+        raise NotImplementedError(f"CUDA {major} is not supported")
+
+    site_paths = [site.getusersitepackages()] + site.getsitepackages() + [None]
+    for sp in site_paths:
+        if PLATFORM_LINUX:
+            dso_dir = "lib"
+            dso_path = "libcudss.so.0"
+        elif PLATFORM_WIN:
+            dso_dir = "bin"
+            dso_path = "cudss64_0.dll"
+        else:
+            raise AssertionError("Unsupported Platform! Only Linux and Windows are supported.")
+
+        if sp is not None:
+            dso_dir = os.path.join(sp, "nvidia", f"cu{major}", dso_dir)
+            dso_path = os.path.join(dso_dir, dso_path)
+        try:
+            _libcudss_obj.append(ctypes.CDLL(dso_path, mode=ctypes.RTLD_GLOBAL))
+            logging.debug("Loaded %s", dso_path)
+        except OSError as e:
+            logging.debug("%s", e)
+            continue
+        else:
+            break
+    else:
+        raise RuntimeError(
+            f"libcudss not found. Depending on how you install nvmath-python and other CUDA packages,\n"
+            f"you may need to perform one of the steps below:\n"
+            f"  - pip install nvidia-cudss-cu{major}\n"
+            f"  - conda install -c conda-forge libcudss cuda-version={major}"
+        )
+
+
 def module_init_force_cupy_lib_load():
     """
     Attempt to preload libraries at module import time.
@@ -274,3 +327,37 @@ def module_init_force_cupy_lib_load():
             return
         except RuntimeError:
             pass
+
+
+def get_nvrtc_build_id():
+    from cuda.core.experimental import ObjectCode, Program, ProgramOptions
+
+    code = r"""
+    extern "C" __global__ void get_build_id(int* build_id) {
+
+        *build_id = __CUDACC_VER_BUILD__;
+    }
+    """
+
+    prog = Program(code, "c++", ProgramOptions(std="c++17", minimal=True, arch="compute_75"))
+    obj = prog.compile("ptx")
+    assert isinstance(obj, ObjectCode)
+
+    pattern = re.compile(r"mov\.u32\s+%\w+,\s+(\d+)")
+    m = pattern.search(obj.code.decode())
+    assert m is not None
+
+    return int(m.group(1))
+
+
+def get_nvrtc_version():
+    """
+    Returns the NVRTC version as a tuple of (major, minor, build).
+    """
+    from cuda.bindings import nvrtc
+
+    err, major, minor = nvrtc.nvrtcVersion()
+    if err != nvrtc.nvrtcResult.NVRTC_SUCCESS:
+        raise RuntimeError(f"nvrtcVersion error: {err}")
+    build = get_nvrtc_build_id()
+    return major, minor, build

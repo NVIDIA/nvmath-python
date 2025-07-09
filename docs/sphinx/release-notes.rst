@@ -1,13 +1,33 @@
 nvmath-python Release Notes
 ***************************
 
+nvmath-python v0.5.0
+====================
+
+Beta5 release.
+
+* New single-GPU and hybrid CPU-GPU sparse direct solver APIs supporting SciPy, CuPy,
+  and PyTorch.
+
+Known Issues
+------------
+
+* Python overhead for matmul host-APIs has increased since v0.3.0 by 21 microseconds on
+  average. We are investigating.
+
+* CUDA 12.8.0, 12.8.1 and 12.9.0 have been known to miscompile cuBLASDx in some
+  rare slow-path cases (see
+  `cuBLASDx <https://docs.nvidia.com/cuda/cublasdx/0.4.0/index.html>`_ for more
+  details).
+
 nvmath-python v0.4.0
 ====================
 
 Beta4 release.
 
 * New distributed FFT APIs to run on multi-node/multi-GPU systems.
-* New device matrix multiplication tensor APIs.
+* New device matrix multiplication tensor API to enable advanced techniques such as
+  cooperative copy and floating-point emulation using integer tensor cores.
 * Transition from CuPy to `cuda-python (cuda.core)
   <https://nvidia.github.io/cuda-python/cuda-core/latest/>`_ for core CUDA constructs.
 

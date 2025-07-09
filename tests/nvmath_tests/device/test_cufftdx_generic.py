@@ -10,7 +10,7 @@ import numpy as np
 from .helpers import SM70, SM72, SM75, SM80, SM86, SM89, SM90
 
 
-@pytest.mark.parametrize("execute_api", ["shared_memory", "registry_memory"])
+@pytest.mark.parametrize("execute_api", ["shared_memory", "register_memory"])
 def test_third_party_block_symbol(execute_api):
     FFT = fft(
         fft_type="c2c",
@@ -39,17 +39,17 @@ def test_third_party_code():
     FFT = fft(fft_type="c2c", size=32, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
 
     assert isinstance(FFT, FFTCompiled)
-    assert all([code.endswith(".ltoir") for code in FFT.files])
+    assert all(code.endswith(".ltoir") for code in FFT.files)
     assert len(FFT.codes) > 0
     for code in FFT.codes:
         print(code.code_type, code.isa_version)
-    assert all([code.code_type.kind == "lto" for code in FFT.codes])
-    assert all([code.isa_version.major >= 12 for code in FFT.codes])
-    assert all([code.isa_version.minor >= 0 for code in FFT.codes])
-    assert all([code.code_type.cc.major == 8 for code in FFT.codes])
-    assert all([code.code_type.cc.minor == 0 for code in FFT.codes])
-    assert all([isinstance(code.data, bytes) for code in FFT.codes])
-    assert all([len(code.data) > 0 for code in FFT.codes])
+    assert all(code.code_type.kind == "lto" for code in FFT.codes)
+    assert all(code.isa_version.major >= 12 for code in FFT.codes)
+    assert all(code.isa_version.minor >= 0 for code in FFT.codes)
+    assert all(code.code_type.cc.major == 8 for code in FFT.codes)
+    assert all(code.code_type.cc.minor == 0 for code in FFT.codes)
+    assert all(isinstance(code.data, bytes) for code in FFT.codes)
+    assert all(len(code.data) > 0 for code in FFT.codes)
 
 
 #                                            2      | 2, 2^2, ... | 2, 2^2, ... | 2, 2^2, ...  # noqa: W505
@@ -346,8 +346,8 @@ def test_negative(opt, value):
 @pytest.mark.parametrize("code_type", [SM70, SM72, SM75, SM80, SM86, SM89, SM90])
 def test_sm(code_type):
     FFT = fft(fft_type="c2c", size=256, precision=np.float32, direction="forward", code_type=code_type, execution="Block")
-    assert all([isinstance(code.data, bytes) for code in FFT.codes])
-    assert all([len(code.data) > 0 for code in FFT.codes])
+    assert all(isinstance(code.data, bytes) for code in FFT.codes)
+    assert all(len(code.data) > 0 for code in FFT.codes)
 
 
 @pytest.mark.parametrize(
@@ -377,8 +377,8 @@ def test_value_type(precision, value_type):
 @pytest.mark.parametrize("code_type", [("lto", (7, 0)), ("lto", (8, 0))])
 def test_sm_tuple(code_type):
     FFT = fft(fft_type="c2c", size=256, precision=np.float32, direction="forward", code_type=code_type, execution="Block")
-    assert all([isinstance(code.data, bytes) for code in FFT.codes])
-    assert all([len(code.data) > 0 for code in FFT.codes])
-    assert all([code.code_type.kind == code_type[0] for code in FFT.codes])
-    assert all([code.code_type.cc.major == code_type[1][0] for code in FFT.codes])
-    assert all([code.code_type.cc.minor == code_type[1][1] for code in FFT.codes])
+    assert all(isinstance(code.data, bytes) for code in FFT.codes)
+    assert all(len(code.data) > 0 for code in FFT.codes)
+    assert all(code.code_type.kind == code_type[0] for code in FFT.codes)
+    assert all(code.code_type.cc.major == code_type[1][0] for code in FFT.codes)
+    assert all(code.code_type.cc.minor == code_type[1][1] for code in FFT.codes)

@@ -20,15 +20,15 @@ from nvmath_tests.helpers import nvmath_seed
 # FIMXE: Lower minimum side length to 1 after refactoring of array traits
 shape_st = array_shapes(min_dims=1, max_dims=3, min_side=2, max_side=256)
 
-element_properties = dict(
-    allow_nan=False,
-    allow_infinity=False,
-    allow_subnormal=True,
-    min_magnitude=0.0,
-    max_magnitude=1.0,
-    min_value=-0.5,
-    max_value=+0.5,
-)
+element_properties = {
+    "allow_nan": False,
+    "allow_infinity": False,
+    "allow_subnormal": True,
+    "min_magnitude": 0.0,
+    "max_magnitude": 1.0,
+    "min_value": -0.5,
+    "max_value": +0.5,
+}
 
 c32_array_st = arrays(
     np.complex64,

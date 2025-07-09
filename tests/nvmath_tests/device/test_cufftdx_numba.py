@@ -109,7 +109,7 @@ SIZES += [7**l for l in range(1, 3)]
 SIZES += [10**l for l in range(1, 3)]
 SIZES += [11**l for l in range(1, 2)]
 SIZES += [12**l for l in range(1, 2)]
-SIZES = sorted(list(set(SIZES)))
+SIZES = sorted(set(SIZES))
 
 TEST_CASES = []
 
@@ -199,7 +199,7 @@ def test_block(fft_type, size, precision, direction, api_kind, ept, real_fft_opt
         real_fft_options=real_fft_options,
         execution="Block",
         compiler="numba",
-        execute_api="shared_memory" if api_kind == "smem" else "registry_memory",
+        execute_api="shared_memory" if api_kind == "smem" else "register_memory",
     )
 
     complex_type = FFT.value_type
@@ -217,7 +217,7 @@ def test_block(fft_type, size, precision, direction, api_kind, ept, real_fft_opt
     assert api_kind in ["thread", "smem"]
     assert FFT.ffts_per_block == ffts_per_block
     assert complex_type == COMPLEX_TYPE_MAP[precision]
-    assert all([code.endswith(".ltoir") for code in files])
+    assert all(code.endswith(".ltoir") for code in files)
     assert FFT.size == size
     assert implicit_type_batching == IMPLICIT_BATCHING_MAP[precision]
     if ept is not None:
@@ -428,7 +428,7 @@ def test_thread(fft_type, size, precision, direction, real_fft_options):
     output_type = FFT.output_type
 
     assert complex_type == COMPLEX_TYPE_MAP[precision]
-    assert all([code.endswith(".ltoir") for code in FFT.files])
+    assert all(code.endswith(".ltoir") for code in FFT.files)
     assert FFT.size == size
     assert implicit_type_batching == IMPLICIT_BATCHING_MAP[precision]
     if real_fft_options is None:

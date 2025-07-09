@@ -1,10 +1,14 @@
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 # This code was automatically generated with version 0.2.1. Do not modify it directly.
 
 cimport cython  # NOQA
 
 from enum import IntEnum as _IntEnum
 
-from ._internal.utils cimport get_buffer_pointer, get_resource_ptr, nullable_unique_ptr
+from ._internal.utils cimport get_buffer_pointer, get_resource_ptr, nullable_unique_ptr, get_resource_ptrs
 from libcpp.vector cimport vector
 
 ###############################################################################
@@ -59,6 +63,7 @@ class CommondxStatusType(_IntEnum):
     INVALID_VALUE = COMMONDX_INVALID_VALUE
     INTERNAL_ERROR = COMMONDX_INTERNAL_ERROR
     COMPILATION_ERROR = COMMONDX_COMPILATION_ERROR
+    CUFFT_ERROR = COMMONDX_CUFFT_ERROR
 
 class CommondxPrecision(_IntEnum):
     """See `commondxPrecision`."""
@@ -84,6 +89,7 @@ class CommondxOption(_IntEnum):
     TARGET_SM = COMMONDX_OPTION_TARGET_SM
     CODE_CONTAINER = COMMONDX_OPTION_CODE_CONTAINER
     CODE_ISA = COMMONDX_OPTION_CODE_ISA
+    EXTRA_NVTRC_ARGS = COMMONDX_OPTION_EXTRA_NVTRC_ARGS
 
 class CommondxExecution(_IntEnum):
     """See `commondxExecution`."""
@@ -219,6 +225,11 @@ class CufftdxRealMode(_IntEnum):
     NORMAL = CUFFTDX_REAL_MODE_NORMAL
     FOLDED = CUFFTDX_REAL_MODE_FOLDED
 
+class CufftdxCodeType(_IntEnum):
+    """See `cufftdxCodeType`."""
+    PTX = CUFFTDX_CODE_TYPE_PTX
+    LTOIR = CUFFTDX_CODE_TYPE_LTOIR
+
 class CufftdxOperatorType(_IntEnum):
     """See `cufftdxOperatorType`."""
     SIZE = CUFFTDX_OPERATOR_SIZE
@@ -232,6 +243,7 @@ class CufftdxOperatorType(_IntEnum):
     BLOCK_DIM = CUFFTDX_OPERATOR_BLOCK_DIM
     REAL_FFT_OPTIONS = CUFFTDX_OPERATOR_REAL_FFT_OPTIONS
     API = CUFFTDX_OPERATOR_API
+    CODE_TYPE = CUFFTDX_OPERATOR_CODE_TYPE
 
 class CufftdxKnobType(_IntEnum):
     """See `cufftdxKnobType`."""
@@ -285,6 +297,16 @@ class CusolverdxFillMode(_IntEnum):
     UPPER = CUSOLVERDX_FILL_MODE_UPPER
     LOWER = CUSOLVERDX_FILL_MODE_LOWER
 
+class CusolverdxSide(_IntEnum):
+    """See `cusolverdxSide`."""
+    LEFT = CUSOLVERDX_SIDE_LEFT
+    RIGHT = CUSOLVERDX_SIDE_RIGHT
+
+class CusolverdxDiag(_IntEnum):
+    """See `cusolverdxDiag`."""
+    UNIT = CUSOLVERDX_DIAG_UNIT
+    NON_UNIT = CUSOLVERDX_DIAG_NON_UNIT
+
 class CusolverdxOperatorType(_IntEnum):
     """See `cusolverdxOperatorType`."""
     SIZE = CUSOLVERDX_OPERATOR_SIZE
@@ -297,6 +319,8 @@ class CusolverdxOperatorType(_IntEnum):
     FUNCTION = CUSOLVERDX_OPERATOR_FUNCTION
     ARRANGEMENT = CUSOLVERDX_OPERATOR_ARRANGEMENT
     FILL_MODE = CUSOLVERDX_OPERATOR_FILL_MODE
+    SIDE = CUSOLVERDX_OPERATOR_SIDE
+    DIAG = CUSOLVERDX_OPERATOR_DIAG
 
 class CusolverdxTraitType(_IntEnum):
     """See `cusolverdxTraitType`."""
@@ -363,6 +387,25 @@ cpdef commondx_set_code_option_int64(long long int code, int option, long long i
     """
     with nogil:
         status = commondxSetCodeOptionInt64(<commondxCode>code, <_CommondxOption>option, value)
+    check_status(status)
+
+
+cpdef commondx_set_code_option_str(long long int code, int option, value):
+    """Set a C-string option on a code handle.
+
+    Args:
+        code (long long int): A code handle from commondxCreateCode.
+        option (CommondxOption): The option to set the code to.
+        value (str): A C-string. Cannot be ``NULL``.
+
+    .. seealso:: `commondxSetCodeOptionStr`
+    """
+    if not isinstance(value, str):
+        raise TypeError("value must be a Python str")
+    cdef bytes _temp_value_ = (<str>value).encode()
+    cdef char* _value_ = _temp_value_
+    with nogil:
+        status = commondxSetCodeOptionStr(<commondxCode>code, <_CommondxOption>option, <const char*>_value_)
     check_status(status)
 
 
@@ -441,6 +484,66 @@ cpdef commondx_get_code_ltoir(long long int code, size_t size, out):
     check_status(status)
 
 
+cpdef size_t commondx_get_code_num_ltoirs(long long int code) except? 0:
+    """Returns the number the LTOIR chunks.
+
+    Args:
+        code (long long int): A code handle from commondxCreateCode.
+
+    Returns:
+        size_t: The number of LTOIR chunks.
+
+    .. seealso:: `commondxGetCodeNumLTOIRs`
+    """
+    cdef size_t size
+    with nogil:
+        status = commondxGetCodeNumLTOIRs(<commondxCode>code, &size)
+    check_status(status)
+    return size
+
+
+cpdef commondx_get_code_ltoir_sizes(long long int code, size_t size, out):
+    """Returns the size of all LTOIR chunks.
+
+    Args:
+        code (long long int): A code handle from commondxCreateCode.
+        size (size_t): The number of LTOIR chunks, as returned by commondxGetCodeNumLTOIRs.
+        out (object): On output, ``out[i]`` is the size, in byte, of the ith LTOIR chunk. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``size_t``.
+
+
+    .. seealso:: `commondxGetCodeLTOIRSizes`
+    """
+    cdef nullable_unique_ptr[ vector[size_t] ] _out_
+    get_resource_ptr[size_t](_out_, out, <size_t*>NULL)
+    with nogil:
+        status = commondxGetCodeLTOIRSizes(<commondxCode>code, size, <size_t*>(_out_.data()))
+    check_status(status)
+
+
+cpdef commondx_get_code_ltoirs(long long int code, size_t size, out):
+    """Returns all LTOIR chunks.
+
+    Args:
+        code (long long int): A code handle from commondxCreateCode.
+        size (size_t): The number of LTOIR chunks, as returned by commondxGetCodeNumLTOIRs.
+        out (object): On output, ``out[i]`` is filled with the ith LTOIR chunk. ``out[i]`` must point to a buffer of at least ``size[i]`` bytes, with ``size`` the output of commondxGetCodeLTOIRSizes. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of :class:`int`\s (as pointer addresses).
+
+
+    .. seealso:: `commondxGetCodeLTOIRs`
+    """
+    cdef nullable_unique_ptr[ vector[void*] ] _out_
+    get_resource_ptrs[void](_out_, out, <void*>NULL)
+    with nogil:
+        status = commondxGetCodeLTOIRs(<commondxCode>code, size, <void**>(_out_.data()))
+    check_status(status)
+
+
 cpdef commondx_destroy_code(long long int code):
     """Destroys a code handle.
 
@@ -467,6 +570,42 @@ cpdef str commondx_status_to_str(int status):
     return _output_.decode()
 
 
+cpdef int get_version() except? 0:
+    """Returns the libmathdx version as a single integer.
+
+    Returns:
+        int: The version, encoded as 1000 * major + 100 * minor + patch.
+
+    .. seealso:: `mathdxGetVersion`
+    """
+    cdef int version
+    with nogil:
+        status = mathdxGetVersion(&version)
+    check_status(status)
+    return version
+
+
+cpdef tuple get_version_ex():
+    """Returns the libmathdx version as a triplet of integers.
+
+    Returns:
+        A 3-tuple containing:
+
+        - int: The major version.
+        - int: The minor version.
+        - int: The patch version.
+
+    .. seealso:: `mathdxGetVersionEx`
+    """
+    cdef int major
+    cdef int minor
+    cdef int patch
+    with nogil:
+        status = mathdxGetVersionEx(&major, &minor, &patch)
+    check_status(status)
+    return (major, minor, patch)
+
+
 cpdef long long int cublasdx_create_descriptor() except? 0:
     """Creates a cuBLASDx descriptor.
 
@@ -483,12 +622,12 @@ cpdef long long int cublasdx_create_descriptor() except? 0:
 
 
 cpdef cublasdx_set_option_str(long long int handle, int option, value):
-    """Sets an option on a cuBLASDx descriptor.
+    """Sets a C-string option on a cuBLASDx descriptor.
 
     Args:
         handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
         option (CommondxOption): An option to set the descriptor to.
-        value (str): A pointer to a C-string.
+        value (str): A pointer to a C-string. Cannot be ``NULL``.
 
     .. seealso:: `cublasdxSetOptionStr`
     """
@@ -1444,39 +1583,3 @@ cpdef str cusolverdx_trait_type_to_str(int trait):
     cdef bytes _output_
     _output_ = cusolverdxTraitTypeToStr(<_CusolverdxTraitType>trait)
     return _output_.decode()
-
-
-cpdef int get_version() except? 0:
-    """Returns the libmathdx version as a single integer.
-
-    Returns:
-        int: The version, encoded as 1000 * major + 100 * minor + patch.
-
-    .. seealso:: `mathdxGetVersion`
-    """
-    cdef int version
-    with nogil:
-        status = mathdxGetVersion(&version)
-    check_status(status)
-    return version
-
-
-cpdef tuple get_version_ex():
-    """Returns the libmathdx version as a triplet of integers.
-
-    Returns:
-        A 3-tuple containing:
-
-        - int: The major version.
-        - int: The minor version.
-        - int: The patch version.
-
-    .. seealso:: `mathdxGetVersionEx`
-    """
-    cdef int major
-    cdef int minor
-    cdef int patch
-    with nogil:
-        status = mathdxGetVersionEx(&major, &minor, &patch)
-    check_status(status)
-    return (major, minor, patch)

@@ -7,7 +7,7 @@ from numba import cuda
 from nvmath.device import fft
 from common import fft_perf_GFlops, CHECK_CUDART
 from common_numba import time_numba, get_active_blocks_per_multiprocessor
-from cuda import cudart
+from cuda.bindings import runtime as cudart
 
 
 def main():

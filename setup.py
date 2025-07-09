@@ -27,6 +27,7 @@ import utils  # type: ignore # this is builder.utils  # noqa: E402
 # List the main modules, and infer the auxiliary modules automatically
 ext_modules = [
     "nvmath.bindings.cublas",
+    "nvmath.bindings.cudss",
     "nvmath.bindings.cublasLt",
     "nvmath.bindings.cusolver",
     "nvmath.bindings.cusolverDn",

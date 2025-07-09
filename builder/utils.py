@@ -43,7 +43,7 @@ def detect_cuda_paths():
 
 def decide_lib_name(ext_name):
     # TODO: move the record of the supported lib list elsewhere?
-    for lib in ("cublas", "cusolver", "cufftMp", "cufft", "cusparse", "curand", "nvpl", "nvshmem", "mathdx"):
+    for lib in ("cublas", "cusolver", "cufftMp", "cufft", "cusparse", "curand", "nvpl", "nvshmem", "mathdx", "cudss"):
         if lib in ext_name:
             return lib
     else:
@@ -105,7 +105,7 @@ class build_ext(_build_ext):
                         ldflag += f",-rpath,$ORIGIN/../../../../{lib_name}/lib:$ORIGIN/../../../../../../"
                     case "cufftMp":
                         ldflag += ",-rpath,$ORIGIN/../../../nvidia/cufftmp/cu12/lib"
-                    case "mathdx":
+                    case "mathdx" | "cudss":
                         ldflag += ",-rpath,$ORIGIN/../../../nvidia/cu12/lib"
                     case _:
                         ldflag += f",-rpath,$ORIGIN/../../../nvidia/{lib_name}/lib"

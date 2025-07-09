@@ -4,7 +4,8 @@
 
 [build-system]
 requires = [
-    "Cython>=3.0.4", "setuptools>=77.0.3", "wheel>=0.34.0", "packaging",
+    # https://github.com/cython/cython/issues/6841
+    "Cython>=3.0.4,<3.1", "setuptools>=77.0.3", "wheel>=0.34.0", "packaging",
     # whatever version works here, see builder/utils.py for detail
     "nvidia-cuda-runtime-cu12",
     "nvidia-cuda-nvcc-cu12",
@@ -14,13 +15,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nvmath-python"
-version = "0.4.0"
+version = "0.5.0"
 dynamic = [
     "readme",
     "dependencies",
     "optional-dependencies"
 ]
-requires-python = '>=3.10,<3.13'
+requires-python = '>=3.10,<3.14'
 description = "NVIDIA Math Python libraries"
 authors = [
     { name = "NVIDIA Corporation" }
@@ -42,6 +43,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
@@ -99,6 +101,8 @@ select = [
     "SIM",
     # isort
     "I",
+    # flake8-comprehensions
+    "C4",
 ]
 ignore = [
     # FIXME
@@ -126,7 +130,7 @@ ignore = [
 fixable = ["ALL"]
 
 [tool.codespell]
-ignore-words-list = "FO,inout,matA,matB,matC,unix,braket,ND,halfs"
+ignore-words-list = "FO,inout,matA,matB,matC,unix,braket,ND,halfs,coo"
 write-changes = ""
 # base64 workaround
 # https://github.com/codespell-project/codespell/issues/2801

@@ -63,7 +63,7 @@ class FFTConvNumba:
             assert complex_type == float32x2_type
         else:
             assert complex_type == float64x2_type
-        assert all([code.endswith(".ltoir") for code in FWD.files + INV.files])
+        assert all(code.endswith(".ltoir") for code in FWD.files + INV.files)
 
         @cuda.jit(link=FWD.files + INV.files)
         def f(input, output, filter):

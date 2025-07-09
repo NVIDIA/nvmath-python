@@ -289,11 +289,11 @@ dependency is *required* unless stated otherwise.
      - 525.60.13+ (Linux) with CUDA 12.x
      - 525.60.13+ (Linux) with CUDA 12.x
    * - Python
-     - 3.10-3.12
-     - 3.10-3.12
-     - 3.10-3.12
-     - 3.10-3.12
-     - 3.10-3.12
+     - 3.10-3.13
+     - 3.10-3.13
+     - 3.10-3.13
+     - 3.10-3.13
+     - 3.10-3.13
    * - pip
      - 22.3.1+
      -
@@ -301,7 +301,7 @@ dependency is *required* unless stated otherwise.
      -
      -
    * - setuptools
-     - >=70.0.0
+     - >=77.0.3
      -
      -
      -
@@ -313,7 +313,7 @@ dependency is *required* unless stated otherwise.
      -
      -
    * - Cython
-     - >=0.29.22,<3
+     - >=3.0.4,<3.1
      -
      -
      -
@@ -330,10 +330,10 @@ dependency is *required* unless stated otherwise.
      - CUDA 12.x
    * - NumPy
      -
-     - >=1.24
-     - >=1.24
-     - >=1.24
-     - >=1.24
+     - >=1.25
+     - >=1.25
+     - >=1.25
+     - >=1.25
    * - | CuPy
        | (see `CuPy installation guide <https://docs.cupy.dev/en/stable/install.html>`_)
      -
@@ -351,7 +351,7 @@ dependency is *required* unless stated otherwise.
    * - libmathdx (cuBLASDx, cuFFTDx, ...)
      -
      -
-     - 0.2.*
+     - >=0.2.1,<0.3
      -
      -
    * - numba-cuda
@@ -359,12 +359,6 @@ dependency is *required* unless stated otherwise.
      -
      - >=0.11.0
      - >=0.11.0
-     -
-   * - Numba
-     -
-     -
-     - >=0.59.1
-     - >=0.59.1
      -
    * - pynvjitlink
      -
@@ -404,7 +398,7 @@ nvmath-python is tested in the following environments:
    * - GPU model
      - H100, B200, RTX 4090, CG1 (Grace-Hopper)
    * - Python
-     - 3.10, 3.11, 3.12
+     - 3.10, 3.11, 3.12, 3.13
    * - CPU architecture
      - x86_64, aarch64
    * - Operating system
@@ -626,7 +620,7 @@ For more information with regard to the new CUDA 12+ package layout on conda-for
 .. [2] nvmath-python relies on `CUDA minor version compatibility
     <https://docs.nvidia.com/deploy/cuda-compatibility/index.html
     #minor-version-compatibility>`_.
-.. [4] As of beta 4.0 (v0.4.0), CuPy is a required run-time dependency except for CPU-only
+.. [4] As of beta 5.0 (v0.5.0), CuPy is a required run-time dependency except for CPU-only
     execution. In a future release it will be turned into an optional run-time dependency.
 .. [5] For example, Hopper GPUs are supported starting CUDA 11.8, so they would not work
     with libraries from CUDA 11.7 or below.

@@ -75,8 +75,8 @@ def create_cuda_data_type_map(cuda_data_type_enum_class):
 
     complex_types = {"float": "complex", "bfloat": "bcomplex"}
 
-    cuda_data_type_map = dict()
-    data_type_width_map = dict()
+    cuda_data_type_map = {}
+    data_type_width_map = {}
     for d in cuda_data_type_enum_class:
         m = cuda_data_type_pattern.match(d.name)
 
@@ -116,7 +116,7 @@ def create_cuda_compute_type_map(cuda_compute_type_enum_class):
 
     type_code_map = {"i": "int", "u": "uint", "f": "float", "bf": "bfloat"}
 
-    cuda_compute_type_map = dict()
+    cuda_compute_type_map = {}
     for c in cuda_compute_type_enum_class:
         if c.name == "COMPUTE_DEFAULT":
             continue

@@ -45,7 +45,12 @@ def _get_compiler():
             cc_number = int(compute_capability)
             compute_capability = (cc_number // 10, cc_number % 10)
 
-        nvvm_options = {"opt": 3, "arch": numba.cuda.cudadrv.nvvm.get_arch_option(*compute_capability)}
+        if hasattr(numba.cuda.cudadrv.nvrtc, "get_arch_option"):
+            # numba-cuda >=0.16.0
+            get_arch_option = numba.cuda.cudadrv.nvrtc.get_arch_option
+        elif hasattr(numba.cuda.cudadrv.nvvm, "get_arch_option"):
+            get_arch_option = numba.cuda.cudadrv.nvvm.get_arch_option
+        nvvm_options = {"opt": 3, "arch": get_arch_option(*compute_capability)}
 
         if representation == "ltoir":
             nvvm_options["gen-lto"] = None

@@ -71,7 +71,7 @@ def test_set_operator_int64_array(library, operator, value):
 
 @pytest.mark.parametrize(
     "precision",
-    [t for t in REAL_NP_TYPES],
+    list(REAL_NP_TYPES),
 )
 @pytest.mark.parametrize(
     "data_type",

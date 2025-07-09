@@ -43,7 +43,7 @@ def main():
     assert complex_type == float32x2_type
     assert storage_size == 2
     assert ffts_per_block == 2
-    assert all([file.endswith(".ltoir") for file in FFT_r2c.files])
+    assert all(file.endswith(".ltoir") for file in FFT_r2c.files)
     assert stride == 16
     assert size == 64
     assert elements_per_thread == 4

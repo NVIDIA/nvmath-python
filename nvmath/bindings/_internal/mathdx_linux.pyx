@@ -35,12 +35,18 @@ cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __commondxCreateCode = NULL
 cdef void* __commondxSetCodeOptionInt64 = NULL
+cdef void* __commondxSetCodeOptionStr = NULL
 cdef void* __commondxGetCodeOptionInt64 = NULL
 cdef void* __commondxGetCodeOptionsInt64s = NULL
 cdef void* __commondxGetCodeLTOIRSize = NULL
 cdef void* __commondxGetCodeLTOIR = NULL
+cdef void* __commondxGetCodeNumLTOIRs = NULL
+cdef void* __commondxGetCodeLTOIRSizes = NULL
+cdef void* __commondxGetCodeLTOIRs = NULL
 cdef void* __commondxDestroyCode = NULL
 cdef void* __commondxStatusToStr = NULL
+cdef void* __mathdxGetVersion = NULL
+cdef void* __mathdxGetVersionEx = NULL
 cdef void* __cublasdxCreateDescriptor = NULL
 cdef void* __cublasdxSetOptionStr = NULL
 cdef void* __cublasdxSetOperatorInt64 = NULL
@@ -97,8 +103,6 @@ cdef void* __cusolverdxFinalizeCode = NULL
 cdef void* __cusolverdxDestroyDescriptor = NULL
 cdef void* __cusolverdxOperatorTypeToStr = NULL
 cdef void* __cusolverdxTraitTypeToStr = NULL
-cdef void* __mathdxGetVersion = NULL
-cdef void* __mathdxGetVersionEx = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
@@ -155,6 +159,13 @@ cdef int _check_or_init_mathdx() except -1 nogil:
             handle = load_library(driver_ver)
         __commondxSetCodeOptionInt64 = dlsym(handle, 'commondxSetCodeOptionInt64')
 
+    global __commondxSetCodeOptionStr
+    __commondxSetCodeOptionStr = dlsym(RTLD_DEFAULT, 'commondxSetCodeOptionStr')
+    if __commondxSetCodeOptionStr == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __commondxSetCodeOptionStr = dlsym(handle, 'commondxSetCodeOptionStr')
+
     global __commondxGetCodeOptionInt64
     __commondxGetCodeOptionInt64 = dlsym(RTLD_DEFAULT, 'commondxGetCodeOptionInt64')
     if __commondxGetCodeOptionInt64 == NULL:
@@ -183,6 +194,27 @@ cdef int _check_or_init_mathdx() except -1 nogil:
             handle = load_library(driver_ver)
         __commondxGetCodeLTOIR = dlsym(handle, 'commondxGetCodeLTOIR')
 
+    global __commondxGetCodeNumLTOIRs
+    __commondxGetCodeNumLTOIRs = dlsym(RTLD_DEFAULT, 'commondxGetCodeNumLTOIRs')
+    if __commondxGetCodeNumLTOIRs == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __commondxGetCodeNumLTOIRs = dlsym(handle, 'commondxGetCodeNumLTOIRs')
+
+    global __commondxGetCodeLTOIRSizes
+    __commondxGetCodeLTOIRSizes = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRSizes')
+    if __commondxGetCodeLTOIRSizes == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __commondxGetCodeLTOIRSizes = dlsym(handle, 'commondxGetCodeLTOIRSizes')
+
+    global __commondxGetCodeLTOIRs
+    __commondxGetCodeLTOIRs = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRs')
+    if __commondxGetCodeLTOIRs == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __commondxGetCodeLTOIRs = dlsym(handle, 'commondxGetCodeLTOIRs')
+
     global __commondxDestroyCode
     __commondxDestroyCode = dlsym(RTLD_DEFAULT, 'commondxDestroyCode')
     if __commondxDestroyCode == NULL:
@@ -196,6 +228,20 @@ cdef int _check_or_init_mathdx() except -1 nogil:
         if handle == NULL:
             handle = load_library(driver_ver)
         __commondxStatusToStr = dlsym(handle, 'commondxStatusToStr')
+
+    global __mathdxGetVersion
+    __mathdxGetVersion = dlsym(RTLD_DEFAULT, 'mathdxGetVersion')
+    if __mathdxGetVersion == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __mathdxGetVersion = dlsym(handle, 'mathdxGetVersion')
+
+    global __mathdxGetVersionEx
+    __mathdxGetVersionEx = dlsym(RTLD_DEFAULT, 'mathdxGetVersionEx')
+    if __mathdxGetVersionEx == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __mathdxGetVersionEx = dlsym(handle, 'mathdxGetVersionEx')
 
     global __cublasdxCreateDescriptor
     __cublasdxCreateDescriptor = dlsym(RTLD_DEFAULT, 'cublasdxCreateDescriptor')
@@ -589,20 +635,6 @@ cdef int _check_or_init_mathdx() except -1 nogil:
             handle = load_library(driver_ver)
         __cusolverdxTraitTypeToStr = dlsym(handle, 'cusolverdxTraitTypeToStr')
 
-    global __mathdxGetVersion
-    __mathdxGetVersion = dlsym(RTLD_DEFAULT, 'mathdxGetVersion')
-    if __mathdxGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __mathdxGetVersion = dlsym(handle, 'mathdxGetVersion')
-
-    global __mathdxGetVersionEx
-    __mathdxGetVersionEx = dlsym(RTLD_DEFAULT, 'mathdxGetVersionEx')
-    if __mathdxGetVersionEx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __mathdxGetVersionEx = dlsym(handle, 'mathdxGetVersionEx')
-
     __py_mathdx_init = True
     return 0
 
@@ -624,6 +656,9 @@ cpdef dict _inspect_function_pointers():
     global __commondxSetCodeOptionInt64
     data["__commondxSetCodeOptionInt64"] = <intptr_t>__commondxSetCodeOptionInt64
 
+    global __commondxSetCodeOptionStr
+    data["__commondxSetCodeOptionStr"] = <intptr_t>__commondxSetCodeOptionStr
+
     global __commondxGetCodeOptionInt64
     data["__commondxGetCodeOptionInt64"] = <intptr_t>__commondxGetCodeOptionInt64
 
@@ -636,11 +671,26 @@ cpdef dict _inspect_function_pointers():
     global __commondxGetCodeLTOIR
     data["__commondxGetCodeLTOIR"] = <intptr_t>__commondxGetCodeLTOIR
 
+    global __commondxGetCodeNumLTOIRs
+    data["__commondxGetCodeNumLTOIRs"] = <intptr_t>__commondxGetCodeNumLTOIRs
+
+    global __commondxGetCodeLTOIRSizes
+    data["__commondxGetCodeLTOIRSizes"] = <intptr_t>__commondxGetCodeLTOIRSizes
+
+    global __commondxGetCodeLTOIRs
+    data["__commondxGetCodeLTOIRs"] = <intptr_t>__commondxGetCodeLTOIRs
+
     global __commondxDestroyCode
     data["__commondxDestroyCode"] = <intptr_t>__commondxDestroyCode
 
     global __commondxStatusToStr
     data["__commondxStatusToStr"] = <intptr_t>__commondxStatusToStr
+
+    global __mathdxGetVersion
+    data["__mathdxGetVersion"] = <intptr_t>__mathdxGetVersion
+
+    global __mathdxGetVersionEx
+    data["__mathdxGetVersionEx"] = <intptr_t>__mathdxGetVersionEx
 
     global __cublasdxCreateDescriptor
     data["__cublasdxCreateDescriptor"] = <intptr_t>__cublasdxCreateDescriptor
@@ -810,12 +860,6 @@ cpdef dict _inspect_function_pointers():
     global __cusolverdxTraitTypeToStr
     data["__cusolverdxTraitTypeToStr"] = <intptr_t>__cusolverdxTraitTypeToStr
 
-    global __mathdxGetVersion
-    data["__mathdxGetVersion"] = <intptr_t>__mathdxGetVersion
-
-    global __mathdxGetVersionEx
-    data["__mathdxGetVersionEx"] = <intptr_t>__mathdxGetVersionEx
-
     func_ptrs = data
     return data
 
@@ -848,6 +892,16 @@ cdef commondxStatusType _commondxSetCodeOptionInt64(commondxCode code, commondxO
         with gil:
             raise FunctionNotFoundError("function commondxSetCodeOptionInt64 is not found")
     return (<commondxStatusType (*)(commondxCode, commondxOption, long long int) noexcept nogil>__commondxSetCodeOptionInt64)(
+        code, option, value)
+
+
+cdef commondxStatusType _commondxSetCodeOptionStr(commondxCode code, commondxOption option, const char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __commondxSetCodeOptionStr
+    _check_or_init_mathdx()
+    if __commondxSetCodeOptionStr == NULL:
+        with gil:
+            raise FunctionNotFoundError("function commondxSetCodeOptionStr is not found")
+    return (<commondxStatusType (*)(commondxCode, commondxOption, const char*) noexcept nogil>__commondxSetCodeOptionStr)(
         code, option, value)
 
 
@@ -891,6 +945,36 @@ cdef commondxStatusType _commondxGetCodeLTOIR(commondxCode code, size_t size, vo
         code, size, out)
 
 
+cdef commondxStatusType _commondxGetCodeNumLTOIRs(commondxCode code, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __commondxGetCodeNumLTOIRs
+    _check_or_init_mathdx()
+    if __commondxGetCodeNumLTOIRs == NULL:
+        with gil:
+            raise FunctionNotFoundError("function commondxGetCodeNumLTOIRs is not found")
+    return (<commondxStatusType (*)(commondxCode, size_t*) noexcept nogil>__commondxGetCodeNumLTOIRs)(
+        code, size)
+
+
+cdef commondxStatusType _commondxGetCodeLTOIRSizes(commondxCode code, size_t size, size_t* out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __commondxGetCodeLTOIRSizes
+    _check_or_init_mathdx()
+    if __commondxGetCodeLTOIRSizes == NULL:
+        with gil:
+            raise FunctionNotFoundError("function commondxGetCodeLTOIRSizes is not found")
+    return (<commondxStatusType (*)(commondxCode, size_t, size_t*) noexcept nogil>__commondxGetCodeLTOIRSizes)(
+        code, size, out)
+
+
+cdef commondxStatusType _commondxGetCodeLTOIRs(commondxCode code, size_t size, void** out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __commondxGetCodeLTOIRs
+    _check_or_init_mathdx()
+    if __commondxGetCodeLTOIRs == NULL:
+        with gil:
+            raise FunctionNotFoundError("function commondxGetCodeLTOIRs is not found")
+    return (<commondxStatusType (*)(commondxCode, size_t, void**) noexcept nogil>__commondxGetCodeLTOIRs)(
+        code, size, out)
+
+
 cdef commondxStatusType _commondxDestroyCode(commondxCode code) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __commondxDestroyCode
     _check_or_init_mathdx()
@@ -909,6 +993,26 @@ cdef const char* _commondxStatusToStr(commondxStatusType status) except?NULL nog
             raise FunctionNotFoundError("function commondxStatusToStr is not found")
     return (<const char* (*)(commondxStatusType) noexcept nogil>__commondxStatusToStr)(
         status)
+
+
+cdef commondxStatusType _mathdxGetVersion(int* version) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __mathdxGetVersion
+    _check_or_init_mathdx()
+    if __mathdxGetVersion == NULL:
+        with gil:
+            raise FunctionNotFoundError("function mathdxGetVersion is not found")
+    return (<commondxStatusType (*)(int*) noexcept nogil>__mathdxGetVersion)(
+        version)
+
+
+cdef commondxStatusType _mathdxGetVersionEx(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __mathdxGetVersionEx
+    _check_or_init_mathdx()
+    if __mathdxGetVersionEx == NULL:
+        with gil:
+            raise FunctionNotFoundError("function mathdxGetVersionEx is not found")
+    return (<commondxStatusType (*)(int*, int*, int*) noexcept nogil>__mathdxGetVersionEx)(
+        major, minor, patch)
 
 
 cdef commondxStatusType _cublasdxCreateDescriptor(cublasdxDescriptor* handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -1469,23 +1573,3 @@ cdef const char* _cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NUL
             raise FunctionNotFoundError("function cusolverdxTraitTypeToStr is not found")
     return (<const char* (*)(cusolverdxTraitType) noexcept nogil>__cusolverdxTraitTypeToStr)(
         trait)
-
-
-cdef commondxStatusType _mathdxGetVersion(int* version) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
-    global __mathdxGetVersion
-    _check_or_init_mathdx()
-    if __mathdxGetVersion == NULL:
-        with gil:
-            raise FunctionNotFoundError("function mathdxGetVersion is not found")
-    return (<commondxStatusType (*)(int*) noexcept nogil>__mathdxGetVersion)(
-        version)
-
-
-cdef commondxStatusType _mathdxGetVersionEx(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
-    global __mathdxGetVersionEx
-    _check_or_init_mathdx()
-    if __mathdxGetVersionEx == NULL:
-        with gil:
-            raise FunctionNotFoundError("function mathdxGetVersionEx is not found")
-    return (<commondxStatusType (*)(int*, int*, int*) noexcept nogil>__mathdxGetVersionEx)(
-        major, minor, patch)

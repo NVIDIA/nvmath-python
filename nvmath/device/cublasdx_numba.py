@@ -7,7 +7,6 @@ from numba.extending import typeof_impl, overload_method, intrinsic, types, util
 from numba.cuda.cudaimpl import lower_constant, registry as cuda_registry
 from numba.cuda.models import register_model
 
-from nvmath.bindings import mathdx
 from nvmath.device.common_cuda import get_default_code_type
 from nvmath.device.cublasdx_backend import generate_copy_wait_lto
 
@@ -144,7 +143,7 @@ def ol_blas_type___call___tensors_rmem(
     if not isinstance(blas_numba, BlasType):
         return
     MM = blas_numba.blas
-    if not all(map(lambda t: isinstance(t, OpaqueTensorType), (a, b, c))):
+    if not all(isinstance(t, OpaqueTensorType) for t in (a, b, c)):
         return
     if (a.uid, b.uid, c.uid) != MM._target_tensor_uids:
         return
@@ -170,9 +169,9 @@ def ol_blas_type___call___tensors_smem(
     if not isinstance(blas_numba, BlasType):
         return
     MM = blas_numba.blas
-    if not all(map(lambda a: isinstance(a, types.Number), (alpha, beta))):
+    if not all(isinstance(a, types.Number) for a in (alpha, beta)):
         return
-    if not all(map(lambda a: isinstance(a, OpaqueTensorType), (a, b, c))):
+    if not all(isinstance(a, OpaqueTensorType) for a in (a, b, c)):
         return
     if (a.uid, b.uid, c.uid) != MM._target_tensor_uids:
         return
@@ -198,11 +197,11 @@ def ol_blas_type___call___basic(
     if not isinstance(blas_numba, BlasType):
         return
     MM = blas_numba.blas
-    if not all(map(lambda a: isinstance(a, types.Number), (alpha, beta))):
+    if not all(isinstance(a, types.Number) for a in (alpha, beta)):
         return
-    if not all(map(lambda a: isinstance(a, types.Array), (a, b, c))):
+    if not all(isinstance(a, types.Array) for a in (a, b, c)):
         return
-    if (a.dtype, b.dtype, c.dtype) != tuple(map(lambda vt: NUMBA_FE_TYPES_TO_NUMBA_IR[vt], MM._numba_value_types)):
+    if (a.dtype, b.dtype, c.dtype) != tuple(NUMBA_FE_TYPES_TO_NUMBA_IR[vt] for vt in MM._numba_value_types):
         return
 
     # setting signature for intrinsic to much calling conventions. Numba will
@@ -234,13 +233,13 @@ def ol_blas_type___call___ldabc(
     if not isinstance(blas_numba, BlasType):
         return
     MM = blas_numba.blas
-    if not all(map(lambda a: isinstance(a, types.Number), (alpha, beta))):
+    if not all(isinstance(a, types.Number) for a in (alpha, beta)):
         return
-    if not all(map(lambda a: isinstance(a, types.Array), (a, b, c))):
+    if not all(isinstance(a, types.Array) for a in (a, b, c)):
         return
-    if (a.dtype, b.dtype, c.dtype) != tuple(map(lambda vt: NUMBA_FE_TYPES_TO_NUMBA_IR[vt], MM._numba_value_types)):
+    if (a.dtype, b.dtype, c.dtype) != tuple(NUMBA_FE_TYPES_TO_NUMBA_IR[vt] for vt in MM._numba_value_types):
         return
-    if not all(map(lambda a: isinstance(a, types.Integer), (lda, ldb, ldc))):
+    if not all(isinstance(a, types.Integer) for a in (lda, ldb, ldc)):
         return
 
     # setting signature for intrinsic to much calling conventions. Numba will
@@ -502,30 +501,28 @@ def ol_copy_wait():
     return lambda: _intrinsic()
 
 
-if mathdx.get_version() >= 201:
+@overload(axpby, target="cuda", inline="always", strict=False)
+def ol_axpby(a, x, b, y):
+    if not isinstance(a, types.Number):
+        return
+    if not isinstance(x, OpaqueTensorType):
+        return
+    if not isinstance(b, types.Number):
+        return
+    if not isinstance(y, OpaqueTensorType):
+        return
+    if x != y:
+        raise TypeError("x and y must be the same tensor type")
+    if "rmem" not in x.layout.layout:
+        raise TypeError("axpby is only supported for rmem tensors")
 
-    @overload(axpby, target="cuda", inline="always", strict=False)
-    def ol_axpby(a, x, b, y):
-        if not isinstance(a, types.Number):
-            return
-        if not isinstance(x, OpaqueTensorType):
-            return
-        if not isinstance(b, types.Number):
-            return
-        if not isinstance(y, OpaqueTensorType):
-            return
-        if x != y:
-            raise TypeError("x and y must be the same tensor type")
-        if "rmem" not in x.layout.layout:
-            raise TypeError("axpby is only supported for rmem tensors")
+    symbol = x.layout.axpby_symbol
 
-        symbol = x.layout.axpby_symbol
+    assert symbol is not None
 
-        assert symbol is not None
+    @intrinsic
+    def _intrinsic(typingctx, a, x, b, y):
+        return_type = types.void
+        return typing.signature(return_type, x.dtype, x, y.dtype, y), make_function_call(symbol)
 
-        @intrinsic
-        def _intrinsic(typingctx, a, x, b, y):
-            return_type = types.void
-            return typing.signature(return_type, x.dtype, x, y.dtype, y), make_function_call(symbol)
-
-        return lambda a, x, b, y: _intrinsic(a, x, b, y)
+    return lambda a, x, b, y: _intrinsic(a, x, b, y)

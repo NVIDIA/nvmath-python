@@ -4,7 +4,7 @@
 
 import numpy as np
 import cupy
-from cuda import cuda
+from cuda.bindings import driver as cudadrv
 from .helpers import CHECK_CUDA, _TOLERANCE, l2error, free_array, convert_to_cuda_array, copy_to_cupy
 from .helpers_cpp import run_and_time, compile_cpp_kernel
 
@@ -150,5 +150,5 @@ class FFTConvCpp:
         return {"time_ms": time_ms}
 
     def __del__(self):
-        (err,) = cuda.cuModuleUnload(self._module)
+        (err,) = cudadrv.cuModuleUnload(self._module)
         CHECK_CUDA(err)

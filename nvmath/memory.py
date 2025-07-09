@@ -168,7 +168,8 @@ _MEMORY_MANAGER: dict[str, type[BaseCUDAMemoryManager] | type[BaseCUDAMemoryMana
 }
 
 
-try:
+def lazy_load_cupy():
+    global _MEMORY_MANAGER
     import cupy as cp
     from nvmath.internal.package_ifc_cupy import CupyPackage
 
@@ -215,11 +216,10 @@ try:
 
     _MEMORY_MANAGER["cupy"] = _CupyCUDAMemoryManager
 
-except ImportError:
-    pass
 
+def lazy_load_torch():
+    global _MEMORY_MANAGER
 
-try:
     from torch.cuda import caching_allocator_alloc, caching_allocator_delete
     from nvmath.internal.package_ifc_torch import TorchPackage
 
@@ -264,6 +264,3 @@ try:
             return MemoryPointer(device_ptr, size, finalizer=finalizer)
 
     _MEMORY_MANAGER["torch"] = _TorchCUDAMemoryManager
-
-except ImportError:
-    pass

@@ -51,7 +51,7 @@ def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None
 
     rank = a.ndim
 
-    axes = list(a % rank for a in axes)
+    axes = [a % rank for a in axes]
     if any(a >= rank for a in axes):
         raise ValueError(f"Invalid axes = {axes}.")
     if len(set(axes)) != len(axes):
@@ -70,15 +70,15 @@ def fftn(a, *, axes=None, direction=None, options=None, prolog=None, epilog=None
 
         last = chunk
         if copy:
-            permutation = axes + list(d for d in range(rank) if d not in axes + chunk) + chunk
+            permutation = axes + [d for d in range(rank) if d not in axes + chunk] + chunk
             ipermutation = {v: p for p, v in enumerate(permutation)}
 
             a = a.transpose(*permutation).copy()
 
             if axes:
-                axes = list(ipermutation[a] for a in axes)
+                axes = [ipermutation[a] for a in axes]
 
-            composition = list(composition[p] for p in permutation)
+            composition = [composition[p] for p in permutation]
 
             last = list(range(rank - len(chunk), rank))
 

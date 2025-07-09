@@ -153,6 +153,7 @@ ctypedef fused ResT:
     int64_t
     float
     double
+    size_t
 
 
 ctypedef fused PtrT:

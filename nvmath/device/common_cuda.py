@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["current_device_lto", "ComputeCapability", "CodeType", "ISAVersion", "Code", "Dim3"]
+__all__ = ["current_device_lto", "ComputeCapability", "CodeType", "ISAVersion", "Code", "Dim3", "MAX_SUPPORTED_CC"]
 
 from typing import NamedTuple
-from cuda import cudart, cuda
+from cuda.bindings import runtime as cudart, driver as cudadrv
 import logging
 from collections import namedtuple
 
@@ -55,7 +55,14 @@ class ComputeCapability(NamedTuple):
         """Integer representation of the ISAVersion"""
         return self.major * 100 + self.minor * 10
 
+    def __str__(self):
+        """String representation of the ComputeCapability"""
+        return f"{self.major}.{self.minor}"
+
     pass
+
+
+MAX_SUPPORTED_CC = ComputeCapability(12, 1)
 
 
 class Dim3(namedtuple("Dim3", ("x", "y", "z"), defaults=(1, 1, 1))):
@@ -86,10 +93,10 @@ class ISAVersion(NamedTuple):
 
     @classmethod
     def from_integer(cls, isa: int):
-        cls.major = isa // 1000
-        cls.minor = (isa % 1000) // 10
+        major = isa // 1000
+        minor = (isa % 1000) // 10
 
-        return cls
+        return cls(major, minor)
 
 
 def CHECK_CUDART(err):
@@ -99,16 +106,16 @@ def CHECK_CUDART(err):
 
 
 def CHECK_CUDA(err):
-    if err != cuda.CUresult.CUDA_SUCCESS:
-        err2, str = cuda.cuGetErrorName(err)
+    if err != cudadrv.CUresult.CUDA_SUCCESS:
+        err2, str = cudadrv.cuGetErrorName(err)
         raise RuntimeError(f"CUDA Error: {str} ({err})")
 
 
 def get_current_device_cc():
-    (err,) = cuda.cuInit(0)
+    (err,) = cudadrv.cuInit(0)
     CHECK_CUDA(err)
     # Check if a context exist
-    err, pctx = cuda.cuCtxGetCurrent()
+    err, pctx = cudadrv.cuCtxGetCurrent()
     CHECK_CUDA(err)
     if int(pctx) == 0:
         # If not, return the CC of device 0
@@ -119,14 +126,13 @@ def get_current_device_cc():
     err, prop = cudart.cudaGetDeviceProperties(device)
     CHECK_CUDART(err)
     major, minor = prop.major, prop.minor
-    # TODO: dx does not support platforms > arch90 for now
-    if (major, minor) > (9, 0):
+    if (major, minor) > MAX_SUPPORTED_CC:
         logging.info(
             "The current device supports compute capability "
             f"{prop.major}.{prop.minor}, but the generated LTO version is "
-            "capped at 9.0."
+            f"capped at {MAX_SUPPORTED_CC}."
         )
-        major, minor = 9, 0
+        major, minor = MAX_SUPPORTED_CC
     logging.info(f"Using device {device} for default compute capability, found cc = {prop.major}.{prop.minor}")
     return ComputeCapability(major, minor)
 

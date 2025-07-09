@@ -1,3 +1,3 @@
-cuda-core == 0.2.*
+cuda-core >=0.3,<0.4
 mkl; platform_machine=="x86_64"
 nvpl-fft ~= 0.3; platform_system=="Linux" and platform_machine=="aarch64"

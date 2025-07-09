@@ -13,6 +13,9 @@ dist
 build
 wheelhouse
 
+#Mac system files
+.DS_Store
+
 #Test
 .pytest_cache
 *.pickle
@@ -23,3 +26,5 @@ wheelhouse
 Pipfile*
 .venv*
 .pipenv-cache
+
+.mypy_cache

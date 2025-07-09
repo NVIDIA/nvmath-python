@@ -55,7 +55,7 @@ def run_test():
     start = 4
 
     for num_axes in range(start, rank + 1):
-        for axes in list(p for c in itertools.combinations(range(rank), num_axes) for p in itertools.permutations(c)):
+        for axes in [p for c in itertools.combinations(range(rank), num_axes) for p in itertools.permutations(c)]:
             fft_size = int(np.prod([shape[a] for a in axes]))
             batch_size = int(np.prod([shape[a] for a in range(rank) if a not in axes]))
 

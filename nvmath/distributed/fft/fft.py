@@ -255,7 +255,7 @@ def _get_fft_result_and_compute_types(dtype, fft_abstract_type):
         raise ValueError(f"Unsupported FFT Type: '{fft_abstract_type}'")
 
 
-def _get_fft_default_direction(fft_abstract_type):
+def _get_fft_default_direction(fft_abstract_type) -> FFTDirection:
     """
     Return the default FFT direction (as object of type configuration.FFTDirection) based on
     the FFT type.
@@ -386,7 +386,7 @@ def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
             # Using cuFFTMp slab distribution.
             partitioned_dim = 0 if p1.distribution == Slab.X else 1
 
-            if any([p1.shape[i] != p2.shape[i] for i in range(len(p1.shape)) if i != partitioned_dim]):
+            if any(p1.shape[i] != p2.shape[i] for i in range(len(p1.shape)) if i != partitioned_dim):
                 return ValueError("The problem size is inconsistent across processes")
 
             if p1 is not p2:  # with nranks=1 p1 is p2
@@ -458,8 +458,6 @@ class InvalidFFTState(Exception):
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
 class FFT:
     """
-    FFT(operand, distribution, *, options=None, stream=None)
-
     Create a stateful object that encapsulates the specified distributed FFT computations
     and required resources. This object ensures the validity of resources during use and
     releases them when they are no longer needed to prevent misuse.
@@ -623,7 +621,7 @@ class FFT:
         distribution: Slab | Sequence[Box],
         *,
         options: FFTOptions | None = None,
-        stream=None,
+        stream: AnyStream | None = None,
     ):
         distributed_ctx = nvmath.distributed.get_context()
         if distributed_ctx is None:
@@ -937,6 +935,8 @@ class FFT:
         Args:
             stream: {stream}
         """
+        log_info = self.logger.isEnabledFor(logging.INFO)
+        log_debug = self.logger.isEnabledFor(logging.DEBUG)
 
         if self.fft_planned:
             self.logger.debug("The FFT has already been planned, and redoing the plan is not supported.")
@@ -953,13 +953,14 @@ class FFT:
         if self.operand_backup is not None:
             check_inplace_overlapping_layout(self.operand_backup)
 
-        self.logger.debug(
-            f"The operand CUDA type is {NAME_TO_DATA_TYPE[self.operand_data_type].name}, and the result CUDA type is "
-            f"{NAME_TO_DATA_TYPE[self.result_data_type].name}."
-        )
-        self.logger.debug(f"The CUDA type used for compute is {NAME_TO_DATA_TYPE[self.compute_data_type].name}.")
-        timing = bool(self.logger and self.logger.handlers)
-        self.logger.info("Starting distributed FFT planning...")
+        if log_debug:
+            self.logger.debug(
+                f"The operand CUDA type is {NAME_TO_DATA_TYPE[self.operand_data_type].name}, and the result CUDA type is "
+                f"{NAME_TO_DATA_TYPE[self.result_data_type].name}."
+            )
+            self.logger.debug(f"The CUDA type used for compute is {NAME_TO_DATA_TYPE[self.compute_data_type].name}.")
+        if log_info:
+            self.logger.info("Starting distributed FFT planning...")
 
         planner = None
         if self.operand_dim == 2:
@@ -984,7 +985,7 @@ class FFT:
             reshape_input_strides = calculate_strides(input_local_shape, reversed(range(3)))
             reshape_output_strides = self.result_strides if self.operand_dim == 3 else tuple(self.result_strides) + (1,)
 
-        with utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (
+        with utils.cuda_call_ctx(stream_holder, blocking=True, timing=log_info) as (
             self.last_compute_event,
             elapsed,
         ):
@@ -1050,11 +1051,11 @@ class FFT:
 
         self.fft_planned = True
 
-        if elapsed.data is not None:
+        if log_info and elapsed.data is not None:
             self.logger.info(f"The FFT planning phase took {elapsed.data:.3f} ms to complete.")
 
     @utils.precondition(_check_valid_fft)
-    def reset_operand(self, operand=None, distribution: Slab | Sequence[Box] | None = None, *, stream=None):
+    def reset_operand(self, operand=None, distribution: Slab | Sequence[Box] | None = None, *, stream: AnyStream | None = None):
         """
         Reset the operand held by this :class:`FFT` instance. This method has two use cases:
 
@@ -1368,6 +1369,7 @@ class FFT:
             with utils.device_ctx(self.device_id):
                 self.workspace_stream.wait(self.last_compute_event)
             self.logger.debug("Established ordering with respect to the computation before releasing the workspace.")
+            self.last_compute_event = None
 
         self.logger.debug("[_free_workspace_memory_perhaps] The workspace memory will be released.")
         self._free_workspace_memory()
@@ -1392,7 +1394,14 @@ class FFT:
     @utils.precondition(_check_planned, "Execution")
     @utils.precondition(_check_valid_operand, "Execution")
     @utils.atomic(_release_workspace_memory_perhaps, method=True)
-    def execute(self, *, direction=None, stream=None, release_workspace=False, sync_symmetric_memory: bool = True):
+    def execute(
+        self,
+        *,
+        direction: FFTDirection | None = None,
+        stream: AnyStream | None = None,
+        release_workspace: bool = False,
+        sync_symmetric_memory: bool = True,
+    ):
         """
         Execute the FFT operation.
 
@@ -1451,14 +1460,13 @@ class FFT:
         # cuFFTMp only supports inplace transform.
         result_ptr = self.operand.data_ptr
 
-        timing = bool(self.logger and self.logger.handlers)
         if log_info:
             self.logger.info(
-                f"Starting distributed FFT {self.fft_abstract_type} calculation in the {direction.name} direction..."
-            )  # type: ignore
+                f"Starting distributed FFT {self.fft_abstract_type} calculation in the {direction.name} direction..."  # type: ignore[union-attr]
+            )
             self.logger.info(f"{self.call_prologue}")
 
-        with utils.cuda_call_ctx(stream_holder, self.blocking, timing) as (
+        with utils.cuda_call_ctx(stream_holder, self.blocking, timing=log_info) as (
             self.last_compute_event,
             elapsed,
         ):
@@ -1533,6 +1541,7 @@ class FFT:
             if self.last_compute_event is not None:
                 with utils.device_ctx(self.device_id):
                     self.workspace_stream.wait(self.last_compute_event)
+                self.last_compute_event = None
 
             self._free_workspace_memory()
 
@@ -1575,11 +1584,11 @@ def _fft(
     /,
     distribution: Slab | Sequence[Box],
     *,
-    direction=None,
+    direction: FFTDirection | None = None,
     sync_symmetric_memory: bool = True,
     options: FFTOptions | None = None,
     stream: AnyStream | None = None,
-    check_dtype=None,
+    check_dtype: str | None = None,
 ):
     r"""
     fft({function_signature})

@@ -14,7 +14,6 @@ from collections.abc import Callable, Sequence
 
 import cuda.bindings.runtime as cbr
 import cuda.core.experimental as ccx
-from cuda.core.experimental._event import Event
 
 from . import formatters
 from . import mem_limit
@@ -176,14 +175,10 @@ def is_hashable(obj: object) -> bool:
 @functools.lru_cache(maxsize=128)
 def cached_get_or_create_stream(
     device_id: int,
-    stream: Stream | int | None,
+    stream: Stream | int,
     op_package: str,
 ) -> StreamHolder[Stream]:
     op_package_ifc = package_wrapper.PACKAGE[op_package]
-    if stream is None:
-        current_stream = op_package_ifc.get_current_stream(device_id)
-        return cached_get_or_create_stream(device_id, current_stream, op_package)
-
     if isinstance(stream, int):
         ptr = stream
         if op_package == "torch":
@@ -225,12 +220,10 @@ def get_or_create_stream(
     Returns:
         StreamHolder: Hold a CuPy stream object, package stream context, stream pointer, ...
     """
-    if stream is not None and is_hashable(
-        stream
-    ):  # cupy.cuda.Stream from cupy-10.4 is unhashable (if one installs cupy from conda with cuda11.8)
-        return cached_get_or_create_stream(device_id, stream, op_package)
-    else:
-        return cached_get_or_create_stream.__wrapped__(device_id, stream, op_package)
+    op_package_ifc = package_wrapper.PACKAGE[op_package]
+    if stream is None:
+        stream = op_package_ifc.get_current_stream(device_id)
+    return cached_get_or_create_stream(device_id, stream, op_package)
 
 
 @functools.lru_cache(maxsize=128)
@@ -303,14 +296,12 @@ def create_empty_tensor(
     or created tensor may be corrupted. Set `verify_strides` to True to check
     the layout and drop the strides if the layout is not dense.
     """
-    ctx = stream_holder.ctx if stream_holder is not None else contextlib.nullcontext()
     assert isinstance(device_id, int) or device_id == "cpu", f"Internal Error: device_id must be int or 'cpu'; not {device_id}"
     # if device id is none the stream holder must be too
     assert device_id != "cpu" or stream_holder is None
     if strides is not None and verify_strides and not is_contiguous_and_dense(extents, strides):
         strides = None
-    with ctx:
-        tensor = cls.empty(extents, dtype=dtype, device_id=device_id, strides=strides, **context)
+    tensor = cls.empty(extents, dtype=dtype, device_id=device_id, strides=strides, stream_holder=stream_holder, **context)
     return tensor
 
 
@@ -443,7 +434,9 @@ class Value:
 
 
 @contextlib.contextmanager
-def cuda_call_ctx(stream_holder: StreamHolder[AnyStream], blocking=True, timing=True) -> typing.Iterator[tuple[Event, Value]]:
+def cuda_call_ctx(
+    stream_holder: StreamHolder[AnyStream], blocking=True, timing=True
+) -> typing.Iterator[tuple[ccx.Event, Value]]:
     """
     A simple context manager that provides (non-)blocking behavior depending on the
     `blocking` parameter for CUDA calls. The call is timed only for blocking behavior when
@@ -453,15 +446,17 @@ def cuda_call_ctx(stream_holder: StreamHolder[AnyStream], blocking=True, timing=
     for non-blocking calls. This event is returned together with a `Value` object that
     stores the elapsed time if the call is blocking and timing is requested, or None
     otherwise.
+
+    Inside the context, the current device is the device which owns the provided stream.
     """
     device_id = stream_holder.device_id
     stream = stream_holder.obj
 
-    with device_ctx(device_id) as device:
+    with device_ctx(device_id):
         if timing:
-            start = stream.record(options=ccx.EventOptions(enable_timing=True))
+            start = stream.record(options=ccx.EventOptions(enable_timing=blocking))
 
-        end = device.create_event(options=ccx.EventOptions(enable_timing=timing))
+        end = stream.device.create_event(options=ccx.EventOptions(enable_timing=(timing and blocking)))
 
         time = Value(None, validator=lambda v: True)
         yield end, time
