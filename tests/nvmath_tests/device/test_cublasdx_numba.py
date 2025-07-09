@@ -8,8 +8,17 @@ from numba import cuda
 
 from nvmath.bindings import mathdx
 from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_tensor
-from nvmath.device.cublasdx_backend import Arrangement
-from .helpers import _TOLERANCE, random_real, random_complex, random_int, show_MM_traits, set_device, time_this
+from nvmath.device.cublasdx_backend import Arrangement, Precision
+from .helpers import (
+    _TOLERANCE,
+    random_real,
+    random_complex,
+    random_int,
+    show_MM_traits,
+    set_device,
+    skip_nvbug_5218000,
+    time_this,
+)
 import time
 from nvmath.device import current_device_lto, matmul, float16x2_type, float32x2_type, float64x2_type, Dim3
 from nvmath.device import TransposeMode, BlasOptions
@@ -257,6 +266,8 @@ def flip_if(shape, trans):
     ],
 )
 def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, precision, np_type, numba_type, explicit_ld):
+    skip_nvbug_5218000(precision, size=shape, dynamic_ld=explicit_ld)
+
     a_precision = precision[0] if isinstance(precision, Sequence) else precision
     b_precision = precision[1] if isinstance(precision, Sequence) else precision
     c_precision = precision[2] if isinstance(precision, Sequence) else precision
@@ -500,10 +511,12 @@ def test_opaque_tensor(tensor_types):
     print(tensor_types)
     m, n, k = 4, 2, 8
     block_size = 64
+    precision = Precision(np.float32, np.float32, np.float64)
 
+    assert precision.a == precision.b
     MM = matmul(
         size=(m, n, k),
-        precision=(np.float16, np.float16, np.float32),
+        precision=precision,
         data_type="real",
         arrangement=("col_major", "row_major", "row_major"),
         execution="Block",
@@ -525,7 +538,7 @@ def test_opaque_tensor(tensor_types):
     @cuda.jit(link=MM.files)
     def f(alpha, a, b, beta, c, output):
         # Workaround to set shared memory alignment = 16 bytes (size of c64).
-        smem = cuda.shared.array(shape=(0,), dtype=np.complex64).view(np.float16)
+        smem = cuda.shared.array(shape=(0,), dtype=np.complex64).view(precision.a)
         smem_a_buffer, smem = smem[: MM.a_size], smem[MM.a_size :]
         smem_b_buffer, smem = smem[: MM.b_size], smem[MM.b_size :]
 
@@ -545,7 +558,7 @@ def test_opaque_tensor(tensor_types):
         copy_wait()
 
         if not is_rmem_c:
-            smem_c_buffer = smem.view(np.float32)
+            smem_c_buffer = smem.view(precision.c)
             layout_c = MM.suggest_layout_smem_c() if is_suggested_c else MM.get_layout_smem_c()
             smem_c = make_tensor(smem_c_buffer, layout_c)
 
@@ -576,9 +589,9 @@ def test_opaque_tensor(tensor_types):
         axpby(alpha, rmem_c_compute, beta, rmem_c)
         copy_fragment(rmem_c, gmem_output)
 
-    a = random_real(MM.a_dim, np.float16, order="F")
-    b = random_real(MM.b_dim, np.float16, order="C")
-    c = random_real(MM.c_dim, np.float32, order="C")
+    a = random_real(MM.a_dim, precision.a, order="F")
+    b = random_real(MM.b_dim, precision.b, order="C")
+    c = random_real(MM.c_dim, precision.c, order="C")
     output = np.empty_like(c)
 
     alpha = 2.0
@@ -593,7 +606,7 @@ def test_opaque_tensor(tensor_types):
     cuda.synchronize()
 
     data_test = output_d.copy_to_host()
-    data_ref = alpha * a.astype(np.float32) @ b.astype(np.float32) + beta * c
+    data_ref = alpha * a.astype(precision.c) @ b.astype(precision.c) + beta * c
 
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-2

@@ -11,6 +11,7 @@ import datetime
 import os
 
 import hypothesis
+import pytest
 
 ci_phases = [
     hypothesis.Phase.explicit,
@@ -90,3 +91,20 @@ def pytest_collection_modifyitems(config, items):
     if removed:
         config.hook.pytest_deselected(items=removed)
         items[:] = kept
+
+
+try:
+    import cupy
+
+    _mempool = cupy.get_default_memory_pool()
+
+    @pytest.fixture(autouse=True)
+    def free_cupy_mempool():
+        """Force the cupy mempool to release all memory after each test."""
+        global _mempool
+        yield
+        _mempool.free_all_blocks()
+
+except ModuleNotFoundError:
+    # If cupy is not installed, then we don't need to do anything
+    pass

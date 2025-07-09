@@ -40,6 +40,7 @@ ctypedef cufftdxType _CufftdxType
 ctypedef cufftdxDirection _CufftdxDirection
 ctypedef cufftdxComplexLayout _CufftdxComplexLayout
 ctypedef cufftdxRealMode _CufftdxRealMode
+ctypedef cufftdxCodeType _CufftdxCodeType
 ctypedef cufftdxOperatorType _CufftdxOperatorType
 ctypedef cufftdxKnobType _CufftdxKnobType
 ctypedef cufftdxTraitType _CufftdxTraitType
@@ -48,6 +49,8 @@ ctypedef cusolverdxType _CusolverdxType
 ctypedef cusolverdxFunction _CusolverdxFunction
 ctypedef cusolverdxArrangement _CusolverdxArrangement
 ctypedef cusolverdxFillMode _CusolverdxFillMode
+ctypedef cusolverdxSide _CusolverdxSide
+ctypedef cusolverdxDiag _CusolverdxDiag
 ctypedef cusolverdxOperatorType _CusolverdxOperatorType
 ctypedef cusolverdxTraitType _CusolverdxTraitType
 
@@ -58,12 +61,18 @@ ctypedef cusolverdxTraitType _CusolverdxTraitType
 
 cpdef long long int commondx_create_code() except? 0
 cpdef commondx_set_code_option_int64(long long int code, int option, long long int value)
+cpdef commondx_set_code_option_str(long long int code, int option, value)
 cpdef long long int commondx_get_code_option_int64(long long int code, int option) except? 0
 cpdef commondx_get_code_options_int64s(long long int code, int option, size_t size, array)
 cpdef size_t commondx_get_code_ltoir_size(long long int code) except? 0
 cpdef commondx_get_code_ltoir(long long int code, size_t size, out)
+cpdef size_t commondx_get_code_num_ltoirs(long long int code) except? 0
+cpdef commondx_get_code_ltoir_sizes(long long int code, size_t size, out)
+cpdef commondx_get_code_ltoirs(long long int code, size_t size, out)
 cpdef commondx_destroy_code(long long int code)
 cpdef str commondx_status_to_str(int status)
+cpdef int get_version() except? 0
+cpdef tuple get_version_ex()
 cpdef long long int cublasdx_create_descriptor() except? 0
 cpdef cublasdx_set_option_str(long long int handle, int option, value)
 cpdef cublasdx_set_operator_int64(long long int handle, int op, long long int value)
@@ -120,5 +129,3 @@ cpdef cusolverdx_finalize_code(long long int code, long long int handle)
 cpdef cusolverdx_destroy_descriptor(long long int handle)
 cpdef str cusolverdx_operator_type_to_str(int op)
 cpdef str cusolverdx_trait_type_to_str(int trait)
-cpdef int get_version() except? 0
-cpdef tuple get_version_ex()

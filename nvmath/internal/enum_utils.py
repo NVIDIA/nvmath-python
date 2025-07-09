@@ -50,8 +50,8 @@ The re for the filter must contain the named group 'option_name'."""
     prefix = determine_enum_prefix(enum_class, "_ATTRIBUTE")
 
     filter_pattern = re.compile(filter_re)
-    option_to_enum: dict[str, IntEnum] = dict()
-    option_to_dtype: dict[str, Any] = dict()
+    option_to_enum: dict[str, IntEnum] = {}
+    option_to_dtype: dict[str, Any] = {}
     # mypy claims that IntEnum is not iterable
     for e in enum_class:  # type: ignore
         m = filter_pattern.match(e.name)
@@ -65,7 +65,7 @@ The re for the filter must contain the named group 'option_name'."""
         doc += indent + option_name + ":" + f" See `{prefix + '_' + m.group(0)}`.\n"
 
     field: tuple[str, Any, None | dict]
-    fields: list[tuple[str, Any, None | dict]] = list()
+    fields: list[tuple[str, Any, None | dict]] = []
     for option_name, dtype in option_to_dtype.items():
         if numpy.issubdtype(dtype, numpy.integer):
             field = option_name, int | None, dataclasses.field(default=None)

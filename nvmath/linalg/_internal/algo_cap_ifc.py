@@ -61,7 +61,7 @@ class AlgoCapInterface:
         # Check if any data needs to be written.
         size = size_written[0]
         if size == 0:
-            return tuple()
+            return ()
 
         # Then allocate the buffer and get the data.
         num = int(size // dtype().itemsize)

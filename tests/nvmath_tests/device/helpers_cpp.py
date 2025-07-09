@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from cuda import cudart, nvrtc, cuda
+from cuda.bindings import runtime as cudart, nvrtc, driver as cudadrv
 
 from nvmath._utils import PLATFORM_LINUX, PLATFORM_WIN
 from nvmath.device.common_mathdx import CUDA_HOME as _CUDA_HOME
@@ -19,19 +19,19 @@ def run_and_time(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args
     # Prepare void** args
     args = make_args(*args)
 
-    err, stream = cuda.cuStreamCreate(0)
+    err, stream = cudadrv.cuStreamCreate(0)
     CHECK_CUDA(err)
-    err, start = cuda.cuEventCreate(0)
+    err, start = cudadrv.cuEventCreate(0)
     CHECK_CUDA(err)
-    err, stop = cuda.cuEventCreate(0)
-    CHECK_CUDA(err)
-
-    (err,) = cuda.cuCtxSynchronize()
+    err, stop = cudadrv.cuEventCreate(0)
     CHECK_CUDA(err)
 
-    (err,) = cuda.cuEventRecord(start, stream)
+    (err,) = cudadrv.cuCtxSynchronize()
+    CHECK_CUDA(err)
+
+    (err,) = cudadrv.cuEventRecord(start, stream)
     for _ in range(ncycles):
-        (err,) = cuda.cuLaunchKernel(
+        (err,) = cudadrv.cuLaunchKernel(
             kernel,
             grid_dim[0],  # grid x dim
             grid_dim[1],  # grid y dim
@@ -45,19 +45,19 @@ def run_and_time(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args
             0,  # extra (ignore)
         )
         CHECK_CUDA(err)
-    (err,) = cuda.cuEventRecord(stop, stream)
+    (err,) = cudadrv.cuEventRecord(stop, stream)
     CHECK_CUDA(err)
-    (err,) = cuda.cuStreamSynchronize(stream)
+    (err,) = cudadrv.cuStreamSynchronize(stream)
     CHECK_CUDA(err)
-    err, time_ms = cuda.cuEventElapsedTime(start, stop)
+    err, time_ms = cudadrv.cuEventElapsedTime(start, stop)
     CHECK_CUDA(err)
     time_ms = time_ms / ncycles
 
-    (err,) = cuda.cuStreamDestroy(stream)
+    (err,) = cudadrv.cuStreamDestroy(stream)
     CHECK_CUDA(err)
-    (err,) = cuda.cuEventDestroy(start)
+    (err,) = cudadrv.cuEventDestroy(start)
     CHECK_CUDA(err)
-    (err,) = cuda.cuEventDestroy(stop)
+    (err,) = cudadrv.cuEventDestroy(stop)
     CHECK_CUDA(err)
 
     return time_ms
@@ -107,9 +107,9 @@ def compile_cpp_kernel(cpp, mangled):
     #
     # Generate a CUmodule and CUfunction
     #
-    err, module = cuda.cuModuleLoadData(cubin)
+    err, module = cudadrv.cuModuleLoadData(cubin)
     CHECK_CUDA(err)
-    err, kernel = cuda.cuModuleGetFunction(module, mangled.encode(encoding="ascii"))
+    err, kernel = cudadrv.cuModuleGetFunction(module, mangled.encode(encoding="ascii"))
     CHECK_CUDA(err)
 
     shared_memory_size = get_unsigned(module, "shared_memory_size")

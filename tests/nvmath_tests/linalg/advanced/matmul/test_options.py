@@ -4,6 +4,7 @@
 
 from nvmath.bindings import cublas
 from nvmath.linalg.advanced import matmul, Matmul, MatmulOptions
+from nvmath.internal.tensor_wrapper import maybe_register_package
 import logging
 import nvmath
 import pytest
@@ -12,14 +13,14 @@ from .utils import assert_tensors_equal, sample_matrix, is_torch_available
 
 try:
     import cupy_backends.cuda
+
+    maybe_register_package("cupy")
 except ModuleNotFoundError:
     pytest.skip("cupy is required for matmul tests", allow_module_level=True)
 
 
-try:
-    import torch
-except:
-    torch = None
+if is_torch_available():
+    maybe_register_package("torch")
 
 """
 This set of tests checks Matmul's options
@@ -230,9 +231,9 @@ def test_allocator():
     if not is_torch_available():
         pytest.skip("no pytorch")
 
-    from nvmath.memory import _TorchCUDAMemoryManager
+    from nvmath.memory import _MEMORY_MANAGER
 
-    allocator = _TorchCUDAMemoryManager(0, logging.getLogger())
+    allocator = _MEMORY_MANAGER["torch"](0, logging.getLogger())
     options = MatmulOptions(allocator=allocator)
     check_matmul_with_options(10, options)
 
@@ -241,9 +242,9 @@ def test_different_allocator():
     """
     Tests if matmul of torch tensors can be performed with cupy allocator
     """
-    from nvmath.memory import _CupyCUDAMemoryManager
+    from nvmath.memory import _MEMORY_MANAGER
 
-    allocator = _CupyCUDAMemoryManager(0, logging.getLogger())
+    allocator = _MEMORY_MANAGER["cupy"](0, logging.getLogger())
     options = MatmulOptions(allocator=allocator)
     check_matmul_with_options(10, options)
 
@@ -255,9 +256,9 @@ def test_custom_allocator():
     if not is_torch_available():
         pytest.skip("no pytorch")
 
-    from nvmath.memory import _TorchCUDAMemoryManager
+    from nvmath.memory import _MEMORY_MANAGER
 
-    class MockAllocator(_TorchCUDAMemoryManager):
+    class MockAllocator(_MEMORY_MANAGER["torch"]):
         def __init__(self, device_id, logger):
             super().__init__(device_id, logger)
             self.counter = 0
@@ -289,11 +290,11 @@ def test_uninstantiated_allocator():
     if not is_torch_available():
         pytest.skip("no pytorch")
 
-    from nvmath.memory import _TorchCUDAMemoryManager
+    from nvmath.memory import _MEMORY_MANAGER
 
     try:
         # This may not fail if allocator won't be used
-        options = MatmulOptions(allocator=_TorchCUDAMemoryManager)
+        options = MatmulOptions(allocator=_MEMORY_MANAGER["torch"])
         check_matmul_with_options(10, options)
     except TypeError:
         pass

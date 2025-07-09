@@ -67,7 +67,7 @@ def codegen(description, func_to_overload):
     else:
         assert execution == "Block"
 
-        if execute_api == "registry_memory":
+        if execute_api == "register_memory":
             codegen_block_lmem(description, func_to_overload)
         else:
             assert execute_api == "shared_memory"

@@ -20,7 +20,7 @@ from nvmath.bindings import cufft  # type: ignore
 try:
     from nvmath.bindings.nvpl import fft as fftw  # type: ignore
 except ImportError:
-    fftw = None
+    fftw = None  # type: ignore
 from nvmath.bindings._internal import utils as _bindings_utils  # type: ignore
 from nvmath.fft._exec_utils import _cross_setup_execution_and_options
 from nvmath import memory
@@ -793,7 +793,17 @@ def setup_options(operand: utils.TensorHolder, options, execution) -> tuple[FFTO
     return _cross_setup_execution_and_options(options, execution)
 
 
-def create_fft_key(operand, *, axes=None, options=None, execution=None, inplace=None, prolog=None, epilog=None, plan_args=None):
+def create_fft_key(
+    operand,
+    *,
+    axes: Sequence[int] | None = None,
+    options: FFTOptions | None = None,
+    execution: ExecutionCPU | ExecutionCUDA | None = None,
+    inplace=None,
+    prolog: DeviceCallable | None = None,
+    epilog: DeviceCallable | None = None,
+    plan_args=None,
+):
     """
     This key is not designed to be serialized and used on a different machine. It is meant
     for runtime use only. We use a specific inplace argument instead of taking it from
@@ -856,7 +866,7 @@ def create_fft_key(operand, *, axes=None, options=None, execution=None, inplace=
     # The key is based on plan arguments, callback data (a callable object of type
     # DeviceCallback or None) and the execution options (in "normalized" form of
     # ("cpu"/"cuda", *execution_options)).
-    return plan_args, callable_data, data_cls_astuple(execution)
+    return plan_args, callable_data, data_cls_astuple(execution)  # type: ignore[arg-type]
 
 
 def _has_only_small_factors_extent(extent):
@@ -951,8 +961,6 @@ class InvalidFFTState(Exception):
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
 class FFT:
     """
-    FFT(operand, *, axes=None, options=None, execution=None, stream=None)
-
     Create a stateful object that encapsulates the specified FFT computations and required
     resources. This object ensures the validity of resources during use and releases them
     when they are no longer needed to prevent misuse.
@@ -1088,10 +1096,10 @@ class FFT:
         self,
         operand,
         *,
-        axes=None,
+        axes: Sequence[int] | None = None,
         options: FFTOptions | None = None,
         execution: ExecutionCPU | ExecutionCUDA | None = None,
-        stream=None,
+        stream: AnyStream | None = None,
     ):
         self.operand = operand = tensor_wrapper.wrap_operand(operand)
         options, execution = setup_options(operand, options, execution)
@@ -1192,7 +1200,7 @@ class FFT:
         # Capture operand layout for consistency checks when resetting operands.
         self.operand_layout = TensorLayout(shape=operand.shape, strides=operand.strides)
 
-        self._preallocated_result = None
+        self._preallocated_result: utils.TensorHolder | None = None
 
         if self.options.inplace:  # Don't use self.inplace here, because we always set it to True for CPU tensors.
             self.logger.info("The FFT will be performed in-place, with the result overwriting the input.")
@@ -1290,7 +1298,7 @@ class FFT:
         self.valid_state = True
         self.logger.info("The FFT operation has been created.")
 
-    def get_key(self, *, prolog=None, epilog=None):
+    def get_key(self, *, prolog: DeviceCallable | None = None, epilog: DeviceCallable | None = None):
         """
         Get the key for this object's data supplemented with the callbacks.
 
@@ -1315,7 +1323,15 @@ class FFT:
         )
 
     @staticmethod
-    def create_key(operand, *, axes=None, options=None, execution=None, prolog=None, epilog=None):
+    def create_key(
+        operand,
+        *,
+        axes: Sequence[int] | None = None,
+        options: FFTOptions | None = None,
+        execution: ExecutionCPU | ExecutionCUDA | None = None,
+        prolog: DeviceCallable | None = None,
+        epilog: DeviceCallable | None = None,
+    ):
         """
         Create a key as a compact representation of the FFT problem specification based on
         the given operand, axes and the FFT options. Note that different combinations of
@@ -1434,7 +1450,14 @@ class FFT:
 
     @utils.precondition(_check_valid_fft)
     @utils.atomic(_free_plan_resources, method=True)
-    def plan(self, *, prolog=None, epilog=None, stream: AnyStream | None = None, direction=None):
+    def plan(
+        self,
+        *,
+        prolog: DeviceCallable | None = None,
+        epilog: DeviceCallable | None = None,
+        stream: AnyStream | None = None,
+        direction: FFTDirection | None = None,
+    ):
         """Plan the FFT.
 
         Args:
@@ -1448,6 +1471,8 @@ class FFT:
                 :meth:`execute` calls. It may be used as a hint to optimize C2C planning for
                 CPU FFT calls.
         """
+        log_info = self.logger.isEnabledFor(logging.INFO)
+        log_debug = self.logger.isEnabledFor(logging.DEBUG)
 
         if self.fft_planned:
             self.logger.debug("The FFT has already been planned, and redoing the plan is not supported.")
@@ -1493,15 +1518,16 @@ class FFT:
             execution=self.execution_options,
             plan_args=plan_args,
         )
-        self.logger.debug(f"The FFT key (sans callback) is {self.orig_key}.")
+        if log_debug:
+            self.logger.debug(f"The FFT key (sans callback) is {self.orig_key}.")
 
-        self.logger.debug(
-            f"The operand CUDA type is {NAME_TO_DATA_TYPE[self.operand_data_type].name}, and the result CUDA type is "
-            f"{NAME_TO_DATA_TYPE[self.result_data_type].name}."
-        )
-        self.logger.debug(f"The CUDA type used for compute is {NAME_TO_DATA_TYPE[self.compute_data_type].name}.")
-        timing = bool(self.logger and self.logger.handlers)
-        self.logger.info("Starting FFT planning...")
+            self.logger.debug(
+                f"The operand CUDA type is {NAME_TO_DATA_TYPE[self.operand_data_type].name}, and the result CUDA type is "
+                f"{NAME_TO_DATA_TYPE[self.result_data_type].name}."
+            )
+            self.logger.debug(f"The CUDA type used for compute is {NAME_TO_DATA_TYPE[self.compute_data_type].name}.")
+        if log_info:
+            self.logger.info("Starting FFT planning...")
 
         if self.execution_space == "cpu":
             if direction is not None:
@@ -1517,7 +1543,7 @@ class FFT:
                 # out-of-place operation. To avoid subtle issues, just preallocate the
                 # result tensor earlier.
                 self._preallocated_result = self._allocate_result_operand(None, True)
-                result_ptr = self._preallocated_result.data_ptr  # type: ignore[attr-defined]
+                result_ptr = self._preallocated_result.data_ptr  # type: ignore[attr-defined, union-attr]
             precision, *plan_args = fftw_plan_args(
                 plan_args,
                 self.operand.data_ptr,
@@ -1525,7 +1551,7 @@ class FFT:
                 fft_abstract_type=self.fft_abstract_type,
                 direction=direction,
             )
-            with utils.host_call_ctx(timing=timing) as elapsed:
+            with utils.host_call_ctx(timing=log_info) as elapsed:
                 fftw.plan_with_nthreads(precision, self.execution_options.num_threads)  # type: ignore[union-attr]
                 try:
                     assert self.handle is None
@@ -1542,7 +1568,7 @@ class FFT:
             # needed
             assert isinstance(self.device_id, int), self.device_id
             assert stream_holder is not None
-            with utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (
+            with utils.cuda_call_ctx(stream_holder, blocking=True, timing=log_info) as (
                 self.last_compute_event,
                 elapsed,
             ):
@@ -1550,11 +1576,11 @@ class FFT:
 
         self.fft_planned = True
 
-        if elapsed.data is not None:
+        if log_info and elapsed.data is not None:
             self.logger.info(f"The FFT planning phase took {elapsed.data:.3f} ms to complete.")
 
     @utils.precondition(_check_valid_fft)
-    def reset_operand(self, operand=None, *, stream=None):
+    def reset_operand(self, operand=None, *, stream: AnyStream | None = None):
         """
         Reset the operand held by this :class:`FFT` instance. This method has two use cases:
 
@@ -1626,8 +1652,8 @@ class FFT:
         """
 
         if operand is None:
-            self.operand = None
-            self.operand_backup = None
+            self.operand = None  # type: ignore
+            self.operand_backup = None  # type: ignore
             self.logger.info("The operand has been reset to None.")
             return
 
@@ -1646,7 +1672,7 @@ class FFT:
         exec_stream_holder, operand_stream_holder = self._get_or_create_stream_maybe(stream)
         self.logger.info(
             "The specified stream for reset_operand() is "
-            f"{(exec_stream_holder or operand_stream_holder) and (exec_stream_holder or operand_stream_holder).obj}."
+            f"{(exec_stream_holder or operand_stream_holder) and (exec_stream_holder or operand_stream_holder).obj}."  # type: ignore[union-attr]
         )
 
         # In principle, we could support memory_space change,
@@ -1694,7 +1720,7 @@ class FFT:
 
         if self.execution_space == "cuda":
             # Set stream for the FFT.
-            cufft.set_stream(self.handle, exec_stream_holder.ptr)
+            cufft.set_stream(self.handle, exec_stream_holder.ptr)  # type: ignore[union-attr]
 
         self.operand, self.operand_backup = _copy_operand_perhaps(
             self.operand,
@@ -1837,6 +1863,7 @@ class FFT:
         if self.last_compute_event is not None:
             self.workspace_stream.wait(self.last_compute_event)
             self.logger.debug("Established ordering with respect to the computation before releasing the workspace.")
+            self.last_compute_event = None
 
         self.logger.debug("[_free_workspace_memory_perhaps] The workspace memory will be released.")
         self._free_workspace_memory()
@@ -1861,7 +1888,7 @@ class FFT:
     @utils.precondition(_check_planned, "Execution")
     @utils.precondition(_check_valid_operand, "Execution")
     @utils.atomic(_release_workspace_memory_perhaps, method=True)
-    def execute(self, direction=None, stream=None, release_workspace=False):
+    def execute(self, direction: FFTDirection | None = None, stream: AnyStream | None = None, release_workspace: bool = False):
         """
         Execute the FFT operation.
 
@@ -1893,10 +1920,10 @@ class FFT:
 
         if self.execution_space == "cuda":
             # Set stream for the FFT.
-            cufft.set_stream(self.handle, exec_stream_holder.ptr)
+            cufft.set_stream(self.handle, exec_stream_holder.ptr)  # type: ignore[union-attr]
 
         # Allocate workspace if needed.
-        self._allocate_workspace_memory_perhaps(exec_stream_holder)
+        self._allocate_workspace_memory_perhaps(exec_stream_holder)  # type: ignore[arg-type]
         # Allocate output operand if needed
         if self.inplace:
             result_ptr = self.operand.data_ptr
@@ -1909,18 +1936,17 @@ class FFT:
                 self.result = self._allocate_result_operand(exec_stream_holder, log_debug)
             result_ptr = self.result.data_ptr
 
-        timing = bool(self.logger and self.logger.handlers)
         if log_info:
-            self.logger.info(f"Starting FFT {self.fft_abstract_type} calculation in the {direction.name} direction...")
+            self.logger.info(f"Starting FFT {self.fft_abstract_type} calculation in the {direction.name} direction...")  # type: ignore[union-attr]
             self.logger.info(f"{self.call_prologue}")
 
         if self.execution_space == "cpu":
-            with utils.host_call_ctx(timing=timing) as elapsed:
+            with utils.host_call_ctx(timing=log_info) as elapsed:
                 fftw.execute(self.handle, self.operand.data_ptr, result_ptr, direction)
         else:
             assert isinstance(self.device_id, int), self.device_id
             assert exec_stream_holder is not None
-            with utils.cuda_call_ctx(exec_stream_holder, self.blocking, timing) as (
+            with utils.cuda_call_ctx(exec_stream_holder, self.blocking, timing=log_info) as (
                 self.last_compute_event,
                 elapsed,
             ):
@@ -1950,10 +1976,10 @@ class FFT:
                 out = self.operand_backup.tensor
             else:
                 target_dev = "cpu" if self.memory_space == "cpu" else self.operand_device_id
-                out = result.to(target_dev, stream_holder=operand_stream_holder).tensor
+                out = result.to(target_dev, stream_holder=operand_stream_holder).tensor  # type: ignore[arg-type]
 
         # Release internal reference to the result to permit recycling of memory.
-        self.result = None
+        self.result = None  # type: ignore
 
         return out
 
@@ -1973,6 +1999,7 @@ class FFT:
             # computation.
             if self.last_compute_event is not None:
                 self.workspace_stream.wait(self.last_compute_event)
+                self.last_compute_event = None
 
             self._free_workspace_memory()
 
@@ -2122,7 +2149,16 @@ fft.__name__ = "fft"
 
 # Forward R2C FFT Function
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
-def rfft(operand, *, axes=None, options=None, execution=None, prolog=None, epilog=None, stream=None):
+def rfft(
+    operand,
+    *,
+    axes: Sequence[int] | None = None,
+    options: FFTOptions | None = None,
+    execution: ExecutionCPU | ExecutionCUDA | None = None,
+    prolog: DeviceCallable | None = None,
+    epilog: DeviceCallable | None = None,
+    stream: AnyStream | None = None,
+):
     r"""
     rfft({function_signature})
 
@@ -2213,7 +2249,16 @@ ifft.__name__ = "ifft"
 
 # Inverse C2R FFT Function.
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
-def irfft(x, *, axes=None, options=None, execution=None, prolog=None, epilog=None, stream=None):
+def irfft(
+    x,
+    *,
+    axes: Sequence[int] | None = None,
+    options: FFTOptions | None = None,
+    execution: ExecutionCPU | ExecutionCUDA | None = None,
+    prolog: DeviceCallable | None = None,
+    epilog: DeviceCallable | None = None,
+    stream: AnyStream | None = None,
+):
     """
     irfft({function_signature})
 
@@ -2286,6 +2331,7 @@ def irfft(x, *, axes=None, options=None, execution=None, prolog=None, epilog=Non
           <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example07_c2r_odd.py>`_.
     """
     options = utils.check_or_create_options(FFTOptions, options, "FFT options")
+    assert options is not None
     options.fft_type = "C2R"
     return _fft(
         x,

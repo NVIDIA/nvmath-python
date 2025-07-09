@@ -163,7 +163,7 @@ html_theme_options = {
         "json_url": "/cuda/nvmath-python/latest/_static/switcher.json",
         "version_match": version,
     },
-    "navbar_start": ["navbar-logo", "version-switcher"],
+    "navbar_start": ["navbar-logo"],
 }
 html_show_sphinx = False
 
@@ -182,7 +182,7 @@ htmlhelp_basename = "nvmath-python-doc"
 
 # TODO: remove this once examples are published.
 linkcheck_ignore = [
-    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/.*",
+    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/.*",
 ]
 
 
@@ -193,6 +193,21 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
     # there's no way we can touch the docstrings of np.dtype objects, so we
     # need to do post-processing here
     if isinstance(obj, np.dtype):
+        docs = {}
+        from nvmath.sparse._internal.cudss_data_ifc import memory_estimates_dtype
+
+        # TODO: find better way to declare docs in the source code.
+        if obj == memory_estimates_dtype:
+            docs = {
+                "permanent_device_memory": "permanent device memory",
+                "peak_device_memory": "peak device memory",
+                "permanent_host_memory": "permanent host memory",
+                "peak_host_memory": "peak host memory",
+                "hybrid_min_device_memory": "(if in hybrid memory mode) minimum device memory for the hybrid memory mode",
+                "hybrid_max_device_memory": "(if in hybrid memory mode) maximum host memory for the hybrid memory mode",
+                "reserved": "reserved for future use",
+            }
+
         _, *mod, struct = name.split(".")
         mod = ".".join(mod)
         if mod == "bindings":
@@ -207,7 +222,8 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
         lines.append(line)
         lines.append("\n")
         for k in obj.fields:
-            lines.append(f":param {k}:\n")
+            docs_value = docs.get(k, "")
+            lines.append(f":param {k}: {docs_value}\n")
     else:
         match_numba_dtype = re.search(r"nvmath.device.float(\d+)x(\d+)_type", name)
         if match_numba_dtype:
@@ -302,12 +318,23 @@ notebook_handler = NotebookHandler()
 
 
 def setup(app):
+    fixup_internal_alias()
     app.add_css_file("nvmath_override.css")
     app.connect("autodoc-process-docstring", autodoc_process_docstring)
     app.connect("source-read", lambda *args, **kwargs: notebook_handler.remove_notebook_copyright(*args, **kwargs))
     app.set_translator("html", DotBreakHtmlTranslator)
     app.add_autodocumenter(PatchedEnumDocumenter, override=True)
     app.add_post_transform(UnqualifiedTitlesTransform)
+
+
+def fixup_internal_alias():
+    from nvmath.sparse._internal import cudss_config_ifc, cudss_data_ifc
+
+    cudss_config_ifc.PlanConfig.__name__ = "DirectSolverPlanConfig"
+    cudss_data_ifc.PlanInfo.__name__ = "DirectSolverPlanInfo"
+    cudss_config_ifc.FactorizationConfig.__name__ = "DirectSolverFactorizationConfig"
+    cudss_config_ifc.SolutionConfig.__name__ = "DirectSolverSolutionConfig"
+    cudss_data_ifc.FactorizationInfo.__name__ = "DirectSolverFactorizationInfo"
 
 
 # -- Other options -------------------------------------------------
@@ -323,12 +350,21 @@ autosummary_filename_map = {
 }
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3/", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "cupy": ("https://docs.cupy.dev/en/stable/", None),
-    "torch": ("https://pytorch.org/docs/stable/", None),
-    "numba": ("https://numba.readthedocs.io/en/stable/", None),
+    "cublas": ("https://docs.nvidia.com/cuda/cublas/", None),
+    "cuda-bindings": ("https://nvidia.github.io/cuda-python/cuda-bindings/", None),
+    "cuda-core": ("https://nvidia.github.io/cuda-python/cuda-core/", None),
+    "cudss": ("https://docs.nvidia.com/cuda/cudss/", None),
     "cufft": ("https://docs.nvidia.com/cuda/cufft/", None),
+    "cupy": ("https://docs.cupy.dev/en/stable/", None),
+    # curand is not using sphinx yet - June, 2025
+    # "curand": ("https://docs.nvidia.com/cuda/curand/", None),
+    "cusolver": ("https://docs.nvidia.com/cuda/cusolver/", None),
+    "cusparse": ("https://docs.nvidia.com/cuda/cusparse/", None),
+    "numba": ("https://numba.readthedocs.io/en/stable/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "python": ("https://docs.python.org/3/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "torch": ("https://docs.pytorch.org/docs/stable/", None),
 }
 
 napoleon_google_docstring = True

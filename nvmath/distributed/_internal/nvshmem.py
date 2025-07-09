@@ -6,8 +6,7 @@ __all__ = ["initialize", "finalize", "is_initialized", "nvshmem_empty_dlpack", "
 
 import logging
 import numpy as np
-from cuda.core.experimental._device import Device
-from cuda.core.experimental._memory import Buffer, MemoryResource
+import cuda.core.experimental as ccx
 
 from nvmath import memory
 from nvmath.bindings import nvshmem  # type: ignore
@@ -28,8 +27,8 @@ def initialize(device_id: int, mpi_comm) -> None:
     # Here we set the device for NVSHMEM initialization, but we also need to make sure that
     # a CUDA context has been created before initializing NVSHMEM. We can't rely on
     # `device_ctx` to do it since it's not guaranteed to make a runtime API call.
-    old_device = Device()
-    Device(device_id).set_current()
+    old_device = ccx.Device()
+    ccx.Device(device_id).set_current()
 
     try:
         status = nvshmem.init_status()
@@ -94,17 +93,17 @@ def _check_initialized():
 _resource_registry = {}
 
 
-class _NvshmemResource(MemoryResource):
+class _NvshmemResource(ccx.MemoryResource):
     def __init__(self, device):
         self.device = device
 
-    def allocate(self, size, stream=None) -> Buffer:
+    def allocate(self, size, stream=None) -> ccx.Buffer:
         # NOTE: setting the device is left to the caller
         ptr = nvshmem.malloc(size)
         if ptr == 0 and size != 0:
             raise MemoryError("nvshmem_malloc returned NULL")
         self.freed = False
-        return Buffer(ptr=ptr, size=size, mr=self)
+        return ccx.Buffer.from_handle(ptr=ptr, size=size, mr=self)
 
     def deallocate(self, ptr, size, stream=None, manual=False):
         # NOTE: setting the device is left to the caller
@@ -170,7 +169,7 @@ def nvshmem_empty_dlpack(size, device_id, comm, make_symmetric=False, logger=Non
     # Sizes are equal or make_symmetric=True.
     size = max_size[1]
 
-    mem = _NvshmemResource(Device(device_id))
+    mem = _NvshmemResource(ccx.Device(device_id))
     mem_buffer = mem.allocate(size)
     pointer = mem_buffer._mnff.ptr
     assert pointer not in _resource_registry
@@ -221,7 +220,7 @@ class NvshmemMemoryManager(memory.BaseCUDAMemoryManager):
 
     def memalloc(self, size):
         """This is a *collective* call (invokes nvshmem_malloc)"""
-        mem = _NvshmemResource(Device(self.device_id))
+        mem = _NvshmemResource(ccx.Device(self.device_id))
         mem_buffer = mem.allocate(size)
         pointer = mem_buffer._mnff.ptr
         assert pointer not in _resource_registry

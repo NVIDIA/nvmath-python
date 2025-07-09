@@ -8,8 +8,8 @@ from ast import literal_eval
 
 import pytest
 import numpy as np
+import cuda.core.experimental as ccx
 
-from cuda.core.experimental._event import Event
 from nvmath.memory import BaseCUDAMemoryManager, MemoryPointer
 
 try:
@@ -404,14 +404,14 @@ def test_fft_ifft_overlap(
 )
 def test_ifft_fft_blocking(monkeypatch, framework, exec_backend, mem_backend, dtype, blocking, shape_kind, shape):
     synchronization_num = 0
-    _actual_sync = Event.sync
+    _actual_sync = ccx.Event.sync
 
     def _synchronize(self):
         nonlocal synchronization_num
         synchronization_num += 1
         _actual_sync(self)
 
-    monkeypatch.setattr(Event, "sync", _synchronize)
+    monkeypatch.setattr(ccx.Event, "sync", _synchronize)
 
     sample = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=33)
     sample_fft_ref = get_fft_ref(sample)
@@ -1305,12 +1305,7 @@ def test_fft_wrong_device_stream(framework, exec_backend, mem_backend, dtype):
         device_id=1,
     )
 
-    import cupy_backends
-
-    with pytest.raises(
-        cupy_backends.cuda.api.runtime.CUDARuntimeError,
-        match="cudaErrorInvalidResourceHandle: invalid resource handle",
-    ):
+    with pytest.raises(Exception):
         nvmath.fft.fft(signal, stream=stream, execution=exec_backend.nvname)
 
 

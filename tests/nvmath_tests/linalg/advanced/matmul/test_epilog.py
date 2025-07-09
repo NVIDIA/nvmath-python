@@ -556,3 +556,113 @@ def test_invalid_bias(epilog, test_case):
     bias = test_case["make_bias"](test_case["bias_shape"])
     with pytest.raises(ValueError, match=test_case["error_pattern"]):
         matmul(a, b, epilog=epilog, epilog_inputs={"bias": bias})
+
+
+@pytest.mark.parametrize("epilog", [Epilog.DRELU, Epilog.DGELU])
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "name": "wrong_dtype",
+            "a_shape": (16, 32),
+            "b_shape": (32, 16),
+            "error_pattern": r"The dtype of the .* auxiliary input .* must be",
+            "make_aux_input": lambda aux_shape, expected_dtype: cupy.zeros(
+                aux_shape, dtype="float16" if expected_dtype == "uint8" else "uint8"
+            ),
+            "min_cublas_version": 111103,
+        },
+        {
+            "name": "wrong_mm_shape",
+            "a_shape": (16, 32),
+            "b_shape": (32, 16),
+            "error_pattern": r"The auxiliary epilog input .* must have the MM shape",
+            "make_aux_input": lambda aux_shape, expected_dtype: cupy.zeros(
+                (aux_shape[0] + 8, aux_shape[1] + 8), dtype=expected_dtype
+            ),
+            "min_cublas_version": 111103,
+        },
+        {
+            "name": "wrong_stride",
+            "a_shape": (16, 32),
+            "b_shape": (32, 16),
+            "error_pattern": (
+                r"The stride of the .* auxiliary input .* must be 1 along the dimension "
+                r".* which corresponds to the M dimension"
+            ),
+            "make_aux_input": lambda aux_shape, expected_dtype: cupy.lib.stride_tricks.as_strided(
+                cupy.zeros(aux_shape[0] * aux_shape[1] * 2, dtype=expected_dtype),
+                shape=aux_shape,
+                strides=(2, aux_shape[0]),  # Wrong M stride (should be 1)
+            ),
+            "min_cublas_version": 111103,
+        },
+        {
+            "name": "batch_shape_mismatch",
+            "a_shape": (2, 3, 16, 32),
+            "b_shape": (2, 3, 32, 16),
+            "error_pattern": (
+                r"The batch dimensions of the .* auxiliary input .* must match with that "
+                r"of the matrix multiplication definition"
+            ),
+            "make_aux_input": lambda aux_shape, expected_dtype: cupy.zeros(
+                (2, 4, aux_shape[-2], aux_shape[-1]), dtype=expected_dtype
+            ),
+            "min_cublas_version": 111103,
+        },
+        {
+            "name": "batch_axis_order_mismatch",
+            "a_shape": (2, 3, 16, 32),
+            "b_shape": (2, 3, 32, 16),
+            "error_pattern": (
+                r"The batch axis order of the .* auxiliary input .* must match with that "
+                r"of the other operands"
+            ),
+            "make_aux_input": lambda aux_shape, expected_dtype: cupy.lib.stride_tricks.as_strided(
+                cupy.zeros(aux_shape[0] * aux_shape[1] * aux_shape[2] * aux_shape[3] * 2, dtype=expected_dtype),
+                shape=aux_shape,
+                # Swapped batch strides
+                strides=(aux_shape[2] * aux_shape[3], aux_shape[0] * aux_shape[2] * aux_shape[3], 1, aux_shape[2]),
+            ),
+            "min_cublas_version": 111103,
+        },
+        {
+            "name": "non_tileable_batch",
+            "a_shape": (2, 3, 16, 32),
+            "b_shape": (2, 3, 32, 16),
+            "error_pattern": (
+                r"The batch layout for .* auxiliary input .* is currently not supported "
+                r"because it is not tileable"
+            ),
+            "make_aux_input": lambda aux_shape, expected_dtype: cupy.lib.stride_tricks.as_strided(
+                cupy.zeros(aux_shape[0] * aux_shape[1] * aux_shape[2] * aux_shape[3] * 10, dtype=expected_dtype),
+                shape=aux_shape,
+                # Irregular strides
+                strides=(aux_shape[1] * aux_shape[2] * aux_shape[3] * 7, aux_shape[2] * aux_shape[3] * 5, 1, aux_shape[2]),
+            ),
+            "min_cublas_version": 111103,
+        },
+    ],
+)
+def test_aux_handler_validation(epilog, test_case):
+    """Test validation branches in DReluAuxHandler and DGeluAuxHandler validate methods."""
+    skip_if_cublas_before(test_case["min_cublas_version"], message=f"{epilog.name} not supported")
+
+    a = sample_matrix("numpy/cupy", "float32", test_case["a_shape"], use_cuda=True)
+    b = sample_matrix("numpy/cupy", "float32", test_case["b_shape"], use_cuda=True)
+
+    # Get expected aux shape and dtype from forward pass
+    if epilog == Epilog.DRELU:
+        aux_key = "relu_aux"
+        expected_dtype = "uint8"
+        _, aux_output = matmul(a, b, epilog=Epilog.RELU_AUX)
+    else:  # DGELU
+        aux_key = "gelu_aux"
+        expected_dtype = "float32"
+        _, aux_output = matmul(a, b, epilog=Epilog.GELU_AUX)
+
+    aux_shape = aux_output[aux_key].shape
+    aux_input = test_case["make_aux_input"](aux_shape, expected_dtype)
+
+    with pytest.raises(ValueError, match=test_case["error_pattern"]):
+        matmul(a, b, epilog=epilog, epilog_inputs={aux_key: aux_input})

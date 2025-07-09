@@ -15,7 +15,7 @@ from common_numba import load_to_shared, time_numba
 from common_cupy import time_cupy
 
 
-@cuda.jit(inline="always")
+@cuda.jit(device=True, forceinline=True)
 def nb_transform(x):
     return x * x
 

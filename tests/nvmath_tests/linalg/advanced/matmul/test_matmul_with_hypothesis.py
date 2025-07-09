@@ -22,17 +22,20 @@ from hypothesis.strategies import (
 )
 import pytest
 
+from nvmath.internal.tensor_wrapper import maybe_register_package
+from nvmath.memory import _MEMORY_MANAGER
+
 try:
     import cupy as cp
-    from nvmath.memory import _CupyCUDAMemoryManager
+
+    maybe_register_package("cupy")
 except ModuleNotFoundError:
-    _CupyCUDAMemoryManager = None
     pytest.skip("cupy is required for matmul tests", allow_module_level=True)
 
 try:
-    from nvmath.memory import _TorchCUDAMemoryManager
+    maybe_register_package("torch")
 except ImportError:
-    _TorchCUDAMemoryManager = None
+    pass
 
 import numpy as np
 
@@ -47,7 +50,7 @@ from nvmath.linalg._internal.typemaps import (
 )
 from nvmath.linalg.advanced import MatmulEpilog, MatmulNumericalImplFlags, MatmulPlanPreferences, matmul
 from nvmath.linalg.advanced.matmulmod import EPILOG_INPUT_HANDLERS_MAP, EPILOG_MINIMUM_VERSIONS_MAP
-from nvmath.memory import BaseCUDAMemoryManager, _RawCUDAMemoryManager
+from nvmath.memory import BaseCUDAMemoryManager
 
 from nvmath_tests.helpers import nvmath_seed
 from .utils import get_absolute_tolerance
@@ -208,9 +211,9 @@ problem_size_mnk = integers(min_value=1, max_value=256)
 options_blocking_values = [True, "auto"]
 options_allocator_values = [
     None,
-    _RawCUDAMemoryManager(0, logging.getLogger()),
-    _CupyCUDAMemoryManager(0, logging.getLogger()) if _CupyCUDAMemoryManager is not None else None,
-    _TorchCUDAMemoryManager(0, logging.getLogger()) if _TorchCUDAMemoryManager is not None else None,
+    _MEMORY_MANAGER["_raw"](0, logging.getLogger()),
+    _MEMORY_MANAGER["cupy"](0, logging.getLogger()),
+    _MEMORY_MANAGER["torch"](0, logging.getLogger()) if "torch" in _MEMORY_MANAGER else None,
 ]
 
 # FIXME: Add integer types to tests
@@ -252,15 +255,15 @@ def matrix_multiply_arrays(draw):
     ab_type = draw(sampled_from(ab_type_values))
     # Generate data in range [0, 5] to match sample_matrix() from utils
     # Only non-negative reals to avoid catastrophic cancellation
-    element_properties: dict[str, typing.Any] = dict(
-        allow_infinity=False,
-        allow_nan=False,
-        allow_subnormal=False,
-        max_magnitude=np.sqrt(50),
-        min_magnitude=0,
-        max_value=5,
-        min_value=0,
-    )
+    element_properties: dict[str, typing.Any] = {
+        "allow_infinity": False,
+        "allow_nan": False,
+        "allow_subnormal": False,
+        "max_magnitude": np.sqrt(50),
+        "min_magnitude": 0,
+        "max_value": 5,
+        "min_value": 0,
+    }
     # NOTE: It is unfeasible for hypothesis to explore a parameter space where
     # all elements of the input arrays are unique, so most of the time, arrays
     # contain just a few unique values
@@ -429,8 +432,8 @@ f16_strategy = arrays(np.float16, shape=tuples(problem_size, problem_size), elem
 options_blocking_values_negative = [True, False, "auto", "none"]
 
 options_allocator_values_negative = [
-    _RawCUDAMemoryManager(0, logging.getLogger()),
-    _CupyCUDAMemoryManager(0, logging.getLogger()),
+    _MEMORY_MANAGER["_raw"](0, logging.getLogger()),
+    _MEMORY_MANAGER["cupy"](0, logging.getLogger()),
     "none",
 ]
 

@@ -671,10 +671,8 @@ def intercept_device_id(monkeypatch, *calls):
 
 def intercept_default_allocations(monkeypatch):
     allocations = {"raw": 0, "cupy": 0, "torch": 0}
-
-    from nvmath.memory import (
-        _RawCUDAMemoryManager,
-    )
+    from nvmath.internal.tensor_wrapper import maybe_register_package
+    from nvmath.memory import _MEMORY_MANAGER
 
     def get_memalloc_wrapper(manager, alloc_key):
         actual = manager.memalloc_async
@@ -686,21 +684,21 @@ def intercept_default_allocations(monkeypatch):
         return wrapper
 
     managers = [
-        (_RawCUDAMemoryManager, "raw"),
+        (_MEMORY_MANAGER["_raw"], "raw"),
     ]
 
     if cp is not None:
-        from nvmath.memory import _CupyCUDAMemoryManager
+        maybe_register_package("cupy")
 
         managers += [
-            (_CupyCUDAMemoryManager, "cupy"),
+            (_MEMORY_MANAGER["cupy"], "cupy"),
         ]
 
     if torch is not None:
-        from nvmath.memory import _TorchCUDAMemoryManager
+        maybe_register_package("torch")
 
         managers += [
-            (_TorchCUDAMemoryManager, "torch"),
+            (_MEMORY_MANAGER["torch"], "torch"),
         ]
 
     for manager, alloc_key in managers:

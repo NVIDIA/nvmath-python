@@ -14,6 +14,7 @@ from collections.abc import Sequence
 import torch
 
 from .tensor_ifc import TensorHolder
+from .package_ifc import StreamHolder
 
 
 class TorchTensor(TensorHolder[torch.Tensor]):
@@ -61,7 +62,9 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         return self.tensor.stride()
 
     @classmethod
-    def empty(cls, shape, device_id="cpu", *, dtype="float32", strides=None, **context):
+    def empty(
+        cls, shape, device_id="cpu", *, dtype="float32", strides=None, stream_holder: StreamHolder | None = None, **context
+    ):
         """
         Create an empty tensor of the specified shape and data type on the specified device
         (None, 'cpu', or device id).
@@ -71,11 +74,13 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         Otherwise, the behaviour is not defined.
         """
         dtype = TorchTensor.name_to_dtype[dtype]
-        if strides:
-            # note: torch strides is not scaled by bytes
-            tensor = torch.empty_strided(shape, strides, dtype=dtype, device=device_id)
-        else:
-            tensor = torch.empty(shape, dtype=dtype, device=device_id)
+        stream_ctx = contextlib.nullcontext() if stream_holder is None else stream_holder.ctx
+        with stream_ctx:
+            if strides:
+                # note: torch strides is not scaled by bytes
+                tensor = torch.empty_strided(shape, strides, dtype=dtype, device=device_id)
+            else:
+                tensor = torch.empty(shape, dtype=dtype, device=device_id)
 
         return cls(tensor)
 

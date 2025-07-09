@@ -16,5 +16,6 @@ Contents
    :maxdepth: 2
 
    Linear Algebra <linalg/index.rst>
+   Sparse Linear Algebra <sparse/index.rst>
    Fast Fourier Transform <fft/index.rst>
    Host API Utilities <utils.rst>

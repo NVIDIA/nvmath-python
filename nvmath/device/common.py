@@ -6,11 +6,9 @@ from abc import abstractmethod
 import tempfile
 
 import numpy as np
-from numba import cuda
 
 from .common_cuda import CodeType
 
-from nvmath.bindings import mathdx
 
 __all__ = [
     "make_tensor",
@@ -113,23 +111,8 @@ def make_tensor(array: np.ndarray, layout: Layout) -> OpaqueTensor:
     raise RuntimeError("make_tensor should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
 
-if mathdx.get_version() < 201:
-    # DCE bug https://github.com/numba/numba/issues/10037
-    # @cuda.jit(inline="always")
-    @cuda.jit
-    def axpby(alpha: float, x_tensor: OpaqueTensor, beta: float, y_tensor: OpaqueTensor) -> None:
-        """
-        Computes product alpha*x_tensor + beta*y_tensor and writes it to y_tensor.
-        """
-        # WARN: this is not a reference implementation and only for internal use.
-        alpha = y_tensor.buffer.dtype.type(alpha)
-        beta = y_tensor.buffer.dtype.type(beta)
-        for i in range(y_tensor.layout.size):
-            y_tensor.buffer[i] = alpha * x_tensor.buffer[i] + beta * y_tensor.buffer[i]
-else:
-
-    def axpby(alpha: float, x_tensor: OpaqueTensor, beta: float, y_tensor: OpaqueTensor) -> None:
-        raise RuntimeError("axpby should not be called directly outside of a numba.cuda.jit(...) kernel.")
+def axpby(alpha: float, x_tensor: OpaqueTensor, beta: float, y_tensor: OpaqueTensor) -> None:
+    raise RuntimeError("axpby should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
 
 def copy(src: OpaqueTensor, dst: OpaqueTensor):

@@ -11,7 +11,7 @@ from .common import (
     check_in,
     SHARED_DEVICE_DOCSTRINGS,
 )
-from .common_cuda import get_default_code_type, Code, CodeType, ComputeCapability, Dim3
+from .common_cuda import MAX_SUPPORTED_CC, get_default_code_type, Code, CodeType, ComputeCapability, Dim3
 from .common_backend import MATHDX_TYPES_TO_NP, get_isa_version, get_lto
 from .common_numba import NP_TYPES_TO_NUMBA_FE_TYPES
 from .cufftdx_backend import (
@@ -23,6 +23,7 @@ from .cufftdx_backend import (
     get_data_type_trait,
     validate,
     generate_FFT,
+    validate_execute_api,
 )
 from .cufftdx_numba import codegen
 from nvmath.internal.utils import docstring_decorator
@@ -56,7 +57,7 @@ set to a suggested value. """.replace("\n", " "),
 A dictionary specifying the options for real FFT operation, optional.""".replace("\n", " "),
         "execute_api": """\
 A string specifying the signature of the function that handles problems with input in register or in shared memory buffers.
-Could be ``'shared_memory'`` or ``'registry_memory'``.""".replace("\n", " "),
+Could be ``'shared_memory'`` or ``'register_memory'``.""".replace("\n", " "),
     }
 )
 
@@ -91,13 +92,16 @@ class FFTOptions:
         elements_per_thread (int): {elements_per_thread}
 
         real_fft_options (dict): {real_fft_options} User may specify the following options
-        in the dictionary:
+            in the dictionary:
 
             - ``'complex_layout'``, currently supports ``'natural'``, ``'packed'``, and
               ``'full'``.
             - ``'real_mode'``, currently supports ``'normal'`` and ``'folded``.
 
-        execute_api (str): {execute_api}
+        execute_api:
+            .. versionchanged:: 0.5.0
+                execute_api is not part of the FFT type. Pass this argument to
+                :py:func:`nvmath.device.fft` instead.
 
     Note:
         The class is not meant to be used directly with its constructor. Users are instead
@@ -121,7 +125,6 @@ class FFTOptions:
         ffts_per_block=None,
         elements_per_thread=None,
         real_fft_options=None,
-        execute_api=None,
     ):
         if len(code_type) != 2:
             raise ValueError(f"code_type should be an instance of CodeType or a 2-tuple ; got code_type = {code_type}")
@@ -130,11 +133,11 @@ class FFTOptions:
             raise RuntimeError(
                 f"Minimal compute capability 7.0 is required by cuFFTDx, got {code_type.cc.major}.{code_type.cc.minor}"
             )
-        # TODO: cufftdx does not support platforms > arch90 for now
-        if (code_type.cc.major, code_type.cc.minor) > (9, 0):
+        if (code_type.cc.major, code_type.cc.minor) > MAX_SUPPORTED_CC:
             raise RuntimeError(
                 "The maximum compute capability currently supported by device "
-                f"APIs is 9.0, got {code_type.cc.major}.{code_type.cc.minor}"
+                f"APIs is {MAX_SUPPORTED_CC}, "
+                f"got {code_type.cc.major}.{code_type.cc.minor}"
             )
 
         #
@@ -151,16 +154,12 @@ class FFTOptions:
             ffts_per_block=ffts_per_block,
             elements_per_thread=elements_per_thread,
             real_fft_options=real_fft_options,
-            execute_api=execute_api,
         )
 
         if direction is None and fft_type == "r2c":
             direction = "forward"
         elif direction is None and fft_type == "c2r":
             direction = "inverse"
-
-        if not execute_api:
-            execute_api = "registry_memory"
 
         #
         # Traits set by input
@@ -175,7 +174,6 @@ class FFTOptions:
         self._elements_per_thread = elements_per_thread
         self._real_fft_options = real_fft_options
         self._code_type = code_type
-        self._execute_api = execute_api
 
         #
         # Update suggested traits
@@ -220,10 +218,6 @@ class FFTOptions:
         return self._real_fft_options
 
     @property
-    def execute_api(self):
-        return self._execute_api
-
-    @property
     def code_type(self):
         return self._code_type
 
@@ -237,7 +231,7 @@ class FFTOptions:
 
         return self._get_knobs(*knobs)
 
-    def create(self, **kwargs):
+    def definition(self):
         dd = {
             "size": self.size,
             "precision": self.precision,
@@ -249,7 +243,11 @@ class FFTOptions:
             "elements_per_thread": self.elements_per_thread,
             "real_fft_options": self.real_fft_options,
         }
-        dd.update(kwargs)
+        return dd
+
+    def create(self, **kwargs):
+        dd = self.definition()
+        dd.update(**kwargs)
         return fft(**dd)
 
     #
@@ -268,7 +266,8 @@ class FFTOptions:
             real_fft_options=frozenset(self.real_fft_options.items()) if self.real_fft_options else None,
             code_type=self.code_type,
             execution=self.execution,
-            execute_api=self.execute_api,
+            # TODO: remove after migrating to libmathdx 0.2.2+
+            execute_api="register_memory",
         )
 
         if what == "elements_per_thread":
@@ -301,7 +300,8 @@ class FFTOptions:
             real_fft_options=frozenset(self.real_fft_options.items()) if self.real_fft_options else None,
             code_type=self.code_type,
             execution=self.execution,
-            execute_api=self.execute_api,
+            # TODO: remove after migrating to libmathdx 0.2.2+
+            execute_api="register_memory",
         )
 
         return get_knobs(h.descriptor, knobs)
@@ -311,7 +311,7 @@ class FFTOptionsComplete(FFTOptions):
     def __init__(self, **kwargs):
         FFTOptions.__init__(self, **kwargs)
 
-        self._handle = generate_FFT(
+        h = generate_FFT(
             size=self.size,
             precision=self.precision,
             fft_type=self.fft_type,
@@ -321,10 +321,9 @@ class FFTOptionsComplete(FFTOptions):
             ffts_per_block=self.ffts_per_block if self.execution == "Block" else None,
             elements_per_thread=self.elements_per_thread if self.execution == "Block" else None,
             real_fft_options=frozenset(self.real_fft_options.items()) if self.real_fft_options else None,
-            execute_api=self.execute_api,
-        )
-
-        h = self._handle.descriptor
+            # TODO: remove after migrating to libmathdx 0.2.2+
+            execute_api="register_memory",
+        ).descriptor
 
         self._value_type = MATHDX_TYPES_TO_NP[get_data_type_trait(h, mathdx.CufftdxTraitType.VALUE_TYPE)]
         self._input_type = MATHDX_TYPES_TO_NP[get_data_type_trait(h, mathdx.CufftdxTraitType.INPUT_TYPE)]
@@ -389,10 +388,38 @@ class FFTOptionsComplete(FFTOptions):
 
 class FFTCompiled(FFTOptionsComplete):
     def __init__(self, **kwargs):
+        execute_api = kwargs.pop("execute_api", None)
         super().__init__(**kwargs)
 
-        # Now compile the LTO device function
-        h = self._handle.descriptor
+        # Fixup typo introduced in earlier versions.
+        if execute_api == "registry_memory":
+            warnings.warn(
+                "The execute_api 'registry_memory' is deprecated and will be "
+                "removed in future releases. "
+                "Please use 'register_memory' instead.",
+                DeprecationWarning,
+            )
+            execute_api = "register_memory"
+
+        validate_execute_api(self.execution, execute_api)
+
+        if execute_api is None:
+            execute_api = "register_memory"
+
+        self._execute_api = execute_api
+
+        h = generate_FFT(
+            size=self.size,
+            precision=self.precision,
+            fft_type=self.fft_type,
+            direction=self.direction,
+            code_type=self.code_type,
+            execution=self.execution,
+            ffts_per_block=self.ffts_per_block if self.execution == "Block" else None,
+            elements_per_thread=self.elements_per_thread if self.execution == "Block" else None,
+            real_fft_options=frozenset(self.real_fft_options.items()) if self.real_fft_options else None,
+            execute_api=execute_api,
+        ).descriptor
 
         code = generate_code(h, self.code_type.cc)
 
@@ -404,11 +431,16 @@ class FFTCompiled(FFTOptionsComplete):
 
         self._symbol = get_str_trait(h, mathdx.CufftdxTraitType.SYMBOL_NAME)
 
-        self._tempfiles = [make_binary_tempfile(lto_fn, ".ltoir")]
+    @cached_property
+    def _tempfiles(self):
+        """
+        Create temporary files for the LTO functions.
+        """
+        return [make_binary_tempfile(lto.data, ".ltoir") for lto in self._ltos]
 
     @property
     def files(self):
-        return list(v.name for v in self._tempfiles)
+        return [v.name for v in self._tempfiles]
 
     @property
     def symbol(self):
@@ -421,6 +453,15 @@ class FFTCompiled(FFTOptionsComplete):
     def workspace(self):
         _workspace_deprecation_warning()
         raise NotImplementedError("Workspace not supported yet")
+
+    @property
+    def execute_api(self):
+        return self._execute_api
+
+    def definition(self):
+        dd = super().definition()
+        dd.update(execute_api=self.execute_api)
+        return dd
 
 
 class FFTNumba(FFTCompiled):

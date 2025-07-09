@@ -5,7 +5,7 @@
 import functools
 import logging
 
-from cuda import nvrtc
+from cuda.bindings import nvrtc
 
 from .caching import disk_cache
 from .common import check_in

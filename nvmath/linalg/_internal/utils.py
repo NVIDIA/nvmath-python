@@ -61,7 +61,7 @@ def axis_order_in_memory(strides):
     Compute the order in which the axes appear in memory.
     """
     if len(strides) == 0:
-        return tuple()
+        return ()
 
     _, axis_order = zip(*sorted(zip(strides, range(len(strides)), strict=True)), strict=True)
 

@@ -26,7 +26,7 @@ def create_default_scale_type_map():
 
     dt = cudaDataType
 
-    scale_type_map = dict()
+    scale_type_map = {}
     scale_type_map["float8_e4m3fn", "float8_e5m2"] = dt.CUDA_R_32F
     scale_type_map["float8_e5m2", "float8_e4m3fn"] = dt.CUDA_R_32F
     scale_type_map["float8_e4m3fn", "float8_e4m3fn"] = dt.CUDA_R_32F
@@ -50,7 +50,7 @@ def create_compute_type_to_scale_type_map(is_complex):
     dt = cudaDataType
     ct = cublas.ComputeType
 
-    scale_type_map = dict()
+    scale_type_map = {}
     scale_type_map[ct.COMPUTE_16F] = dt.CUDA_R_16F
     scale_type_map[ct.COMPUTE_16F_PEDANTIC] = dt.CUDA_R_16F
 
@@ -76,7 +76,7 @@ def create_scale_type_to_compute_type_map():
     dt = cudaDataType
     ct = cublas.ComputeType
 
-    compute_type_map = dict()
+    compute_type_map = {}
     compute_type_map[dt.CUDA_R_16F] = ct.COMPUTE_16F
     compute_type_map[dt.CUDA_R_16BF] = ct.COMPUTE_32F
     compute_type_map[dt.CUDA_R_32F] = ct.COMPUTE_32F
@@ -94,7 +94,7 @@ def create_compute_type_map():
 
     ct = cublas.ComputeType
 
-    compute_type_map = dict()
+    compute_type_map = {}
     compute_type_map["float8_e4m3fn", "float8_e5m2"] = ct.COMPUTE_32F
     compute_type_map["float8_e5m2", "float8_e4m3fn"] = ct.COMPUTE_32F
     compute_type_map["float8_e4m3fn", "float8_e4m3fn"] = ct.COMPUTE_32F

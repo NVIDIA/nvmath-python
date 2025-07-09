@@ -7,14 +7,14 @@ __all__ = ["Reshape", "reshape"]
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, cast, TYPE_CHECKING
+from typing import Literal, cast, TYPE_CHECKING, Final
 import math
 import numpy as np
 
 import nvmath.distributed
 from nvmath.internal import formatters, utils
 from nvmath.internal.tensor_wrapper import maybe_register_package
-from nvmath.internal.package_wrapper import StreamHolder
+from nvmath.internal.package_wrapper import StreamHolder, AnyStream
 from nvmath.bindings import cufftMp  # type: ignore
 from nvmath.bindings import nvshmem  # type: ignore
 from nvmath.distributed._internal import tensor_wrapper
@@ -110,6 +110,15 @@ ensures completion and visibility by all processes of previously issued local st
 symmetric memory. Advanced users who choose to manage the synchronization on their own using
 the appropriate NVSHMEM API, or who know that GPUs are already synchronized on the source
 operand, can set this to False.""".replace("\n", " "),
+        #
+        "function_signature": """\
+operand,
+input_box: Box,
+output_box: Box,
+sync_symmetric_memory: bool = True,
+options: ReshapeOptions | None = None,
+stream: AnyStream | None = None
+""".replace("\n", " "),
     }
 )
 
@@ -236,8 +245,6 @@ class InvalidReshapeState(Exception):
 @utils.docstring_decorator(SHARED_RESHAPE_DOCUMENTATION, skip_missing=False)
 class Reshape:
     """
-    Reshape(operand, /, input_box, output_box, *, options=None, stream=None)
-
     Create a stateful object that encapsulates the specified distributed Reshape
     and required resources. This object ensures the validity of resources during use and
     releases them when they are no longer needed to prevent misuse.
@@ -405,11 +412,11 @@ class Reshape:
         self,
         operand,
         /,
-        input_box,
-        output_box,
+        input_box: Box,
+        output_box: Box,
         *,
         options: ReshapeOptions | None = None,
-        stream=None,
+        stream: AnyStream | None = None,
     ):
         distributed_ctx = nvmath.distributed.get_context()
         if distributed_ctx is None:
@@ -457,10 +464,10 @@ class Reshape:
             raise problem_spec
 
         if problem_spec.is_C:
-            self.layout = "C"
+            self.layout: Final = "C"
         else:
             assert problem_spec.is_F, "Internal Error."  # The reducer is supposed to have detected this
-            self.layout = "F"
+            self.layout: Final = "F"  # type: ignore
 
         self.operand_dim = len(operand.shape)
 
@@ -614,12 +621,13 @@ class Reshape:
 
     @utils.precondition(_check_valid_reshape)
     @utils.atomic(_free_plan_resources, method=True)
-    def plan(self, stream=None):
+    def plan(self, stream: AnyStream | None = None):
         """Plan the Reshape.
 
         Args:
             stream: {stream}
         """
+        log_info = self.logger.isEnabledFor(logging.INFO)
 
         if self.reshape_planned:
             self.logger.debug("The Reshape has already been planned, and redoing the plan is not supported.")
@@ -628,8 +636,8 @@ class Reshape:
         stream_holder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
         self.workspace_stream = stream_holder.obj
 
-        timing = bool(self.logger and self.logger.handlers)
-        self.logger.info("Starting distributed Reshape planning...")
+        if log_info:
+            self.logger.info("Starting distributed Reshape planning...")
 
         lower_input, upper_input = self.input_box
         lower_output, upper_output = self.output_box
@@ -677,10 +685,7 @@ class Reshape:
             upper_output = tuple(reversed(upper_output))
             strides_output = tuple(reversed(strides_output))
 
-        with utils.cuda_call_ctx(stream_holder, blocking=True, timing=timing) as (
-            self.last_compute_event,
-            elapsed,
-        ):
+        with utils.host_call_ctx(timing=log_info) as elapsed, utils.device_ctx(self.device_id):
             nullptr = 0
             cufftMp.make_reshape(
                 self.handle,
@@ -700,11 +705,11 @@ class Reshape:
 
         self.reshape_planned = True
 
-        if elapsed.data is not None:
+        if log_info and elapsed.data is not None:
             self.logger.info(f"The Reshape planning phase took {elapsed.data:.3f} ms to complete.")
 
     @utils.precondition(_check_valid_reshape)
-    def reset_operand(self, operand=None, *, stream=None):
+    def reset_operand(self, operand=None, *, stream: AnyStream | None = None):
         """
         Reset the operand held by this :class:`Reshape` instance. This method has two
         use cases:
@@ -793,8 +798,8 @@ class Reshape:
             if self.memory_space == "cpu" and self.operand is not None:
                 with utils.device_ctx(self.device_id):
                     nvshmem_free_wrapper(self.operand.data_ptr)
-            self.operand = None
-            self.operand_backup = None
+            self.operand = None  # type: ignore
+            self.operand_backup = None  # type: ignore
             self.logger.info("The operand has been reset to None.")
             return
 
@@ -964,6 +969,7 @@ class Reshape:
             with utils.device_ctx(self.device_id):
                 self.workspace_stream.wait(self.last_compute_event)
             self.logger.debug("Established ordering with respect to the computation before releasing the workspace.")
+            self.last_compute_event = None
 
         self.logger.debug("[_free_workspace_memory_perhaps] The workspace memory will be released.")
         self._free_workspace_memory()
@@ -988,7 +994,7 @@ class Reshape:
     @utils.precondition(_check_planned, "Execution")
     @utils.precondition(_check_valid_operand, "Execution")
     @utils.atomic(_release_workspace_memory_perhaps, method=True)
-    def execute(self, stream=None, release_workspace=False, sync_symmetric_memory: bool = True):
+    def execute(self, stream: AnyStream | None = None, release_workspace: bool = False, sync_symmetric_memory: bool = True):
         """
         Execute the Reshape operation.
 
@@ -1027,12 +1033,11 @@ class Reshape:
         with utils.device_ctx(self.device_id):
             result = self._allocate_result_operand(stream_holder, log_debug)
 
-        timing = bool(self.logger and self.logger.handlers)
         if log_info:
             self.logger.info("Starting distributed Reshape...")
             self.logger.info(f"{self.call_prologue}")
 
-        with utils.cuda_call_ctx(stream_holder, self.blocking, timing) as (
+        with utils.cuda_call_ctx(stream_holder, self.blocking, timing=log_info) as (
             self.last_compute_event,
             elapsed,
         ):
@@ -1088,6 +1093,7 @@ class Reshape:
             if self.last_compute_event is not None:
                 with utils.device_ctx(self.device_id):
                     self.workspace_stream.wait(self.last_compute_event)
+                self.last_compute_event = None
 
             self._free_workspace_memory()
 
@@ -1116,16 +1122,15 @@ class Reshape:
 def reshape(
     operand,
     /,
-    input_box,
-    output_box,
+    input_box: Box,
+    output_box: Box,
     *,
     sync_symmetric_memory: bool = True,
-    options=None,
-    stream=None,
+    options: ReshapeOptions | None = None,
+    stream: AnyStream | None = None,
 ):
     r"""
-    reshape(operand, input_box, output_box, sync_symmetric_memory=True, options=None,
-    stream=None)
+    reshape({function_signature})
 
     Perform a distributed reshape on the provided operand to change its distribution across
     processes.

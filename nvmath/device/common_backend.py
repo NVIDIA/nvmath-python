@@ -51,6 +51,8 @@ EXECUTION_STR_TO_MATHDX = {
     "Thread": mathdx.CommondxExecution.THREAD,
 }
 
+NVARG_GEN_OPT_LTO = "-gen-opt-lto"
+
 
 class DescriptorWrapper:
     """

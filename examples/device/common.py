@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from cuda import cudart
+from cuda.bindings import runtime as cudart
 import numpy as np
 import math
 

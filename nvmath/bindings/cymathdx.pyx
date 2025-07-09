@@ -15,6 +15,10 @@ cdef commondxStatusType commondxSetCodeOptionInt64(commondxCode code, commondxOp
     return _mathdx._commondxSetCodeOptionInt64(code, option, value)
 
 
+cdef commondxStatusType commondxSetCodeOptionStr(commondxCode code, commondxOption option, const char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._commondxSetCodeOptionStr(code, option, value)
+
+
 cdef commondxStatusType commondxGetCodeOptionInt64(commondxCode code, commondxOption option, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     return _mathdx._commondxGetCodeOptionInt64(code, option, value)
 
@@ -31,12 +35,32 @@ cdef commondxStatusType commondxGetCodeLTOIR(commondxCode code, size_t size, voi
     return _mathdx._commondxGetCodeLTOIR(code, size, out)
 
 
+cdef commondxStatusType commondxGetCodeNumLTOIRs(commondxCode code, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._commondxGetCodeNumLTOIRs(code, size)
+
+
+cdef commondxStatusType commondxGetCodeLTOIRSizes(commondxCode code, size_t size, size_t* out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._commondxGetCodeLTOIRSizes(code, size, out)
+
+
+cdef commondxStatusType commondxGetCodeLTOIRs(commondxCode code, size_t size, void** out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._commondxGetCodeLTOIRs(code, size, out)
+
+
 cdef commondxStatusType commondxDestroyCode(commondxCode code) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     return _mathdx._commondxDestroyCode(code)
 
 
 cdef const char* commondxStatusToStr(commondxStatusType status) except?NULL nogil:
     return _mathdx._commondxStatusToStr(status)
+
+
+cdef commondxStatusType mathdxGetVersion(int* version) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._mathdxGetVersion(version)
+
+
+cdef commondxStatusType mathdxGetVersionEx(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._mathdxGetVersionEx(major, minor, patch)
 
 
 cdef commondxStatusType cublasdxCreateDescriptor(cublasdxDescriptor* handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -261,11 +285,3 @@ cdef const char* cusolverdxOperatorTypeToStr(cusolverdxOperatorType op) except?N
 
 cdef const char* cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NULL nogil:
     return _mathdx._cusolverdxTraitTypeToStr(trait)
-
-
-cdef commondxStatusType mathdxGetVersion(int* version) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
-    return _mathdx._mathdxGetVersion(version)
-
-
-cdef commondxStatusType mathdxGetVersionEx(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
-    return _mathdx._mathdxGetVersionEx(major, minor, patch)

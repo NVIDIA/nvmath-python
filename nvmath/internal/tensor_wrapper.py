@@ -40,6 +40,7 @@ def maybe_register_package(package):
     if package not in _SUPPORTED_PACKAGES:
         global _TENSOR_TYPES
         from . import package_wrapper
+        from .. import memory
 
         if package == "torch":
             from .tensor_ifc_torch import TorchTensor
@@ -47,12 +48,14 @@ def maybe_register_package(package):
 
             _TENSOR_TYPES[package] = TorchTensor
             package_wrapper.PACKAGE[package] = TorchPackage
+            memory.lazy_load_torch()
         elif package == "cupy":
             from .tensor_ifc_cupy import CupyTensor
             from .package_ifc_cupy import CupyPackage
 
             _TENSOR_TYPES[package] = CupyTensor
             package_wrapper.PACKAGE[package] = CupyPackage
+            memory.lazy_load_cupy()
         else:
             message = f"""{package} not supported yet. Currently must be one of ['numpy', 'cupy', 'torch']"""
             raise ValueError(message)

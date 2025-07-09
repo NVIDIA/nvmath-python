@@ -116,7 +116,7 @@ class TensorHolder(ABC, Generic[Tensor]):
         supported data types.
         """
         names = typemaps.NAME_TO_DATA_TYPE.keys()
-        name_to_dtype = dict()
+        name_to_dtype = {}
         for name in names:
             try:
                 name_to_dtype[name] = conversion_function(name)

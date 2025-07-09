@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from cuda import cuda
+from cuda.bindings import driver as cudadrv
 from .helpers import CHECK_CUDA, _TOLERANCE, l2error, convert_to_cuda_array, free_array, copy_to_cupy
 import numpy as np
 from .helpers_cpp import run_and_time, compile_cpp_kernel
@@ -145,5 +145,5 @@ class MatmulBatchedCpp:
         return {"time_ms": time_ms}
 
     def __del__(self):
-        (err,) = cuda.cuModuleUnload(self._module)
+        (err,) = cudadrv.cuModuleUnload(self._module)
         CHECK_CUDA(err)

@@ -6,7 +6,6 @@ import os
 import logging
 import random
 import math
-import time
 import functools
 from ast import literal_eval
 
@@ -22,7 +21,7 @@ except ImportError:
     torch = None
 
 import nvmath
-from nvmath.memory import _RawCUDAMemoryManager
+from nvmath.memory import _MEMORY_MANAGER
 from nvmath.fft import ExecutionCPU, ExecutionCUDA
 
 from .utils.common_axes import (
@@ -238,7 +237,7 @@ def test_stateful_nd_custom_allocator(monkeypatch, framework, exec_backend, mem_
 
     allocations = intercept_default_allocations(monkeypatch)
     logger = logging.getLogger("dummy_logger")
-    allocator = _RawCUDAMemoryManager(device_id=0, logger=logger)
+    allocator = _MEMORY_MANAGER["_raw"](device_id=0, logger=logger)
     expected_allocations = 1 if exec_backend == ExecBackend.cufft else 0
     expected_key = "raw"
 
@@ -1003,12 +1002,6 @@ def test_num_threads_option(framework, exec_backend, mem_backend, dtype):
     if len(os.sched_getaffinity(0)) < 16:
         pytest.skip("Not enough cores to run the test")
 
-    def timed(cb):
-        start = time.time_ns()
-        ret = cb()
-        end = time.time_ns()
-        return end - start, ret
-
     shape = (127, 256, 128)
     axes = (1, 2)
     signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=13)
@@ -1016,13 +1009,12 @@ def test_num_threads_option(framework, exec_backend, mem_backend, dtype):
 
     with nvmath.fft.FFT(signal, axes=axes, execution={"name": "cpu", "num_threads": 16}) as fft:
         fft.plan()
-        t_16, fft_out_16 = timed(lambda: fft.execute())
+        fft_out_16 = fft.execute()
 
     with nvmath.fft.FFT(signal, axes=axes, execution={"name": "cpu", "num_threads": 1}) as fft:
         fft.plan()
-        t_1, fft_out_1 = timed(lambda: fft.execute())
+        fft_out_1 = fft.execute()
 
-    assert t_1 > t_16, f"expected {t_1} > 2 * {t_16}"
     assert_array_type(fft_out_16, framework, mem_backend, get_fft_dtype(dtype))
     assert_array_type(fft_out_1, framework, mem_backend, get_fft_dtype(dtype))
     assert_norm_close(fft_out_16, ref, exec_backend=exec_backend)

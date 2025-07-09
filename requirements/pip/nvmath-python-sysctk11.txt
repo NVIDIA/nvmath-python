@@ -1,2 +1,2 @@
-cuda-core[cu11] == 0.2.*
+cuda-core[cu11] >=0.3,<0.4
 cupy-cuda11x

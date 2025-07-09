@@ -54,8 +54,10 @@ BYTE_MASK = (1 << BYTE_BITS) - 1
 INT32_BYTES = 4
 INT32_BITS = INT32_BYTES * BYTE_BITS
 
+CUDA_CACHE = False
 
-@cuda.jit(Tuple((int16, int64))(float64), device=True, forceinline=True, cache=True)
+
+@cuda.jit(Tuple((int16, int64))(float64), device=True, forceinline=True, cache=CUDA_CACHE)
 def decompose_float64(x):
     """Extract the mantissa, exponent, and sign from the floating point representation"""
     # Reinterpret bits as uint64
@@ -96,7 +98,7 @@ def build_split_mantissa(splits: int):
     Build a kernel to split the mantissa into int8 chunks.
     """
 
-    @cuda.jit(types.void(int64, int8[:]), device=True, forceinline=True, cache=True)
+    @cuda.jit(types.void(int64, int8[:]), device=True, forceinline=True, cache=CUDA_CACHE)
     def split_mantissa(mantissa, splits_array):
         # Represent mantissa in the signed base of 256 (use -128..127 range
         # instead of 0..255).
@@ -370,7 +372,7 @@ def build_looped_matmul(
     return matmul_kernel, grid_dim, MM.block_dim, shared_memory_size, MM.files
 
 
-@cuda.jit(float64(int16, int64), device=True, forceinline=True, cache=True)
+@cuda.jit(float64(int16, int64), device=True, forceinline=True, cache=CUDA_CACHE)
 def compose_float64(exponent, mantissa):
     # same as exponent = np.float64(2) ** exponent
     exponent += 1023
@@ -394,7 +396,7 @@ def build_compose_kernel(tile_size, threads, exp_shift, device=False):
         types.void(float64, int16[:], int16[:], int32[:, :, :], float64, float64[:, :], float64[:, :]),
         device=device,
         forceinline=device,
-        cache=True,
+        cache=CUDA_CACHE,
     )
     def compose_kernel(alpha, exponent_a, exponent_b, mantissa, beta, c, out):
         block_m = cuda.blockIdx.x

@@ -37,7 +37,7 @@ class Algorithm:
         :class:`nvmath.linalg.advanced.AlgorithmCapabilities` dataclass.
         """
         names = [field.name for field in dataclasses.fields(AlgorithmCapabilities)]
-        _capabilities = dict()
+        _capabilities = {}
         for name in names:
             # Not all capabilities in the enum are supported in all CTK versions.
             try:

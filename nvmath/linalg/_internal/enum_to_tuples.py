@@ -37,9 +37,9 @@ def create_valid_tuples_from_enum(enum, prefix, *, expr=r"(?:(\d+)x(\d+|\w+)(?:x
     enumeration.
     """
 
-    combinations = list()
-    enumerator_to_value = dict()
-    value_to_enumerator = dict()
+    combinations = []
+    enumerator_to_value = {}
+    value_to_enumerator = {}
     expr = prefix + expr
     for e in enum:
         m = re.match(expr, e.name)

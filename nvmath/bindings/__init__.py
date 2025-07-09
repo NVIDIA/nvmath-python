@@ -5,6 +5,7 @@
 # type: ignore
 
 from nvmath.bindings import cublas
+from nvmath.bindings import cudss
 from nvmath.bindings import cufft
 from nvmath.bindings import curand
 from nvmath.bindings import cusolver
@@ -31,6 +32,7 @@ except ImportError:
 
 __all__ = [
     "cublas",
+    "cudss",
     "cufft",
     "cufftMp",
     "curand",

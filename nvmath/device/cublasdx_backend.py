@@ -12,8 +12,14 @@ from collections.abc import Sequence
 import numpy as np
 
 
-from .common import check_in, check_code_type, make_binary_tempfile
-from .common_backend import EXECUTION_STR_TO_MATHDX, NP_TYPES_TO_MATHDX_PRECISION, build_get_int_traits, build_get_str_trait
+from .common import check_in, check_code_type
+from .common_backend import (
+    EXECUTION_STR_TO_MATHDX,
+    NP_TYPES_TO_MATHDX_PRECISION,
+    NVARG_GEN_OPT_LTO,
+    build_get_int_traits,
+    build_get_str_trait,
+)
 from .common_cuda import CodeType, Dim3, ComputeCapability, ISAVersion
 from .common_backend import DescriptorWrapper
 from .types import REAL_NP_TYPES, INT_NP_TYPES
@@ -181,10 +187,7 @@ def get_tensor_int_traits(tensors: CublasdxTensors, trait: mathdx.CublasdxTensor
     )
 
 
-_ACCEPTED_PRECISION = REAL_NP_TYPES
-if mathdx.get_version() >= 201:
-    # mathdx 2.0.1 and above
-    _ACCEPTED_PRECISION += INT_NP_TYPES
+_ACCEPTED_PRECISION = REAL_NP_TYPES + INT_NP_TYPES
 
 
 def validate(
@@ -195,14 +198,11 @@ def validate(
     transpose_mode,
     arrangement,
     alignment,
-    global_memory_alignment,
     block_dim,
     code_type,
     function,
     leading_dimension,
     static_block_dim,
-    execute_api,
-    tensor_types,
 ):
     (m, n, k) = size
     if m <= 0 or n <= 0 or k <= 0:
@@ -218,7 +218,6 @@ def validate(
     check_in("data_type", data_type, ["real", "complex"])
     check_in("execution", execution, ["Block", "Thread"])
     check_in("function", function, ["MM"])
-    check_in("execute_api", execute_api, _BLAS_API_STR_TO_MATHDX.keys())
     check_in("static_block_dim", static_block_dim, [True, False])
     if transpose_mode is not None:
         allowed_values = ["non_transposed", "transposed", "conj_transposed"]
@@ -247,8 +246,6 @@ def validate(
         raise ValueError("arrangement or transpose_mode must be provide. Instead got nothing")
     if alignment is not None:
         validate_alignment(alignment, precision, data_type)
-    if global_memory_alignment is not None:
-        validate_alignment(global_memory_alignment, precision, data_type, gmem=True)
     if block_dim in (None, "suggested"):
         pass
     elif isinstance(block_dim, Dim3):
@@ -268,17 +265,29 @@ def validate(
             f"leading_dimension should be None, a LeadingDimension instance or 'suggested'; "
             f"got leading_dimension = {leading_dimension}"
         )
-    if tensor_types is not None:
-        allowed_values = _TENSOR_TYPE_STR_TO_MATHDX.keys()
-        if isinstance(tensor_types, Sequence) and len(tensor_types) == 3:
-            check_in("tensor_types[0]", tensor_types[0], allowed_values)
-            check_in("tensor_types[1]", tensor_types[1], allowed_values)
-            check_in("tensor_types[2]", tensor_types[2], allowed_values)
-        else:
-            raise ValueError(
-                f"arrangement should be an instance of {Arrangement} or a 3-tuple, and individual fields "
-                f"should be one of {allowed_values}. Instead got arrangement = {arrangement}"
-            )
+
+
+def validate_execute_api(execute_api):
+    """
+    Validate the execute_api argument.
+    """
+    check_in("execute_api", execute_api, _BLAS_API_STR_TO_MATHDX.keys())
+
+
+def validate_tensor_types(tensor_types):
+    """
+    Validate the tensor_types argument.
+    """
+    allowed_values = _TENSOR_TYPE_STR_TO_MATHDX.keys()
+    if isinstance(tensor_types, Sequence) and len(tensor_types) == 3:
+        check_in("tensor_types[0]", tensor_types[0], allowed_values)
+        check_in("tensor_types[1]", tensor_types[1], allowed_values)
+        check_in("tensor_types[2]", tensor_types[2], allowed_values)
+    else:
+        raise ValueError(
+            f"tensor_types should be a 3-tuple, and individual fields "
+            f"should be one of {allowed_values}. Instead got tensor_types = {tensor_types}"
+        )
 
 
 def validate_alignment(alignment: Alignment, precision: Precision, data_type: str, gmem: bool = False):
@@ -397,6 +406,7 @@ def generate_code(handle, version: ComputeCapability, device_functions: tuple | 
         mathdx.CommondxOption.TARGET_SM,
         version.integer,
     )
+    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
     if device_functions:
         mathdx.cublasdx_finalize_device_functions(code, len(device_functions), list(device_functions))
     else:
@@ -457,7 +467,6 @@ def generate_code_tensors(
     target_tensors: CublasdxTensors,
     rmem_c: bool = False,
 ):
-    axpby = rmem_c and mathdx.get_version() >= 201
     copy_a = mathdx.cublasdx_bind_device_function(
         handle, mathdx.CublasdxDeviceFunctionType.COPY, 2, [gmem_tensors.a, target_tensors.a]
     )
@@ -474,7 +483,6 @@ def generate_code_tensors(
         clear_c_fn = mathdx.cublasdx_bind_device_function(
             handle, mathdx.CublasdxDeviceFunctionType.CLEAR, 1, [target_tensors.c]
         )
-    if axpby:
         axpby_fn = mathdx.cublasdx_bind_device_function(
             handle, mathdx.CublasdxDeviceFunctionType.AXPBY, 2, [target_tensors.c, target_tensors.c]
         )
@@ -483,7 +491,7 @@ def generate_code_tensors(
     )
 
     clear_c_sym = get_str_device_trait(clear_c_fn, mathdx.CublasdxDeviceFunctionTrait.SYMBOL) if rmem_c else ""
-    axpby_sm = get_str_device_trait(axpby_fn, mathdx.CublasdxDeviceFunctionTrait.SYMBOL) if axpby else ""
+    axpby_sm = get_str_device_trait(axpby_fn, mathdx.CublasdxDeviceFunctionTrait.SYMBOL) if rmem_c else ""
 
     tensor_symbols = CublasdxTensorAPISymbols(
         get_str_device_trait(copy_a, mathdx.CublasdxDeviceFunctionTrait.SYMBOL),
@@ -497,9 +505,7 @@ def generate_code_tensors(
 
     function_list = [copy_a, copy_b, copy_c, copy_c_back, gemm]
     if rmem_c:
-        function_list += [clear_c_fn]
-    if axpby:
-        function_list += [axpby_fn]
+        function_list += [clear_c_fn, axpby_fn]
 
     return generate_code(handle, version, tuple(function_list)), tensor_symbols
 
@@ -532,6 +538,7 @@ def generate_device_function_lto(compute_capability: ComputeCapability, function
     # Compile the device function to lto
     code = mathdx.commondx_create_code()
     mathdx.commondx_set_code_option_int64(code, mathdx.CommondxOption.TARGET_SM, arch)
+    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
     mathdx.cublasdx_finalize_device_functions(code, 1, [function])
 
     # Extract the LTOIR
@@ -542,4 +549,4 @@ def generate_device_function_lto(compute_capability: ComputeCapability, function
     mathdx.commondx_destroy_code(code)
     mathdx.cublasdx_destroy_descriptor(h)
 
-    return symbol, make_binary_tempfile(bytes(lto), ".ltoir")
+    return symbol, bytes(lto)

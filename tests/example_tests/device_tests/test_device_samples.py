@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import glob
-import importlib
 import os
 
 import pytest
@@ -24,7 +23,10 @@ class TestDeviceSamples:
             # are using global memory alignment in the sample.
             pytest.skip("Skipping test for cublasdx_device_gemm_performance.py, requires libmathdx >= 0.2.1")
         if os.path.basename(sample) == "cublasdx_fp64_emulation.py":
-            spec = importlib.util.find_spec("cuda.cccl.cooperative")
-            if spec is None:
-                pytest.skip("Skipping test for cublasdx_fp64_emulation.py, requires cuda.cooperative module")
+            # TODO: Uncomment once issue with LTO IR version resolved
+            # spec = importlib.util.find_spec("cuda.cccl")
+            # if spec is None:
+            pytest.skip("Skipping test for cublasdx_fp64_emulation.py, requires cuda.cccl module")
+        if os.path.basename(sample) == "cublasdx_gemm_fft_fp16.py":
+            pytest.skip("NVBug 5218000")
         run_sample(samples_path, sample, {"__name__": "__main__"})
