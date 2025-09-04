@@ -2,133 +2,94 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import atexit
-import glob
 import os
-import shutil
 import sys
-import tempfile
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 from Cython.Build import cythonize
-from setuptools import setup, Extension, find_packages
-from packaging.version import Version
-import Cython
-
-# Check Cython version
-cython_version = Version(Cython.__version__)
-
-# this is tricky: sys.path gets overwritten at different stages of the build
-# flow, so we need to hack sys.path ourselves...
-source_root = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(os.path.join(source_root, "builder"))
-import utils  # type: ignore # this is builder.utils  # noqa: E402
+from setuptools import setup, Extension
 
 
-# List the main modules, and infer the auxiliary modules automatically
-ext_modules = [
-    "nvmath.bindings.cublas",
-    "nvmath.bindings.cudss",
-    "nvmath.bindings.cublasLt",
-    "nvmath.bindings.cusolver",
-    "nvmath.bindings.cusolverDn",
-    "nvmath.bindings.cufft",
-    "nvmath.bindings.cusparse",
-    "nvmath.bindings.curand",
-    "nvmath.bindings.mathdx",
-]
+def calculate_ext(module_: str, prefix: str = "", pre_module: str = "", source_suffix: str = "") -> Extension:
+    """Create a C++ Extension object with .pyx sources for a given module.
 
+    Args:
+        module_: The name of the module in dot notation e.g. "package.subpackage.module".
 
-if sys.platform == "linux":
-    ext_modules.append("nvmath.bindings.nvpl.fft")
-    ext_modules.append("nvmath.bindings.cufftMp")
-    ext_modules.append("nvmath.bindings.nvshmem")
+        prefix: A prefix to prepend to the final module name. e.g.
+        "prefixpackage.subpackage.module"
 
+        pre_module: A submodule to insert before the module name. e.g.
+        "pre_module.package.subpackage.module".
 
-# WAR: Check if this is still valid
-# TODO: can this support cross-compilation?
-if sys.platform == "linux":
-    src_files = glob.glob("*/bindings/**/_internal/*_linux.pyx", recursive=True)
-elif sys.platform == "win32":
-    src_files = glob.glob("*/bindings/**/_internal/*_windows.pyx", recursive=True)
-else:
-    raise RuntimeError(f"platform is unrecognized: {sys.platform}")
-dst_files = []
-for src in src_files:
-    # Set up a temporary file; it must be under the cache directory so
-    # that atomic moves within the same filesystem can be guaranteed
-    with tempfile.NamedTemporaryFile(delete=False, dir=".") as f:
-        shutil.copy2(src, f.name)
-        f_name = f.name
-    dst = src.replace("_linux", "").replace("_windows", "")
-    # atomic move with the destination guaranteed to be overwritten
-    os.replace(f_name, f"./{dst}")
-    dst_files.append(dst)
+        source_suffix: A suffix to append to the source filename such as "_linux",
+            "_windows". e.g. the source file would be
+            package.subpackage.modulesource_suffix.pyx instead of
+            package.subpackage.module.pyx
 
+    Returns:
+        A Cython Extension object configured with the provided parameters.
 
-@atexit.register
-def cleanup_dst_files():
-    for dst in dst_files:
-        try:
-            os.remove(dst)
-        except FileNotFoundError:
-            pass
+    """
+    module = module_.split(".")
+    if pre_module != "":
+        module.insert(-1, pre_module)
+    module[-1] = f"{prefix}{module[-1]}"
+    pyx = os.path.join(*module[:-1], f"{module[-1]}{source_suffix}.pyx")
+    module_ = ".".join(module)
 
-
-def calculate_modules(module):
-    module = module.split(".")
-
-    lowpp_mod = module.copy()
-    lowpp_mod_pyx = os.path.join(*module[:-1], f"{module[-1]}.pyx")
-    lowpp_mod = ".".join(lowpp_mod)
-    lowpp_ext = Extension(
-        lowpp_mod,
-        sources=[lowpp_mod_pyx],
+    return Extension(
+        module_,
+        sources=[pyx],
         language="c++",
     )
 
-    cy_mod = module.copy()
-    cy_mod[-1] = f"cy{cy_mod[-1]}"
-    cy_mod_pyx = os.path.join(*cy_mod[:-1], f"{cy_mod[-1]}.pyx")
-    cy_mod = ".".join(cy_mod)
-    cy_ext = Extension(
-        cy_mod,
-        sources=[cy_mod_pyx],
-        language="c++",
-    )
 
-    inter_mod = module.copy()
-    inter_mod.insert(-1, "_internal")
-    inter_mod_pyx = os.path.join(*inter_mod[:-1], f"{inter_mod[-1]}.pyx")
-    inter_mod = ".".join(inter_mod)
-    inter_ext = Extension(
-        inter_mod,
-        sources=[inter_mod_pyx],
-        language="c++",
-    )
+def get_ext_modules() -> list[Extension]:
+    """Return a list of instantiated C++ Extensions with .pyx sources.
 
-    return lowpp_ext, cy_ext, inter_ext
+    Modules names are gathered from [tool.nvmath-bindings.modules] and
+    [tool.nvmath-bindings.linux_modules] in pyproject.toml from lists of full module names.
+    e.g. "nvmath.bindings.cublas"
+
+    """
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    # Access specific sections, e.g., project metadata
+    pyproject_data = data.get("tool", {}).get("nvmath-bindings", {})
+
+    # Extension modules in nvmath.bindings for the math libraries.
+    modules = pyproject_data["modules"]
+    if sys.platform == "linux":
+        modules += pyproject_data["linux_modules"]
+
+    ext_modules: list[Extension] = []
+    for m in modules:
+        ext_modules += [
+            calculate_ext(m),
+            calculate_ext(m, prefix="cy"),
+            calculate_ext(m, pre_module="_internal", source_suffix="_linux" if sys.platform == "linux" else "_windows"),
+        ]
+
+    # Extension modules in nvmath.internal for ndbuffer (temporary home).
+    nvmath_internal_modules = pyproject_data["internal_modules"]
+    ext_nvmath_internal_modules = [calculate_ext(m) for m in nvmath_internal_modules]
+
+    return ext_modules + ext_nvmath_internal_modules
 
 
-# Note: the extension attributes are overwritten in build_extension()
-ext_modules = [e for ext in ext_modules for e in calculate_modules(ext)] + [
-    Extension(
-        "nvmath.bindings._internal.utils",
-        sources=["nvmath/bindings/_internal/utils.pyx"],
-        language="c++",
-    ),
-]
-
-
-cmdclass = {
-    "build_ext": utils.build_ext,
-    "bdist_wheel": utils.bdist_wheel,
-}
-
-compiler_directives = {"embedsignature": True}
-
+nthreads = os.cpu_count()
 setup(
-    ext_modules=cythonize(ext_modules, verbose=True, language_level=3, compiler_directives=compiler_directives),
-    packages=find_packages(include=["nvmath", "nvmath.*"]),
-    zip_safe=False,
-    cmdclass=cmdclass,
+    ext_modules=cythonize(
+        get_ext_modules(),
+        verbose=True,
+        language_level=3,
+        compiler_directives={"embedsignature": True},
+        nthreads=nthreads,
+    ),
 )

@@ -3,7 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-import cupy
+try:
+    import cupy
+except ImportError:
+    cupy = None
+
 import numpy as np
 import math
 import hypothesis
@@ -35,6 +39,9 @@ def numpy_type_to_str(np_dtype):
 
 
 def time_cupy(fun, ncycles, *args):
+    if cupy is None:
+        raise RuntimeError("cupy is not installed")
+
     args = [(cupy.array(arg) if isinstance(arg, np.ndarray | np.generic) else arg) for arg in args]
     start, stop = cupy.cuda.Event(), cupy.cuda.Event()
     out = fun(*args)

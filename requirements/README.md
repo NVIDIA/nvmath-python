@@ -15,9 +15,9 @@ virtualenvs.  These include all relevant requirements sets and package extras.
 | requirements.txt | Extras | Python Support | Platform Support | CUDA | Purpose |
 | ---------------- | ------ | ------- | ------- | ----- | ---- |
 | `requirements/pip-dev-cu11.txt` | `cu11`, `cpu` | `3.10-3.13` | `linux_x86_64`, `linux_aarch64` | `11.x` | Development environment: ctk-11.x wheels  |
-| `requirements/pip-dev-cu11-torch.txt` | `cu11`, `cpu` | `3.10-3.11` | `linux_x86_64`, `linux_aarch64` | `11.8` | Development environment: ctk-11.x wheels + torch |
+| `requirements/pip-dev-cu118-torch.txt` | `cu11`, `cpu` | `3.10-3.13` | `linux_x86_64`, `linux_aarch64` | `11.8` | Development environment: ctk-11.x wheels + torch |
 | `requirements/pip-dev-cu12-dx.txt` | `cu12`, `cpu` | `3.10-3.13` | `linux_x86_64`, `linux_aarch64` | `12.x` (latest) | Development environment: ctk-12.x wheels + DX APIs |
-| `requirements/pip-dev-cu12-dx-torch.txt` | `cu12`, `cpu`, `dx`  | `3.10-3.11` | `linux_x86_64`, `linux_aarch64` | `12.1` | Development environment: ctk-12.x wheels + DX APIs + torch |
+| `requirements/pip-dev-cu12[6,8]-dx-torch.txt` | `cu12`, `cpu`, `dx`  | `3.10-3.13` | `linux_x86_64`, `linux_aarch64` | `12.[6,8]` | Development environment: ctk-12.x wheels + DX APIs + torch |
 | `requirements/pip-dev-sysctk11.txt` | `sysctk11`, `cpu` | `3.10-3.13` | `linux_x86_64`, `linux_aarch64` | `11.x` | Development environment: System CTK-11.x |
 | `requirements/pip-dev-sysctk12-dx.txt` |`sysctk12`, `sysctk12-dx`, `cpu` | `3.10-3.13` | `linux_x86_64`, `linux_aarch64` | `12.x` | Development environment: System CTK-12.x + DX APIs |
 
@@ -71,6 +71,7 @@ requirements are included by the top-level requirements sets.
 | requirements/pip/nvmath-python-sysctk12-dx.txt | nvmath-python `[systemctk12-dx]` extra requirements.  Used for `nvmath.device` with system installed CTK-12.x |
 | requirements/pip/openmpi.txt | OpenMPI wheel test dependency. |
 | requirements/pip/tests.txt | Test dependencies |
-| requirements/pip/torch-cu11.txt | Enable torch use in tests and examples via wheels for CUDA-11.8 |
-| requirements/pip/torch-cu12.txt | Enable torch use in tests and examples via wheels for CUDA-12.1 |
-| requirements/pip/torch-cu12-nightly.txt | Enable torch nightly + CTK-12.8 wheels |
+| requirements/pip/torch-cu118.txt | Enable torch use in tests and examples via wheels for CUDA-11.8 |
+| requirements/pip/torch-cu126.txt | Enable torch use in tests and examples via wheels for CUDA-12.6 |
+| requirements/pip/torch-cu128.txt | Enable torch use in tests and examples via wheels for CUDA-12.8 |
+| requirements/pip/torch-cu129-nightly.txt | Enable torch nightly + CTK-12.9 wheels |

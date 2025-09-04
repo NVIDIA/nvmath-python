@@ -4,10 +4,11 @@
 #
 # This code was automatically generated across versions from 11.2.6 to 11.4.0. Do not modify it directly.
 
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintptr_t
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 ###############################################################################
 # Extern
@@ -102,19 +103,11 @@ cdef void* ____cufftMpMakeReshape_11_4 = NULL
 
 
 cdef void* load_library() except* with gil:
-    cdef void* handle
-    for suffix in ('11', ''):
-        so_name = "libcufftMp.so" + (f".{suffix}" if suffix else suffix)
-        # libcufftMp.so shares most of the same symbol names as libcufft.so. To prevent conflicts,
-        # we load with RTLD_DEEPBIND into a local namespace, and when extracting the symbols below
-        # with dlsym, we extract from the library handle instead of RTLD_DEFAULT.
-        handle = dlopen(so_name.encode(), RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND)
-        if handle != NULL:
-            break
-    else:
-        err_msg = dlerror()
-        raise RuntimeError(f'Failed to dlopen libcufftMp ({err_msg.decode()})')
-    return handle
+    # NOTE: libcufftMp.so shares most of the symbol names with libcufft.so. When extracting
+    # the symbols below with dlsym, we need to extract from the library handle instead of
+    # RTLD_DEFAULT to avoid picking up the wrong function pointers.
+    cdef uintptr_t handle = load_nvidia_dynamic_lib("cufftMp")._handle_uint
+    return <void*>handle
 
 
 cdef int _check_or_init_cufftMp() except -1 nogil:

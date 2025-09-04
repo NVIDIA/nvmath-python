@@ -1,5 +1,6 @@
 cffi
 hypothesis
+psutil
 pytest
 pytest-repeat
 scipy

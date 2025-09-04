@@ -6,32 +6,51 @@
 Interface to seamlessly use Numpy ndarray objects.
 """
 
-__all__ = ["NumpyTensor"]
-
-try:
-    import cupy  # type: ignore
-except ImportError:
-
-    class cupy:  # type: ignore
-        """A placeholder for the cupy module when it is unavailable."""
-
-        @classmethod
-        def asnumpy(cls, *args, **kwargs):
-            raise ImportError("Cannot convert cupy to numpy array when cupy is not installed!")
-
-        @classmethod
-        def asarray(cls, *args, **kwargs):
-            raise ImportError("Cannot convert numpy to cupy array when cupy is not installed!")
-
+__all__ = ["NumpyTensor", "CudaTensor"]
 
 from collections.abc import Sequence
 
 import numpy
 import numpy.typing as npt
+from nvmath.internal.tensor_ifc_ndbuffer import NDBufferTensor
 
+from .ndbuffer import ndbuffer, package_utils
 from . import utils
-from .package_ifc import StreamHolder
 from .tensor_ifc import TensorHolder
+from .package_ifc import StreamHolder
+
+
+class CudaTensor(NDBufferTensor):
+    """
+    Wraps ndbuffer with data residing on the GPU.
+    It serves as a CUDA counterpart for NumpyTensor.
+    """
+
+    name = "cuda"
+    host_tensor_class: type["NumpyTensor"]  # set once NumpyTensor is defined
+
+    def __init__(self, tensor):
+        super().__init__(tensor)
+
+    @classmethod
+    def create_from_host(cls, tensor: TensorHolder, device_id: int, stream_holder: StreamHolder):
+        with utils.device_ctx(device_id):
+            src_ndbuffer = tensor.asndbuffer()
+            dst_ndbuffer = ndbuffer.empty_like(src_ndbuffer, device_id=device_id, stream=stream_holder)
+            ndbuffer.copy_into(dst_ndbuffer, src_ndbuffer, stream_holder)
+            return cls(dst_ndbuffer)
+
+    def to(self, device_id, stream_holder):
+        if device_id == "cpu":
+            with utils.device_ctx(self.device_id):
+                dst = self.host_tensor_class.create_host_from(self, stream_holder)
+                return dst
+        elif device_id == self.device_id:
+            return self
+        elif isinstance(device_id, int):
+            raise ValueError(f"Unsupported copy between different devices {self.device_id} and {device_id}.")
+        else:
+            raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
 
 
 class NumpyTensor(TensorHolder[npt.NDArray]):
@@ -44,6 +63,8 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
     name_to_dtype = TensorHolder.create_name_dtype_map(
         conversion_function=lambda name: numpy.dtype(name), exception_type=TypeError
     )
+
+    device_tensor_class = CudaTensor
 
     def __init__(self, tensor):
         super().__init__(tensor)
@@ -65,6 +86,10 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
         """Name of the data type"""
         return self.tensor.dtype.name
 
+    @property
+    def itemsize(self):
+        return self.tensor.itemsize
+
     @classmethod
     def empty(cls, shape, device_id="cpu", *, dtype="float32", strides=None, **context):
         """
@@ -76,6 +101,13 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
         return cls(
             cls.module.ndarray(shape, dtype=dtype, strides=(tuple(s * dtype.itemsize for s in strides) if strides else None))
         )
+
+    @classmethod
+    def create_host_from(cls, tensor: TensorHolder, stream_holder: StreamHolder):
+        src_nd = tensor.asndbuffer()
+        wrapped_np = package_utils.empty_numpy_like(src_nd)
+        ndbuffer.copy_into(wrapped_np, src_nd, stream_holder)
+        return cls(wrapped_np.data)
 
     @property
     def shape(self):
@@ -89,60 +121,25 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
     def strides(self):
         return tuple(stride_in_bytes // self.tensor.itemsize for stride_in_bytes in self.tensor.strides)
 
+    def asndbuffer(self):
+        return package_utils.wrap_numpy_array(self.tensor)
+
     def to(self, device_id, stream_holder):
-        if not (device_id == "cpu" or isinstance(device_id, int)):
+        if device_id == "cpu":
+            return self
+        elif isinstance(device_id, int):
+            dst = self.device_tensor_class.create_from_host(self, device_id, stream_holder)
+            return dst
+        else:
             raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
 
-        if device_id == "cpu":
-            return NumpyTensor(self.tensor)
-
-        # FIXME: Replace with native tensor implementation to avoid required dep on CuPy
-        from .tensor_ifc_cupy import CupyTensor
-
-        with utils.device_ctx(device_id), stream_holder.ctx:
-            return CupyTensor(cupy.asarray(self.tensor))
-
-    def _n2n_copy_(self, src: npt.NDArray) -> None:
-        """
-        Inplace copy of src (copy the data from src into self).
-        The src must by numpy ndarray
-        """
-        numpy.copyto(self.tensor, src)
-
-    def _c2n_copy_(self, src, stream_holder: StreamHolder) -> None:
-        """
-        Inplace copy of src (copy the data from src into self).
-        The src must by cupy ndarray
-        """
-        stream = stream_holder.external
-        try:
-            with stream:
-                src.get(stream=stream, out=self.tensor)
-        except RuntimeError as e:
-            # If self is a strided tensor (neither c nor f layout)
-            # cupy refuses to copy to numpy array
-            if "copying to non-contiguous ndarray" not in str(e):
-                raise
-            else:
-                # we cannot simply use blocking=True, as it is
-                # not supported by older cupy releases (<13)
-                src_cpu = cupy.asnumpy(src, stream=stream)
-                self._n2n_copy_(src_cpu)
-        # cupy/cupy#7820
-        if stream is not None:
-            stream.synchronize()
-
     def copy_(self, src, stream_holder):
-        # Handle NumPy <=> CuPy CPU-GPU ndarray asymmetry.
         match src.name:
-            case "cupy":
-                assert stream_holder is not None
-                self._c2n_copy_(src.tensor, stream_holder)
             case "numpy":
-                self._n2n_copy_(src.tensor)
+                numpy.copyto(self.tensor, src.tensor)
             case _:
-                msg = f"NumpyTensor does not convert from {src.name}."
-                raise NotImplementedError(msg)
+                with utils.device_ctx(src.device_id):
+                    ndbuffer.copy_into(self.asndbuffer(), src.asndbuffer(), stream_holder)
 
     def istensor(self):
         """
@@ -155,3 +152,6 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
             return self.__class__(numpy.reshape(self.tensor, shape))
         else:
             return self.__class__(numpy.reshape(self.tensor, shape, copy=copy))
+
+
+CudaTensor.host_tensor_class = NumpyTensor

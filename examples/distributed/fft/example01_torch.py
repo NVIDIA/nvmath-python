@@ -32,13 +32,13 @@ shape = 16 // nranks, 16, 16
 # cuFFTMp uses the NVSHMEM PGAS model for distributed computation, which requires GPU
 # operands to be on the symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(shape, torch, dtype=torch.complex64)
-# a is a torch tensor and can be operated on using torch operations.
+# a is a torch tensor and can be operated on using in-place torch operations.
 a[:] = torch.rand(shape, dtype=torch.complex64, device=device_id)
 
 # Forward FFT.
 # In this example, the forward FFT operand is distributed according to Slab.X distribution.
 # With reshape=False, the FFT result will be distributed according to Slab.Y distribution.
-b = nvmath.distributed.fft.fft(a, nvmath.distributed.fft.Slab.X, options={"reshape": False})
+b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False})
 
 # Distributed FFT performs computations in-place. The result is stored in the same buffer
 # as tensor a. Note, however, that tensor b has a different shape (due to Slab.Y
@@ -51,13 +51,13 @@ if rank == 0:
 # Recall from the previous transform that the inverse FFT operand is distributed
 # according to Slab.Y. With reshape=False, the inverse FFT result will be distributed
 # according to Slab.X distribution.
-c = nvmath.distributed.fft.ifft(b, nvmath.distributed.fft.Slab.Y, options={"reshape": False})
+c = nvmath.distributed.fft.ifft(b, distribution=nvmath.distributed.fft.Slab.Y, options={"reshape": False})
 
 # The shape of tensor c is the same as tensor a (due to Slab.X distribution). Once again,
 # note that a, b and c are sharing the same symmetric memory buffer (distributed FFT
 # operations are in-place).
 if rank == 0:
-    print(f"Shape of c on rank {rank} is {a.shape}")
+    print(f"Shape of c on rank {rank} is {c.shape}")
 
 # Synchronize the default stream
 with torch.cuda.device(device_id):

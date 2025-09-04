@@ -176,11 +176,3 @@ cdef int get_nested_resource_ptr(nested_resource[ResT] &in_out_ptr, object obj, 
 
 cdef bint is_nested_sequence(data)
 cdef void* get_buffer_pointer(buf, Py_ssize_t size, readonly=*) except*
-
-cdef tuple get_cublas_dso_version_suffix(int driver_ver)
-cdef tuple get_cusolver_dso_version_suffix(int driver_ver)
-cdef tuple get_cufft_dso_version_suffix(int driver_ver)
-cdef tuple get_cusparse_dso_version_suffix(int driver_ver)
-cdef tuple get_curand_dso_version_suffix(int driver_ver)
-cdef tuple get_nvrtc_dso_version_suffix(int driver_ver)
-cdef tuple get_mathdx_dso_version_suffix(int driver_ver)

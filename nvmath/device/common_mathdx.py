@@ -9,6 +9,8 @@ import re
 import sys
 import warnings
 
+from nvmath._utils import get_nvrtc_version
+
 
 CUDA_HOME = None
 CURAND_HOME = None
@@ -39,16 +41,17 @@ def check_cuda_home():
 
     # Try wheel
     try:
+        major, _, _ = get_nvrtc_version()
         # We need CUDA 12+ for device API support
-        cudart = files("nvidia-cuda-runtime-cu12")
-        cccl = files("nvidia-cuda-cccl-cu12")
-        curand = files("nvidia-curand-cu12")
+        cudart = files("nvidia-cuda-runtime-cu12" if major == 12 else "nvidia-cuda-runtime")
+        cccl = files("nvidia-cuda-cccl-cu12" if major == 12 else "nvidia-cuda-cccl")
+        curand = files("nvidia-curand-cu12" if major == 12 else "nvidia-curand")
         # use cuda_fp16.h (which we need) as a proxy
         cudart = [f for f in cudart if "cuda_fp16.h" in str(f)][0]
         cudart = os.path.join(os.path.dirname(cudart.locate()), "..")
         # use cuda/std/type_traits as a proxy
         cccl = min([f for f in cccl if re.match(r".*cuda\/std\/type_traits.*", str(f))], key=lambda x: len(str(x)))
-        cccl = os.path.join(os.path.dirname(cccl.locate()), "../../..")
+        cccl = os.path.join(os.path.dirname(cccl.locate()), "../.." + ("/.." if major == 12 else ""))
         curand = [f for f in curand if "curand_kernel.h" in str(f)][0]
         curand = os.path.dirname(curand.locate())
     except PackageNotFoundError:

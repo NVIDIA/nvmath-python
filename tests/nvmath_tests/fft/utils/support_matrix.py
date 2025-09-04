@@ -14,11 +14,7 @@ from .common_axes import (
     Direction,
     OptFftType,
 )
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
+import cuda.core.experimental as ccx
 
 
 framework_backend_support = {
@@ -174,9 +170,8 @@ class _BackendSupport:
 
         try:
             nvmath.bindings.cufft.get_version()
-            if cp is not None:
-                exec_backends.append(ExecBackend.cufft)
-                memory_backends.append(MemBackend.cuda)
+            exec_backends.append(ExecBackend.cufft)
+            memory_backends.append(MemBackend.cuda)
         except nvmath.bindings._internal.utils.NotSupportedError as e:
             if "CUDA driver is not found" not in str(e):
                 raise
@@ -192,9 +187,7 @@ def multi_gpu_only(fn):
 
     @functools.wraps(fn)
     def inner(*args, **kwargs):
-        if cp is None:
-            pytest.skip("Test requires cupy")
-        dev_count = cp.cuda.runtime.getDeviceCount()
+        dev_count = ccx.system.num_devices
         if dev_count < 2:
             pytest.skip(f"Test requires at least two gpus, got {dev_count}")
         else:

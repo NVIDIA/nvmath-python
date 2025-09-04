@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -99,12 +99,14 @@ ctypedef enum cublasGemmAlgo_t "cublasGemmAlgo_t":
     CUBLAS_GEMM_ALGO13_TENSOR_OP "CUBLAS_GEMM_ALGO13_TENSOR_OP" = 113
     CUBLAS_GEMM_ALGO14_TENSOR_OP "CUBLAS_GEMM_ALGO14_TENSOR_OP" = 114
     CUBLAS_GEMM_ALGO15_TENSOR_OP "CUBLAS_GEMM_ALGO15_TENSOR_OP" = 115
+    CUBLAS_GEMM_AUTOTUNE "CUBLAS_GEMM_AUTOTUNE" = 999
 
 ctypedef enum cublasMath_t "cublasMath_t":
     CUBLAS_DEFAULT_MATH "CUBLAS_DEFAULT_MATH" = 0
     CUBLAS_TENSOR_OP_MATH "CUBLAS_TENSOR_OP_MATH" = 1
     CUBLAS_PEDANTIC_MATH "CUBLAS_PEDANTIC_MATH" = 2
     CUBLAS_TF32_TENSOR_OP_MATH "CUBLAS_TF32_TENSOR_OP_MATH" = 3
+    CUBLAS_FP32_EMULATED_BF16X9_MATH "CUBLAS_FP32_EMULATED_BF16X9_MATH" = 4
     CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION "CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION" = 16
 
 ctypedef enum cublasComputeType_t "cublasComputeType_t":
@@ -115,10 +117,16 @@ ctypedef enum cublasComputeType_t "cublasComputeType_t":
     CUBLAS_COMPUTE_32F_FAST_16F "CUBLAS_COMPUTE_32F_FAST_16F" = 74
     CUBLAS_COMPUTE_32F_FAST_16BF "CUBLAS_COMPUTE_32F_FAST_16BF" = 75
     CUBLAS_COMPUTE_32F_FAST_TF32 "CUBLAS_COMPUTE_32F_FAST_TF32" = 77
+    CUBLAS_COMPUTE_32F_EMULATED_16BFX9 "CUBLAS_COMPUTE_32F_EMULATED_16BFX9" = 78
     CUBLAS_COMPUTE_64F "CUBLAS_COMPUTE_64F" = 70
     CUBLAS_COMPUTE_64F_PEDANTIC "CUBLAS_COMPUTE_64F_PEDANTIC" = 71
     CUBLAS_COMPUTE_32I "CUBLAS_COMPUTE_32I" = 72
     CUBLAS_COMPUTE_32I_PEDANTIC "CUBLAS_COMPUTE_32I_PEDANTIC" = 73
+
+ctypedef enum cublasEmulationStrategy_t "cublasEmulationStrategy_t":
+    CUBLAS_EMULATION_STRATEGY_DEFAULT "CUBLAS_EMULATION_STRATEGY_DEFAULT" = 0
+    CUBLAS_EMULATION_STRATEGY_PERFORMANT "CUBLAS_EMULATION_STRATEGY_PERFORMANT" = 1
+    CUBLAS_EMULATION_STRATEGY_EAGER "CUBLAS_EMULATION_STRATEGY_EAGER" = 2
 
 
 # types
@@ -655,3 +663,5 @@ cdef cublasStatus_t cublasDgemmGroupedBatched(cublasHandle_t handle, const cubla
 cdef cublasStatus_t cublasDgemmGroupedBatched_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const double alpha_array[], const double* const Aarray[], const int64_t lda_array[], const double* const Barray[], const int64_t ldb_array[], const double beta_array[], double* const Carray[], const int64_t ldc_array[], int64_t group_count, const int64_t group_size[]) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasStatus_t cublasGemmGroupedBatchedEx(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int m_array[], const int n_array[], const int k_array[], const void* alpha_array, const void* const Aarray[], cudaDataType_t Atype, const int lda_array[], const void* const Barray[], cudaDataType_t Btype, const int ldb_array[], const void* beta_array, void* const Carray[], cudaDataType_t Ctype, const int ldc_array[], int group_count, const int group_size[], cublasComputeType_t computeType) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasStatus_t cublasGemmGroupedBatchedEx_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const void* alpha_array, const void* const Aarray[], cudaDataType_t Atype, const int64_t lda_array[], const void* const Barray[], cudaDataType_t Btype, const int64_t ldb_array[], const void* beta_array, void* const Carray[], cudaDataType_t Ctype, const int64_t ldc_array[], int64_t group_count, const int64_t group_size[], cublasComputeType_t computeType) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasGetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t* emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil

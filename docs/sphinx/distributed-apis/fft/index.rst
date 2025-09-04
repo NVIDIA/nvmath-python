@@ -12,11 +12,13 @@ nvmath-python leverages the NVIDIA cuFFTMp library and provides a powerful suite
 that can be directly called from the host to efficiently perform discrete Fourier
 transformations on multi-node multi-GPU systems at scale. Both stateless function-form
 APIs and stateful class-form APIs are provided to support a spectrum of N-dimensional
-FFT operations. These include forward and inverse transformations for complex-to-complex
-(C2C) transforms.
+FFT operations. These include forward and inverse complex-to-complex (C2C) transformations,
+as well as complex-to-real (C2R) and real-to-complex (R2C) transforms:
 
 - N-dimensional forward C2C FFT transform by :func:`nvmath.distributed.fft.fft`.
 - N-dimensional inverse C2C FFT transform by :func:`nvmath.distributed.fft.ifft`.
+- N-dimensional forward R2C FFT transform by :func:`nvmath.distributed.fft.rfft`.
+- N-dimensional inverse C2R FFT transform by :func:`nvmath.distributed.fft.irfft`.
 - All types of N-dimensional FFT by stateful :class:`nvmath.distributed.fft.FFT`.
 
 .. note::
@@ -35,10 +37,21 @@ some key differences:
 
 * GPU operands need to be allocated on **symmetric memory**. Refer to
   :doc:`Distributed API Utilities <../utils>` for examples and details of how to
-  manage symmetric memory GPU operands.
+  manage symmetric memory GPU operands. The :func:`nvmath.distributed.fft.allocate_operand`
+  helper described below can also be used to allocate on symmetric memory.
 
-* All distributed FFT operations are **in-place** (the result is stored in the input
-  memory buffer).
+* All distributed FFT operations (including R2C and C2R) are **in-place** (the result is
+  stored in the same buffer as the input operand). This has special implications on the
+  properties of the buffer and memory layout, due to the following: (i) in general, varying
+  input and output distribution means that on a given process the input and output can have
+  different shape (and size), particularly when global data does not divide evenly among
+  processes; (ii) for R2C and C2R transformations, the shape and dtype of the input and
+  output is different, and cuFFTMp has special requirements concerning buffer padding and
+  strides. Due to the above, it's recommended to allocate FFT operands with
+  :func:`nvmath.distributed.fft.allocate_operand` to ensure that the operand and
+  its underlying buffer have the required characteristics for the given distributed FFT
+  operation. This helper is described below.
+
 
 Slab distribution
 -----------------
@@ -89,7 +102,7 @@ this using GPU operands:
     # cuFFTMp uses the NVSHMEM PGAS model for distributed computation, which
     # requires GPU operands to be on the symmetric heap.
     a = nvmath.distributed.allocate_symmetric_memory(shape, cp, dtype=cp.complex128)
-    # a is a cupy ndarray and can be operated on using cupy operations.
+    # a is a cupy ndarray and can be operated on using in-place cupy operations.
     with cp.cuda.Device(device_id):
         a[:] = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
@@ -162,6 +175,73 @@ Here is an example of a distributed FFT across 4 GPUs using a custom pencil dist
     output_box = input_box
     b = nvmath.distributed.fft.fft(a, distribution=[input_box, output_box])
 
+Operand allocation helper
+-------------------------
+
+The :func:`~nvmath.distributed.fft.allocate_operand` helper can be used to allocate an
+operand that meets the requirements (in terms of buffer size, padding and strides) for
+the specified FFT operation . For GPU operands, the allocation will be done on the
+symmetric heap.
+
+.. important::
+    Any memory on the symmetric heap that is owned by the user (including memory
+    allocated with :func:`~nvmath.distributed.fft.allocate_operand`) must be deleted
+    explicitly using :func:`~nvmath.distributed.free_symmetric_memory`. Refer to
+    :doc:`Distributed API Utilities <../utils>` for more information.
+
+To allocate an operand, each process specifies the local shape of its input, the array
+package, dtype, distribution and FFT type. For example:
+
+.. code-block:: python
+
+    import cupy as cp
+
+    # Get number of processes from mpi4py communicator.
+    nranks = communicator.Get_size()
+
+    from nvmath.distributed.fft import Slab
+
+    # The global *real* 3-D FFT size is (512, 256, 512).
+    # The input data is distributed across processes according to
+    # the cuFFTMp Slab distribution on the X axis.
+    shape = 512 // nranks, 256, 512
+
+    # Allocate the operand on the symmetric heap with the required properties
+    # for the specified distributed FFT R2C.
+    a = nvmath.distributed.fft.allocate_operand(
+        shape,
+        cp,
+        input_dtype=cp.float32,
+        distribution=Slab.X,
+        fft_type="R2C",
+    )
+    # a is a cupy ndarray and can be operated on using in-place cupy operations.
+    with cp.cuda.Device(device_id):
+        a[:] = cp.random.rand(*shape, dtype=cp.float32)
+
+    # R2C (forward) FFT.
+    # In this example, the R2C operand is distributed according to Slab.X distribution.
+    # With reshape=False, the R2C result will be distributed according to Slab.Y distribution.
+    b = nvmath.distributed.fft.rfft(a, distribution=Slab.X, options={"reshape": False})
+
+    # Distributed FFT performs computations in-place. The result is stored in the same
+    # buffer as operand a. Note, however, that operand b has a different dtype and shape
+    # (because the output has complex dtype and Slab.Y distribution).
+
+    # C2R (inverse) FFT.
+    # The inverse FFT operand is distributed according to Slab.Y. With reshape=False,
+    # the C2R result will be distributed according to Slab.X distribution.
+    c = nvmath.distributed.fft.irfft(b, distribution=Slab.Y, options={"reshape": False})
+
+    # Synchronize the default stream
+    with cp.cuda.Device(device_id):
+        cp.cuda.get_current_stream().synchronize()
+
+    # The shape of c is the same as a (due to Slab.X distribution). Once again, note that
+    # a, b and c are sharing the same symmetric memory buffer (distributed FFT operations
+    # are in-place).
+    nvmath.distributed.free_symmetric_memory(a)
+
 .. _distributed-fft-api-reference:
 
 API Reference
@@ -176,8 +256,11 @@ FFT support (:mod:`nvmath.distributed.fft`)
 .. autosummary::
    :toctree: generated/
 
+   allocate_operand
    fft
    ifft
+   rfft
+   irfft
    FFT
 
    :template: dataclass.rst

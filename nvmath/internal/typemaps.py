@@ -142,6 +142,7 @@ def create_cuda_compute_type_map(cuda_compute_type_enum_class):
 
 
 NAME_TO_DATA_TYPE, NAME_TO_DATA_WIDTH = create_cuda_data_type_map(cudaDataType)
+NAME_TO_ITEM_SIZE = {k: v // 8 for k, v in NAME_TO_DATA_WIDTH.items() if v % 8 == 0}
 DATA_TYPE_TO_NAME = {v: k for k, v in NAME_TO_DATA_TYPE.items()}
 NAME_TO_COMPUTE_TYPE = create_cuda_compute_type_map(ComputeType)
 COMPUTE_TYPE_TO_NAME = {v: k for k, v in NAME_TO_COMPUTE_TYPE.items()}

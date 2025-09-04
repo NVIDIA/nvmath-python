@@ -32,7 +32,7 @@ a[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dt
 print(f"[{rank}] The local operand shape = {a.shape}, with data type {dtype} running on {nranks} processes.")
 
 # Create the distributed FFT op, plan, and benchmark.
-with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.X, options={"reshape": False}) as fftobj:
+with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False}) as fftobj:
     fftobj.plan()
     b = cupyx.profiler.benchmark(fftobj.execute, n_repeat=10)
     print(f"[{rank}] {b}")

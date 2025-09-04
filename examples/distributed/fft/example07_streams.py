@@ -36,7 +36,7 @@ with cp.cuda.Device(device_id):
     s1 = cp.cuda.Stream()
 
 # Create a stateful FFT object 'f' on stream s1.
-with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.X, options={"blocking": "auto"}, stream=s1) as f:
+with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"blocking": "auto"}, stream=s1) as f:
     # Plan the FFT on stream s1.
     f.plan(stream=s1)
 
@@ -67,7 +67,7 @@ with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.X, options={"bloc
 
     # Set a new operand c on stream s2. Note that operand c is distributed in the same was
     # as operand a.
-    f.reset_operand(c, nvmath.distributed.fft.Slab.X, stream=s2)
+    f.reset_operand(c, distribution=nvmath.distributed.fft.Slab.X, stream=s2)
 
     # Execute the new FFT on stream s2.
     d = f.execute(stream=s2)

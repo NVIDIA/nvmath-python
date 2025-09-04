@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
-from libc.stdint cimport intptr_t
-
-from .utils cimport get_cublas_dso_version_suffix
+from libc.stdint cimport intptr_t, uintptr_t
 
 from .utils import FunctionNotFoundError, NotSupportedError
+
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 
 ###############################################################################
@@ -541,19 +541,13 @@ cdef void* __cublasDgemmGroupedBatched = NULL
 cdef void* __cublasDgemmGroupedBatched_64 = NULL
 cdef void* __cublasGemmGroupedBatchedEx = NULL
 cdef void* __cublasGemmGroupedBatchedEx_64 = NULL
+cdef void* __cublasGetEmulationStrategy = NULL
+cdef void* __cublasSetEmulationStrategy = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
-    cdef void* handle
-    for suffix in get_cublas_dso_version_suffix(driver_ver):
-        so_name = "libcublas.so" + (f".{suffix}" if suffix else suffix)
-        handle = dlopen(so_name.encode(), RTLD_NOW | RTLD_GLOBAL)
-        if handle != NULL:
-            break
-    else:
-        err_msg = dlerror()
-        raise RuntimeError(f'Failed to dlopen libcublas ({err_msg.decode()})')
-    return handle
+    cdef uintptr_t handle = load_nvidia_dynamic_lib("cublas")._handle_uint
+    return <void*>handle
 
 
 cdef int _check_or_init_cublas() except -1 nogil:
@@ -4111,6 +4105,20 @@ cdef int _check_or_init_cublas() except -1 nogil:
             handle = load_library(driver_ver)
         __cublasGemmGroupedBatchedEx_64 = dlsym(handle, 'cublasGemmGroupedBatchedEx_64')
 
+    global __cublasGetEmulationStrategy
+    __cublasGetEmulationStrategy = dlsym(RTLD_DEFAULT, 'cublasGetEmulationStrategy')
+    if __cublasGetEmulationStrategy == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasGetEmulationStrategy = dlsym(handle, 'cublasGetEmulationStrategy')
+
+    global __cublasSetEmulationStrategy
+    __cublasSetEmulationStrategy = dlsym(RTLD_DEFAULT, 'cublasSetEmulationStrategy')
+    if __cublasSetEmulationStrategy == NULL:
+        if handle == NULL:
+            handle = load_library(driver_ver)
+        __cublasSetEmulationStrategy = dlsym(handle, 'cublasSetEmulationStrategy')
+
     __py_cublas_init = True
     return 0
 
@@ -5637,6 +5645,12 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasGemmGroupedBatchedEx_64
     data["__cublasGemmGroupedBatchedEx_64"] = <intptr_t>__cublasGemmGroupedBatchedEx_64
+
+    global __cublasGetEmulationStrategy
+    data["__cublasGetEmulationStrategy"] = <intptr_t>__cublasGetEmulationStrategy
+
+    global __cublasSetEmulationStrategy
+    data["__cublasSetEmulationStrategy"] = <intptr_t>__cublasSetEmulationStrategy
 
     func_ptrs = data
     return data
@@ -10691,3 +10705,23 @@ cdef cublasStatus_t _cublasGemmGroupedBatchedEx_64(cublasHandle_t handle, const 
             raise FunctionNotFoundError("function cublasGemmGroupedBatchedEx_64 is not found")
     return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int64_t*, const int64_t*, const int64_t*, const void*, const void* const*, cudaDataType_t, const int64_t*, const void* const*, cudaDataType_t, const int64_t*, const void*, void* const*, cudaDataType_t, const int64_t*, int64_t, const int64_t*, cublasComputeType_t) noexcept nogil>__cublasGemmGroupedBatchedEx_64)(
         handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, Atype, lda_array, Barray, Btype, ldb_array, beta_array, Carray, Ctype, ldc_array, group_count, group_size, computeType)
+
+
+cdef cublasStatus_t _cublasGetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t* emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasGetEmulationStrategy
+    _check_or_init_cublas()
+    if __cublasGetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGetEmulationStrategy is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cublasEmulationStrategy_t*) noexcept nogil>__cublasGetEmulationStrategy)(
+        handle, emulationStrategy)
+
+
+cdef cublasStatus_t _cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasSetEmulationStrategy
+    _check_or_init_cublas()
+    if __cublasSetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSetEmulationStrategy is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cublasEmulationStrategy_t) noexcept nogil>__cublasSetEmulationStrategy)(
+        handle, emulationStrategy)

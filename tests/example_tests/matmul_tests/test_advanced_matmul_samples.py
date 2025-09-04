@@ -8,10 +8,7 @@ import re
 
 import pytest
 
-try:
-    import cupy  # noqa: F401
-except ModuleNotFoundError:
-    pytest.skip("cupy required for matmul tests", allow_module_level=True)
+import cuda.core.experimental as ccx
 
 from nvmath import bindings
 from ..test_utils import run_sample
@@ -68,8 +65,8 @@ min_cc = {
 }
 
 cublas_version = bindings.cublasLt.get_version()
-device_properties = cupy.cuda.runtime.getDeviceProperties(cupy.cuda.runtime.getDevice())
-cc = (device_properties["major"], device_properties["minor"])
+device_properties = ccx.Device().properties
+cc = (device_properties.compute_capability_major, device_properties.compute_capability_minor)
 
 
 @pytest.mark.parametrize("sample", sample_files)

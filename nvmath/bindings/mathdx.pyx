@@ -1,8 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-# This code was automatically generated with version 0.2.1. Do not modify it directly.
+# This code was automatically generated with version 0.2.3. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -183,7 +179,6 @@ class CublasdxTensorTrait(_IntEnum):
 
 class CublasdxDeviceFunctionTrait(_IntEnum):
     """See `cublasdxDeviceFunctionTrait`."""
-    NAME = CUBLASDX_DEVICE_FUNCTION_TRAIT_NAME
     SYMBOL = CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL
 
 class CublasdxDeviceFunctionOption(_IntEnum):

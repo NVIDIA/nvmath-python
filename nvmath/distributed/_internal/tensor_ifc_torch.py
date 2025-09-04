@@ -20,28 +20,28 @@ except ImportError:
 from collections.abc import Sequence
 
 import nvmath.distributed
+
+from nvmath.internal.package_ifc import StreamHolder
 from nvmath.internal.tensor_ifc_torch import TorchTensor
 from nvmath.internal.utils import device_ctx
-from nvmath.bindings import nvshmem  # type: ignore
 from nvmath.distributed._internal.nvshmem import nvshmem_empty_dlpack
+
+from .tensor_ifc import DistributedTensor
 
 
 # Most methods aren't redefined, because they simply act on the local array
-class TorchDistributedTensor(TorchTensor):
+class TorchDistributedTensor(TorchTensor, DistributedTensor):
     """
     TensorHolder for distributed torch tensors.
     """
 
     def __init__(self, tensor):
         super().__init__(tensor)
-        if tensor.device.index is not None and nvshmem.ptr(tensor.data_ptr(), nvshmem.my_pe()) == 0:
-            raise TypeError(
-                "Operand must be on the symmetric heap. Consider allocating it "
-                "with nvmath.distributed.allocate_symmetric_memory()."
-            )
 
     @classmethod
-    def empty(cls, shape, device_id="cpu", *, dtype="float32", strides=None, **context) -> TorchDistributedTensor:
+    def empty(
+        cls, shape, device_id="cpu", *, dtype="float32", strides=None, stream_holder: StreamHolder | None = None, **context
+    ) -> TorchDistributedTensor:
         """
         Create an empty tensor of the specified shape and data type on the specified device
         (None, 'cpu', or device id).
@@ -50,22 +50,41 @@ class TorchDistributedTensor(TorchTensor):
         (possibly permuted) tensor and MUST NOT overlap.
         Otherwise, the behaviour is not defined.
         """
-        if device_id == "cpu":
-            return super().empty(shape, device_id, dtype=dtype, strides=strides)
+        symmetric_memory = context.get("symmetric_memory", False)
+        make_symmetric = context.get("make_symmetric", False)
+        skip_symmetric_check = context.get("skip_symmetric_check", False)
 
-        dtype = TorchTensor.name_to_dtype[dtype]
+        if device_id == "cpu":
+            if symmetric_memory or make_symmetric or skip_symmetric_check:
+                raise ValueError("symmetric memory options cannot be used when allocating tensor on CPU")
+            return super().empty(shape, device_id, dtype=dtype, strides=strides, **context)
 
         ctx = nvmath.distributed.get_context()
         assert ctx is not None, "nvmath.distributed has not been initialized"
 
-        make_symmetric = context.get("make_symmetric", False)
         logger = context.get("logger")
+
+        if not symmetric_memory:
+            if make_symmetric or skip_symmetric_check:
+                raise ValueError("Use of symmetric memory option with symmetric_memory=False")
+            return super().empty(
+                shape, device_id=device_id, dtype=dtype, strides=strides, stream_holder=stream_holder, **context
+            )
+
+        dtype = TorchTensor.name_to_dtype[dtype]
 
         with device_ctx(device_id):
             size = math.prod(shape, start=dtype.itemsize)
             # TODO: ideally strides should be set in DLPack, but cuda.core doesn't support
             # ndarray yet and instead returns a flat buffer.
-            dlpack_buf = nvshmem_empty_dlpack(size, device_id, ctx.communicator, make_symmetric=make_symmetric, logger=logger)
+            dlpack_buf = nvshmem_empty_dlpack(
+                size,
+                device_id,
+                ctx.communicator,
+                make_symmetric=make_symmetric,
+                skip_symmetric_check=skip_symmetric_check,
+                logger=logger,
+            )
             tensor = torch.from_dlpack(dlpack_buf)
             # Buffer may be padded if make_symmetric=True.
             tensor = tensor[:size]
@@ -76,7 +95,7 @@ class TorchDistributedTensor(TorchTensor):
 
         return cls(tensor)
 
-    def to(self, device_id, stream_holder) -> TorchDistributedTensor:
+    def to(self, device_id, stream_holder, symmetric_memory: bool = False) -> TorchDistributedTensor:
         """
         In addition to the base class semantics:
           - Source or target device must be the one used to initialize NVSHMEM on this
@@ -87,19 +106,32 @@ class TorchDistributedTensor(TorchTensor):
         if not (device_id == "cpu" or isinstance(device_id, int)):
             raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
 
+        # To CPU or same device
         if device_id == "cpu" or self.device_id == device_id:
             with stream_holder.ctx:
                 tensor = self.tensor.to(device=device_id, non_blocking=(device_id != "cpu"))
-            return TorchDistributedTensor(tensor)
+            result = TorchDistributedTensor(tensor)
+            assert result.is_symmetric_memory == symmetric_memory
+            return result
 
+        # Currently we don't allow copy from one device to another for distributed
+        # tensors (see comment in CupyDistributedTensor.to()).
         if self.device_id != "cpu" and self.device_id != device_id:
             raise ValueError("Cannot copy distributed tensor to a different CUDA device")
 
+        # CPU to GPU
         with stream_holder.ctx:
             tensor_device = TorchDistributedTensor.empty(
-                self.shape, device_id=device_id, dtype=self.dtype, strides=self.strides, make_symmetric=True
+                self.shape,
+                device_id=device_id,
+                dtype=self.dtype,
+                strides=self.strides,
+                stream_holder=stream_holder,
+                make_symmetric=symmetric_memory,
+                symmetric_memory=symmetric_memory,
             )
             tensor_device.tensor.copy_(self.tensor, non_blocking=True)
+            assert tensor_device.is_symmetric_memory == symmetric_memory
             return tensor_device
 
     def reshape(self, shape: Sequence[int], *, copy: bool | None = None) -> TorchDistributedTensor:

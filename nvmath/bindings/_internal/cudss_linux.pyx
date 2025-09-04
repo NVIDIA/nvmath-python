@@ -4,10 +4,11 @@
 #
 # This code was automatically generated with version 0.5.0. Do not modify it directly.
 
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintptr_t
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 ###############################################################################
 # Extern
@@ -68,16 +69,8 @@ cdef void* __cudssSetDeviceMemHandler = NULL
 
 
 cdef void* load_library() except* with gil:
-    cdef void* handle
-    for suffix in ('0', ''):
-        so_name = "libcudss.so" + (f".{suffix}" if suffix else suffix)
-        handle = dlopen(so_name.encode(), RTLD_NOW | RTLD_GLOBAL)
-        if handle != NULL:
-            break
-    else:
-        err_msg = dlerror()
-        raise RuntimeError(f'Failed to dlopen libcudss ({err_msg.decode()})')
-    return handle
+    cdef uintptr_t handle = load_nvidia_dynamic_lib("cudss")._handle_uint
+    return <void*>handle
 
 
 cdef int _check_or_init_cudss() except -1 nogil:

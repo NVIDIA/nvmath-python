@@ -36,7 +36,7 @@ with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
 # Create a stateful FFT object 'f'.
-with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.X, options={"reshape": False}) as f:
+with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False}) as f:
     # Plan the FFT.
     f.plan()
 

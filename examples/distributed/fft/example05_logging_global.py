@@ -38,7 +38,7 @@ with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
 # Forward FFT.
-b = nvmath.distributed.fft.fft(a, nvmath.distributed.fft.Slab.X)
+b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X)
 
 # Synchronize the default stream
 with cp.cuda.Device(device_id):

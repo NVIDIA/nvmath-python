@@ -4,6 +4,7 @@
 
 import random
 import math
+import re
 from ast import literal_eval
 
 import pytest
@@ -58,6 +59,7 @@ from .utils.input_fixtures import (
     get_random_input_data,
     get_custom_stream,
     get_stream_pointer,
+    get_framework_device_ctx,
     init_assert_exec_backend_specified,
 )
 from .utils.check_helpers import (
@@ -404,14 +406,14 @@ def test_fft_ifft_overlap(
 )
 def test_ifft_fft_blocking(monkeypatch, framework, exec_backend, mem_backend, dtype, blocking, shape_kind, shape):
     synchronization_num = 0
-    _actual_sync = ccx.Event.sync
 
-    def _synchronize(self):
-        nonlocal synchronization_num
-        synchronization_num += 1
-        _actual_sync(self)
+    class LoggedSyncEvent(ccx.Event):
+        def sync(self):
+            nonlocal synchronization_num
+            synchronization_num += 1
+            super().sync()
 
-    monkeypatch.setattr(ccx.Event, "sync", _synchronize)
+    monkeypatch.setattr(ccx._device, "Event", LoggedSyncEvent)
 
     sample = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=33)
     sample_fft_ref = get_fft_ref(sample)
@@ -452,7 +454,8 @@ def test_ifft_fft_blocking(monkeypatch, framework, exec_backend, mem_backend, dt
         )
 
     if mem_backend == MemBackend.cpu or blocking == OptFftBlocking.true:
-        expected_syncs = (1 + is_complex(dtype)) * 2  # 2x for plan creation and fft execution
+        # 2x for plan creation and fft execution
+        expected_syncs = (1 + is_complex(dtype)) * 2
     else:
         expected_syncs = 1 + is_complex(dtype)  # 2x for plan creation only
     assert_eq(synchronization_num, expected_syncs)
@@ -611,7 +614,7 @@ def test_fft_array_device_id(monkeypatch, framework, exec_backend, mem_backend, 
         get_fft_ref(signal_0),
         exec_backend=exec_backend,
     )
-    with cp.cuda.Device(1):
+    with get_framework_device_ctx(1, framework):
         assert_norm_close(
             fft_1,
             get_fft_ref(signal_1),
@@ -643,7 +646,7 @@ def test_fft_array_device_id(monkeypatch, framework, exec_backend, mem_backend, 
             get_scaled(signal_0, shape),
             exec_backend=exec_backend,
         )
-        with cp.cuda.Device(1):
+        with get_framework_device_ctx(1, framework):
             assert_norm_close(
                 ifft_1,
                 get_scaled(signal_1, shape),
@@ -1147,16 +1150,53 @@ def test_cpu_execution_wrong_options(framework, exec_backend, mem_backend, dtype
             options={"result_layout": "natural"},
         )
 
+    # Test fft_type validation
+    with pytest.raises(
+        ValueError,
+        match=re.escape("The value specified for 'fft_type' must be one of [None, 'C2C', 'C2R', 'R2C']."),
+    ):
+        fn(sample, execution="cpu", options={"fft_type": "R2R"})
+
+    # Test inplace type validation
+    with pytest.raises(
+        ValueError,
+        match="The value specified for 'inplace' must be of type bool",
+    ):
+        fn(sample, execution="cpu", options={"inplace": "not_a_bool"})
+
+    # Test last_axis_parity validation
+    with pytest.raises(
+        ValueError,
+        match=re.escape("The value specified for 'last_axis_parity' must be one of ['even', 'odd']."),
+    ):
+        fn(sample, execution="cpu", options={"last_axis_parity": "invalid_parity"})
+
+    # Test result_layout validation
+    with pytest.raises(
+        ValueError,
+        match=re.escape("The value specified for 'result_layout' must be one of ['natural', 'optimized']."),
+    ):
+        fn(sample, execution="cpu", options={"result_layout": "invalid_layout"})
+
+    # Test blocking validation
+    with pytest.raises(
+        ValueError,
+        match="The value specified for 'blocking' must be either True or 'auto'",
+    ):
+        fn(sample, execution="cpu", options={"blocking": False})
+
 
 @pytest.mark.parametrize(
     ("framework", "exec_backend", "mem_backend", "dtype"),
     [
         (
-            Framework.cupy,
+            framework,
             exec_backend,
             MemBackend.cuda,
             dtype,
         )
+        for framework in Framework.enabled()
+        if framework == Framework.cupy or framework == Framework.torch
         for exec_backend in supported_backends.exec
         if exec_backend == ExecBackend.cufft
         for dtype in [DType.float32, DType.complex64]
@@ -1184,11 +1224,13 @@ def test_gpu_execution_wrong_options(framework, exec_backend, mem_backend, dtype
     ("framework", "exec_backend", "mem_backend", "dtype"),
     [
         (
-            Framework.cupy,
+            framework,
             exec_backend,
             MemBackend.cuda,
             dtype,
         )
+        for framework in Framework.enabled()
+        if framework == Framework.cupy or framework == Framework.torch
         for exec_backend in supported_backends.exec
         if exec_backend == ExecBackend.cufft
         for dtype in [DType.float32, DType.complex64]
@@ -1292,7 +1334,7 @@ def test_inplace_unsupported_implicit_r2c_c2r(framework, exec_backend, mem_backe
 )
 @multi_gpu_only
 def test_fft_wrong_device_stream(framework, exec_backend, mem_backend, dtype):
-    with cp.cuda.Device(0):
+    with get_framework_device_ctx(0, framework):
         stream = get_custom_stream(framework)
 
     shape = 256

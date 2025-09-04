@@ -1,10 +1,10 @@
-# This code was automatically generated with version 0.2.1. Do not modify it directly.
+# This code was automatically generated with version 0.2.3. Do not modify it directly.
 
-from libc.stdint cimport intptr_t
-
-from .utils cimport get_mathdx_dso_version_suffix
+from libc.stdint cimport intptr_t, uintptr_t
 
 from .utils import FunctionNotFoundError, NotSupportedError
+
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 
 ###############################################################################
@@ -106,16 +106,9 @@ cdef void* __cusolverdxTraitTypeToStr = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
-    cdef void* handle
-    for suffix in get_mathdx_dso_version_suffix(driver_ver):
-        so_name = "libmathdx.so" + (f".{suffix}" if suffix else suffix)
-        handle = dlopen(so_name.encode(), RTLD_NOW | RTLD_GLOBAL)
-        if handle != NULL:
-            break
-    else:
-        err_msg = dlerror()
-        raise RuntimeError(f'Failed to dlopen libmathdx ({err_msg.decode()})')
-    return handle
+    load_nvidia_dynamic_lib("nvrtc")
+    cdef uintptr_t handle = load_nvidia_dynamic_lib("mathdx")._handle_uint
+    return <void*>handle
 
 
 cdef int _check_or_init_mathdx() except -1 nogil:
@@ -137,7 +130,7 @@ cdef int _check_or_init_mathdx() except -1 nogil:
         with gil:
             raise RuntimeError('something went wrong')
     cdef int err, driver_ver
-    err = (<int (*)(int*) nogil>__cuDriverGetVersion)(&driver_ver)
+    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
     if err != 0:
         with gil:
             raise RuntimeError('something went wrong')

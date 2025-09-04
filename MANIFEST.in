@@ -1,5 +1,6 @@
-graft nvmath
-global-include *.pyd
-global-include *.pyi
+include builder/__init__.py builder/utils.py # builder package used during build
+global-include *.pxd # cython header (aka .h/.hpp in c++)
+global-include *.pyx # cython implementation (aka .c/.cpp in c++)
+# setuptools includes .cpp automatically, not knowing they are generated from
+# cython. Should be changed if .cpp files included manually
 global-exclude *.cpp
-global-exclude *.pyx

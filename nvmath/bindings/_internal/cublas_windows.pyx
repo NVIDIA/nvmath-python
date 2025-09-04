@@ -2,11 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
-from libc.stdint cimport intptr_t
-
-from .utils cimport get_cublas_dso_version_suffix
+from libc.stdint cimport intptr_t, uintptr_t
 
 import os
 import site
@@ -15,14 +13,13 @@ import win32api
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
 LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
-LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
-LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
 cdef bint __py_cublas_init = False
 cdef void* __cuDriverGetVersion = NULL
 
@@ -530,6 +527,8 @@ cdef void* __cublasDgemmGroupedBatched = NULL
 cdef void* __cublasDgemmGroupedBatched_64 = NULL
 cdef void* __cublasGemmGroupedBatchedEx = NULL
 cdef void* __cublasGemmGroupedBatchedEx_64 = NULL
+cdef void* __cublasGetEmulationStrategy = NULL
+cdef void* __cublasSetEmulationStrategy = NULL
 
 
 cdef inline list get_site_packages():
@@ -537,50 +536,8 @@ cdef inline list get_site_packages():
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
-    handle = 0
-
-    for suffix in get_cublas_dso_version_suffix(driver_ver):
-        if len(suffix) == 0:
-            continue
-        dll_name = f"cublas64_{suffix}.dll"
-
-        # First check if the DLL has been loaded by 3rd parties
-        try:
-            handle = win32api.GetModuleHandle(dll_name)
-        except:
-            pass
-        else:
-            break
-
-        # Next, check if DLLs are installed via pip
-        for sp in get_site_packages():
-            mod_path = os.path.join(sp, "nvidia", "cublas", "bin")
-            if not os.path.isdir(mod_path):
-                continue
-            os.add_dll_directory(mod_path)
-        try:
-            handle = win32api.LoadLibraryEx(
-                # Note: LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR needs an abs path...
-                os.path.join(mod_path, dll_name),
-                0, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
-        except:
-            pass
-        else:
-            break
-
-        # Finally, try default search
-        try:
-            handle = win32api.LoadLibrary(dll_name)
-        except:
-            pass
-        else:
-            break
-    else:
-        raise RuntimeError('Failed to load cublas')
-
-    assert handle != 0
+    handle = load_nvidia_dynamic_lib("cublas")._handle_uint
     return <void*><intptr_t>handle
-
 
 cdef int _check_or_init_cublas() except -1 nogil:
     global __py_cublas_init
@@ -3631,6 +3588,18 @@ cdef int _check_or_init_cublas() except -1 nogil:
         except:
             pass
 
+        global __cublasGetEmulationStrategy
+        try:
+            __cublasGetEmulationStrategy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetEmulationStrategy')
+        except:
+            pass
+
+        global __cublasSetEmulationStrategy
+        try:
+            __cublasSetEmulationStrategy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetEmulationStrategy')
+        except:
+            pass
+
     __py_cublas_init = True
     return 0
 
@@ -5157,6 +5126,12 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasGemmGroupedBatchedEx_64
     data["__cublasGemmGroupedBatchedEx_64"] = <intptr_t>__cublasGemmGroupedBatchedEx_64
+
+    global __cublasGetEmulationStrategy
+    data["__cublasGetEmulationStrategy"] = <intptr_t>__cublasGetEmulationStrategy
+
+    global __cublasSetEmulationStrategy
+    data["__cublasSetEmulationStrategy"] = <intptr_t>__cublasSetEmulationStrategy
 
     func_ptrs = data
     return data
@@ -10211,3 +10186,23 @@ cdef cublasStatus_t _cublasGemmGroupedBatchedEx_64(cublasHandle_t handle, const 
             raise FunctionNotFoundError("function cublasGemmGroupedBatchedEx_64 is not found")
     return (<cublasStatus_t (*)(cublasHandle_t, const cublasOperation_t*, const cublasOperation_t*, const int64_t*, const int64_t*, const int64_t*, const void*, const void* const*, cudaDataType_t, const int64_t*, const void* const*, cudaDataType_t, const int64_t*, const void*, void* const*, cudaDataType_t, const int64_t*, int64_t, const int64_t*, cublasComputeType_t) noexcept nogil>__cublasGemmGroupedBatchedEx_64)(
         handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, Atype, lda_array, Barray, Btype, ldb_array, beta_array, Carray, Ctype, ldc_array, group_count, group_size, computeType)
+
+
+cdef cublasStatus_t _cublasGetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t* emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasGetEmulationStrategy
+    _check_or_init_cublas()
+    if __cublasGetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGetEmulationStrategy is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cublasEmulationStrategy_t*) noexcept nogil>__cublasGetEmulationStrategy)(
+        handle, emulationStrategy)
+
+
+cdef cublasStatus_t _cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasSetEmulationStrategy
+    _check_or_init_cublas()
+    if __cublasSetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSetEmulationStrategy is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cublasEmulationStrategy_t) noexcept nogil>__cublasSetEmulationStrategy)(
+        handle, emulationStrategy)

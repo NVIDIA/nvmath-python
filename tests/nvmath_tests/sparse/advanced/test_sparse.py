@@ -1033,7 +1033,6 @@ def test_batching(
         return
 
     x = nvmath.sparse.advanced.direct_solver(a, b, execution=exec_space.nvname)
-    cp.cuda.get_current_stream().synchronize()
     expected_x_batching_mode = "tensor" if rhs_batching_mode == "tensor" else "sequence"
     _check_batched_result(a, b, x, batch_size, expected_x_batching_mode)
 
@@ -1374,7 +1373,7 @@ def test_matrix_solve_inplace_reset_blocking_auto(framework, exec_space, operand
     ids=idfn,
 )
 def test_matrix_solve_always_blocking(framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k):
-    stream = get_custom_stream(framework) if operand_placement == OperandPlacement.host else None
+    stream = get_custom_stream(framework) if operand_placement == OperandPlacement.device else None
     other_stream = get_custom_stream(framework) if operand_placement == OperandPlacement.device else None
 
     a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42)

@@ -2,18 +2,31 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["initialize", "finalize", "is_initialized", "nvshmem_empty_dlpack", "free", "NvshmemMemoryManager"]
+__all__ = [
+    "initialize",
+    "finalize",
+    "is_initialized",
+    "nvshmem_empty_dlpack",
+    "free",
+    "NvshmemMemoryManager",
+    "NvshmemNDBufferAllocator",
+]
 
+import atexit
 import logging
 import numpy as np
 import cuda.core.experimental as ccx
 
 from nvmath import memory
 from nvmath.bindings import nvshmem  # type: ignore
+from nvmath.internal.memory import MemoryPointer as _MemoryPointer
 from nvmath.internal.utils import device_ctx
 
 # Indicates if this module has initialized NVSHMEM
 _nvshmem_initialized_here = False
+
+_atexit_registered = False
+_exiting = False
 
 
 def initialize(device_id: int, mpi_comm) -> None:
@@ -54,15 +67,28 @@ def initialize(device_id: int, mpi_comm) -> None:
         if rank == 0:
             nvshmem.get_uniqueid(unique_id.ptr)
         # PE 0 broadcasts the unique ID
-        mpi_comm.Bcast(unique_id._data.view(np.int8), root=0)
+        mpi_comm.Bcast(unique_id._data.view(np.int8), root=0)  # type: ignore[attr-defined]
         nvshmem.set_attr_uniqueid_args(rank, nranks, unique_id.ptr, attr.ptr)
         nvshmem.hostlib_init_attr(nvshmem.Flags.INIT_WITH_UNIQUEID, attr.ptr)
 
         # sanity check
         assert nvshmem.init_status() > nvshmem.STATUS_IS_BOOTSTRAPPED
         _nvshmem_initialized_here = True
+        _register_atexit_maybe()
     finally:
         old_device.set_current()
+
+
+def _register_atexit_maybe() -> None:
+    global _atexit_registered
+    if not _atexit_registered:
+        atexit.register(_detect_exit)
+        _atexit_registered = True
+
+
+def _detect_exit() -> None:
+    global _exiting
+    _exiting = True
 
 
 def finalize(device_id: int) -> None:
@@ -83,6 +109,7 @@ def is_initialized() -> bool:
 def _check_initialized():
     if nvshmem.init_status() < nvshmem.STATUS_IS_INITIALIZED:
         raise RuntimeError("NVSHMEM is not initialized. Please initialize nvmath.distributed")
+    _register_atexit_maybe()
 
 
 # Keeps track of memory allocated with nvshmem_empty_dlpack. This is used to report memory
@@ -114,7 +141,15 @@ class _NvshmemResource(ccx.MemoryResource):
                 # We can't call nvshmem_free when deallocate is triggered by the GC, since
                 # the GC has non-deterministic behavior and nvshmem_free is a collective
                 # call.
-                raise RuntimeError("Symmetric heap memory needs to be deallocated explicitly")
+                if not _exiting:
+                    logging.error("Symmetric heap memory needs to be deallocated explicitly")
+                else:
+                    logging.error(
+                        "Symmetric heap memory was not deallocated explicitly (you may have "
+                        "forgotten to clean up before exit, or an unrelated exception "
+                        "crashed the program)"
+                    )
+                return
         if self.freed:
             raise RuntimeError("This memory resource was already deallocated")
         nvshmem.free(ptr)
@@ -133,7 +168,7 @@ class _NvshmemResource(ccx.MemoryResource):
         return self.device.device_id
 
 
-def nvshmem_empty_dlpack(size, device_id, comm, make_symmetric=False, logger=None):
+def nvshmem_empty_dlpack(size, device_id, comm, make_symmetric=False, skip_symmetric_check=False, logger=None):
     """Return uninitialized DLPack buffer of given size in bytes, allocated using
     nvshmem_malloc (which makes this a *collective* call). Note that the DLPack
     buffer currently does not include any shape, dtype, or stride information.
@@ -150,24 +185,28 @@ def nvshmem_empty_dlpack(size, device_id, comm, make_symmetric=False, logger=Non
 
     from mpi4py import MPI
 
-    max_size = np.array([-size, size], dtype=np.int64)
-    comm.Allreduce(MPI.IN_PLACE, max_size, MPI.MAX)
-    if -max_size[0] != max_size[1]:
-        # The buffer size is not the same on all processes.
-        if not make_symmetric:
-            raise ValueError(
-                "The buffer size for symmetric memory allocation is not the same on all processes. "
-                "Consider using make_symmetric=True if you have uneven data distribution."
-            )
+    if make_symmetric and skip_symmetric_check:
+        raise ValueError("skip_symmetric_check is incompatible with make_symmetric=True")
+
+    if not skip_symmetric_check:
+        max_size = np.array([-size, size], dtype=np.int64)
+        comm.Allreduce(MPI.IN_PLACE, max_size, MPI.MAX)
+        if -max_size[0] != max_size[1]:
+            # The buffer size is not the same on all processes.
+            if make_symmetric:
+                logger.info(
+                    "Symmetric memory allocator: the buffer will be padded on some processes to "
+                    f"satisfy symmetric requirement (make_symmetric=True), size={size} max_size={max_size[1]}."
+                )
+            else:
+                raise ValueError(
+                    "The buffer size for symmetric memory allocation is not the same on all processes. "
+                    "Consider using make_symmetric=True if you have uneven data distribution."
+                )
         else:
-            logger.info(
-                "Symmetric memory allocator: the buffer will be padded on some processes to "
-                f"satisfy symmetric requirement (make_symmetric=True), size={size} max_size={max_size[1]}."
-            )
-    else:
-        logger.info(f"Symmetric memory allocator: the requested buffer size ({size}) is the same on all processes.")
-    # Sizes are equal or make_symmetric=True.
-    size = max_size[1]
+            logger.info(f"Symmetric memory allocator: the requested buffer size ({size}) is the same on all processes.")
+        # Sizes are equal or make_symmetric=True.
+        size = max_size[1]
 
     mem = _NvshmemResource(ccx.Device(device_id))
     mem_buffer = mem.allocate(size)
@@ -231,6 +270,30 @@ class NvshmemMemoryManager(memory.BaseCUDAMemoryManager):
         )
 
         return SymmetricMemoryPointer(mem_buffer)
+
+
+class NvshmemNDBufferAllocator:
+    __slots__ = ("ctx", "make_symmetric", "skip_symmetric_check")
+
+    def __init__(self, device_id, ctx, make_symmetric, skip_symmetric_check):
+        assert ctx.device_id == device_id, (
+            "Internal error: attempting to allocate symmetric memory on a device not used "
+            "by the NVSHMEM runtime on this process"
+        )
+        self.ctx = ctx
+        self.make_symmetric = make_symmetric
+        self.skip_symmetric_check = skip_symmetric_check
+
+    def allocate(self, size, stream, logger=None):
+        data = nvshmem_empty_dlpack(
+            size,
+            self.ctx.device_id,
+            self.ctx.communicator,
+            make_symmetric=self.make_symmetric,
+            skip_symmetric_check=self.skip_symmetric_check,
+            logger=logger,
+        )
+        return _MemoryPointer(int(data.handle), data)
 
 
 class SymmetricMemoryPointer(memory.MemoryPointer):

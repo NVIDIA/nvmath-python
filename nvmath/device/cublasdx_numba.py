@@ -93,9 +93,12 @@ for attribute in _BLAS_COMPILED_ARGS + _BLAS_DEFINITION_ARGS:
 # default values as a workaround
 # https://github.com/numba/numba/issues/9980
 # https://github.com/numba/numba/issues/9979
-@overload_method(BlasType, "execute", target="cuda", inline="always", strict=False)
-def ol_blas_numba_execute(*args):
-    return ol_blas_numba(*args)
+# https://github.com/numba/numba/issues/10143
+@overload_method(BlasType, "execute", target="cuda", jit_options={"forceinline": True}, strict=False)
+def ol_blas_numba_execute(
+    blas_numba: BlasType, _arg1, _arg2, _arg3, _arg4=None, _arg5=None, _arg6=None, _arg7=None, _arg8=None
+):
+    return ol_blas_numba(blas_numba, _arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8)
 
 
 @overload_method(BlasType, "__call__", target="cuda", strict=False)
@@ -133,7 +136,7 @@ def _bals_type___call__(*args):
     raise Exception("Stub for overloads")
 
 
-@overload(_bals_type___call__, inline="always", strict=False)
+@overload(_bals_type___call__, jit_options={"forceinline": True}, strict=False)
 def ol_blas_type___call___tensors_rmem(
     blas_numba: BlasType,
     a: OpaqueTensorType,
@@ -157,7 +160,7 @@ def ol_blas_type___call___tensors_rmem(
     return lambda _, a, b, c: sym_call(a, b, c)
 
 
-@overload(_bals_type___call__, inline="always", strict=False)
+@overload(_bals_type___call__, jit_options={"forceinline": True}, strict=False)
 def ol_blas_type___call___tensors_smem(
     blas_numba: BlasType,
     alpha: types.Number,
@@ -185,7 +188,7 @@ def ol_blas_type___call___tensors_smem(
     return lambda _, alpha, a, b, beta, c: sym_call(alpha, a, b, beta, c)
 
 
-@overload(_bals_type___call__, inline="always", strict=False)
+@overload(_bals_type___call__, jit_options={"forceinline": True}, strict=False)
 def ol_blas_type___call___basic(
     blas_numba: BlasType,
     alpha: types.Number,
@@ -218,7 +221,7 @@ def ol_blas_type___call___basic(
     return lambda _, alpha, a, b, beta, c: sym_call(alpha, a, b, beta, c)
 
 
-@overload(_bals_type___call__, inline="always", strict=False)
+@overload(_bals_type___call__, jit_options={"forceinline": True}, strict=False)
 def ol_blas_type___call___ldabc(
     blas_numba: BlasType,
     alpha: types.Number,
@@ -272,12 +275,12 @@ def method_impl(context, builder, sig, args):
     return call(builder, args)
 
 
-@overload(copy, target="cuda", inline="always", strict=False)
+@overload(copy, target="cuda", jit_options={"forceinline": True}, strict=False)
 def ol_blas_copy(src: OpaqueTensorType, dst: OpaqueTensorType):
     return ol_blas_copy_generic(src, dst, "copy")
 
 
-@overload(copy_fragment, target="cuda", inline="always", strict=False)
+@overload(copy_fragment, target="cuda", jit_options={"forceinline": True}, strict=False)
 def ol_blas_copy_fragment(src: OpaqueTensorType, dst: OpaqueTensorType):
     return ol_blas_copy_generic(src, dst, "copy_fragment")
 
@@ -313,7 +316,7 @@ def ol_blas_copy_generic(src: OpaqueTensorType, dst: OpaqueTensorType, func: str
     return impl
 
 
-@overload(clear, target="cuda", inline="always", strict=False)
+@overload(clear, target="cuda", jit_options={"forceinline": True}, strict=False)
 def ol_blas_clear(arr: OpaqueTensorType):
     assert isinstance(arr, OpaqueTensorType)
     assert isinstance(arr.layout, BlasLayoutType)
@@ -457,7 +460,7 @@ def overload_blas_layout_method(method: str):
         BlasType,
         method,
         target="cuda",
-        inline="always",
+        jit_options={"forceinline": True},
         strict=False,
     )(lambda blas_numba, leading_dimension=None: ol_blas_layout(blas_numba, method, leading_dimension))
 
@@ -477,7 +480,7 @@ for method in [
     overload_blas_layout_method(method)
 
 
-@overload(make_tensor, target="cuda", inline="always", strict=False)
+@overload(make_tensor, target="cuda", jit_options={"forceinline": True}, strict=False)
 def ol_make_tensor(array, layout):
     assert isinstance(array, types.Array)
     assert isinstance(layout, BlasLayoutType)
@@ -486,7 +489,7 @@ def ol_make_tensor(array, layout):
     return lambda array, layout: OpaqueTensor(array, layout)
 
 
-@overload(copy_wait, target="cuda", inline="always", strict=False)
+@overload(copy_wait, target="cuda", jit_options={"forceinline": True}, strict=False)
 def ol_copy_wait():
     # numba has cache per compute capability, so the function won't end up
     # cached for the wrong compute capability.
@@ -501,7 +504,7 @@ def ol_copy_wait():
     return lambda: _intrinsic()
 
 
-@overload(axpby, target="cuda", inline="always", strict=False)
+@overload(axpby, target="cuda", jit_options={"forceinline": True}, strict=False)
 def ol_axpby(a, x, b, y):
     if not isinstance(a, types.Number):
         return

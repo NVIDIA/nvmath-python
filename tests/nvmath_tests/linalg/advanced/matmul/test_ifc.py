@@ -15,13 +15,6 @@ from nvmath.linalg._internal.matmul_pref_ifc import MatmulPreferenceInterface
 
 from nvmath.internal import typemaps
 
-import pytest
-
-try:
-    import cupy  # noqa: F401
-except ModuleNotFoundError:
-    pytest.skip("cupy required for matmul tests", allow_module_level=True)
-
 
 def test_matmul_desc_ifc():
     """

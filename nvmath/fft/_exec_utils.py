@@ -29,11 +29,6 @@ def _check_init_cufft():
                 "Please check if CUDA toolkit and cuFFT are installed and visible to nvmath."
             ) from e
 
-        try:
-            import cupy  # noqa: F401
-        except ImportError as e:
-            raise RuntimeError("Currently, the FFT CUDA execution requires cupy. Please make sure cupy is installed.") from e
-
         IS_EXEC_GPU_AVAILABLE = True
 
 
@@ -99,7 +94,10 @@ def _cross_setup_execution_and_options(
         if execution.num_threads is None:
             # `sched_getaffinity` is not supported on Windows, it must be adjusted
             # once the support for Windows is enabled
-            execution.num_threads = len(os.sched_getaffinity(0))
+            if os.name == "posix":
+                execution.num_threads = len(os.sched_getaffinity(0))  # type: ignore[attr-defined]
+            else:
+                raise ValueError("ExecutionCPU.num_threads cannot be `None` on Windows; please set a positive integer.")
         if not isinstance(execution.num_threads, int) or execution.num_threads <= 0:
             raise ValueError("The 'num_threads' must be a positive integer")
     else:

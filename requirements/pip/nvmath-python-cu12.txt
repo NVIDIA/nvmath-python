@@ -1,4 +1,5 @@
-cuda-core[cu12] >=0.3,<0.4
+cuda-bindings>=12.9.1,<13
+cuda-core[cu12] >=0.3.2,<0.4
 cupy-cuda12x
 nvidia-cublas-cu12
 nvidia-cuda-nvrtc-cu12

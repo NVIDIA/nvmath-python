@@ -12,18 +12,18 @@ Enums and constants
 .. autosummary::
    :toctree: generated/
 
-   Status
-   EigType
-   EigMode
-   EigRange
-   Norm
-   IRSRefinement
-   PrecType
    AlgMode
-   StorevMode
+   cuSOLVERError
    DeterministicMode
    DirectMode
-   cuSOLVERError
+   EigMode
+   EigRange
+   EigType
+   IRSRefinement
+   Norm
+   PrecType
+   Status
+   StorevMode
 
 Functions
 *********

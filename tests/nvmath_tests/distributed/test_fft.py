@@ -7,29 +7,31 @@ import pytest
 
 import nvmath.distributed
 from nvmath.internal.utils import device_ctx, get_or_create_stream
-from nvmath.internal.tensor_wrapper import maybe_register_package
 from nvmath.distributed import free_symmetric_memory
-from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand
+from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand, maybe_register_package
 from nvmath.distributed.fft._configuration import Slab
 
-from .helpers import gather_array, generate_random_complex_data, is_close
+from .helpers import gather_array, generate_random_data, is_close, to_host
 from .helpers_fft import calc_slab_shape
 
 import cuda.core.experimental
 
 package_name_to_package = {"numpy": np}
-try:
-    import torch
-
-    package_name_to_package["torch"] = torch
-except ImportError:
-    pass
 
 
 @pytest.fixture(scope="module")
 def nvmath_distributed():
     """Pytest fixture that initializes nvmath.distributed and finalizes it on exit"""
     from mpi4py import MPI
+
+    maybe_register_package("cupy")
+    try:
+        import torch
+
+        maybe_register_package("torch")
+        package_name_to_package["torch"] = torch
+    except ImportError:
+        pass
 
     device_id = MPI.COMM_WORLD.Get_rank() % cuda.core.experimental.system.num_devices
     nvmath.distributed.initialize(device_id, MPI.COMM_WORLD)
@@ -39,20 +41,18 @@ def nvmath_distributed():
     nvmath.distributed.finalize()
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_unsupported_rank(nvmath_distributed):
+def test_unsupported_rank(nvmath_distributed, check_symmetric_memory_leaks):
     data = np.ones(10, dtype="complex64")
     with pytest.raises(
         ValueError,
         match="Distributed FFT is currently supported only for 2-D and 3-D tensors. "
         "The number of dimensions of the operand is 1.",
     ):
-        nvmath.distributed.fft.fft(data, Slab.X)
+        nvmath.distributed.fft.fft(data, distribution=Slab.X)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("distribution", [Slab.X, Slab.Y])
-def test_inconsistent_shape(distribution, nvmath_distributed):
+def test_inconsistent_shape(distribution, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -68,34 +68,11 @@ def test_inconsistent_shape(distribution, nvmath_distributed):
 
     data = np.ones(shape, dtype=np.complex64)
     with pytest.raises(ValueError, match="problem size is inconsistent"):
-        nvmath.distributed.fft.fft(data, distribution)
+        nvmath.distributed.fft.fft(data, distribution=distribution)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("distribution", [Slab.X, Slab.Y])
-def test_unsupported_global_shape(distribution, nvmath_distributed):
-    distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
-
-    if nranks == 1:
-        pytest.skip("This test requires multiple processes")
-
-    if rank == 0:
-        shape = (30, 64) if distribution == Slab.X else (64, 30)
-    else:
-        shape = (31, 64) if distribution == Slab.X else (64, 31)
-
-    data = np.ones(shape, dtype=np.complex64)
-    partition_dim = "X" if distribution == Slab.X else "Y"
-    with pytest.raises(ValueError, match=f"{partition_dim} not divisible by # ranks is not supported yet"):
-        nvmath.distributed.fft.fft(data, distribution)
-
-
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-@pytest.mark.parametrize("distribution", [Slab.X, Slab.Y])
-def test_wrong_slab_shape(distribution, nvmath_distributed):
+def test_wrong_slab_shape(distribution, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -119,11 +96,10 @@ def test_wrong_slab_shape(distribution, nvmath_distributed):
 
     data = np.ones(shape, dtype=np.complex64)
     with pytest.raises(ValueError, match=(r"The operand shape is \(\d+, \d+\), but the expected slab shape is \(\d+, \d+\)")):
-        nvmath.distributed.fft.fft(data, distribution)
+        nvmath.distributed.fft.fft(data, distribution=distribution)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_inconsistent_rank(nvmath_distributed):
+def test_inconsistent_rank(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -136,11 +112,10 @@ def test_inconsistent_rank(nvmath_distributed):
 
     data = np.ones(shape, dtype=np.complex64)
     with pytest.raises(ValueError, match="The number of dimensions of the input operand is inconsistent across processes"):
-        nvmath.distributed.fft.fft(data, Slab.Y)
+        nvmath.distributed.fft.fft(data, distribution=Slab.Y)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_inconsistent_dtype(nvmath_distributed):
+def test_inconsistent_dtype(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -152,11 +127,10 @@ def test_inconsistent_dtype(nvmath_distributed):
     dtype = np.complex64 if rank == 0 else np.complex128
     data = np.ones((8, 8, 2), dtype=dtype)
     with pytest.raises(ValueError, match="The operand dtype is inconsistent across processes"):
-        nvmath.distributed.fft.fft(data, Slab.X)
+        nvmath.distributed.fft.fft(data, distribution=Slab.X)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_inconsistent_options(nvmath_distributed):
+def test_inconsistent_options(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -168,11 +142,10 @@ def test_inconsistent_options(nvmath_distributed):
     options = {"reshape": True} if rank == 0 else {"reshape": False}
     data = np.ones((4, 4), dtype=np.complex64)
     with pytest.raises(ValueError, match="options are inconsistent across processes"):
-        nvmath.distributed.fft.fft(data, Slab.Y, options=options)
+        nvmath.distributed.fft.fft(data, distribution=Slab.Y, options=options)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_inconsistent_package(nvmath_distributed):
+def test_inconsistent_package(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -188,15 +161,16 @@ def test_inconsistent_package(nvmath_distributed):
     memory_space = "cpu"
     dtype = np.complex64
     if rank == 0:
-        data, _ = generate_random_complex_data(np, memory_space, shape, dtype, stream=None)
+        data, _ = generate_random_data(np, memory_space, shape, dtype, stream=None)
     else:
-        data, _ = generate_random_complex_data(torch, memory_space, shape, dtype, stream=None)
+        import torch
+
+        data, _ = generate_random_data(torch, memory_space, shape, dtype, stream=None)
     with pytest.raises(ValueError, match="operand doesn't belong to the same package on all processes"):
-        nvmath.distributed.fft.fft(data.tensor, Slab.X)
+        nvmath.distributed.fft.fft(data.tensor, distribution=Slab.X)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_inconsistent_memory_space(nvmath_distributed):
+def test_inconsistent_memory_space(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     device_id = distributed_ctx.device_id
     comm = distributed_ctx.communicator
@@ -209,26 +183,27 @@ def test_inconsistent_memory_space(nvmath_distributed):
     if "torch" not in package_name_to_package:
         pytest.skip("torch is not available")
 
+    import torch
+
     shape = (8, 8, 8)
     dtype = np.complex64
 
     stream = get_or_create_stream(device_id, stream=None, op_package="cupy")
-    _, gpu_data = generate_random_complex_data(torch, "gpu", shape, dtype, stream=stream)
+    _, gpu_data = generate_random_data(torch, "gpu", shape, dtype, stream=stream)
 
     if rank == 0:
-        _, data = generate_random_complex_data(torch, "cpu", shape, dtype, stream=None)
+        _, data = generate_random_data(torch, "cpu", shape, dtype, stream=None)
     else:
         data = gpu_data
 
     with pytest.raises(ValueError, match="operand is not on the same memory space"):
-        nvmath.distributed.fft.fft(data.tensor, Slab.Y)
+        nvmath.distributed.fft.fft(data.tensor, distribution=Slab.Y)
 
     free_symmetric_memory(gpu_data.tensor)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
-def test_reset_operand_none(input_memory_space, nvmath_distributed):
+def test_reset_operand_none(input_memory_space, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     device_id = distributed_ctx.device_id
     comm = distributed_ctx.communicator
@@ -241,30 +216,70 @@ def test_reset_operand_none(input_memory_space, nvmath_distributed):
 
     stream = None
     if input_memory_space == "gpu":
-        maybe_register_package("cupy")
         stream = get_or_create_stream(device_id, stream=None, op_package="cupy")
 
-    _, data_in = generate_random_complex_data(np, input_memory_space, shape, dtype, stream)
+    _, data_in = generate_random_data(np, input_memory_space, shape, dtype, stream)
 
-    with nvmath.distributed.fft.FFT(data_in.tensor, Slab.X) as fft:
+    with nvmath.distributed.fft.FFT(data_in.tensor, distribution=Slab.X) as fft:
         fft.plan()
         fft.execute()
         fft.reset_operand(None)
         with pytest.raises(RuntimeError, match="Execution cannot be performed if the input operand has been set to None"):
             fft.execute()
-        fft.reset_operand(data_in.tensor, Slab.X)
+        fft.reset_operand(data_in.tensor, distribution=Slab.X)
         fft.execute()
 
     if input_memory_space == "gpu":
         free_symmetric_memory(data_in.tensor)
 
 
-# Currently we have NVSHMEM memory leaks surfacing as unraisable exceptions, so we tell
-# pytest to treat these as errors.
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-@pytest.mark.parametrize("package", ["numpy", "torch"])  # numpy uses cupy for GPU
-@pytest.mark.parametrize("global_shape", [(128, 32), (128, 32, 64), (32, 32, 32)])
+def generate_data_with_padding(
+    global_shape, distribution, package, device_id, input_memory_space, in_dtype, fft_type, stream, rank, nranks
+):
+    if isinstance(distribution, Slab):
+        partition_dim = 0 if distribution == Slab.X else 1
+        shape = calc_slab_shape(global_shape, partition_dim, rank, nranks)
+    else:
+        lower, upper = distribution[0]
+        shape = tuple(upper[i] - lower[i] for i in range(len(global_shape)))
+
+    # First generate random data without padding, then allocate padded arrays to copy into.
+    data_in_cpu0, data_in0 = generate_random_data(package, input_memory_space, shape, in_dtype, stream)
+
+    # Allocate padded CPU array.
+    data_in_cpu = nvmath.distributed.fft.allocate_operand(
+        shape, package, distribution=distribution, input_dtype=data_in_cpu0.tensor.dtype, memory_space="cpu", fft_type=fft_type
+    )
+
+    # Allocate padded GPU array.
+    if input_memory_space == "gpu" and package is np:
+        import cupy as package
+
+    data_in = nvmath.distributed.fft.allocate_operand(
+        shape,
+        package,
+        distribution=distribution,
+        input_dtype=data_in0.tensor.dtype,
+        memory_space="cuda" if input_memory_space == "gpu" else "cpu",
+        fft_type=fft_type,
+    )
+
+    # Copy data to padded arrays and free the non-padded ones.
+    data_in_cpu[:] = data_in_cpu0.tensor[:]
+    with device_ctx(device_id):
+        data_in[:] = data_in0.tensor[:]
+    if input_memory_space == "gpu":
+        free_symmetric_memory(data_in0.tensor)
+
+    return dist_wrap_operand(data_in_cpu), dist_wrap_operand(data_in)
+
+
+@pytest.mark.parametrize("package", ["numpy", "torch"])  # "numpy" value uses cupy for GPU
+@pytest.mark.parametrize(
+    "global_shape", [(8, 9), (8, 8), (9, 11, 8), (11, 9, 8), (31, 31, 31), (128, 32), (128, 32, 64), (32, 32, 32)]
+)
 @pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
+@pytest.mark.parametrize("fft_type", ["R2C", ("C2R", "even"), ("C2R", "odd"), "C2C"])
 @pytest.mark.parametrize("reshape", [True, False, "use_box"])
 @pytest.mark.parametrize("direction", ["forward", "inverse"])
 @pytest.mark.parametrize("reset_inplace", [True, False])
@@ -274,11 +289,13 @@ def test_distributed_fft(
     package,
     global_shape,
     input_memory_space,
+    fft_type,
     reshape,
     direction,
     reset_inplace,
     blocking,
     nvmath_distributed,
+    check_symmetric_memory_leaks,
 ):
     """This test runs distributed FFT with various combinations of options, and checks
     correctness by gathering the distributed result and comparing to cuFFT (single-GPU
@@ -291,29 +308,41 @@ def test_distributed_fft(
       - reshape:
             - If bool, this indicates whether to redistribute the result back to the
               original slab distribution or not, using the cuFFTMp reshape API.
-            - With reshape="use_box" what happens is that we run the FFT using the
-              custom slab/pencil distribution of cuFFTMp (by using the `box` option),
-              and we have the output be the complementary slab distribution.
-      - direction: FFT direction.
+            - With reshape="use_box" we run the FFT using the custom slab/pencil
+              distribution of cuFFTMp (by using the `box` option), and we have the
+              output be the complementary slab distribution.
+      - direction: initial FFT direction.
       - reset_inplace: Whether to reset operand by changing the contents of the current
         operand inplace or by calling `reset_operand(new_operand)`.
       - blocking: Operation is blocking or not.
     """
+
+    last_axis_parity = "even"
+    if isinstance(fft_type, tuple):
+        fft_type, last_axis_parity = fft_type
+        assert last_axis_parity in ("even", "odd")
+
+    assert fft_type in ("C2C", "R2C", "C2R")
+
     if input_memory_space == "cpu" and blocking == "auto":
         # CPU is always blocking, already captured by blocking=True.
-        pytest.skip("redundant test")
+        pytest.skip("redundant test: input_memory_space='cpu' and blocking='auto'")
 
     if input_memory_space == "cpu" and reset_inplace:
         # reset_inplace tests resetting operand's data without calling reset_operand, and is
         # only for GPU operands.
         pytest.skip("reset_inplace doesn't apply to CPU operands")
 
+    if fft_type == "R2C" and direction == "inverse":
+        pytest.skip("invalid test parameter combination: R2C and direction='inverse'")
+    if fft_type == "C2R" and direction == "forward":
+        pytest.skip("invalid test parameter combination: C2R and direction='forward'")
+
     try:
         pkg = package_name_to_package[package]
     except KeyError:
         pytest.skip(f"{package} is not available")
 
-    maybe_register_package("cupy" if package == "numpy" else package)
     package = pkg
 
     distributed_ctx = nvmath.distributed.get_context()
@@ -327,34 +356,47 @@ def test_distributed_fft(
         stream_package = "cupy" if package is np else package.__name__
         stream = get_or_create_stream(device_id, stream=None, op_package=stream_package)
 
-    # With the generic NVSHMEM allocation helpers used in this test, we can only support
-    # X and Y dimensions exactly divisible by # ranks.
-    assert global_shape[0] % nranks == 0
-    assert global_shape[1] % nranks == 0
-
     # To test both slab distributions, we use Slab.X distribution when starting with
-    # FORWARD direction and Slab.Y when starting with INVERSE.
+    # FORWARD direction and Slab.Y when starting with INVERSE (note that Slab.X and Slab.Y
+    # is a requirement for 2D R2C and C2R, respectively).
     distribution = Slab.X if direction == "forward" else Slab.Y
     partition_dim = 0 if distribution == Slab.X else 1
+    complementary_partition_dim = 1 - partition_dim
 
-    # Get slab shape for this rank.
-    shape = calc_slab_shape(global_shape, partition_dim, rank, nranks)
-    dtype = np.complex64
-    data_in_cpu, data_in = generate_random_complex_data(package, input_memory_space, shape, dtype, stream)
+    global_output_shape = list(global_shape)
+    if fft_type == "C2C":
+        in_dtype = np.complex64
+    elif fft_type == "R2C":
+        in_dtype = np.float32
+        global_output_shape[-1] = global_output_shape[-1] // 2 + 1
+    elif fft_type == "C2R":
+        in_dtype = np.complex64
+        global_output_shape[-1] = (global_output_shape[-1] - 1) * 2
+        if last_axis_parity == "odd":
+            global_output_shape[-1] += 1
 
     if reshape == "use_box":
         # Use the FFT box distribution option to get the complementary slab distribution
         # as output.
-        input_box = calculate_box(partition_dim, None, shape, global_shape, rank)
-        complementary_partition_dim = 1 if partition_dim == 0 else 0
-        out_shape = calc_slab_shape(global_shape, complementary_partition_dim, rank, nranks)
-        output_box = calculate_box(complementary_partition_dim, None, out_shape, global_shape, rank)
+        in_shapes = [calc_slab_shape(global_shape, partition_dim, i, nranks) for i in range(nranks)]
+        out_shapes = [calc_slab_shape(global_output_shape, complementary_partition_dim, i, nranks) for i in range(nranks)]
+        input_box = calculate_box(partition_dim, None, in_shapes, global_shape, rank)
+        output_box = calculate_box(complementary_partition_dim, None, out_shapes, global_output_shape, rank)
         distribution = [input_box, output_box]
 
-    options = {"reshape": reshape is True, "blocking": blocking}
+    data_in_cpu, data_in = generate_data_with_padding(
+        global_shape, distribution, package, device_id, input_memory_space, in_dtype, fft_type, stream, rank, nranks
+    )
+
+    options = {
+        "reshape": reshape is True,
+        "blocking": blocking,
+        "fft_type": fft_type,
+        "last_axis_parity": last_axis_parity,
+    }
     with nvmath.distributed.fft.FFT(
         data_in.tensor,
-        distribution,
+        distribution=distribution,
         options=options,
     ) as fft:
         assert tuple(fft.global_extents) == tuple(global_shape)
@@ -362,18 +404,18 @@ def test_distributed_fft(
         # We do a sequence of distributed FFTs per test case, to test reset_operand
         # and different combinations of changing the direction and distribution.
         fft_count = 0
-        FFT_LIMIT = 3 if reshape is True else 4
+        FFT_LIMIT = 2 if fft_type in ("R2C", "C2R") else 3 if reshape is True else 4
         while True:
             # Run distributed FFT.
-            # TODO: get to the bottom of the following issue:
-            # release_workspace=True can cause a hang in the context of this test when
-            # calling nvshmem_free on the workspace (the hang appears to be in
-            # nvshmem_barrier inside nvshmem_free).
-            # result = fft.execute(direction=direction, release_workspace=(fft_count == 0))
-            result = fft.execute(direction=direction, release_workspace=False)
+            result = fft.execute(direction=direction, release_workspace=(fft_count == 0))
             result = dist_wrap_operand(result)
             fft_count += 1
             assert data_in.module is result.module
+
+            if fft_type in ("C2C", "R2C"):
+                assert result.dtype == "complex64"
+            else:
+                assert result.dtype == "float32"
 
             if data_in.shape == result.shape:
                 assert data_in.tensor is result.tensor
@@ -381,7 +423,15 @@ def test_distributed_fft(
 
             if input_memory_space == "gpu":
                 assert result.device == "cuda"
-                result_cpu = result.to("cpu", stream)
+                if fft_type == "C2R":
+                    # C2R result is strided, causing TensorHolder.to() to fail because of
+                    # mismatch between shape and strides, so we just make it contiguous to
+                    # avoid the issue.
+                    with device_ctx(device_id):
+                        tensor_contiguous = result.tensor.copy() if package is np else result.tensor.contiguous()
+                    result_cpu = to_host(dist_wrap_operand(tensor_contiguous), device_id, stream)
+                else:
+                    result_cpu = to_host(result, device_id, stream)
             else:
                 assert result.device == "cpu"
                 result_cpu = result
@@ -391,22 +441,28 @@ def test_distributed_fft(
             del data_in_cpu
             if reshape is True:
                 # With reshape, result must have the original distribution.
-                assert result_cpu.shape == calc_slab_shape(global_shape, partition_dim, rank, nranks)
+                assert result_cpu.shape == calc_slab_shape(global_output_shape, partition_dim, rank, nranks)
                 result_cpu_global = gather_array(result_cpu, partition_dim, comm, rank)
             else:
                 # Without reshape, the result shape must have the complementary
                 # slab distribution.
                 complementary_partition_dim = 1 if partition_dim == 0 else 0
-                assert result_cpu.shape == calc_slab_shape(global_shape, complementary_partition_dim, rank, nranks)
+                assert result_cpu.shape == calc_slab_shape(global_output_shape, complementary_partition_dim, rank, nranks)
                 result_cpu_global = gather_array(result_cpu, complementary_partition_dim, comm, rank)
             if rank == 0:
-                result_single_gpu = nvmath.fft.fft(
+                with nvmath.fft.FFT(
                     data_in_cpu_global.tensor,
-                    direction=direction,
-                    options={"inplace": False, "result_layout": "natural"},
+                    options={
+                        "inplace": False,
+                        "result_layout": "natural",
+                        "fft_type": fft_type,
+                        "last_axis_parity": last_axis_parity,
+                    },
                     execution="cuda",
-                )
-                result_single_gpu = dist_wrap_operand(result_single_gpu)
+                ) as single_gpu_fft:
+                    single_gpu_fft.plan(direction=direction)
+                    result_single_gpu = single_gpu_fft.execute(direction=direction)
+                result_single_gpu = nvmath.internal.tensor_wrapper.wrap_operand(result_single_gpu)
                 try:
                     assert is_close(result_cpu_global, result_single_gpu, rtol=3e-02, atol=1e-05), (
                         "Gathered result doesn't match single-GPU FFT"
@@ -434,6 +490,7 @@ def test_distributed_fft(
 
             def swap_distribution():
                 assert reshape != True  # noqa: E712
+                assert fft_type == "C2C"
                 if reshape == "use_box":
                     dist = (distribution[1], distribution[0])
                 else:
@@ -452,7 +509,9 @@ def test_distributed_fft(
                 direction = "inverse" if direction == "forward" else "forward"  # change both
                 distribution, partition_dim, shape = swap_distribution()
 
-            data_in_cpu, data_in_new = generate_random_complex_data(package, input_memory_space, shape, dtype, stream)
+            data_in_cpu, data_in_new = generate_data_with_padding(
+                global_shape, distribution, package, device_id, input_memory_space, in_dtype, fft_type, stream, rank, nranks
+            )
             if not call_reset_operand:
                 assert reset_inplace and input_memory_space == "gpu"
                 with device_ctx(device_id):
@@ -462,41 +521,38 @@ def test_distributed_fft(
                 if input_memory_space == "gpu":
                     free_symmetric_memory(data_in.tensor)
                 data_in = data_in_new
-                fft.reset_operand(data_in.tensor, distribution)
+                fft.reset_operand(data_in.tensor, distribution=distribution)
 
 
-def calculate_box(dim0, dim1, shape, global_shape, rank):
+def calculate_box(dim0, dim1, shapes, global_shape, rank):
     # Calculate box of this rank within specified global shape,
-    # assuming all ranks have the same `shape`.
+    # given the local shapes on each rank.
     lower = [0 for i in range(len(global_shape))]
     for i in range(rank):
         if dim1 is not None:
-            lower[dim1] = (lower[dim1] + shape[dim1]) % global_shape[dim1]
+            lower[dim1] = (lower[dim1] + shapes[i][dim1]) % global_shape[dim1]
             if lower[dim1] == 0:
-                lower[dim0] += shape[dim0]
+                lower[dim0] += shapes[i][dim0]
         else:
-            lower[dim0] += shape[dim0]
+            lower[dim0] += shapes[i][dim0]
     upper = list(lower)
     for i in range(len(upper)):
-        upper[i] += shape[i]
+        upper[i] += shapes[rank][i]
     return (lower, upper)
 
 
 def gather_pencils(x, dim0, dim1, shape, global_shape, comm, rank, nranks):
     # First we use Reshape to convert pencil distribution to X-slab, then
     # we gather the array on rank 0.
-    input_box = calculate_box(dim0, dim1, shape, global_shape, rank)
+    input_box = calculate_box(dim0, dim1, [shape] * nranks, global_shape, rank)
     slab_shape = calc_slab_shape(global_shape, 0, rank, nranks)
-    output_box = calculate_box(0, None, slab_shape, global_shape, rank)
+    output_box = calculate_box(0, None, [slab_shape] * nranks, global_shape, rank)
     x = nvmath.distributed.reshape.reshape(x.tensor, input_box, output_box)
     x = dist_wrap_operand(x)
     return gather_array(x, 0, comm, rank)
 
 
 @pytest.mark.need_4_procs
-# Currently we have NVSHMEM memory leaks surfacing as unraisable exceptions, so we tell
-# pytest to treat these as errors.
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("package", ["numpy"])  # numpy uses cupy for GPU
 @pytest.mark.parametrize("global_shape", [(32, 32, 32)])
 @pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
@@ -507,13 +563,13 @@ def test_distributed_fft_pencils(
     input_memory_space,
     direction,
     nvmath_distributed,
+    check_symmetric_memory_leaks,
 ):
     try:
         pkg = package_name_to_package[package]
     except KeyError:
         pytest.skip(f"{package} is not available")
 
-    maybe_register_package("cupy" if package == "numpy" else package)
     package = pkg
 
     distributed_ctx = nvmath.distributed.get_context()
@@ -541,16 +597,16 @@ def test_distributed_fft_pencils(
     input_pencil_shape = X // 2, Y // 2, Z
     output_pencil_shape = X, Y // 2, Z // 2
 
-    input_box = calculate_box(0, 1, input_pencil_shape, global_shape, rank)
-    output_box = calculate_box(1, 2, output_pencil_shape, global_shape, rank)
+    input_box = calculate_box(0, 1, [input_pencil_shape] * nranks, global_shape, rank)
+    output_box = calculate_box(1, 2, [output_pencil_shape] * nranks, global_shape, rank)
     distribution = [input_box, output_box]
 
     dtype = np.complex128
-    data_in_cpu, data_in = generate_random_complex_data(package, input_memory_space, input_pencil_shape, dtype, stream)
+    data_in_cpu, data_in = generate_random_data(package, input_memory_space, input_pencil_shape, dtype, stream)
 
     with nvmath.distributed.fft.FFT(
         data_in.tensor,
-        distribution,
+        distribution=distribution,
     ) as fft:
         assert tuple(fft.global_extents) == tuple(global_shape)
         fft.plan()
@@ -565,7 +621,7 @@ def test_distributed_fft_pencils(
 
         if input_memory_space == "gpu":
             assert result.device == "cuda"
-            result_cpu = result.to("cpu", stream)
+            result_cpu = to_host(result, device_id, stream)
         else:
             assert result.device == "cpu"
             result_cpu = result

@@ -1,10 +1,11 @@
 # torch wheels pin nvjitlink but not related compiler packages.
 # However, if packages do not match then lto_callback tests will fail
-nvidia-cuda-cccl-cu12 ==12.6.*
-nvidia-cuda-nvcc-cu12 ==12.6.*
-nvidia-cuda-nvrtc-cu12 ==12.6.*
-nvidia-cuda-runtime-cu12 ==12.6.*
-nvidia-nvjitlink-cu12 ==12.6.*
+nvidia-cuda-cccl-cu12 ==12.8.*
+nvidia-cuda-nvcc-cu12 ==12.8.*
+nvidia-cuda-nvrtc-cu12 ==12.8.*
+nvidia-cuda-runtime-cu12 ==12.8.*
+nvidia-nvjitlink-cu12 ==12.8.*
 # pytorch >=2.3 to ensure numpy 1/2 compatibility
 # torch wheels depend on nvidia wheels; do not add if testing system ctk
 torch >=2.3; platform_system!="Windows"
+#pipenv install "torch>=2.3" --index=https://download.pytorch.org/whl/cu128/

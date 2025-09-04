@@ -1,4 +1,4 @@
-# This code was automatically generated with version 0.2.1. Do not modify it directly.
+# This code was automatically generated with version 0.2.3. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -154,7 +154,6 @@ ctypedef enum cublasdxTensorTrait "cublasdxTensorTrait":
     CUBLASDX_TENSOR_TRAIT_OPAQUE_NAME "CUBLASDX_TENSOR_TRAIT_OPAQUE_NAME" = 4
 
 ctypedef enum cublasdxDeviceFunctionTrait "cublasdxDeviceFunctionTrait":
-    CUBLASDX_DEVICE_FUNCTION_TRAIT_NAME "CUBLASDX_DEVICE_FUNCTION_TRAIT_NAME" = 0
     CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL "CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL" = 1
 
 ctypedef enum cublasdxDeviceFunctionOption "cublasdxDeviceFunctionOption":

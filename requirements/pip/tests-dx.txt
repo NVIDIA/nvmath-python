@@ -1,2 +1,2 @@
 cuda-cccl >= 0.1.3.1.0.dev1486; python_version >="3.10" and python_version <= "3.13" and sys_platform == "linux" and platform_machine == "x86_64" # for examples
-nvidia-mathdx ~= 24.4.0 # for device performance testing
+nvidia-mathdx ~= 25.6.0 # for device performance testing

@@ -1,11 +1,10 @@
-cuda-core[cu12] >=0.3,<0.4
-cuda-python >= 12  # NVRTC Python APIs
+cuda-bindings>=12.9.1,<13
+cuda-core[cu12] >=0.3.2,<0.4
 cupy-cuda12x
 numba # numba-cuda defines version restriction
-numba-cuda >= 0.11.0
+numba-cuda >= 0.18.1
 nvidia-cuda-cccl-cu12 > 12.4.127  # Earlier versions have missing header files
 nvidia-cuda-nvcc-cu12    # For numba use of libnvvm.so
 nvidia-cuda-nvrtc-cu12 !=12.4.*, !=12.5.0  # For nvmath.device use of NVRTC. [Known bugs exist for 12.4.0, 12.4.1, 12.5.0]
 # getting cuda headers from nvidia-cuda-runtime-cu12 at nvamth-python-cu12.txt
-nvidia-libmathdx-cu12 >=0.2.1,<0.3
-pynvjitlink-cu12 >= 0.6
+nvidia-libmathdx-cu12 >=0.2.3,<0.3

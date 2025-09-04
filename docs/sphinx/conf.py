@@ -183,6 +183,7 @@ htmlhelp_basename = "nvmath-python-doc"
 # TODO: remove this once examples are published.
 linkcheck_ignore = [
     "https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/.*",
+    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft/.*",
 ]
 
 

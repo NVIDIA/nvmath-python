@@ -51,7 +51,7 @@ A = nvmath.distributed.allocate_symmetric_memory((4, 2), torch)
 if rank == 0:
     print("Tensor A is on device", A.device)
 
-# A is a torch tensor and can be operated on using torch operations.
+# A is a torch tensor and can be operated on using in-place torch operations.
 if rank == 0:
     # Initialize the sub-matrix on process 0.
     A[:] = torch.zeros((4, 2), device=device_id)

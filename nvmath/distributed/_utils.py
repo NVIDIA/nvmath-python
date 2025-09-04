@@ -23,7 +23,6 @@ import nvmath.distributed
 from nvmath.internal.utils import device_ctx
 from nvmath.distributed._internal import tensor_wrapper
 
-from ._internal.nvshmem import free as nvshmem_free_wrapper
 
 # Supported packages for tensors backed by symmetric memory.
 _SUPPORTED_PACKAGES = ("cupy", "torch")
@@ -49,8 +48,9 @@ def allocate_symmetric_memory(
     package: ModuleType,
     *,
     dtype: DTypeLike | torch.dtype | None = None,
-    axis_order: Literal["C", "F"] | Sequence[int] | None = None,
+    axis_order: Literal["C", "F"] | Sequence[int] = "C",
     make_symmetric: bool = False,
+    skip_symmetric_check: bool = False,
     logger: Logger | None = None,
 ):
     """Return uninitialized tensor of given shape and type, allocated from the symmetric
@@ -65,12 +65,17 @@ def allocate_symmetric_memory(
 
         package: Python package determining the tensor type (e.g. cupy, torch).
 
-        dtype: Tensor dtype.
+        dtype: Tensor dtype in a form recognized by the package. If None, will use the
+            package's default dtype.
 
-        axis_order: Axis order.
+        axis_order: Axis order. The default is 'C' (row-major ordering).
 
         make_symmetric: If buffer sizes do not match across processes, will allocate
             the maximum size on every process to ensure the allocation is symmetric.
+            The default is False.
+
+        skip_symmetric_check: Skip checking that the allocation is symmetric (which
+            requires inter-process communication). The default is False.
 
         logger (logging.Logger): Python Logger object. The root logger will be used if a
             logger object is not provided.
@@ -81,7 +86,11 @@ def allocate_symmetric_memory(
 
     distributed_ctx = nvmath.distributed.get_context()
     if distributed_ctx is None:
-        raise RuntimeError("nvmath.distributed has not been initialized")
+        raise RuntimeError(
+            "nvmath.distributed has not been initialized. Refer to "
+            "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
+            " for more information."
+        )
 
     device_id = distributed_ctx.device_id
 
@@ -106,7 +115,14 @@ def allocate_symmetric_memory(
 
         dtype = np.dtype(dtype).name  # type: ignore
         return CupyDistributedTensor.empty(
-            shape, dtype=dtype, device_id=device_id, strides=strides, make_symmetric=make_symmetric, logger=logger
+            shape,
+            dtype=dtype,
+            device_id=device_id,
+            strides=strides,
+            symmetric_memory=True,
+            make_symmetric=make_symmetric,
+            skip_symmetric_check=skip_symmetric_check,
+            logger=logger,
         ).tensor
     elif package.__name__ == "torch":
         from ._internal.tensor_ifc_torch import TorchDistributedTensor
@@ -118,7 +134,14 @@ def allocate_symmetric_memory(
 
         dtype = str(dtype).split(".")[1]
         return TorchDistributedTensor.empty(
-            shape, dtype=dtype, device_id=device_id, strides=strides, make_symmetric=make_symmetric, logger=logger
+            shape,
+            dtype=dtype,
+            device_id=device_id,
+            strides=strides,
+            symmetric_memory=True,
+            make_symmetric=make_symmetric,
+            skip_symmetric_check=skip_symmetric_check,
+            logger=logger,
         ).tensor
 
 
@@ -129,24 +152,17 @@ def free_symmetric_memory(*tensors) -> None:
 
     **This is a collective operation and must be called by all processes, with tensors
     in the same order**."""
-    for tensor in tensors:
-        package = _get_tensor_package(tensor)
-        if package not in _SUPPORTED_PACKAGES:
-            raise ValueError(
-                f"The tensor package must be one of {_SUPPORTED_PACKAGES}. Got {type(tensor)} from package {package}."
-            )
 
-    for tensor in tensors:
-        wrapped_tensor = tensor_wrapper.wrap_operand(tensor)
-        if not isinstance(wrapped_tensor.device_id, int):
-            raise ValueError("Tensor must be on GPU symmetric memory")
-        with device_ctx(wrapped_tensor.device_id):
-            nvshmem_free_wrapper(wrapped_tensor.data_ptr)
+    device_id = tensor_wrapper.wrap_operand(tensors[0]).device_id
+    if device_id == "cpu":
+        raise TypeError("free_symmetric_memory called on CPU array/tensor")
 
+    with device_ctx(device_id):
+        for tensor in tensors:
+            wrapped_tensor = tensor_wrapper.wrap_operand(tensor)
+            if wrapped_tensor.device_id == "cpu":
+                raise TypeError("free_symmetric_memory called on CPU array/tensor")
 
-def _get_tensor_package(tensor):
-    if issubclass(tensor.__class__, np.ndarray):
-        return "numpy"
-    module = tensor.__class__.__module__
-    package = module.split(".")[0]
-    return package
+            assert wrapped_tensor.device_id == device_id, "Internal error: symmetric memory tensors are not on the same device"
+
+            wrapped_tensor.free_symmetric()

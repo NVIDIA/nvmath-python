@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 from itertools import accumulate
 import math
 import numpy as np
@@ -17,6 +18,8 @@ try:
     import torch
 except ImportError:
     torch = None
+
+import cuda.core.experimental as ccx
 
 import nvmath
 
@@ -254,9 +257,11 @@ def get_transposed(sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR, d1: int, d2: 
 
 
 def use_stream(stream):
-    if isinstance(stream, cp.cuda.Stream):
+    if stream is None or isinstance(stream, ccx.Stream):
+        return contextlib.nullcontext(stream)
+    if cp is not None and isinstance(stream, cp.cuda.Stream):
         return stream
-    elif isinstance(stream, torch.cuda.Stream):
+    elif torch is not None and isinstance(stream, torch.cuda.Stream):
         return torch.cuda.stream(stream)
     else:
         raise ValueError(f"Unknown stream type {type(stream)}")
@@ -313,10 +318,21 @@ def as_type(array, dtype: DType):
 
 
 def record_event(stream):
-    if isinstance(stream, cp.cuda.Stream):
+    if isinstance(stream, ccx.Stream):
         return stream.record()
-    elif isinstance(stream, torch.cuda.Stream):
+    if cp is not None and isinstance(stream, cp.cuda.Stream):
+        return stream.record()
+    elif torch is not None and isinstance(stream, torch.cuda.Stream):
         return stream.record_event()
+    else:
+        raise ValueError(f"Unknown stream type {type(stream)}")
+
+
+def wait_event(stream, event):
+    if isinstance(stream, ccx.Stream):
+        stream.wait(event)
+    elif cp is not None and isinstance(stream, cp.cuda.Stream) or torch is not None and isinstance(stream, torch.cuda.Stream):
+        stream.wait_event(event)
     else:
         raise ValueError(f"Unknown stream type {type(stream)}")
 
@@ -504,26 +520,6 @@ def add_in_place(sample, addend):
         return sample.add_(addend)
 
 
-def free_cupy_pool():
-    if cp is not None:
-        cp.get_default_memory_pool().free_all_blocks()
-
-
-def free_torch_pool():
-    if torch is not None:
-        torch.cuda.empty_cache()
-
-
-def free_framework_pools(framework, mem_backend):
-    if mem_backend != MemBackend.cuda:
-        free_cupy_pool()
-        free_torch_pool()
-    elif framework != Framework.cupy:
-        free_cupy_pool()
-    elif framework != Framework.torch:
-        free_torch_pool()
-
-
 def get_rev_perm(permutation):
     return tuple(np.argsort(permutation))
 
@@ -658,7 +654,7 @@ def intercept_device_id(monkeypatch, *calls):
 
         def wrapper(*args, **kwargs):
             nonlocal device_ids
-            device_ids[name] = cp.cuda.runtime.getDevice()
+            device_ids[name] = ccx.Device().device_id
             return actual_method(*args, **kwargs)
 
         monkeypatch.setattr(module, name, wrapper)
@@ -749,3 +745,20 @@ def extent_comprises_only_small_factors(extent):
 
 def has_only_small_factors(shape, axes=None):
     return all(extent_comprises_only_small_factors(extent) for a, extent in enumerate(shape) if axes is None or a in axes)
+
+
+def get_cc(device_id: int) -> int:
+    device = ccx.Device(device_id)
+    return device.compute_capability.major * 10 + device.compute_capability.minor
+
+
+def get_device_ctx(device_id: int, framework: Framework):
+    match framework:
+        case Framework.numpy:
+            return
+        case Framework.cupy:
+            return cp.cuda.Device(device_id)
+        case Framework.torch:
+            return torch.cuda.device(device_id)
+        case _:
+            raise ValueError(f"Unknown framework: {framework}")

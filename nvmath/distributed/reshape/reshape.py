@@ -7,23 +7,18 @@ __all__ = ["Reshape", "reshape"]
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, cast, TYPE_CHECKING, Final
+from typing import Literal, cast, Final
 import math
 import numpy as np
 
 import nvmath.distributed
 from nvmath.internal import formatters, utils
-from nvmath.internal.tensor_wrapper import maybe_register_package
 from nvmath.internal.package_wrapper import StreamHolder, AnyStream
 from nvmath.bindings import cufftMp  # type: ignore
 from nvmath.bindings import nvshmem  # type: ignore
 from nvmath.distributed._internal import tensor_wrapper
+from nvmath.distributed._internal.tensor_ifc import DistributedTensor
 from nvmath.distributed._internal.nvshmem import NvshmemMemoryManager
-from nvmath.distributed._internal.nvshmem import free as nvshmem_free_wrapper
-
-if TYPE_CHECKING:
-    from nvmath.distributed._internal.tensor_ifc_cupy import CupyDistributedTensor
-    from nvmath.distributed._internal.tensor_ifc_torch import TorchDistributedTensor
 
 from ._configuration import ReshapeOptions
 
@@ -138,7 +133,7 @@ def _calculate_strides(shape, axis_order):
 
 
 def _copy_operand_perhaps(
-    operand,
+    operand: DistributedTensor,
     stream_holder,
     execution_space,
     memory_space,
@@ -150,7 +145,7 @@ def _copy_operand_perhaps(
         # Copy the `operand` to memory that matches the exec space.
         # Currently, reshape only runs on GPU.
         assert execution_space == "cuda"
-        exec_space_copy = operand.to(device_id, stream_holder)
+        exec_space_copy = operand.to(device_id, stream_holder, symmetric_memory=True)
         return exec_space_copy, operand
 
 
@@ -404,7 +399,7 @@ class Reshape:
             and self.operand.device == "cuda"
         ):
             with utils.device_ctx(self.device_id):
-                nvshmem_free_wrapper(self.operand.data_ptr)
+                self.operand.free_symmetric()
         return True
 
     @utils.atomic(_free_internal_sheap, method=True)
@@ -420,14 +415,14 @@ class Reshape:
     ):
         distributed_ctx = nvmath.distributed.get_context()
         if distributed_ctx is None:
-            # TODO: add a link to the docs section that will discuss initialization
-            # and finalization of the distributed operations.
-            raise RuntimeError("nvmath.distributed has not been initialized")
+            raise RuntimeError(
+                "nvmath.distributed has not been initialized. Refer to "
+                "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
+                " for more information."
+            )
         self.communicator = distributed_ctx.communicator
         nranks = self.communicator.Get_size()
 
-        # For GPU operands, the distributed tensor wrappers check that the memory is in the
-        # symmetric heap by calling nvshmem.ptr().
         self.operand = operand = tensor_wrapper.wrap_operand(operand)
         self.options = options = cast(
             ReshapeOptions, utils.check_or_create_options(ReshapeOptions, options, "Distributed Reshape options")
@@ -496,7 +491,7 @@ class Reshape:
 
         self.operand_data_type = operand.dtype
         # TODO: change to `operand.dtype.itemsize` once operand is StridedMemoryView.
-        itemsize = operand.tensor.dtype.itemsize
+        itemsize = operand.itemsize
         if itemsize not in (4, 8, 16):
             raise ValueError(
                 f"Reshape only supports element sizes in (4, 8, 16) bytes. The operand's element size is {itemsize}"
@@ -517,6 +512,9 @@ class Reshape:
         self.operand_device_id = operand.device_id
         self.internal_op_package = self._internal_operand_package(self.package)
         stream_holder: StreamHolder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
+
+        if self.memory_space == "cuda" and not operand.is_symmetric_memory:
+            raise TypeError("Distributed reshape requires GPU operand to be on symmetric memory")
 
         self.logger.info(
             f"The input tensor's memory space is {self.memory_space}, and the execution space "
@@ -539,7 +537,7 @@ class Reshape:
 
         self.result_layout: TensorLayout | None = None
         # We'll infer the result layout at plan time.
-        self.result_class: CupyDistributedTensor | TorchDistributedTensor = operand.__class__
+        self.result_class: DistributedTensor = operand.__class__
         self.result_data_type = operand.dtype
 
         # Set blocking or non-blocking behavior.
@@ -592,10 +590,7 @@ class Reshape:
         return True
 
     def _internal_operand_package(self, package_name):
-        if package_name == "numpy":
-            # TODO: remove this call after cupy is dropped
-            maybe_register_package("cupy")
-        return package_name if package_name != "numpy" else "cupy"
+        return package_name if package_name != "numpy" else "cuda"
 
     def _allocate_result_operand(self, exec_stream_holder, log_debug):
         if log_debug:
@@ -612,6 +607,7 @@ class Reshape:
             exec_stream_holder,
             verify_strides=False,
             strides=self.result_layout.strides,
+            symmetric_memory=True,
             make_symmetric=True,
             logger=self.logger,
         )
@@ -690,7 +686,7 @@ class Reshape:
             cufftMp.make_reshape(
                 self.handle,
                 # TODO: change to `operand.dtype.itemsize` once operand is StridedMemoryView
-                self.operand.tensor.dtype.itemsize,
+                self.operand.itemsize,
                 3,
                 lower_input,
                 upper_input,
@@ -797,7 +793,9 @@ class Reshape:
         if operand is None:
             if self.memory_space == "cpu" and self.operand is not None:
                 with utils.device_ctx(self.device_id):
-                    nvshmem_free_wrapper(self.operand.data_ptr)
+                    # Since the execution when user passes CPU operands is blocking, it's
+                    # safe to call nvshmem_free here without additional synchronization.
+                    self.operand.free_symmetric()
             self.operand = None  # type: ignore
             self.operand_backup = None  # type: ignore
             self.logger.info("The operand has been reset to None.")
@@ -834,6 +832,9 @@ class Reshape:
                 f"The new operand's device is {device_str(operand_device_id)}, "
                 f"the original device is {device_str(self.operand_device_id)}"
             )
+
+        if self.memory_space == "cuda" and not operand.is_symmetric_memory:
+            raise TypeError("Distributed reshape requires GPU operand to be on symmetric memory")
 
         # The plan was made for a specific input box and strides, so the new operand must
         # match.
@@ -911,6 +912,11 @@ class Reshape:
             return True
 
         with utils.device_ctx(self.device_id):
+            # Calling nvshmem_free on memory that's still in use is not safe
+            # (nvshmem_free is not stream-ordered), so we need to wait for the
+            # computation to finish.
+            if self.workspace_stream is not None:
+                self.workspace_stream.sync()
             self.workspace_ptr.free()
         self.workspace_ptr = None
         self.logger.debug("[_free_workspace_memory] The workspace has been released.")
@@ -1070,7 +1076,9 @@ class Reshape:
         if self.memory_space == "cpu":
             out = result.to("cpu", stream_holder=stream_holder).tensor
             with utils.device_ctx(self.device_id):
-                nvshmem_free_wrapper(result.data_ptr)
+                # Since the execution when user passes CPU operands is blocking, it's
+                # safe to call nvshmem_free here without additional synchronization.
+                result.free_symmetric()
         else:
             out = result.tensor
 
@@ -1104,7 +1112,9 @@ class Reshape:
 
                 if self.memory_space == "cpu" and self.operand is not None:
                     # In this case, self.operand is an internal GPU operand owned by Reshape
-                    nvshmem_free_wrapper(self.operand.data_ptr)
+                    # Since the execution when user passes CPU operands is blocking, it's
+                    # safe to call nvshmem_free here without additional synchronization.
+                    self.operand.free_symmetric()
             self.operand = None
             self.operand_backup = None
 
@@ -1230,7 +1240,7 @@ def reshape(
         >>> r = nvmath.distributed.reshape.reshape(b, input_box, output_box)
 
     Notes:
-        - This function is a convenience wrapper around :class:`Reshape` and and is
+        - This function is a convenience wrapper around :class:`Reshape` and is
           specifically meant for *single* use. The same computation can be performed
           with the stateful API.
 

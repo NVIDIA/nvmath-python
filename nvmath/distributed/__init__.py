@@ -8,7 +8,7 @@ try:
     import mpi4py  # noqa: F401
 except ImportError as e:
     # TODO: point to documentation with ways to install mpi4py
-    raise ImportError("nvmath.distributed requires mpi4py for bootstrapping. See [LINK] for installation guide.") from e
+    raise ImportError("nvmath.distributed requires mpi4py for bootstrapping.") from e
 
 import atexit
 import re

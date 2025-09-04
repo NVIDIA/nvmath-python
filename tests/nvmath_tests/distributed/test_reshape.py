@@ -8,28 +8,30 @@ import re
 
 import nvmath.distributed
 from nvmath.internal.utils import device_ctx, get_or_create_stream
-from nvmath.internal.tensor_wrapper import maybe_register_package
 from nvmath.distributed import free_symmetric_memory
-from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand
+from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand, maybe_register_package
 
-from .helpers import calculate_strides, gather_array, generate_random_complex_data, is_close
+from .helpers import calculate_strides, gather_array, generate_random_data, is_close, to_host
 from .helpers_fft import calc_slab_shape
 
 import cuda.core.experimental
 
 package_name_to_package = {"numpy": np}
-try:
-    import torch
-
-    package_name_to_package["torch"] = torch
-except ImportError:
-    pass
 
 
 @pytest.fixture(scope="module")
 def nvmath_distributed():
     """Pytest fixture that initializes nvmath.distributed and finalizes it on exit"""
     from mpi4py import MPI
+
+    maybe_register_package("cupy")
+    try:
+        import torch
+
+        maybe_register_package("torch")
+        package_name_to_package["torch"] = torch
+    except ImportError:
+        pass
 
     device_id = MPI.COMM_WORLD.Get_rank() % cuda.core.experimental.system.num_devices
     nvmath.distributed.initialize(device_id, MPI.COMM_WORLD)
@@ -54,9 +56,8 @@ def _calculate_local_box(global_shape, partition_dim, rank, nranks):
     return lower, upper
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("dtype", [np.int8, np.int16])
-def test_unsupported_itemsize(dtype, nvmath_distributed):
+def test_unsupported_itemsize(dtype, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -75,8 +76,7 @@ def test_unsupported_itemsize(dtype, nvmath_distributed):
         nvmath.distributed.reshape.reshape(data, input_box=box, output_box=box)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_wrong_boxes1(nvmath_distributed):
+def test_wrong_boxes1(nvmath_distributed, check_symmetric_memory_leaks):
     """In this test, the input and output box of one process overlaps with those
     of another process."""
     distributed_ctx = nvmath.distributed.get_context()
@@ -93,8 +93,7 @@ def test_wrong_boxes1(nvmath_distributed):
         nvmath.distributed.reshape.reshape(data, input_box=[(0, 0), (2, 2)], output_box=[(0, 0), (2, 2)])
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_wrong_boxes2(nvmath_distributed):
+def test_wrong_boxes2(nvmath_distributed, check_symmetric_memory_leaks):
     """In this test each rank has 2x2=4 elements, but the box arguments
     used imply a global shape of (6,6), which has more elements than the
     actual number of global elements.
@@ -119,8 +118,7 @@ def test_wrong_boxes2(nvmath_distributed):
             nvmath.distributed.reshape.reshape(data, input_box=[(4, 4), (6, 6)], output_box=[(4, 4), (6, 6)])
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_wrong_boxes3(nvmath_distributed):
+def test_wrong_boxes3(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     nranks = comm.Get_size()
@@ -136,8 +134,7 @@ def test_wrong_boxes3(nvmath_distributed):
         nvmath.distributed.reshape.reshape(data, input_box=[(2, 2), (0, 0)], output_box=[(2, 2), (0, 0)])
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
-def test_inconsistent_layout(nvmath_distributed):
+def test_inconsistent_layout(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -160,10 +157,9 @@ def test_inconsistent_layout(nvmath_distributed):
         nvmath.distributed.reshape.reshape(data, input_box=box, output_box=box)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("memory_order", ["C", "F"])
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
-def test_reshape_matrix_2_processes(memory_order, dtype, nvmath_distributed):
+def test_reshape_matrix_2_processes(memory_order, dtype, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -198,10 +194,9 @@ def test_reshape_matrix_2_processes(memory_order, dtype, nvmath_distributed):
 
 
 @pytest.mark.need_4_procs
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("memory_order", ["C", "F"])
 @pytest.mark.parametrize("dtype", [np.int32, np.int64])
-def test_reshape_matrix_4_processes(memory_order, dtype, nvmath_distributed):
+def test_reshape_matrix_4_processes(memory_order, dtype, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     comm = distributed_ctx.communicator
     rank = comm.Get_rank()
@@ -245,9 +240,8 @@ def test_reshape_matrix_4_processes(memory_order, dtype, nvmath_distributed):
     np.testing.assert_equal(result, expected)
 
 
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
-def test_reset_operand_none(input_memory_space, nvmath_distributed):
+def test_reset_operand_none(input_memory_space, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     device_id = distributed_ctx.device_id
     comm = distributed_ctx.communicator
@@ -261,10 +255,9 @@ def test_reset_operand_none(input_memory_space, nvmath_distributed):
 
     stream = None
     if input_memory_space == "gpu":
-        maybe_register_package("cupy")
         stream = get_or_create_stream(device_id, stream=None, op_package="cupy")
 
-    _, data_in = generate_random_complex_data(np, input_memory_space, shape, dtype, stream)
+    _, data_in = generate_random_data(np, input_memory_space, shape, dtype, stream)
 
     with nvmath.distributed.reshape.Reshape(data_in.tensor, box, box) as reshape:
         reshape.plan()
@@ -285,9 +278,6 @@ def test_reset_operand_none(input_memory_space, nvmath_distributed):
         free_symmetric_memory(data_in.tensor)
 
 
-# Currently we have NVSHMEM memory leaks surfacing as unraisable exceptions, so we tell
-# pytest to treat these as errors.
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("package", ["numpy", "torch"])  # numpy uses cupy for GPU
 @pytest.mark.parametrize("global_shape", [(128, 32), (128, 32, 64), (32, 32, 32)])
 @pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
@@ -305,6 +295,7 @@ def test_distributed_reshape(
     reset_inplace,
     blocking,
     nvmath_distributed,
+    check_symmetric_memory_leaks,
 ):
     """This test generates random data of the given global shape, partitioned across
     ranks according to the X-slab distribution used by cuFFTMp, and reshapes it to Y-slab
@@ -333,7 +324,6 @@ def test_distributed_reshape(
     except KeyError:
         pytest.skip(f"{package} is not available")
 
-    maybe_register_package("cupy" if package == "numpy" else package)
     package = pkg
 
     distributed_ctx = nvmath.distributed.get_context()
@@ -355,9 +345,7 @@ def test_distributed_reshape(
     # Get X-slab shape for this rank.
     shape = calc_slab_shape(global_shape, 0, rank, nranks)
     dtype = np.complex64
-    data_in_cpu, data_in = generate_random_complex_data(
-        package, input_memory_space, shape, dtype, stream, memory_layout=memory_order
-    )
+    data_in_cpu, data_in = generate_random_data(package, input_memory_space, shape, dtype, stream, memory_layout=memory_order)
 
     # Reshape from X-slab to Y-slab distribution.
     input_box = _calculate_local_box(global_shape, 0, rank, nranks)
@@ -373,7 +361,9 @@ def test_distributed_reshape(
     if provide_out:
         out_shape = calc_slab_shape(global_shape, 1, rank, nranks)
         strides = calculate_strides(out_shape, axis_order)
-        out = data_in.__class__.empty(out_shape, data_in.device_id, dtype=data_in.dtype, strides=strides)
+        out = data_in.__class__.empty(
+            out_shape, data_in.device_id, dtype=data_in.dtype, strides=strides, symmetric_memory=(input_memory_space == "gpu")
+        )
 
     options = {"blocking": blocking}
     with nvmath.distributed.reshape.Reshape(data_in.tensor, input_box, output_box, options=options) as reshape:
@@ -384,7 +374,11 @@ def test_distributed_reshape(
             # Copy input data just to check that the operation doesn't change the input in
             # any way.
             original_data_in = data_in.__class__.empty(
-                data_in.shape, data_in.device_id, dtype=data_in.dtype, strides=data_in.strides
+                data_in.shape,
+                data_in.device_id,
+                dtype=data_in.dtype,
+                strides=data_in.strides,
+                symmetric_memory=(input_memory_space == "gpu"),
             )
             with device_ctx(device_id):
                 original_data_in.copy_(data_in, stream)
@@ -410,7 +404,7 @@ def test_distributed_reshape(
 
             if input_memory_space == "gpu":
                 assert result.device == "cuda"
-                result_cpu = result.to("cpu", stream)
+                result_cpu = to_host(result, device_id, stream)
             else:
                 assert result.device == "cpu"
                 result_cpu = result
@@ -448,7 +442,7 @@ def test_distributed_reshape(
             del data_in_cpu_global, result_cpu_global
 
             if reshape_count < 2:
-                data_in_cpu, data_in_new = generate_random_complex_data(
+                data_in_cpu, data_in_new = generate_random_data(
                     package, input_memory_space, shape, dtype, stream, memory_layout=memory_order
                 )
                 if input_memory_space == "gpu" and reset_inplace:
@@ -460,7 +454,13 @@ def test_distributed_reshape(
                         free_symmetric_memory(data_in.tensor)
                     data_in = data_in_new
                     if provide_out:
-                        out = out.__class__.empty(out_shape, out.device_id, dtype=out.dtype, strides=out.strides)
+                        out = out.__class__.empty(
+                            out_shape,
+                            out.device_id,
+                            dtype=out.dtype,
+                            strides=out.strides,
+                            symmetric_memory=(input_memory_space == "gpu"),
+                        )
                         reshape.reset_operand(data_in.tensor, out=out.tensor)
                     else:
                         # assert reshape.out is None
@@ -474,9 +474,8 @@ def test_distributed_reshape(
 
 
 # This test only uses CPU operand.
-@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
 @pytest.mark.parametrize("package", ["numpy", "torch"])
-def test_distributed_reshape_1D(package, nvmath_distributed):
+def test_distributed_reshape_1D(package, nvmath_distributed, check_symmetric_memory_leaks):
     """This test reshapes a 1D array that is evenly partitioned across ranks
     to one where the first 80 elements are on rank 0 and the remaining elements
     are evenly divided across the other ranks."""
@@ -496,14 +495,13 @@ def test_distributed_reshape_1D(package, nvmath_distributed):
     except KeyError:
         pytest.skip(f"{package} is not available")
 
-    maybe_register_package("cupy" if package == "numpy" else package)
     package = pkg
 
     stream = None
     global_shape = (128,)
     shape = calc_slab_shape(global_shape, 0, rank, nranks)
     dtype = np.complex64
-    data_in, _ = generate_random_complex_data(package, "cpu", shape, dtype, stream)
+    data_in, _ = generate_random_data(package, "cpu", shape, dtype, stream)
 
     # Input box.
     input_box = _calculate_local_box(global_shape, 0, rank, nranks)
@@ -531,7 +529,7 @@ def test_distributed_reshape_1D(package, nvmath_distributed):
     data_in_global = gather_array(data_in, 0, comm, rank)
 
     if rank == 0:
-        result_global = result.__class__.empty(global_shape, result.device_id, dtype=result.dtype)
+        result_global = result.__class__.empty(global_shape, result.device_id, dtype=result.dtype, symmetric_memory=False)
         sendcounts = [80] + [nelems_per_other_rank for i in range(nranks - 1)]
         comm.Gatherv(sendbuf=result.tensor, recvbuf=(result_global.tensor, sendcounts))
         try:

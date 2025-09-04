@@ -56,6 +56,7 @@ from .utils.input_fixtures import (
     get_custom_stream,
     get_overaligned_view,
     init_assert_exec_backend_specified,
+    free_framework_pools,
 )
 from .utils.check_helpers import (
     get_fft_ref,
@@ -63,6 +64,7 @@ from .utils.check_helpers import (
     get_scaled,
     get_raw_ptr,
     record_event,
+    wait_event,
     use_stream,
     assert_norm_close,
     assert_array_type,
@@ -74,9 +76,9 @@ from .utils.check_helpers import (
     is_pow_2,
     intercept_default_allocations,
     add_in_place,
-    free_cupy_pool,
     should_skip_3d_unsupported,
     copy_array,
+    get_device_ctx,
 )
 
 
@@ -288,7 +290,14 @@ def test_stateful_release_workspace(monkeypatch, framework, exec_backend, mem_ba
     signal_1 = get_random_input_data(framework, shape, dtype, mem_backend, seed=45)
 
     allocations = intercept_default_allocations(monkeypatch)
-    expected_key = "torch" if framework == Framework.torch else "cupy"
+    if framework == Framework.torch:
+        expected_key = "torch"
+    elif framework == Framework.cupy:
+        expected_key = "cupy"
+    elif framework == Framework.numpy:
+        expected_key = "raw"
+    else:
+        raise ValueError(f"Unknown framework: {framework}")
 
     num_allocs_1, num_allocs_2 = (1, 2) if exec_backend == ExecBackend.cufft else (0, 0)
 
@@ -365,13 +374,11 @@ def test_custom_stream(framework, exec_backend, mem_backend, shape_kind, shape, 
     shape = literal_eval(shape)
     axes = literal_eval(axes)
 
-    s0 = get_custom_stream(framework)
-    s1 = get_custom_stream(framework)
-    s2 = get_custom_stream(framework)
+    s0 = get_custom_stream(framework, is_numpy_stream_oriented=True)
+    s1 = get_custom_stream(framework, is_numpy_stream_oriented=True)
+    s2 = get_custom_stream(framework, is_numpy_stream_oriented=True)
 
-    if framework != Framework.cupy:
-        # for less memory footprint of the whole suite
-        free_cupy_pool()
+    free_framework_pools(framework)
 
     with use_stream(s0):
         signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
@@ -379,7 +386,7 @@ def test_custom_stream(framework, exec_backend, mem_backend, shape_kind, shape, 
         signal_scaled = get_scaled(signal, scale)
 
     e0 = record_event(s0)
-    s1.wait_event(e0)
+    wait_event(s1, e0)
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         with pytest.raises(ValueError, match="The 3D batched FFT is not supported"):
@@ -406,7 +413,7 @@ def test_custom_stream(framework, exec_backend, mem_backend, shape_kind, shape, 
         # the cpu -> gpu in reset_operand is always async
         if mem_backend == MemBackend.cpu or blocking == OptFftBlocking.auto:
             e1 = record_event(s1)
-            s2.wait_event(e1)
+            wait_event(s2, e1)
         ifft = f.execute(direction=Direction.inverse.value, stream=s2)
 
         with use_stream(s2):
@@ -466,12 +473,10 @@ def test_custom_stream(framework, exec_backend, mem_backend, shape_kind, shape, 
 def test_custom_stream_inplace(framework, exec_backend, mem_backend, shape_kind, shape, axes, dtype, blocking):
     shape = literal_eval(shape)
     axes = literal_eval(axes)
-    s0 = get_custom_stream(framework)
-    s1 = get_custom_stream(framework)
+    s0 = get_custom_stream(framework, is_numpy_stream_oriented=True)
+    s1 = get_custom_stream(framework, is_numpy_stream_oriented=True)
 
-    if framework != Framework.cupy:
-        # for less memory footprint of the whole suite
-        free_cupy_pool()
+    free_framework_pools(framework)
 
     with use_stream(s0):
         signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
@@ -500,7 +505,7 @@ def test_custom_stream_inplace(framework, exec_backend, mem_backend, shape_kind,
         f.execute(direction=Direction.forward.value, stream=s0)
         if blocking == OptFftBlocking.auto:
             e = record_event(s0)
-            s1.wait_event(e)
+            wait_event(s1, e)
         with use_stream(s1):
             add_in_place(signal, signal)
         # Even though we're running in place, for CPU, the internal GPU
@@ -580,9 +585,7 @@ def test_custom_stream_busy_input(
     axes = literal_eval(axes)
     s0 = get_custom_stream(framework)
 
-    if framework != Framework.cupy:
-        # for less memory footprint of the whole suite
-        free_cupy_pool()
+    free_framework_pools(framework)
 
     with use_stream(s0):
         signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
@@ -680,7 +683,7 @@ def test_arrays_different_devices(framework, exec_backend, mem_backend, dtype):
     assert_array_type(fft_1_out, framework, mem_backend, get_fft_dtype(dtype))
 
     assert_norm_close(fft_0_out, get_fft_ref(signal_0), exec_backend=exec_backend)
-    with cp.cuda.Device(1):
+    with get_device_ctx(1, framework):
         assert_norm_close(fft_1_out, get_fft_ref(signal_1), exec_backend=exec_backend)
 
 
@@ -1059,6 +1062,7 @@ def test_num_threads_option(framework, exec_backend, mem_backend, dtype):
 def test_cpu_gpu_copy_sync(framework, exec_backend, mem_backend, dtype, inplace, shape, axes):
     if len(os.sched_getaffinity(0)) < 16:
         pytest.skip("Not enough cores to run the test")
+    free_framework_pools(framework)
 
     s_1 = get_custom_stream(framework)
     s_2 = get_custom_stream(framework)
@@ -1256,6 +1260,7 @@ def test_reset_operand_decreasing_alignment(
     especially host execution libs, which take the pointers to data
     during the planning.
     """
+    free_framework_pools(framework)
     shape = literal_eval(shape)
     axes = literal_eval(axes)
     fft_dim = len(shape)

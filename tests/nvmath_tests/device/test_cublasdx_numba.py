@@ -6,7 +6,6 @@ from collections.abc import Sequence
 import numpy as np
 from numba import cuda
 
-from nvmath.bindings import mathdx
 from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_tensor
 from nvmath.device.cublasdx_backend import Arrangement, Precision
 from .helpers import (
@@ -271,9 +270,6 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
     a_precision = precision[0] if isinstance(precision, Sequence) else precision
     b_precision = precision[1] if isinstance(precision, Sequence) else precision
     c_precision = precision[2] if isinstance(precision, Sequence) else precision
-
-    if issubclass(a_precision, np.integer) and mathdx.get_version() < 201:
-        pytest.skip("Integer precision not supported in mathdx < 0.2.1")
 
     m, n, k = shape
 

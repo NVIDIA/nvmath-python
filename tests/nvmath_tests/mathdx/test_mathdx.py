@@ -1,17 +1,47 @@
-from examples.device.common_numba import load_to_shared, store_from_shared
 from nvmath.bindings import mathdx
 from nvmath.device import matmul
 
 import numpy as np
 from numba import cuda
 
+from nvmath.device.common_cuda import get_default_code_type
 from nvmath.device.types import REAL_NP_TYPES
 from nvmath.device.common_numba import NP_TYPES_TO_NUMBA_FE_TYPES
 
 
 import pytest
 
+from ..device.helpers import skip_nvbug_5218000
+
 NUMBA_FE_TYPES_TO_NP_TYPES = {v: k for (k, v) in NP_TYPES_TO_NUMBA_FE_TYPES.items()}
+
+
+@cuda.jit(device=True, forceinline=True)
+def store_from_shared(smem, matrix, dim, ld, row_major=False):
+    start = cuda.threadIdx.x + cuda.threadIdx.y * cuda.blockDim.x + cuda.threadIdx.z * (cuda.blockDim.x * cuda.blockDim.y)
+    step = cuda.blockDim.x * cuda.blockDim.y * cuda.blockDim.z
+    stop = dim[0] * dim[1]
+    for index in range(start, stop, step):
+        col = index % dim[1]
+        row = index // dim[1]
+        if row_major:
+            matrix[row, col] = smem[row * ld + col]
+        else:
+            matrix[row, col] = smem[col * ld + row]
+
+
+@cuda.jit(device=True, forceinline=True)
+def load_to_shared(matrix, smem, dim, ld, row_major=False):
+    start = cuda.threadIdx.x + cuda.threadIdx.y * cuda.blockDim.x + cuda.threadIdx.z * (cuda.blockDim.x * cuda.blockDim.y)
+    step = cuda.blockDim.x * cuda.blockDim.y * cuda.blockDim.z
+    stop = dim[0] * dim[1]
+    for index in range(start, stop, step):
+        col = index % dim[1]
+        row = index // dim[1]
+        if row_major:
+            smem[row * ld + col] = matrix[row, col]
+        else:
+            smem[col * ld + row] = matrix[row, col]
 
 
 @pytest.mark.parametrize(
@@ -82,6 +112,9 @@ def test_set_operator_int64_array(library, operator, value):
 )
 def test_cublasdx_call(precision, data_type):
     m, n, k = 2, 2, 2
+
+    ct = get_default_code_type()
+    skip_nvbug_5218000(precision, sm=ct)
 
     MM = matmul(
         size=(m, n, k),

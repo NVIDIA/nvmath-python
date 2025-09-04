@@ -64,20 +64,14 @@ for t in tensors:
 
 # Define a function operating on those input and output tensors
 gemm_sa_sb_rc = mathdx.cublasdx_bind_device_function(h, mathdx.CublasdxDeviceFunctionType.EXECUTE, len(tensors), tensors)
-name_size = mathdx.cublasdx_get_device_function_trait_str_size(gemm_sa_sb_rc, mathdx.CublasdxDeviceFunctionTrait.NAME)
 mangled_name_size = mathdx.cublasdx_get_device_function_trait_str_size(gemm_sa_sb_rc, mathdx.CublasdxDeviceFunctionTrait.SYMBOL)
-name = bytearray(name_size)
 mangled_name = bytearray(mangled_name_size)
-name_size = mathdx.cublasdx_get_device_function_trait_str(
-    gemm_sa_sb_rc, mathdx.CublasdxDeviceFunctionTrait.NAME, len(name), name
-)
 mangled_name_size = mathdx.cublasdx_get_device_function_trait_str(
     gemm_sa_sb_rc, mathdx.CublasdxDeviceFunctionTrait.SYMBOL, len(mangled_name), mangled_name
 )
-name = name[:-1].decode()
 mangled_name = mangled_name[:-1].decode()
 
-print(f"Device function {gemm_sa_sb_rc}: name: {name}, mangled name {mangled_name}\n")
+print(f"Device function {gemm_sa_sb_rc}: mangled name {mangled_name}\n")
 
 # Compile the device function to lto_90
 code = mathdx.commondx_create_code()

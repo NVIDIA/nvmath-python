@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import random
 
 import numpy as np
@@ -14,6 +15,8 @@ try:
     import torch
 except ImportError:
     torch = None
+
+import cuda.core.experimental as ccx
 
 import pytest
 
@@ -64,7 +67,7 @@ def get_random_input_data(
             return a
 
         if mem_backend == MemBackend.cuda and device_id is not None:
-            with cp.cuda.Device(device_id):
+            with get_framework_device_ctx(device_id, framework):
                 return _create_array()
         else:
             return _create_array()
@@ -123,18 +126,38 @@ def get_random_1d_shape(shape_kinds: list[ShapeKind], rng: random.Random, incl_1
     return rng.choice(get_1d_shape_cases(shape_kinds, rng=rng, incl_1=incl_1))
 
 
-def get_custom_stream(framework: Framework, device_id=None):
-    if framework in [Framework.numpy, Framework.cupy]:
+def get_custom_stream(framework: Framework, device_id=None, is_numpy_stream_oriented=False):
+    if framework == Framework.numpy:
+        if is_numpy_stream_oriented:
+            old_device = ccx.Device()
+            device = ccx.Device(device_id)
+            try:
+                device.set_current()
+                return device.create_stream()
+            finally:
+                old_device.set_current()
+        else:
+            return None
+    elif framework == Framework.cupy:
         if device_id is None:
             return cp.cuda.Stream(non_blocking=True)
         else:
-            with cp.cuda.Device(device_id):
+            with get_framework_device_ctx(device_id, framework):
                 return cp.cuda.Stream(non_blocking=True)
     elif framework == Framework.torch:
         device = None if device_id is None else f"cuda:{device_id}"
         return torch.cuda.Stream(device=device)
     else:
         raise ValueError(f"Unknown GPU framework {framework}")
+
+
+def get_framework_device_ctx(device_id: int, framework: Framework):
+    if framework == Framework.numpy:
+        return contextlib.nullcontext()
+    elif framework == Framework.cupy:
+        return cp.cuda.Device(device_id)
+    elif framework == Framework.torch:
+        return torch.cuda.device(device_id)
 
 
 def get_stream_pointer(stream) -> int:
@@ -192,12 +215,12 @@ def fx_last_operand_layout(monkeypatch):
         ptrs["initial_operand"] = get_raw_ptr(initial_operand)
         ret = _actual_init(self, initial_operand, *args, **kwargs)
         layouts["operand"] = (self.operand.shape, self.operand.strides)
-        ptrs["operand"] = get_raw_ptr(self.operand.tensor)
+        ptrs["operand"] = self.operand.data_ptr
         assert self.operand_layout.shape == self.operand.shape
         assert self.operand_layout.strides == self.operand.strides
         if self.operand_backup is not None:
             layouts["operand_backup"] = (self.operand_backup.shape, self.operand_backup.strides)
-            ptrs["operand_backup"] = get_raw_ptr(self.operand_backup.tensor)
+            ptrs["operand_backup"] = self.operand_backup.data_ptr
         return ret
 
     monkeypatch.setattr(nvmath.fft.FFT, "__init__", wrapped_init)
@@ -283,3 +306,31 @@ def get_overaligned_view(alignment, framework, shape, dtype, mem_backend, seed):
     assert view_ptr % alignment == 0
     assert_array_type(aligned_view, framework, mem_backend, dtype)
     return a, aligned_view
+
+
+def free_cupy_pool():
+    if cp is not None:
+        cp.get_default_memory_pool().free_all_blocks()
+
+
+def free_torch_pool():
+    if torch is not None:
+        torch.cuda.empty_cache()
+
+
+def free_cuda_pool():
+    from nvmath.internal.memory import free_reserved_memory
+
+    free_reserved_memory()
+
+
+def free_framework_pools(framework):
+    if framework == Framework.numpy:
+        free_cupy_pool()
+        free_torch_pool()
+    elif framework == Framework.cupy:
+        free_cuda_pool()
+        free_torch_pool()
+    elif framework == Framework.torch:
+        free_cuda_pool()
+        free_cupy_pool()

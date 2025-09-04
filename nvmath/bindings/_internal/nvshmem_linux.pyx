@@ -5,10 +5,11 @@
 # This code was automatically generated with version 3.1.7. Do not modify it directly.
 
 cimport cython
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintptr_t
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 ###############################################################################
 # Extern
@@ -53,14 +54,9 @@ cdef void* __nvshmemx_set_attr_uniqueid_args = NULL
 cdef void* __nvshmemx_get_uniqueid = NULL
 
 
-cdef void* load_library() except* nogil:
-    cdef void* handle
-    handle = dlopen("libnvshmem_host.so.3", RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise RuntimeError(f'Failed to dlopen libnvshmem ({err_msg.decode()})')
-    return handle
+cdef void* load_library() except* with gil:
+    cdef uintptr_t handle = load_nvidia_dynamic_lib("nvshmem_host")._handle_uint
+    return <void*>handle
 
 
 cdef int _check_or_init_nvshmem() except -1 nogil:

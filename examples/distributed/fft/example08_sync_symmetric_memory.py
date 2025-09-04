@@ -35,7 +35,7 @@ with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
 # Create a stateful FFT object 'f'.
-with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.X, options={"reshape": False}) as f:
+with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False}) as f:
     # Plan the FFT.
     f.plan()
 
@@ -50,7 +50,7 @@ with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.X, options={"resh
     # Reset the operand to the values in the frequency domain.
     # Note that because the FFT object is configured with reshape=False, the
     # distribution of operand b is Slab.Y
-    f.reset_operand(b, nvmath.distributed.fft.Slab.Y)
+    f.reset_operand(b, distribution=nvmath.distributed.fft.Slab.Y)
 
     # Execute the new inverse FFT.
     # After cuFFTMp performs a transform, it issues a symmetric memory synchronization

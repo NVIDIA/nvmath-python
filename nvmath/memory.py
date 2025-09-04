@@ -16,6 +16,7 @@ import cuda.core.experimental as ccx
 
 from nvmath.internal import utils
 from nvmath.internal.package_ifc_cuda import CUDAPackage
+from nvmath.internal.memory import get_device_current_memory_pool as _get_device_current_memory_pool
 
 
 class MemoryPointer:
@@ -49,6 +50,34 @@ class MemoryPointer:
         if not self._finalizer.alive:
             raise RuntimeError("The buffer has already been freed.")
         self._finalizer()
+
+
+class _UnmanagedMemoryPointer:
+    """
+    An alternative to :class:`MemoryPointer` to wrap objects that already implements
+    its own RAII semantics.
+
+    Args:
+        device_ptr: The address of the device memory buffer.
+        size: The size of the memory buffer in bytes.
+        owner: An object that owns the memory buffer and releases the allocation
+               on object deletion.
+
+    .. seealso:: :class:`MemoryPointer`
+    """
+
+    __slots__ = ("device_ptr", "size", "_owner")
+
+    def __init__(self, device_ptr: int, size: int, owner: object):
+        self.device_ptr = device_ptr
+        self.size = size
+        self._owner = owner
+
+    def free(self):
+        """
+        "Frees" by removing the reference to the owner.
+        """
+        self._owner = None
 
 
 @runtime_checkable
@@ -135,36 +164,19 @@ class _RawCUDAMemoryManager(BaseCUDAMemoryManagerAsync):
         """
         self.device_id = device_id
         self.logger = logger
+        self.pool = _get_device_current_memory_pool(device_id)
 
     def memalloc_async(self, size: int, stream: ccx.Stream) -> MemoryPointer:
-        with utils.device_ctx(self.device_id) as device:
-            buffer = device.allocate(size=size, stream=stream)
-            device_ptr = int(buffer.handle)
+        with utils.device_ctx(self.device_id):
+            buffer = self.pool.allocate(size=size, stream=stream, logger=self.logger)
+            device_ptr = buffer.ptr
 
-        self.logger.debug(
-            "_RawCUDAMemoryManager (allocate memory): size = %d, ptr = %d, device_id = %d, stream = %s",
-            size,
-            device_ptr,
-            self.device_id,
-            stream,
-        )
-
-        def finalizer():
-            nonlocal buffer, stream, device_ptr
-            self.logger.debug(
-                "_RawCUDAMemoryManager (release memory): ptr = %d, device_id = %d, stream = %s",
-                device_ptr,
-                self.device_id,
-                stream,
-            )
-            with utils.device_ctx(self.device_id):
-                buffer.close(stream=stream)
-
-        return MemoryPointer(device_ptr, size, finalizer=finalizer)
+        return _UnmanagedMemoryPointer(device_ptr, size, buffer)  # type: ignore[return-value]
 
 
 _MEMORY_MANAGER: dict[str, type[BaseCUDAMemoryManager] | type[BaseCUDAMemoryManagerAsync]] = {
     "_raw": _RawCUDAMemoryManager,
+    "cuda": _RawCUDAMemoryManager,
 }
 
 

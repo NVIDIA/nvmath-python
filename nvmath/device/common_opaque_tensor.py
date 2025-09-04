@@ -55,7 +55,7 @@ class LayoutModel(models.StructModel):
 make_attribute_wrapper(LayoutType, "leading_dimension", "leading_dimension")
 
 
-@overload_attribute(LayoutType, "size", inline="always", strict=False)
+@overload_attribute(LayoutType, "size", jit_options={"forceinline": True}, strict=False)
 def ol_layout_size(layout: LayoutType):
     assert isinstance(layout, LayoutType)
     size = layout.size

@@ -31,7 +31,7 @@ shape = X // nranks, Y, Z
 # The distributed reshape implementation uses the NVSHMEM PGAS model for GPU-GPU transfers,
 # which requires GPU operands to be on the symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(shape, cp, dtype=cp.float64)
-# a is a cupy ndarray and can be operated on using cupy operations.
+# a is a cupy ndarray and can be operated on using in-place cupy operations.
 with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*shape, dtype=cp.float64)
 
