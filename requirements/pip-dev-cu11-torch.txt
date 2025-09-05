@@ -3,4 +3,4 @@
 -r pip/nvmath-python.txt
 -r pip/nvmath-python-cpu.txt
 -r pip/nvmath-python-cu11.txt
--r pip/torch-cu11.txt
+-r pip/torch-cu118.txt

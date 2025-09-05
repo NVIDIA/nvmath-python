@@ -49,7 +49,7 @@ class EpilogInputHandler(Protocol):
 
     @property
     @abstractmethod
-    def order(self):
+    def order(self) -> cublaslt.Order | None:
         """
         The result order that is needed by this epilog (cublaslt.Order or None, if no
         restriction on order).
@@ -691,7 +691,7 @@ EPILOG_OUTPUT_HANDLERS_MAP: dict[cublaslt.Epilogue, list[type[EpilogOutputHandle
     Epilog.BGRADB: [BgradHandler],
 }
 
-EPILOG_MINIMUM_VERSIONS_MAP: dict[cublaslt.Epilogue, dict[str, int | str]] = {
+EPILOG_MINIMUM_VERSIONS_MAP: dict[cublaslt.Epilogue | None, dict[str, int | str]] = {
     None: {"cublaslt": 00000, "ctk": ""},
     # RELU was the first implemented epilog
     Epilog.RELU: {"cublaslt": 11000, "ctk": "11.0.1"},

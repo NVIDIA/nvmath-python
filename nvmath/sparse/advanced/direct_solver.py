@@ -681,9 +681,7 @@ RHS (N-D >= 3), each matrix sample must have col-major layout (the second dimens
             # irrespective of whether it's hybrid or CUDA execution since we need the
             # current stream.
             if self.rhs_package == "numpy":
-                self.rhs_package = "cupy"
-                # TODO: remove this call after cupy is dropped.
-                tensor_wrapper.maybe_register_package("cupy")
+                self.rhs_package = "cuda"
             # For CPU operands, set the device ID based on the execution options.
             self.device_id = self.execution_options.device_id
         self.logger.info(
@@ -1232,7 +1230,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
 
             # Handle cupy <> numpy asymmetry. See note #2.
             if rhs_package == "numpy":
-                rhs_package = "cupy"
+                rhs_package = "cuda"
 
             # Check package, device ID, shape, strides, and dtype.
             if rhs_package != self.rhs_package:
@@ -1493,7 +1491,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
             # on whether the RHS is explicitly batched.
             result_allocator = self._allocate_batched_result if self.explicitly_batched_rhs else self._allocate_single_result
             result = result_allocator(stream_holder, log_debug)
-            cudss_utils.update_cudss_dense_ptr_wrapper(
+            self.resources_rx = cudss_utils.update_cudss_dense_ptr_wrapper(
                 self.x_ptr, batch_indices=self.batch_indices, new_rhs=result, stream_holder=stream_holder
             )
 
@@ -1548,7 +1546,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
 
             # Release internal resource references.
             self.resources_a = self.resources_b = self.resources_x = None
-            self.resources_ra = self.resources_rb = None
+            self.resources_ra = self.resources_rb = self.resources_rx = None
 
             # Free matrix pointers.
             cudss.matrix_destroy(self.x_ptr)

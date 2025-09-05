@@ -11,10 +11,13 @@ The APIs follow the cuRAND device APIs: https://docs.nvidia.com/cuda/curand/grou
 import functools
 import re
 import sys
+import weakref
 
 import nvmath.device
 from nvmath.device import curand_kernel, random_helpers
 from nvmath.device import random_states as states
+from cuda.core.experimental import ObjectCode, Program, ProgramOptions
+from .common_mathdx import CUDA_HOME
 
 # Common APIs (initialization, bit generation).
 _COMMON_APIS = ["init", "rand", "rand4"]
@@ -393,8 +396,25 @@ class Compile:
         self.cc = cc
 
         # Compile APIs to LTO-IR and materialize in 'files' for linking into Numba kernels.
-        _, self._lto = nvmath.device.nvrtc.compile(cpp=c_ext_shim_source.data, cc=self.cc, rdc=True, code="lto")  # type: ignore
+        prog = Program(
+            c_ext_shim_source.data,  # type: ignore
+            "c++",
+            ProgramOptions(
+                std="c++17",
+                arch=f"compute_{cc.major * 10 + cc.minor}",
+                device_as_default_execution_space=True,
+                link_time_optimization=True,
+                gen_opt_lto=True,
+                relocatable_device_code=True,
+                include_path=[h + "/include" for h in CUDA_HOME] + list(CUDA_HOME) if CUDA_HOME is not None else [],
+            ),
+        )
+        obj = prog.compile("ltoir")
+        assert isinstance(obj, ObjectCode)
+        self._lto = obj.code
         self._files = [nvmath.device.common.make_binary_tempfile(self._lto, ".ltoir")]
+
+        self._finalizer = weakref.finalize(self, nvmath.device.common.delete_binary_tempfiles, self.files)
 
     @property
     def files(self):

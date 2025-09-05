@@ -32,14 +32,14 @@ shape = 512 // nranks, 256, 512
 # cuFFTMp uses the NVSHMEM PGAS model for distributed computation, which requires GPU
 # operands to be on the symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(shape, cp, dtype=cp.complex128)
-# a is a cupy ndarray and can be operated on using cupy operations.
+# a is a cupy ndarray and can be operated on using in-place cupy operations.
 with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*shape, dtype=cp.float64) + 1j * cp.random.rand(*shape, dtype=cp.float64)
 
 # Forward FFT.
 # In this example, the forward FFT operand is distributed according to Slab.X distribution.
 # With reshape=False, the FFT result will be distributed according to Slab.Y distribution.
-b = nvmath.distributed.fft.fft(a, nvmath.distributed.fft.Slab.X, options={"reshape": False})
+b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False})
 
 # Distributed FFT performs computations in-place. The result is stored in the same
 # buffer as operand a. Note, however, that operand b has a different shape (due
@@ -52,7 +52,7 @@ if rank == 0:
 # Recall from previous transform that the inverse FFT operand is distributed according to
 # Slab.Y. With reshape=False, the inverse FFT result will be distributed according to
 # Slab.X distribution.
-c = nvmath.distributed.fft.ifft(b, nvmath.distributed.fft.Slab.Y, options={"reshape": False})
+c = nvmath.distributed.fft.ifft(b, distribution=nvmath.distributed.fft.Slab.Y, options={"reshape": False})
 
 # The shape of c is the same as a (due to Slab.X distribution). Once again, note that
 # a, b and c are sharing the same symmetric memory buffer (distributed FFT operations

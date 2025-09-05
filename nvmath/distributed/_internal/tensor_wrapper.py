@@ -12,29 +12,45 @@ import warnings
 from collections.abc import Sequence
 
 from nvmath.internal.tensor_ifc import Tensor, TensorHolder
-from nvmath.internal.tensor_wrapper import infer_tensor_package
+from nvmath.internal.tensor_wrapper import (
+    infer_tensor_package as base_infer_tensor_package,
+    maybe_register_package as base_maybe_register_package,
+)
 
-from .tensor_ifc_numpy import NumpyDistributedTensor
+from .tensor_ifc import DistributedTensor
+from .tensor_ifc_numpy import NumpyDistributedTensor, CudaDistributedTensor
 
-_TENSOR_TYPES: dict[str, type[TensorHolder]] = {"numpy": NumpyDistributedTensor}
-
-# Optional modules
-try:
-    from .tensor_ifc_cupy import CupyDistributedTensor
-
-    _TENSOR_TYPES["cupy"] = CupyDistributedTensor
-except ImportError:
-    pass
-
-try:
-    from .tensor_ifc_torch import TorchDistributedTensor
-
-    _TENSOR_TYPES["torch"] = TorchDistributedTensor
-except ImportError:
-    pass
+_TENSOR_TYPES: dict[str, type[DistributedTensor]] = {"numpy": NumpyDistributedTensor, "cuda": CudaDistributedTensor}
 
 
-def wrap_operand(native_operand: Tensor) -> TensorHolder[Tensor]:
+def infer_tensor_package(tensor):
+    """
+    Infer the package that defines this tensor.
+    """
+    package = base_infer_tensor_package(tensor)
+    # Use call_base=False because base_infer_tensor_package already
+    # called base_maybe_register_package
+    maybe_register_package(package, call_base=False)
+    return package
+
+
+def maybe_register_package(package, call_base=True):
+    if call_base:
+        base_maybe_register_package(package)
+    if package == "torch":
+        from .tensor_ifc_torch import TorchDistributedTensor
+
+        _TENSOR_TYPES[package] = TorchDistributedTensor
+    elif package == "cupy":
+        from .tensor_ifc_cupy import CupyDistributedTensor, HostDistributedTensor
+
+        _TENSOR_TYPES["cupy"] = CupyDistributedTensor
+        _TENSOR_TYPES["cupy_host"] = HostDistributedTensor
+    elif package != "numpy":
+        raise AssertionError(f"Internal error: unrecognized package {package}")
+
+
+def wrap_operand(native_operand: Tensor) -> DistributedTensor[Tensor]:
     """
     Wrap one "native" operand so that package-agnostic API can be used.
     """
@@ -46,6 +62,7 @@ def wrap_operand(native_operand: Tensor) -> TensorHolder[Tensor]:
             "Trying to wrap a TensorHolder will become an error in the future."
         )
         warnings.warn(msg, DeprecationWarning)
+        assert isinstance(native_operand, DistributedTensor)
         return native_operand
     wrapped_operand = _TENSOR_TYPES[infer_tensor_package(native_operand)](native_operand)
     return wrapped_operand

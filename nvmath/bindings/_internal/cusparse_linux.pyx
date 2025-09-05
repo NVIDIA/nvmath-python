@@ -4,12 +4,11 @@
 #
 # This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
 
-from libc.stdint cimport intptr_t
-
-from .utils cimport get_cusparse_dso_version_suffix
+from libc.stdint cimport intptr_t, uintptr_t
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 ###############################################################################
 # Extern
@@ -296,16 +295,8 @@ cdef void* __cusparseSpSM_updateMatrix = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
-    cdef void* handle
-    for suffix in get_cusparse_dso_version_suffix(driver_ver):
-        so_name = "libcusparse.so" + (f".{suffix}" if suffix else suffix)
-        handle = dlopen(so_name.encode(), RTLD_NOW | RTLD_GLOBAL)
-        if handle != NULL:
-            break
-    else:
-        err_msg = dlerror()
-        raise RuntimeError(f'Failed to dlopen libcusparse ({err_msg.decode()})')
-    return handle
+    cdef uintptr_t handle = load_nvidia_dynamic_lib("cusparse")._handle_uint
+    return <void*>handle
 
 
 cdef int _check_or_init_cusparse() except -1 nogil:

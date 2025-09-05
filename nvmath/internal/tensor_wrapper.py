@@ -15,10 +15,10 @@ import numpy as np
 
 from . import formatters
 from .tensor_ifc import TensorHolder, Tensor, AnyTensor
-from .tensor_ifc_numpy import NumpyTensor
+from .tensor_ifc_numpy import NumpyTensor, CudaTensor
 
 
-_TENSOR_TYPES: dict[str, type[TensorHolder]] = {"numpy": NumpyTensor}
+_TENSOR_TYPES: dict[str, type[TensorHolder]] = {"numpy": NumpyTensor, "cuda": CudaTensor}
 
 _SUPPORTED_PACKAGES = tuple(_TENSOR_TYPES.keys())
 
@@ -50,11 +50,13 @@ def maybe_register_package(package):
             package_wrapper.PACKAGE[package] = TorchPackage
             memory.lazy_load_torch()
         elif package == "cupy":
-            from .tensor_ifc_cupy import CupyTensor
+            from .tensor_ifc_cupy import CupyTensor, HostTensor
             from .package_ifc_cupy import CupyPackage
 
             _TENSOR_TYPES[package] = CupyTensor
+            _TENSOR_TYPES["cupy_host"] = HostTensor
             package_wrapper.PACKAGE[package] = CupyPackage
+            package_wrapper.PACKAGE["cupy_host"] = CupyPackage
             memory.lazy_load_cupy()
         else:
             message = f"""{package} not supported yet. Currently must be one of ['numpy', 'cupy', 'torch']"""

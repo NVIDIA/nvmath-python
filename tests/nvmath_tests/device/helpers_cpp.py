@@ -73,6 +73,7 @@ def compile_cpp_kernel(cpp, mangled):
     opts = (
         [b"--std=c++17", b"--device-as-default-execution-space", b"-DCUFFTDX_DETAIL_USE_CUDA_STL=1"]
         + [bytes(f"--include-path={h}/include", encoding="ascii") for h in _CUDA_HOME]
+        + [bytes(f"--include-path={h}/include/cccl", encoding="ascii") for h in _CUDA_HOME]
         + [
             bytes(f"--include-path={_MATHDX_HOME}/include", encoding="ascii"),
             bytes(f"--include-path={_MATHDX_HOME}/include/cufftdx", encoding="ascii"),

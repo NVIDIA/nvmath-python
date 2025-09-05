@@ -15,8 +15,9 @@ try:
     import cupy_backends.cuda
 
     maybe_register_package("cupy")
+    HAS_CUPY = True
 except ModuleNotFoundError:
-    pytest.skip("cupy is required for matmul tests", allow_module_level=True)
+    HAS_CUPY = False
 
 
 if is_torch_available():
@@ -244,6 +245,9 @@ def test_different_allocator():
     """
     from nvmath.memory import _MEMORY_MANAGER
 
+    if not HAS_CUPY:
+        pytest.skip("cupy is required for this test")
+
     allocator = _MEMORY_MANAGER["cupy"](0, logging.getLogger())
     options = MatmulOptions(allocator=allocator)
     check_matmul_with_options(10, options)
@@ -312,6 +316,9 @@ def test_invalid_device_id():
     """
     Tests if specifying negative device id raises an error
     """
+    if not HAS_CUPY:
+        pytest.skip("cupy is required for this test")
+
     options = MatmulOptions(device_id=-1)
     with pytest.raises((RuntimeError, cupy_backends.cuda.api.runtime.CUDARuntimeError, ValueError), match="device"):
         check_matmul_with_options(10, options)

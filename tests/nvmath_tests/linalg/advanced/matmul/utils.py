@@ -12,7 +12,7 @@ import pytest
 try:
     import cupy
 except ModuleNotFoundError:
-    pytest.skip("cupy is required for matmul tests", allow_module_level=True)
+    cupy = None
 
 import numpy as np
 
@@ -36,6 +36,8 @@ def sample_matrix(framework, dtype, shape, use_cuda, min=-5, max=5):
         r = ((max - min) * torch.rand(shape) + min).type(dtype)
         return r.cuda() if use_cuda else r
     elif framework == "cupy":
+        if cupy is None:
+            pytest.skip("cupy not installed")
         if not use_cuda:
             raise NotImplementedError("CPU tensors not supported by cupy")
         if dtype == "bfloat16":
@@ -65,7 +67,7 @@ def to_numpy(tensor):
         if tensor.dtype in (torch.bfloat16,):
             tensor = tensor.type(torch.float64)
         return tensor.numpy()
-    elif isinstance(tensor, cupy.ndarray):
+    elif cupy is not None and isinstance(tensor, cupy.ndarray):
         return cupy.asnumpy(tensor)
     elif isinstance(tensor, np.ndarray):
         return tensor
@@ -77,7 +79,7 @@ def to_numpy(tensor):
 def get_framework(tensor):
     if torch is not None and isinstance(tensor, torch.Tensor):
         return torch
-    elif isinstance(tensor, cupy.ndarray):
+    elif cupy is not None and isinstance(tensor, cupy.ndarray):
         return cupy
     elif isinstance(tensor, np.ndarray):
         return np

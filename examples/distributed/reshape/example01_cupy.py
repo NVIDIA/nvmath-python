@@ -51,7 +51,7 @@ A = nvmath.distributed.allocate_symmetric_memory((4, 2), cp)
 if rank == 0:
     print("A is on device", A.device)
 
-# A is a cupy ndarray and can be operated on using cupy operations.
+# A is a cupy ndarray and can be operated on using in-place cupy operations.
 with cp.cuda.Device(device_id):
     if rank == 0:
         # Initialize the sub-matrix on process 0.

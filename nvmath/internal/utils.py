@@ -128,9 +128,11 @@ def _raise_invalid_one_of_options(clss, options, options_description, *, cls_key
     )
 
 
-@contextlib.contextmanager
-def device_ctx(new_device_id: int) -> typing.Iterator[ccx.Device]:
+class device_ctx:
     """
+    NOTE, using classic class-based context manager here as it has lower overhead
+    than the generator-based context manager.
+
     Semantics:
 
     1. The device context manager makes the specified device current from the point of entry
@@ -145,23 +147,35 @@ def device_ctx(new_device_id: int) -> typing.Iterator[ccx.Device]:
        other words, the context manager provides a local device scope and the current device
        can be explicitly reset for the remainder of that scope.
 
+    4. The context manager is single-use.
+
     Corollary: if any library function resets the device globally and this is an undesired
         side-effect, such functions must be called from within the device context manager.
 
     Device context managers can be arbitrarily nested.
     """
-    assert isinstance(new_device_id, int), "Internal Error. Setting device context for 'cpu' is not allowed."
-    old_device = ccx.Device()
-    try:
+
+    __slots__ = ("new_device_id", "_old_device")
+
+    def __init__(self, new_device_id):
+        self.new_device_id = new_device_id
+        self._old_device = None
+
+    def __enter__(self):
+        if self._old_device is not None:
+            raise RuntimeError("Reusing a device_ctx instance is not allowed.")
+        self._old_device = old_device = ccx.Device()
+        new_device_id = self.new_device_id
         if old_device.device_id != new_device_id:
             device = ccx.Device(new_device_id)
             device.set_current()
-            yield device
+            return device
         else:
-            yield old_device
-    finally:
+            return old_device
+
+    def __exit__(self, type, value, traceback):
         # We should always restore the old device at exit.
-        old_device.set_current()
+        self._old_device.set_current()
 
 
 def is_hashable(obj: object) -> bool:
@@ -191,7 +205,10 @@ def cached_get_or_create_stream(
 
     stream_package = infer_object_package(stream)
     if stream_package != op_package:
-        message = "The stream object must belong to the same package as the tensor network operands."
+        message = (
+            f"The stream object must belong to the same package as the tensor network operands. "
+            f"Stream package: {stream_package}, Tensor package: {op_package}"
+        )
         raise TypeError(message)
 
     ctx = op_package_ifc.to_stream_context(stream)
@@ -230,6 +247,11 @@ def get_or_create_stream(
 def get_memory_limit_from_device_id(memory_limit: int | float | str, device_id: int) -> int:
     with device_ctx(device_id):
         status, _, total_memory = cbr.cudaMemGetInfo()
+        if status != 0 or total_memory is None:
+            raise RuntimeError(
+                f"cudaMemGetInfo failed with status {status}, total_memory={total_memory}. A possible cause is \
+an inconsistent version of cuda-bindings for the CTK version used with nvmath-python."
+            )
         return _get_memory_limit(memory_limit, total_memory)
 
 

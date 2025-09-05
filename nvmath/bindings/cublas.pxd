@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -35,6 +35,7 @@ ctypedef cublasAtomicsMode_t _AtomicsMode
 ctypedef cublasGemmAlgo_t _GemmAlgo
 ctypedef cublasMath_t _Math
 ctypedef cublasComputeType_t _ComputeType
+ctypedef cublasEmulationStrategy_t _EmulationStrategy
 
 
 ###############################################################################
@@ -543,3 +544,5 @@ cpdef dgemm_grouped_batched(intptr_t handle, transa_array, transb_array, m_array
 cpdef dgemm_grouped_batched_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int64_t group_count, group_size)
 cpdef gemm_grouped_batched_ex(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int group_count, group_size, int compute_type)
 cpdef gemm_grouped_batched_ex_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int64_t group_count, group_size, int compute_type)
+cpdef get_emulation_strategy(intptr_t handle, intptr_t emulation_strategy)
+cpdef set_emulation_strategy(intptr_t handle, int emulation_strategy)

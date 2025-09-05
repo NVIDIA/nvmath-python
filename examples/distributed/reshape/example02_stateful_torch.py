@@ -31,7 +31,7 @@ shape = X, Y // nranks, Z
 # The distributed reshape implementation uses the NVSHMEM PGAS model for GPU-GPU transfers,
 # which requires GPU operands to be on the symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(shape, torch, dtype=torch.float64)
-# a is a torch tensor and can be operated on using torch operations.
+# a is a torch tensor and can be operated on using in-place torch operations.
 a[:] = torch.ones(shape, dtype=torch.float64, device=device_id)
 
 # We're going to redistribute the operand so that it is partitioned on the X axis.

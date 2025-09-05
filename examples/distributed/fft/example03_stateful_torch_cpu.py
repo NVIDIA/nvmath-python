@@ -33,7 +33,7 @@ shape = 512, 512 // nranks, 512
 a = torch.ones(shape, dtype=torch.complex64)  # cpu tensor
 
 # Create a stateful FFT object 'f'.
-with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.Y) as f:
+with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.Y) as f:
     # Plan the FFT.
     f.plan()
 

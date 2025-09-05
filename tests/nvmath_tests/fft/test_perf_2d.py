@@ -5,11 +5,12 @@
 import nvmath
 import numpy as np
 
-from .utils.common_axes import ExecBackend
-from .utils.support_matrix import supported_backends
-
-if ExecBackend.cufft in supported_backends.exec:
+try:
     import cupy
+except ImportError:
+    cupy = None
+
+if cupy is not None:
     from ..helpers import time_cupy, random_complex, print_aligned_table, fft_perf_GFlops
 
     def test_fft():

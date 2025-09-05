@@ -40,7 +40,7 @@ a = np.random.rand(*shape) + 1j * np.random.rand(*shape)
 # By default, the reshape option is True, which means that the output of the distributed
 # FFT will be re-distributed to retain the same distribution as the input (in this case
 # Slab.Y).
-b = nvmath.distributed.fft.fft(a, nvmath.distributed.fft.Slab.Y)
+b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.Y)
 
 if rank == 0:
     # Note the same shape of a and b (they are both using the same distribution).

@@ -1,0 +1,12 @@
+# torch wheels pin nvjitlink but not related compiler packages.
+# However, if packages do not match then lto_callback tests will fail
+nvidia-cuda-cccl-cu12 ==12.9.*
+nvidia-cuda-nvcc-cu12 ==12.9.*
+nvidia-cuda-nvrtc-cu12 ==12.9.*
+nvidia-cuda-runtime-cu12 ==12.9.*
+nvidia-nvjitlink-cu12 ==12.9.*
+# pytorch >=2.3 to ensure numpy 1/2 compatibility
+# torch wheels depend on nvidia wheels; do not add if testing system ctk
+# In order to install torch nightly, we need to specify the index url for both torch and triton
+# Using a specific torch version makes solving faster
+#pipenv install "torch==2.9.0.dev20250813+cu129" "pytorch_triton==3.4.0+gitf7888497" --index=https://download.pytorch.org/whl/nightly/cu129

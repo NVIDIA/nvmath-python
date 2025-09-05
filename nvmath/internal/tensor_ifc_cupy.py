@@ -6,7 +6,7 @@
 Interface to seamlessly use Cupy ndarray objects.
 """
 
-__all__ = ["CupyTensor"]
+__all__ = ["CupyTensor", "HostTensor"]
 
 from collections.abc import Sequence
 
@@ -15,8 +15,52 @@ import numpy as np
 
 from . import utils
 from .tensor_ifc import TensorHolder
-from .tensor_ifc_numpy import NumpyTensor
 from .package_ifc import StreamHolder
+from .ndbuffer import ndbuffer, package_utils
+from .tensor_ifc_ndbuffer import NDBufferTensor
+
+
+class HostTensor(NDBufferTensor):
+    """
+    Wraps ndbuffer with data residing on the host.
+    It serves as a host counterpart for CupyTensor.
+    """
+
+    name = "cupy_host"
+    device_tensor_class: type["CupyTensor"]  # set once CupyTensor is defined
+
+    def __init__(self, tensor):
+        super().__init__(tensor)
+
+    @classmethod
+    def create_host_from(cls, tensor: TensorHolder, stream_holder: StreamHolder):
+        src_nd = tensor.asndbuffer()
+        # empty_like (and not empty_numpy_like) is used as we don't need
+        # full-fledged numpy array (with proper layout)
+        dst_nd = ndbuffer.empty_like(src_nd, device_id=ndbuffer.CPU_DEVICE_ID)
+        ndbuffer.copy_into(dst_nd, src_nd, stream_holder)
+        return cls(dst_nd)
+
+    def to(self, device_id, stream_holder):
+        if device_id == "cpu":
+            return self
+        elif isinstance(device_id, int):
+            return self.device_tensor_class.create_from_host(self, device_id, stream_holder)
+        else:
+            raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
+
+
+class _CupyAllocatorAdapter:
+    def allocate(self, size, stream, logger=None):
+        # we accept the stream and logger, because the ndbuffer.empty_like
+        # passes them to the allocator, but we don't use them:
+        # 1. cupy.cuda.alloc does not accept the stream, we make sure to set
+        # the correct current stream when calling ndbuffer.empty_like
+        # 2. we don't log cupy tensor allocations.
+        return cupy.cuda.alloc(size)
+
+
+_cupy_allocator = _CupyAllocatorAdapter()
 
 
 class CupyTensor(TensorHolder[cupy.ndarray]):
@@ -29,6 +73,7 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
     name_to_dtype = TensorHolder.create_name_dtype_map(
         conversion_function=lambda name: np.dtype(name), exception_type=TypeError
     )
+    host_tensor_class = HostTensor
 
     def __init__(self, tensor):
         super().__init__(tensor)
@@ -51,6 +96,10 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
         return self.tensor.dtype.name
 
     @property
+    def itemsize(self):
+        return self.tensor.itemsize
+
+    @property
     def shape(self):
         return tuple(self.tensor.shape)
 
@@ -61,15 +110,6 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
     @property
     def strides(self):
         return tuple(stride_in_bytes // self.tensor.itemsize for stride_in_bytes in self.tensor.strides)
-
-    def numpy(self, stream_holder: StreamHolder):
-        stream = stream_holder.external
-        with stream:
-            out = self.tensor.get(stream=stream)
-        # cupy/cupy#7820
-        if stream is not None:
-            stream.synchronize()
-        return NumpyTensor(out)
 
     @classmethod
     def empty(
@@ -113,57 +153,39 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
 
         return cls(tensor)
 
-    def to(self, device_id, stream_holder):
-        if not (device_id == "cpu" or isinstance(device_id, int)):
-            raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
-
-        if device_id == "cpu":
-            return self.numpy(stream_holder=stream_holder)
-
+    @classmethod
+    def create_from_host(cls, tensor: TensorHolder, device_id: int, stream_holder: StreamHolder):
         with utils.device_ctx(device_id), stream_holder.ctx:
-            return CupyTensor(cupy.asarray(self.tensor))
+            src_nd = tensor.asndbuffer()
+            dst_nd = ndbuffer.empty_like(
+                src_nd,
+                device_id=device_id,
+                stream=stream_holder,
+                device_memory_pool=_cupy_allocator,
+            )
+            ndbuffer.copy_into(dst_nd, src_nd, stream_holder)
+            dst = cupy.ndarray(dst_nd.shape, dtype=dst_nd.dtype_name, strides=dst_nd.strides_in_bytes, memptr=dst_nd.data)
+            return cls(dst)
 
-    def _c2c_copy_(self, src: cupy.ndarray, stream_holder: StreamHolder):
-        """
-        Inplace copy of src (copy the data from src into self).
-        The src must by cupy ndarray
-        """
-        with stream_holder.ctx:
-            cupy.copyto(self.tensor, src)
+    def asndbuffer(self):
+        return package_utils.wrap_cupy_array(self.tensor)
 
-    def _n2c_copy_(self, src: np.ndarray, stream_holder: StreamHolder):
-        """
-        Inplace copy of src (copy the data from src into self).
-        The src must by numpy ndarray
-        """
-        stream = stream_holder.external
-        try:
-            self.tensor.set(src, stream=stream)
-        except RuntimeError as e:
-            # If self is a strided tensor (neither c nor f layout)
-            # cupy refuses to copy from numpy array
-            if "set to non-contiguous array" not in str(e):
-                raise
-            else:
-                with stream_holder.ctx:
-                    src_gpu = cupy.asarray(src)
-                    cupy.copyto(self.tensor, src_gpu)
-        # cupy/cupy#7820
-        if stream is not None:
-            stream.synchronize()
+    def to(self, device_id, stream_holder):
+        if device_id == "cpu":
+            with utils.device_ctx(self.device_id):
+                return self.host_tensor_class.create_host_from(self, stream_holder)
+        elif device_id == self.device_id:
+            return self
+        elif isinstance(device_id, int):
+            raise ValueError(f"Unsupported copy between different devices {self.device_id} and {device_id}.")
+        raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
 
     def copy_(self, src, stream_holder):
         """
         Inplace copy of src (copy the data from src into self).
         """
-        match src.name:
-            case "cupy":
-                self._c2c_copy_(src.tensor, stream_holder)
-            case "numpy":
-                self._n2c_copy_(src.tensor, stream_holder)
-            case _:
-                msg = f"CupyTensor does not convert from {src.name}."
-                raise NotImplementedError(msg)
+        with utils.device_ctx(self.device_id):
+            ndbuffer.copy_into(self.asndbuffer(), src.asndbuffer(), stream_holder)
 
     def istensor(self):
         """
@@ -183,3 +205,6 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
         else:
             reshaped_tensor = self.tensor.reshape(shape)
         return self.__class__(reshaped_tensor)
+
+
+HostTensor.device_tensor_class = CupyTensor

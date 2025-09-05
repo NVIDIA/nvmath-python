@@ -2,11 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
-from libc.stdint cimport intptr_t
+from libc.stdint cimport intptr_t, uintptr_t
 
-from .utils cimport get_cublas_dso_version_suffix
 
 import os
 import site
@@ -15,14 +14,13 @@ import win32api
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
 LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
-LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
-LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
 cdef bint __py_cublasLt_init = False
 cdef void* __cuDriverGetVersion = NULL
 
@@ -74,49 +72,7 @@ cdef inline list get_site_packages():
 
 
 cdef load_library(const int driver_ver):
-    handle = 0
-
-    for suffix in get_cublas_dso_version_suffix(driver_ver):
-        if len(suffix) == 0:
-            continue
-        dll_name = f"cublasLt64_{suffix}.dll"
-
-        # First check if the DLL has been loaded by 3rd parties
-        try:
-            handle = win32api.GetModuleHandle(dll_name)
-        except:
-            pass
-        else:
-            break
-
-        # Next, check if DLLs are installed via pip
-        for sp in get_site_packages():
-            mod_path = os.path.join(sp, "nvidia", "cublas", "bin")
-            if not os.path.isdir(mod_path):
-                continue
-            os.add_dll_directory(mod_path)
-        try:
-            handle = win32api.LoadLibraryEx(
-                # Note: LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR needs an abs path...
-                os.path.join(mod_path, dll_name),
-                0, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
-        except:
-            pass
-        else:
-            break
-
-        # Finally, try default search
-        try:
-            handle = win32api.LoadLibrary(dll_name)
-        except:
-            pass
-        else:
-            break
-    else:
-        raise RuntimeError('Failed to load cublasLt')
-
-    assert handle != 0
-    return handle
+    return load_nvidia_dynamic_lib("cublasLt")._handle_uint
 
 
 cdef int _check_or_init_cublasLt() except -1 nogil:

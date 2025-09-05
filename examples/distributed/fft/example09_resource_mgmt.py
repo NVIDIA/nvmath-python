@@ -45,10 +45,10 @@ with cp.cuda.Device(device_id):
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Create and prepare two FFT objects.
-f1 = nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.X)
+f1 = nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X)
 f1.plan()
 
-f2 = nvmath.distributed.fft.FFT(b, nvmath.distributed.fft.Slab.X)
+f2 = nvmath.distributed.fft.FFT(b, distribution=nvmath.distributed.fft.Slab.X)
 f2.plan()
 
 num_iter = 3

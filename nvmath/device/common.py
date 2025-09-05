@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod
+import os
 import tempfile
 
 import numpy as np
@@ -35,12 +36,25 @@ The computation precision specified as a numpy float dtype, currently supports `
 
 
 # TODO: maybe pre-compile regular expression
-def make_binary_tempfile(content, suffix):
-    # TODO: may need to set it False for Windows? (refer to Python API doc)
-    tmp = tempfile.NamedTemporaryFile(mode="w+b", suffix=suffix, delete=True)  # noqa: SIM115
-    tmp.write(content)
-    tmp.flush()
+def make_binary_tempfile(content, suffix: str) -> tempfile._TemporaryFileWrapper:
+    """Write `content` to a temporary file with the given `suffix`.
+
+    A closed file object returned; it is the user's responsibility to delete the file when
+    finished.
+
+    .. seealso:: :py:func:`delete_binary_tempfiles`
+
+    """
+    with tempfile.NamedTemporaryFile(mode="w+b", suffix=suffix, delete=False) as tmp:
+        tmp.write(content)
+        tmp.flush()
     return tmp
+
+
+def delete_binary_tempfiles(filenames: list[str]):
+    for name in filenames:
+        if os.path.isfile(name):
+            os.remove(name)
 
 
 def check_in(name, arg, set):

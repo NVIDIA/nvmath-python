@@ -7,7 +7,27 @@ from nvmath.device import fft, CodeType, ComputeCapability, FFTOptions
 from nvmath.device.cufftdx import FFTCompiled
 import pytest
 import numpy as np
-from .helpers import SM70, SM72, SM75, SM80, SM86, SM89, SM90
+from .helpers import (
+    SM100,
+    SM101,
+    SM103,
+    SM120,
+    SM121,
+    SM70,
+    SM72,
+    SM75,
+    SM80,
+    SM86,
+    SM89,
+    SM90,
+    AssertFilesClosed,
+    skip_unsupported_sm,
+)
+
+
+def test_files_closed():
+    with AssertFilesClosed():
+        _ = fft(fft_type="c2c", size=32, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
 
 
 @pytest.mark.parametrize("execute_api", ["shared_memory", "register_memory"])
@@ -279,7 +299,7 @@ def test_valid_knobs_1():
     "code_type, ept, bpb",
     [
         (SM80, 2, 128),
-        (SM86, 2, 128),
+        (SM86, 2, 64),
         (SM89, 2, 32),
     ],
 )
@@ -296,6 +316,28 @@ def test_valid_knob_values(code_type, ept, bpb):
 
     assert len(valids) == 1
     assert valids[0] == (ept, bpb)
+
+
+@pytest.mark.parametrize(
+    "knobs",
+    [
+        ("ffts_per_block", "invalid_knob"),
+        ("elements_per_thread", "invalid_knob"),
+        ("elements_per_thread", -1),
+        ("ffts_per_block", "invalid_knob", 1000),
+    ],
+)
+def test_invalid_knob_values(knobs):
+    FO = FFTOptions(
+        fft_type="c2c",
+        size=2,
+        precision=np.float32,
+        direction="forward",
+        code_type=SM80,
+        execution="Block",
+    )
+    with pytest.raises(ValueError, match="Unsupported knob"):
+        FO.valid(*knobs)
 
 
 @pytest.mark.parametrize(
@@ -316,6 +358,8 @@ def test_valid_knob_values(code_type, ept, bpb):
         ("code_type", CodeType("lto", ComputeCapability(5, 0))),
         ("code_type", CodeType("sass", ComputeCapability(7, 0))),
         ("code_type", CodeType("ptx", ComputeCapability(7, 0))),
+        ("code_type", CodeType("lto", ComputeCapability(1000, 0))),  # invalid cc > supported Max cc
+        ("code_type", ("lto", "lto", ComputeCapability(10, 0))),  # len(code_type) != 2
         ("execution", None),
         ("execution", "CGA"),
         ("ffts_per_block", -1),
@@ -343,8 +387,9 @@ def test_negative(opt, value):
         FFT = fft(**opts)  # noqa: F841
 
 
-@pytest.mark.parametrize("code_type", [SM70, SM72, SM75, SM80, SM86, SM89, SM90])
+@pytest.mark.parametrize("code_type", [SM70, SM72, SM75, SM80, SM86, SM89, SM90, SM100, SM101, SM103, SM120, SM121])
 def test_sm(code_type):
+    skip_unsupported_sm(code_type)
     FFT = fft(fft_type="c2c", size=256, precision=np.float32, direction="forward", code_type=code_type, execution="Block")
     assert all(isinstance(code.data, bytes) for code in FFT.codes)
     assert all(len(code.data) > 0 for code in FFT.codes)

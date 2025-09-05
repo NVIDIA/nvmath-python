@@ -51,7 +51,7 @@ else:
     input_box = [(32, 128, 0), (64, 256, 128)]
 # Use the same pencil distribution for the output.
 output_box = input_box
-b = nvmath.distributed.fft.fft(a, [input_box, output_box])
+b = nvmath.distributed.fft.fft(a, distribution=[input_box, output_box])
 
 if rank == 0:
     # Note the same shape of a and b (they are both using the same distribution).

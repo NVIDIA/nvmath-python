@@ -35,7 +35,11 @@ class MatmulLoopCpp:
                                + SM<{sm[0] * 100 + sm[1] * 10}>()
                               );
 
+        #if CUBLASDX_VERSION < 300
         __device__ const unsigned int shared_memory_size = GEMM::shared_memory_size;
+        #else
+        __device__ const unsigned int shared_memory_size = get_shared_storage_size<GEMM>();
+        #endif
 
         __global__ void kernel(void* a_void,
                                void* b_void,

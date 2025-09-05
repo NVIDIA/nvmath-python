@@ -30,11 +30,11 @@ shape = 512, 512 // nranks, 512
 # cuFFTMp uses the NVSHMEM PGAS model for distributed computation, which requires GPU
 # operands to be on the symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(shape, torch, dtype=torch.complex64)
-# a is a torch tensor and can be operated on using torch operations.
+# a is a torch tensor and can be operated on using in-place torch operations.
 a[:] = torch.ones(shape, dtype=torch.complex64, device=device_id)
 
 # Create a stateful FFT object 'f'.
-with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.Y) as f:
+with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.Y) as f:
     # Plan the FFT.
     f.plan()
 

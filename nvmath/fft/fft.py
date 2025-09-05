@@ -1391,12 +1391,9 @@ class FFT:
 
     def _internal_operand_package(self, package_name):
         if self.execution_space == "cuda":
-            if package_name == "numpy":
-                # TODO: remove this call after cupy is dropped
-                tensor_wrapper.maybe_register_package("cupy")
-            return package_name if package_name != "numpy" else "cupy"
+            return package_name if package_name != "numpy" else "cuda"
         else:
-            return package_name if package_name != "cupy" else "numpy"
+            return package_name if package_name != "cupy" else "cupy_host"
 
     def _get_or_create_stream_maybe(self, stream: AnyStream) -> tuple[StreamHolder | None, StreamHolder | None]:
         if self.execution_space == "cuda":
@@ -2118,7 +2115,7 @@ def _fft(
         - This function only takes complex operand for C2C transformation. If the user
           wishes to perform full FFT transformation on real input, please cast the input to
           the corresponding complex data type.
-        - This function is a convenience wrapper around :class:`FFT` and and is specifically
+        - This function is a convenience wrapper around :class:`FFT` and is specifically
           meant for *single* use. The same computation can be performed with the stateful
           API using the default `direction` argument in :meth:`FFT.execute`.
 
@@ -2236,10 +2233,10 @@ ifft.__doc__ = """
         :func:`fft`, :func:`irfft`, :class:`FFT`.
 
     Notes:
-        - This function only takes complex operand for C2C transformation. If users wishes
+        - This function only takes complex operand for C2C transformation. If the user wishes
           to perform full FFT transformation on real input, please cast the input to the
           corresponding complex data type.
-        - This function is a convenience wrapper around :class:`FFT` and and is specifically
+        - This function is a convenience wrapper around :class:`FFT` and is specifically
           meant for *single* use. The same computation can be performed with the stateful
           API by passing the argument ``direction='inverse'`` when calling
           :meth:`FFT.execute`.
@@ -2311,7 +2308,7 @@ def irfft(
 
         - This function performs an inverse C2R N-D FFT, which is similar to `irfftn` but
           different from `irfft` in various numerical packages.
-        - This function is a convenience wrapper around :class:`FFT` and and is specifically
+        - This function is a convenience wrapper around :class:`FFT` and is specifically
           meant for *single* use. The same computation can be performed with the stateful
           API by setting :attr:`FFTOptions.fft_type` to ``'C2R'`` and passing the argument
           ``direction='inverse'`` when calling :meth:`FFT.execute`.

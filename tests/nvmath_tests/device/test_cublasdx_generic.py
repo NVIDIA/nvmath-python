@@ -21,8 +21,35 @@ import pytest
 import itertools
 
 from nvmath.device.cublasdx_backend import Alignment, MAX_ALIGNMENT
-from .helpers import SM100, SM101, SM103, SM120, SM121, SM70, SM72, SM75, SM80, SM86, SM89, SM90, skip_nvbug_5218000
-from cuda.bindings import nvrtc
+from .helpers import (
+    SM100,
+    SM101,
+    SM103,
+    SM120,
+    SM121,
+    SM70,
+    SM72,
+    SM75,
+    SM80,
+    SM86,
+    SM89,
+    SM90,
+    skip_nvbug_5218000,
+    AssertFilesClosed,
+    skip_unsupported_sm,
+)
+
+
+def test_files_closed():
+    with AssertFilesClosed():
+        _ = matmul(
+            size=(16, 8, 16),
+            data_type="real",
+            precision=np.float32,
+            transpose_mode=TransposeMode("non_transposed", "transposed"),
+            code_type=SM75,
+            execution="Block",
+        )
 
 
 @pytest.mark.parametrize("execute_api", ["static_leading_dimensions", "dynamic_leading_dimensions"])
@@ -32,7 +59,7 @@ def test_third_party_symbol(execute_api):
         data_type="real",
         precision=np.float64,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM70,
+        code_type=SM75,
         execution="Block",
         execute_api=execute_api,
     )
@@ -46,7 +73,7 @@ def test_third_party_code():
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM70,
+        code_type=SM75,
         execution="Block",
     )
 
@@ -59,7 +86,7 @@ def test_third_party_code():
     assert all(code.isa_version.major >= 12 for code in MM.codes)
     assert all(code.isa_version.minor >= 0 for code in MM.codes)
     assert all(code.code_type.cc.major == 7 for code in MM.codes)
-    assert all(code.code_type.cc.minor == 0 for code in MM.codes)
+    assert all(code.code_type.cc.minor == 5 for code in MM.codes)
     assert all(code.code_type.kind == "lto" for code in MM.codes)
     assert all(isinstance(code.data, bytes) for code in MM.codes)
     assert all(len(code.data) > 0 for code in MM.codes)
@@ -73,7 +100,7 @@ def test_transpose_mode(ta, tb):
         data_type="complex",
         precision=np.float32,
         transpose_mode=(ta, tb),
-        code_type=SM70,
+        code_type=SM75,
         execution="Block",
     )
 
@@ -82,7 +109,7 @@ def test_transpose_mode(ta, tb):
         data_type="complex",
         precision=np.float32,
         transpose_mode=TransposeMode(ta, tb),
-        code_type=SM70,
+        code_type=SM75,
         execution="Block",
     )
 
@@ -103,7 +130,7 @@ def test_suggested_block_dim():
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM70,
+        code_type=SM75,
         execution="Block",
         block_dim="suggested",
     )  # leading_dimension = None implicit
@@ -163,7 +190,7 @@ def test_valid_finalize():
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM70,
+        code_type=SM75,
         execution="Block",
     )
 
@@ -189,7 +216,7 @@ def test_cached():
         precision=np.float32,
         transpose_mode=TransposeMode("transposed", "transposed"),
         block_dim=Dim3(2, 4, 8),
-        code_type=SM70,
+        code_type=SM75,
         execution="Block",
         compiler=None,
     )
@@ -237,7 +264,7 @@ def test_cached():
     ],
 )
 def test_negative(opt, value):
-    opts = {"size": (24, 8, 48), "data_type": "real", "precision": np.float64, "code_type": SM70, "execution": "Block"}
+    opts = {"size": (24, 8, 48), "data_type": "real", "precision": np.float64, "code_type": SM75, "execution": "Block"}
     if value is None:
         del opts[opt]
     else:
@@ -248,12 +275,7 @@ def test_negative(opt, value):
 
 @pytest.mark.parametrize("code_type", [SM70, SM72, SM75, SM80, SM86, SM89, SM90, SM100, SM101, SM103, SM120, SM121])
 def test_sm(code_type):
-    err, major, minor = nvrtc.nvrtcVersion()
-    assert err == nvrtc.nvrtcResult.NVRTC_SUCCESS
-    err, supported_archs = nvrtc.nvrtcGetSupportedArchs()
-    assert err == nvrtc.nvrtcResult.NVRTC_SUCCESS
-    if code_type.cc.integer / 10 not in supported_archs:
-        pytest.skip(f"nvrtc version {major}.{minor} does not support compute capability {code_type.cc}")
+    skip_unsupported_sm(code_type)
     MM = matmul(
         size=(24, 8, 48),
         data_type="real",
@@ -285,7 +307,7 @@ def test_unsupported_sm():
         )
 
 
-@pytest.mark.parametrize("code_type", [("lto", (7, 0)), ("lto", (8, 0))])
+@pytest.mark.parametrize("code_type", [("lto", (7, 5)), ("lto", (8, 0))])
 def test_sm_type(code_type):
     MM = matmul(
         size=(24, 8, 48),
@@ -318,7 +340,7 @@ def test_sm_type(code_type):
     ],
 )
 def test_value_type(data_type, precision, value_type):
-    skip_nvbug_5218000(precision)
+    skip_nvbug_5218000(precision, sm=SM90)
     MM = matmul(
         size=(24, 8, 48),
         data_type=data_type,
@@ -346,7 +368,7 @@ def test_value_type(data_type, precision, value_type):
     ],
 )
 def test_value_types(data_type, precision, value_types):
-    skip_nvbug_5218000(precision)
+    skip_nvbug_5218000(precision, sm=SM90)
     MM = matmul(
         size=(24, 8, 48),
         data_type=data_type,
@@ -725,7 +747,7 @@ def test_blas_options_parameter_validation(param_name, param_value, special_case
         "data_type": "real",
         "precision": np.float32,
         "transpose_mode": TransposeMode("non_transposed", "transposed"),
-        "code_type": SM70,
+        "code_type": SM75,
         "execution": "Block",
     }
 

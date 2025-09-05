@@ -5,9 +5,11 @@
 __all__ = ["fft", "FFTOptions"]
 from functools import cached_property
 import warnings
+import weakref
 
 from .common import (
     make_binary_tempfile,
+    delete_binary_tempfiles,
     check_in,
     SHARED_DEVICE_DOCSTRINGS,
 )
@@ -431,6 +433,8 @@ class FFTCompiled(FFTOptionsComplete):
 
         self._symbol = get_str_trait(h, mathdx.CufftdxTraitType.SYMBOL_NAME)
 
+        self._finalizer = weakref.finalize(self, delete_binary_tempfiles, self.files)
+
     @cached_property
     def _tempfiles(self):
         """
@@ -439,7 +443,7 @@ class FFTCompiled(FFTOptionsComplete):
         return [make_binary_tempfile(lto.data, ".ltoir") for lto in self._ltos]
 
     @property
-    def files(self):
+    def files(self) -> list[str]:
         return [v.name for v in self._tempfiles]
 
     @property

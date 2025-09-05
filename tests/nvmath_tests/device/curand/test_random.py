@@ -6,6 +6,9 @@ import numpy as np
 import scipy.stats as stats
 import pytest
 
+from nvmath.device.random import Compile
+from ..helpers import AssertFilesClosed
+
 from . import distributions
 from . import generators
 from .utils import (
@@ -245,3 +248,8 @@ def test_skipahead_sequence(generator, threads, blocks):
     skip_sequence(states2, nthreads - np.arange(nthreads) - 1)
     c1, c2 = gen_all()
     assert np.all(c1 == c2)  # (n:2, n:2, n:2, ...) (n:2, n:2, n:2, ...)
+
+
+def test_files_closed():
+    with AssertFilesClosed():
+        Compile(cc=None)

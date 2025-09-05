@@ -5,7 +5,7 @@
 
 import functools
 import contextlib
-
+import cuda.core.experimental as ccx
 from .common_axes import cp, Framework, torch
 
 
@@ -14,9 +14,7 @@ def multi_gpu_only(fn):
 
     @functools.wraps(fn)
     def inner(*args, **kwargs):
-        if cp is None:
-            pytest.skip("Test requires cupy")
-        dev_count = cp.cuda.runtime.getDeviceCount()
+        dev_count = ccx.system.num_devices
         if dev_count < 2:
             pytest.skip(f"Test requires at least two gpus, got {dev_count}")
         else:

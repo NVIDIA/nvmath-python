@@ -15,6 +15,7 @@ from types import ModuleType
 
 from . import typemaps
 from .package_ifc import StreamHolder
+from .ndbuffer import ndbuffer
 
 
 class AnyTensor(Protocol):
@@ -75,6 +76,12 @@ class TensorHolder(ABC, Generic[Tensor]):
         """Name of the data type"""
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def itemsize(self) -> int:
+        """The size of the data type in bytes."""
+        raise NotImplementedError
+
     @classmethod
     @abstractmethod
     def empty(cls, shape: Sequence[int], device_id: int | Literal["cpu"], **context: Any) -> TensorHolder[Tensor]:
@@ -102,6 +109,11 @@ class TensorHolder(ABC, Generic[Tensor]):
 
         No copy is performed if the TensorHolder is already on the requested device.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def asndbuffer(self) -> ndbuffer.NDBuffer:
+        """Wraps the package tensor as a ndbuffer.NDBuffer object."""
         raise NotImplementedError
 
     @abstractmethod

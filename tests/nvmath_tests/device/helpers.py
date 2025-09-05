@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import os
+import psutil
 import time
 
 import numpy as np
@@ -232,6 +235,24 @@ def skip_nvbug_5218000(precision, sm=None, ctk=None, size=(1, 1, 1), dynamic_ld=
     pytest.skip("Skipping test due to NVBug 5218000.")
 
 
+def skip_unsupported_sm(sm=None):
+    """Skip tests for unsupported SM versions by nvrtc."""
+    if isinstance(sm, CodeType):
+        cc = sm.cc
+    elif isinstance(sm, ComputeCapability):
+        cc = sm
+    elif sm is None:
+        cc = get_default_code_type().cc
+    else:
+        raise TypeError(f"Unsupported argument type: {type(sm)}")
+    err, supported_archs = nvrtc.nvrtcGetSupportedArchs()
+    assert err == nvrtc.nvrtcResult.NVRTC_SUCCESS
+    if cc.integer / 10 not in supported_archs:
+        err, major, minor = nvrtc.nvrtcVersion()
+        assert err == nvrtc.nvrtcResult.NVRTC_SUCCESS
+        pytest.skip(f"nvrtc version {major}.{minor} does not support compute capability {cc}")
+
+
 SM70 = CodeType("lto", ComputeCapability(7, 0))
 SM72 = CodeType("lto", ComputeCapability(7, 2))
 SM75 = CodeType("lto", ComputeCapability(7, 5))
@@ -244,3 +265,22 @@ SM101 = CodeType("lto", ComputeCapability(10, 1))
 SM103 = CodeType("lto", ComputeCapability(10, 3))
 SM120 = CodeType("lto", ComputeCapability(12, 0))
 SM121 = CodeType("lto", ComputeCapability(12, 1))
+
+
+class AssertFilesClosed(contextlib.AbstractContextManager):
+    """A context which asserts that the number of open files has not changed."""
+
+    def __init__(self):
+        super().__init__()
+        self.process: psutil.Process
+        self.before_count = 0
+
+    def __enter__(self, *args, **kwargs):
+        self.process = psutil.Process(os.getpid())
+        self.before_count = len(self.process.open_files())
+
+    def __exit__(self, *args, **kwargs):
+        after_count = len(self.process.open_files())
+        assert after_count == self.before_count, f"The number of open files changed from {self.before_count} to {after_count}"
+        for file in self.process.open_files():
+            assert "ltoir" not in file.path, f"{file.path} is still open"

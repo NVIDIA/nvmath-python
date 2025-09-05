@@ -8,13 +8,12 @@ import re
 import subprocess
 import sys
 
+import cuda.core.experimental as ccx
+
 try:
     import cupy as cp
-
-    DEVICE_COUNT = cp.cuda.runtime.getDeviceCount()
 except ImportError:
     cp = None
-    DEVICE_COUNT = 0
 
 try:
     import matplotlib
@@ -24,6 +23,8 @@ else:
     # disable plot windows from popping out when testing locally
     matplotlib.use("Agg")
 import pytest
+
+DEVICE_COUNT = ccx.system.num_devices
 
 
 class SampleTestError(Exception):
@@ -76,7 +77,7 @@ def run_sample(samples_path, filename, env=None, use_subprocess=False, use_mpi=F
             exec(script, env if env is not None else {})
     except ImportError as e:
         # for samples requiring any of optional dependencies
-        for m in ("torch",):
+        for m in ("torch", "cupy"):
             if f"No module named '{m}'" in str(e):
                 pytest.skip(f"{m} uninstalled, skipping related tests")
                 break

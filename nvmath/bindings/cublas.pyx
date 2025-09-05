@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
 cimport cython  # NOQA
 from libcpp.vector cimport vector
@@ -110,6 +110,7 @@ class GemmAlgo(_IntEnum):
     ALGO13_TENSOR_OP = CUBLAS_GEMM_ALGO13_TENSOR_OP
     ALGO14_TENSOR_OP = CUBLAS_GEMM_ALGO14_TENSOR_OP
     ALGO15_TENSOR_OP = CUBLAS_GEMM_ALGO15_TENSOR_OP
+    AUTOTUNE = CUBLAS_GEMM_AUTOTUNE
 
 class Math(_IntEnum):
     """See `cublasMath_t`."""
@@ -117,6 +118,7 @@ class Math(_IntEnum):
     TENSOR_OP_MATH = CUBLAS_TENSOR_OP_MATH
     PEDANTIC_MATH = CUBLAS_PEDANTIC_MATH
     TF32_TENSOR_OP_MATH = CUBLAS_TF32_TENSOR_OP_MATH
+    FP32_EMULATED_BF16X9_MATH = CUBLAS_FP32_EMULATED_BF16X9_MATH
     DISALLOW_REDUCED_PRECISION_REDUCTION = CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION
 
 class ComputeType(_IntEnum):
@@ -128,10 +130,17 @@ class ComputeType(_IntEnum):
     COMPUTE_32F_FAST_16F = CUBLAS_COMPUTE_32F_FAST_16F
     COMPUTE_32F_FAST_16BF = CUBLAS_COMPUTE_32F_FAST_16BF
     COMPUTE_32F_FAST_TF32 = CUBLAS_COMPUTE_32F_FAST_TF32
+    COMPUTE_32F_EMULATED_16BFX9 = CUBLAS_COMPUTE_32F_EMULATED_16BFX9
     COMPUTE_64F = CUBLAS_COMPUTE_64F
     COMPUTE_64F_PEDANTIC = CUBLAS_COMPUTE_64F_PEDANTIC
     COMPUTE_32I = CUBLAS_COMPUTE_32I
     COMPUTE_32I_PEDANTIC = CUBLAS_COMPUTE_32I_PEDANTIC
+
+class EmulationStrategy(_IntEnum):
+    """See `cublasEmulationStrategy_t`."""
+    DEFAULT = CUBLAS_EMULATION_STRATEGY_DEFAULT
+    PERFORMANT = CUBLAS_EMULATION_STRATEGY_PERFORMANT
+    EAGER = CUBLAS_EMULATION_STRATEGY_EAGER
 
 
 ###############################################################################
@@ -3819,4 +3828,18 @@ cpdef gemm_grouped_batched_ex_64(intptr_t handle, transa_array, transb_array, m_
     get_resource_ptr[int64_t](_group_size_, group_size, <int64_t*>NULL)
     with nogil:
         status = cublasGemmGroupedBatchedEx_64(<Handle>handle, <const _Operation*>(_transa_array_.data()), <const _Operation*>(_transb_array_.data()), <const int64_t*>(_m_array_.data()), <const int64_t*>(_n_array_.data()), <const int64_t*>(_k_array_.data()), <const void*>alpha_array, <const void* const*>aarray, <DataType>atype, <const int64_t*>(_lda_array_.data()), <const void* const*>barray, <DataType>btype, <const int64_t*>(_ldb_array_.data()), <const void*>beta_array, <void* const*>carray, <DataType>ctype, <const int64_t*>(_ldc_array_.data()), group_count, <const int64_t*>(_group_size_.data()), <_ComputeType>compute_type)
+    check_status(status)
+
+
+cpdef get_emulation_strategy(intptr_t handle, intptr_t emulation_strategy):
+    """See `cublasGetEmulationStrategy`."""
+    with nogil:
+        status = cublasGetEmulationStrategy(<Handle>handle, <_EmulationStrategy*>emulation_strategy)
+    check_status(status)
+
+
+cpdef set_emulation_strategy(intptr_t handle, int emulation_strategy):
+    """See `cublasSetEmulationStrategy`."""
+    with nogil:
+        status = cublasSetEmulationStrategy(<Handle>handle, <_EmulationStrategy>emulation_strategy)
     check_status(status)

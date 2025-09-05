@@ -1,6 +1,44 @@
 nvmath-python Release Notes
 ***************************
 
+nvmath-python v0.6.0
+====================
+
+Beta6 release.
+
+* This will be the last release to support CUDA 11.
+* Added support for distributed R2C/C2R FFTs, along with support for non-uniform partition
+  sizes across PEs.
+* The ``distribution`` option for distributed FFTs is now a required keyword-only argument.
+* To enable making CuPy an optional dependency, an internal ``NDBuffer`` datastructure
+  was introduced that facilitates copying tensors across memory spaces and layouts. Users
+  may notice a one-time latency for each unique layout since the copy kernel is JIT compiled
+  and cached.
+* Replaced internal logic with
+  `cuda-pathfinder <https://github.com/NVIDIA/cuda-python/tree/main/cuda_pathfinder>`_ for
+  locating libraries and components.
+
+Bugs Fixed
+----------
+
+* The :meth:`nvmath.linalg.advanced.Matmul.autotune` method in the advanced Matmul APIs may
+  not have selected the best kernel, since the L2-cache wasn't cleared.
+* The return status of an internal call to a CUDA API  wasn't checked, resulting
+  in a misleading error regarding memory limit.
+* Fixed a use-after-free issue with the batched direct sparse solver.
+* Fixed a deadlock that may occur in certain circumstances during distributed FFT.
+* Added appropriate constraints for cuda-bindings based on the CTK version.
+* Fixed missing logging messages when a Python logger was not created with ``force=True``.
+
+
+Known Issues
+------------
+
+* The minimum supported versions for CuPy and PyTorch are out-of-date and will be increased
+  in the next release.
+* An internal symbol table used when loading symbols from libraries needs to be made
+  thread-safe. This will be done in the next release.
+
 nvmath-python v0.5.0
 ====================
 

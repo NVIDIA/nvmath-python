@@ -1,23 +1,106 @@
+# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import importlib
+import threading
 import typing
 
 import cuda.core.experimental as ccx
-import nvmath.internal.utils
-from nvmath.internal import package_wrapper, tensor_wrapper
+import pytest
+
 from hypothesis import given, strategies as st
+from nvmath.internal import package_wrapper, tensor_wrapper, utils
+
+_device_count = ccx.system.num_devices
+
+_cupy_available = False
+try:
+    import cupy as cp
+    from cupy.cuda.runtime import getDevice, setDevice
+
+    _cupy_available = True
+except ModuleNotFoundError:
+    pass
 
 
-def test_device_ctx():
-    id0 = 0
-    id1 = ccx.system.num_devices - 1
-    device0 = ccx.Device(id0)
-    device0.set_current()
-    assert ccx.Device().device_id == id0
-    with nvmath.internal.utils.device_ctx(id1) as device1:
-        assert isinstance(device1, ccx.Device)
-        assert device1.device_id == id1
-        assert ccx.Device().device_id == id1
-    assert ccx.Device().device_id == id0
+class TestDeviceCtx:
+    @pytest.mark.skipif(_device_count < 2, reason="2+ GPUs required for this test.")
+    @pytest.mark.skipif(not _cupy_available, reason="CuPy required for this test.")
+    def test_device_ctx(self):
+        assert getDevice() == 0
+        with utils.device_ctx(0):
+            assert getDevice() == 0
+            with utils.device_ctx(1):
+                assert getDevice() == 1
+                with utils.device_ctx(0):
+                    assert getDevice() == 0
+                assert getDevice() == 1
+            assert getDevice() == 0
+        assert getDevice() == 0
+
+        with utils.device_ctx(1):
+            assert getDevice() == 1
+            setDevice(0)
+            with utils.device_ctx(1):
+                assert getDevice() == 1
+            assert getDevice() == 0
+        assert getDevice() == 0
+
+    @pytest.mark.skipif(_device_count < 2, reason="2+ GPUs required for this test.")
+    @pytest.mark.skipif(not _cupy_available, reason="CuPy required for this test.")
+    def test_thread_safe(self):
+        # adopted from https://github.com/cupy/cupy/blob/master/tests/cupy_tests/cuda_tests/test_device.py
+        # recall that the CUDA context is maintained per-thread, so when each thread
+        # starts it is on the default device (=device 0).
+        t0_setup = threading.Event()
+        t1_setup = threading.Event()
+        t0_first_exit = threading.Event()
+
+        t0_exit_device = []
+        t1_exit_device = []
+
+        def t0_seq():
+            with utils.device_ctx(0):
+                with utils.device_ctx(1):
+                    t0_setup.set()
+                    t1_setup.wait()
+                    t0_exit_device.append(getDevice())
+                t0_exit_device.append(getDevice())
+                t0_first_exit.set()
+            assert getDevice() == 0
+
+        def t1_seq():
+            t0_setup.wait()
+            with utils.device_ctx(1):
+                with utils.device_ctx(0):
+                    t1_setup.set()
+                    t0_first_exit.wait()
+                    t1_exit_device.append(getDevice())
+                t1_exit_device.append(getDevice())
+            assert getDevice() == 0
+
+        try:
+            cp.cuda.runtime.setDevice(1)
+            t0 = threading.Thread(target=t0_seq)
+            t1 = threading.Thread(target=t1_seq)
+            t1.start()
+            t0.start()
+            t0.join()
+            t1.join()
+            assert t0_exit_device == [1, 0]
+            assert t1_exit_device == [0, 1]
+        finally:
+            cp.cuda.runtime.setDevice(0)
+
+    def test_one_shot(self):
+        dev = utils.device_ctx(0)
+        with dev:
+            pass
+        # CPython raises AttributeError, but we should not care here
+        with pytest.raises(Exception):  # noqa: SIM117
+            with dev:
+                pass
 
 
 @given(package_name=st.sampled_from(["cupy", "torch", "numpy"]), id0=st.sampled_from(["cpu", 0]))
@@ -33,12 +116,10 @@ def test_tensor_empty_device_ctx(package_name: str, id0: int | typing.Literal["c
         return
     id1 = ccx.system.num_devices - 1
     stream_holder = (
-        None
-        if isinstance(id0, str)
-        else nvmath.internal.utils.get_or_create_stream(device_id=id0, stream=None, op_package=package_name)
+        None if isinstance(id0, str) else utils.get_or_create_stream(device_id=id0, stream=None, op_package=package_name)
     )
-    with nvmath.internal.utils.device_ctx(id1):
-        _ = nvmath.internal.utils.create_empty_tensor(
+    with utils.device_ctx(id1):
+        _ = utils.create_empty_tensor(
             tensor_type,
             device_id=id0,
             extents=(64, 64, 64),

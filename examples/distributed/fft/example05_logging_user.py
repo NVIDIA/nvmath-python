@@ -54,7 +54,7 @@ with cp.cuda.Device(device_id):
 o = nvmath.distributed.fft.FFTOptions(logger=logger)
 
 # Specify the options to the FFT operation.
-b = nvmath.distributed.fft.fft(a, nvmath.distributed.fft.Slab.X, options=o)
+b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X, options=o)
 
 if rank == 0:
     print("---")

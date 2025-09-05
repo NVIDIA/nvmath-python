@@ -77,7 +77,7 @@ class TestFFTSamples:
                 pytest.skip(f"Sample ({sample}) is skipped because no FFT CPU library was found")
         else:
             if not HAS_CUFFT:
-                pytest.skip(f"Sample ({sample}) is skipped due to missing cufft or cupy")
+                pytest.skip(f"Sample ({sample}) is skipped due to missing cufft")
 
             if skip_cufft_jit_callback and "callback" in sample:
                 pytest.skip(f"Sample ({sample}) is skipped due to missing function pointer")

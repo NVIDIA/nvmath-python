@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
 cimport cython  # NOQA
 from libcpp.vector cimport vector
@@ -52,7 +52,7 @@ cdef class MatmulAlgo:
 
     @property
     def ptr(self):
-        """Get the pointer address to the data as Python :py:`int`."""
+        """Get the pointer address to the data as Python :class:`int`."""
         return self._data.ctypes.data
 
     def __int__(self):
@@ -75,7 +75,7 @@ cdef class MatmulAlgo:
 
     @property
     def data_(self):
-        """data_ (~_numpy.uint64): (array of length 8)."""
+        """~_numpy.uint64: (array of length 8)."""
         return self._data.data_
 
     @data_.setter
@@ -121,7 +121,7 @@ cdef class MatmulAlgo:
         """Create an MatmulAlgo instance wrapping the given pointer.
 
         Args:
-            ptr (intptr_t): pointer address as Python :py:`int` to the data.
+            ptr (intptr_t): pointer address as Python :class:`int` to the data.
             size (int): number of structs, default=1.
             readonly (bool): whether the data is read-only (to the user). default is `False`.
         """
@@ -176,7 +176,7 @@ cdef class MatmulHeuristicResult:
 
     @property
     def ptr(self):
-        """Get the pointer address to the data as Python :py:`int`."""
+        """Get the pointer address to the data as Python :class:`int`."""
         return self._data.ctypes.data
 
     def __int__(self):
@@ -199,7 +199,7 @@ cdef class MatmulHeuristicResult:
 
     @property
     def algo(self):
-        """algo (matmul_algo_dtype): """
+        """matmul_algo_dtype: """
         return self._data.algo
 
     @algo.setter
@@ -208,7 +208,7 @@ cdef class MatmulHeuristicResult:
 
     @property
     def workspace_size(self):
-        """workspace_size (~_numpy.uint64): """
+        """Union[~_numpy.uint64, int]: """
         if self._data.size == 1:
             return int(self._data.workspace_size[0])
         return self._data.workspace_size
@@ -219,7 +219,7 @@ cdef class MatmulHeuristicResult:
 
     @property
     def state(self):
-        """state (~_numpy.int32): """
+        """Union[~_numpy.int32, int]: """
         if self._data.size == 1:
             return int(self._data.state[0])
         return self._data.state
@@ -230,7 +230,7 @@ cdef class MatmulHeuristicResult:
 
     @property
     def waves_count(self):
-        """waves_count (~_numpy.float32): """
+        """Union[~_numpy.float32, float]: """
         if self._data.size == 1:
             return float(self._data.waves_count[0])
         return self._data.waves_count
@@ -278,7 +278,7 @@ cdef class MatmulHeuristicResult:
         """Create an MatmulHeuristicResult instance wrapping the given pointer.
 
         Args:
-            ptr (intptr_t): pointer address as Python :py:`int` to the data.
+            ptr (intptr_t): pointer address as Python :class:`int` to the data.
             size (int): number of structs, default=1.
             readonly (bool): whether the data is read-only (to the user). default is `False`.
         """
@@ -1014,6 +1014,7 @@ class MatrixLayoutAttribute(_IntEnum):
     BATCH_COUNT = CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT
     STRIDED_BATCH_OFFSET = CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET
     PLANE_OFFSET = CUBLASLT_MATRIX_LAYOUT_PLANE_OFFSET
+    BATCH_MODE = CUBLASLT_MATRIX_LAYOUT_BATCH_MODE
 
 class MatmulDescAttribute(_IntEnum):
     """See `cublasLtMatmulDescAttributes_t`."""
@@ -1042,10 +1043,6 @@ class MatmulDescAttribute(_IntEnum):
     EPILOGUE_AUX_AMAX_POINTER = CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_AMAX_POINTER
     FAST_ACCUM = CUBLASLT_MATMUL_DESC_FAST_ACCUM
     BIAS_DATA_TYPE = CUBLASLT_MATMUL_DESC_BIAS_DATA_TYPE
-    ATOMIC_SYNC_NUM_CHUNKS_D_ROWS = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_ROWS
-    ATOMIC_SYNC_NUM_CHUNKS_D_COLS = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS
-    ATOMIC_SYNC_IN_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER
-    ATOMIC_SYNC_OUT_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER
     A_SCALE_MODE = CUBLASLT_MATMUL_DESC_A_SCALE_MODE
     B_SCALE_MODE = CUBLASLT_MATMUL_DESC_B_SCALE_MODE
     C_SCALE_MODE = CUBLASLT_MATMUL_DESC_C_SCALE_MODE
@@ -1053,6 +1050,10 @@ class MatmulDescAttribute(_IntEnum):
     EPILOGUE_AUX_SCALE_MODE = CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE
     D_OUT_SCALE_POINTER = CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER
     D_OUT_SCALE_MODE = CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE
+    ATOMIC_SYNC_NUM_CHUNKS_D_ROWS = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_ROWS
+    ATOMIC_SYNC_NUM_CHUNKS_D_COLS = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS
+    ATOMIC_SYNC_IN_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER
+    ATOMIC_SYNC_OUT_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER
 
 class MatrixTransformDescAttribute(_IntEnum):
     """See `cublasLtMatrixTransformDescAttributes_t`."""
@@ -1138,6 +1139,8 @@ class MatmulAlgoCapAttribute(_IntEnum):
     MIN_ALIGNMENT_B_BYTES = CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_B_BYTES
     MIN_ALIGNMENT_C_BYTES = CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_C_BYTES
     MIN_ALIGNMENT_D_BYTES = CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_D_BYTES
+    POINTER_ARRAY_BATCH_SUPPORT = CUBLASLT_ALGO_CAP_POINTER_ARRAY_BATCH_SUPPORT
+    FLOATING_POINT_EMULATION_SUPPORT = CUBLASLT_ALGO_CAP_FLOATING_POINT_EMULATION_SUPPORT
     ATOMIC_SYNC = CUBLASLT_ALGO_CAP_ATOMIC_SYNC
     MATHMODE_IMPL = CUBLASLT_ALGO_CAP_MATHMODE_IMPL
     GAUSSIAN_IMPL = CUBLASLT_ALGO_CAP_GAUSSIAN_IMPL
@@ -1221,6 +1224,14 @@ class MatmulMatrixScale(_IntEnum):
     SCALAR_32F = CUBLASLT_MATMUL_MATRIX_SCALE_SCALAR_32F
     VEC16_UE4M3 = CUBLASLT_MATMUL_MATRIX_SCALE_VEC16_UE4M3
     VEC32_UE8M0 = CUBLASLT_MATMUL_MATRIX_SCALE_VEC32_UE8M0
+    OUTER_VEC_32F = CUBLASLT_MATMUL_MATRIX_SCALE_OUTER_VEC_32F
+    VEC128_32F = CUBLASLT_MATMUL_MATRIX_SCALE_VEC128_32F
+    BLK128x128_32F = CUBLASLT_MATMUL_MATRIX_SCALE_BLK128x128_32F
+
+class BatchMode(_IntEnum):
+    """See `cublasLtBatchMode_t`."""
+    STRIDED = CUBLASLT_BATCH_MODE_STRIDED
+    POINTER_ARRAY = CUBLASLT_BATCH_MODE_POINTER_ARRAY
 
 
 ###############################################################################
@@ -1334,6 +1345,7 @@ cdef dict matrix_layout_attribute_sizes = {
     CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT: _numpy.int32,
     CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET: _numpy.int64,
     CUBLASLT_MATRIX_LAYOUT_PLANE_OFFSET: _numpy.int64,
+    CUBLASLT_MATRIX_LAYOUT_BATCH_MODE: _numpy.int32,
 }
 
 cpdef get_matrix_layout_attribute_dtype(int attr):
@@ -1411,10 +1423,6 @@ cdef dict matmul_desc_attribute_sizes = {
     CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_AMAX_POINTER: _numpy.intp,
     CUBLASLT_MATMUL_DESC_FAST_ACCUM: _numpy.int8,
     CUBLASLT_MATMUL_DESC_BIAS_DATA_TYPE: _numpy.int32,
-    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_ROWS: _numpy.int32,
-    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS: _numpy.int32,
-    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER: _numpy.int32,
-    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER: _numpy.int32,
     CUBLASLT_MATMUL_DESC_A_SCALE_MODE: _numpy.int32,
     CUBLASLT_MATMUL_DESC_B_SCALE_MODE: _numpy.int32,
     CUBLASLT_MATMUL_DESC_C_SCALE_MODE: _numpy.int32,
@@ -1422,6 +1430,10 @@ cdef dict matmul_desc_attribute_sizes = {
     CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE: _numpy.int32,
     CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER: _numpy.intp,
     CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_ROWS: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER: _numpy.int32,
 }
 
 cpdef get_matmul_desc_attribute_dtype(int attr):
@@ -1624,6 +1636,8 @@ cdef dict matmul_algo_cap_attribute_sizes = {
     CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_B_BYTES: _numpy.uint32,
     CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_C_BYTES: _numpy.uint32,
     CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_D_BYTES: _numpy.uint32,
+    CUBLASLT_ALGO_CAP_POINTER_ARRAY_BATCH_SUPPORT: _numpy.int32,
+    CUBLASLT_ALGO_CAP_FLOATING_POINT_EMULATION_SUPPORT: _numpy.int32,
     CUBLASLT_ALGO_CAP_ATOMIC_SYNC: _numpy.int32,
     CUBLASLT_ALGO_CAP_MATHMODE_IMPL: _numpy.int32,
     CUBLASLT_ALGO_CAP_GAUSSIAN_IMPL: _numpy.int32,

@@ -50,6 +50,10 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         return str(self.tensor.dtype).split(".")[-1]
 
     @property
+    def itemsize(self):
+        return self.tensor.itemsize
+
+    @property
     def shape(self):
         return tuple(self.tensor.shape)
 
@@ -83,6 +87,9 @@ class TorchTensor(TensorHolder[torch.Tensor]):
                 tensor = torch.empty(shape, dtype=dtype, device=device_id)
 
         return cls(tensor)
+
+    def asndbuffer(self):
+        raise RuntimeError("Converting torch tensor to ndbuffer is not supported")
 
     def to(self, device_id, stream_holder):
         if not (device_id == "cpu" or isinstance(device_id, int)):

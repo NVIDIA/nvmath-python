@@ -1,4 +1,4 @@
-# This code was automatically generated with version 0.2.1. Do not modify it directly.
+# This code was automatically generated with version 0.2.3. Do not modify it directly.
 
 from ._internal cimport mathdx as _mathdx
 

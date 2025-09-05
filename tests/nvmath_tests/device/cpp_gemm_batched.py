@@ -12,7 +12,7 @@ import cupy
 class MatmulBatchedCpp:
     def __init__(self, size, precision, data_type, sm, block_size, repeat):
         m, n, k = size
-        assert precision == np.float32
+        assert precision in {np.float32, np.float64}
         assert data_type == "real"
         assert sm[0] >= 7
         assert sm[1] >= 0
@@ -25,8 +25,10 @@ class MatmulBatchedCpp:
         #include <cublasdx.hpp>
         using namespace cublasdx;
 
+        typedef {"float" if precision == np.float32 else "double"} precision;
+
         using GEMM = decltype( Size< {m}, {n}, {k} >()
-                               + Precision<float>()
+                               + Precision<precision>()
                                + Type< type::{data_type}>()
                                + Function<function::MM>()
                                + TransposeMode< transpose_mode::non_transposed, transpose_mode::non_transposed>()
@@ -35,13 +37,17 @@ class MatmulBatchedCpp:
                                + SM<{sm[0] * 100 + sm[1] * 10}>()
                               );
 
+        #if CUBLASDX_VERSION < 300
         __device__ const unsigned int shared_memory_size = GEMM::shared_memory_size;
+        #else
+        __device__ const unsigned int shared_memory_size = get_shared_storage_size<GEMM>();
+        #endif
 
         __global__ void kernel(void* a_void,
                                void* b_void,
                                void* c_void) {{
 
-            using value_type = float;
+            using value_type = precision;
 
             const value_type* a = (const value_type*) a_void;
             const value_type* b = (const value_type*) b_void;

@@ -6,7 +6,6 @@ import os
 import sys
 
 from setuptools.command.build_ext import build_ext as _build_ext
-from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 
 
 def detect_cuda_paths():
@@ -22,6 +21,9 @@ def detect_cuda_paths():
     potential_build_prefixes = (
         [os.path.join(p, "nvidia/cuda_runtime") for p in sys.path]
         + [os.path.join(p, "nvidia/cuda_nvcc") for p in sys.path]
+        # internal/bindings depends on cuda_bindings cydriver,
+        # which introduces dependency on cudaProfiler.h
+        + [os.path.join(p, "nvidia/cuda_profiler_api") for p in sys.path]
         + [os.environ.get("CUDA_PATH", os.environ.get("CUDA_HOME", "")), "/usr/local/cuda"]
     )
     cuda_paths = []
@@ -38,6 +40,9 @@ def detect_cuda_paths():
 
     check_path("cuda.h")
     check_path("crt/host_defines.h")
+    # internal/bindings depends on cuda_bindings cydriver,
+    # which introduces dependency on cudaProfiler.h
+    check_path("cudaProfiler.h")
     return cuda_paths
 
 
@@ -48,16 +53,6 @@ def decide_lib_name(ext_name):
             return lib
     else:
         return None
-
-
-building_wheel = False
-
-
-class bdist_wheel(_bdist_wheel):
-    def run(self):
-        global building_wheel
-        building_wheel = True
-        super().run()
 
 
 class build_ext(_build_ext):
@@ -74,42 +69,43 @@ class build_ext(_build_ext):
         Set cuda_incl_dir and extra_linker_flags.
         """
         cuda_incl_dir = [os.path.join(p, "include") for p in self._nvmath_cuda_paths]
+        extra_linker_flags = []
 
-        if not building_wheel:
-            # Note: with PEP-517 the editable mode would not build a wheel for installation
-            # (and we purposely do not support PEP-660).
-            extra_linker_flags = []
+        site_packages = ["$ORIGIN/../../.."]
+        if self.editable_mode:
+            import site
+
+            site_packages = site.getsitepackages()
         else:
-            # Note: soname = library major version
-            # We need to be able to search for cuBLAS/cuSOLVER/... at run time, in case they
-            # are installed via pip wheels.
-            # The rpaths must be adjusted given the following full-wheel installation:
-            # - $ORIGIN:          site-packages/nvmath/bindings/_internal/
-            # - cublas:           site-packages/nvidia/cublas/lib/
-            # - cusolver:         site-packages/nvidia/cusolver/lib/
-            # -   ...                             ...
-            # strip binaries to remove debug symbols which significantly increase wheel size
+            # strip binaries to remove debug symbols which significantly
+            # increase wheel size
             extra_linker_flags = ["-Wl,--strip-all"]
-            if lib_name is not None:
-                ldflag = "-Wl,--disable-new-dtags"
-                match lib_name:
-                    case "nvpl":
-                        # 1. the nvpl bindings land in
-                        # site-packages/nvmath/bindings/nvpl/_internal/ as opposed to other
-                        # packages that have their bindings in
-                        # site-packages/nvmath/bindings/_internal/, so we need one extra
-                        # `..` to get into `site-packages` and then the lib_name=nvpl is not
-                        # in nvidia dir but directly in the site-packages.
-                        # 2. mkl lib is placed directly in the python `lib` directory, not
-                        # in python{ver}/site-packages
-                        ldflag += f",-rpath,$ORIGIN/../../../../{lib_name}/lib:$ORIGIN/../../../../../../"
-                    case "cufftMp":
-                        ldflag += ",-rpath,$ORIGIN/../../../nvidia/cufftmp/cu12/lib"
-                    case "mathdx" | "cudss":
-                        ldflag += ",-rpath,$ORIGIN/../../../nvidia/cu12/lib"
-                    case _:
-                        ldflag += f",-rpath,$ORIGIN/../../../nvidia/{lib_name}/lib"
-                extra_linker_flags.append(ldflag)
+        nvpl_site_packages = [f"{p}/.." for p in site_packages]
+
+        # Note: soname = library major version
+        # We need to be able to search for cuBLAS/cuSOLVER/... at run time, in case they
+        # are installed via pip wheels.
+        # The rpaths must be adjusted given the following full-wheel installation:
+        # - $ORIGIN:          site-packages/nvmath/bindings/_internal/
+        # - cublas:           site-packages/nvidia/cublas/lib/
+        # - cusolver:         site-packages/nvidia/cusolver/lib/
+        # -   ...                             ...
+        if lib_name is None:
+            return cuda_incl_dir, extra_linker_flags
+
+        ldflag = "-Wl,--disable-new-dtags"
+        if lib_name == "nvpl":
+            # 1. the nvpl bindings land in
+            # site-packages/nvmath/bindings/nvpl/_internal/ as opposed to other
+            # packages that have their bindings in
+            # site-packages/nvmath/bindings/_internal/, so we need one extra
+            # `..` to get into `site-packages` and then the lib_name=nvpl is not
+            # in nvidia dir but directly in the site-packages.
+            # 2. mkl lib is placed directly in the python `lib` directory, not
+            # in python{ver}/site-packages
+            rpath = ":".join([f"{pth}/{lib_name}/lib:{pth}/../../" for pth in nvpl_site_packages])
+            ldflag += f",-rpath,{rpath}"
+        extra_linker_flags.append(ldflag)
 
         return cuda_incl_dir, extra_linker_flags
 

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -46,6 +46,7 @@ ctypedef cublasLtMatmulAlgoConfigAttributes_t _MatmulAlgoConfigAttribute
 ctypedef cublasLtClusterShape_t _ClusterShape
 ctypedef cublasLtMatmulInnerShape_t _MatmulInnerShape
 ctypedef cublasLtMatmulMatrixScale_t _MatmulMatrixScale
+ctypedef cublasLtBatchMode_t _BatchMode
 
 
 ###############################################################################

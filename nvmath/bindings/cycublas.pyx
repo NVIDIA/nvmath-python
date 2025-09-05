@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
 
 from ._internal cimport cublas as _cublas
 
@@ -2025,3 +2025,11 @@ cdef cublasStatus_t cublasGemmGroupedBatchedEx(cublasHandle_t handle, const cubl
 
 cdef cublasStatus_t cublasGemmGroupedBatchedEx_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const void* alpha_array, const void* const Aarray[], cudaDataType_t Atype, const int64_t lda_array[], const void* const Barray[], cudaDataType_t Btype, const int64_t ldb_array[], const void* beta_array, void* const Carray[], cudaDataType_t Ctype, const int64_t ldc_array[], int64_t group_count, const int64_t group_size[], cublasComputeType_t computeType) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cublas._cublasGemmGroupedBatchedEx_64(handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, Aarray, Atype, lda_array, Barray, Btype, ldb_array, beta_array, Carray, Ctype, ldc_array, group_count, group_size, computeType)
+
+
+cdef cublasStatus_t cublasGetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t* emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasGetEmulationStrategy(handle, emulationStrategy)
+
+
+cdef cublasStatus_t cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasSetEmulationStrategy(handle, emulationStrategy)

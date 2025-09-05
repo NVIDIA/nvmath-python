@@ -51,9 +51,8 @@ needed; the dependencies are pulled via extras).
        nvmath host APIs.
    * - ``pip install nvmath-python[cu12,dx]``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (wheels for cuBLAS/cuFFT/..., CuPy, Numba,
-       pynvjitlink, ...) to support nvmath host & device APIs (which
-       only supports CUDA 12) [8]_.
+       dependencies (wheels for cuBLAS/cuFFT/..., CuPy, Numba, ...) to support
+       nvmath host & device APIs (which only supports CUDA 12) [8]_.
    * - ``pip install nvmath-python[cpu]``
      - Install nvmath-python along with all CPU optional dependencies
        (wheels for NVPL or MKL) to support optimized CPU FFT APIs. [1]_
@@ -146,19 +145,16 @@ Conda packages can be installed from the `conda-forge <https://conda-forge.org>`
      - Install nvmath-python along with all CUDA 12 optional
        dependencies (packages for cuBLAS/cuFFT/... and CuPy) to support
        nvmath host APIs.
-   * - ``conda install -c conda-forge -c rapidsai nvmath-python-dx "pynvjitlink>=0.6"
+   * - ``conda install -c conda-forge nvmath-python-dx
        cuda-version=12``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (packages for cuBLAS/cuFFT/..., CuPy, Numba,
-       pynvjitlink, ...) to support nvmath host & device APIs (which
-       only supports CUDA 12).
+       dependencies (packages for cuBLAS/cuFFT/..., CuPy, Numba, ...) to support
+       nvmath host & device APIs (which only supports CUDA 12).
 
        **Note**:
 
        1. ``nvmath-python-dx`` is a metapackage for ease of installing
           ``nvmath-python`` and other dependencies.
-       2. Currently, ``pynvjitlink`` is only available on the rapidsai channel,
-          and not on conda-forge.
    * - ``conda install -c conda-forge nvmath-python-cpu``
      - Install nvmath-python along with all CPU optional dependencies
        (NVPL or other) to support optimized CPU FFT APIs. [1]_
@@ -328,6 +324,18 @@ dependency is *required* unless stated otherwise.
        | (NVRTC, NVVM, CCCL [8]_, CUDART)
      - CUDA 12.x
      - CUDA 12.x
+   * - cuda-pathfinder
+     -
+     - >=1.2.1
+     - >=1.2.1
+     - >=1.2.1
+     - >=1.2.1
+   * - cuda-core
+     -
+     - >=0.3.2
+     - >=0.3.2
+     - >=0.3.2
+     - >=0.3.2
    * - NumPy
      -
      - >=1.25
@@ -351,20 +359,14 @@ dependency is *required* unless stated otherwise.
    * - libmathdx (cuBLASDx, cuFFTDx, ...)
      -
      -
-     - >=0.2.1,<0.3
+     - >=0.2.3,<0.3
      -
      -
    * - numba-cuda
      -
      -
-     - >=0.11.0
-     - >=0.11.0
-     -
-   * - pynvjitlink
-     -
-     -
-     - >=0.6
-     -
+     - >=0.18.1
+     - >=0.18.1
      -
    * - Math Kernel Library (MKL)
      -
@@ -585,9 +587,6 @@ denoting CUDA's major version:
    * - ``nvidia-cuda-cccl-cuXX``
      - ``cuda-cccl``
      - n/a
-   * - ``pynvjitlink-cuXX``
-     - ``pynvjitlink``
-     - n/a
    * - ``nvidia-cublas-cuXX``
      - ``libcublas``
      - ``cudatoolkit``
@@ -618,10 +617,11 @@ For more information with regard to the new CUDA 12+ package layout on conda-for
 
 .. [1] Windows support will be added in a future release.
 .. [2] nvmath-python relies on `CUDA minor version compatibility
-    <https://docs.nvidia.com/deploy/cuda-compatibility/index.html
-    #minor-version-compatibility>`_.
-.. [4] As of beta 5.0 (v0.5.0), CuPy is a required run-time dependency except for CPU-only
-    execution. In a future release it will be turned into an optional run-time dependency.
+    <https://docs.nvidia.com/deploy/cuda-compatibility
+    /minor-version-compatibility.html>`_.
+.. [4] As of Beta 6.0 (v0.6.0), CuPy is an optional run-time dependency. It is included in
+    cuda (cu11, cu12) and dx extras/meta-packages. In a future release it may be removed
+    from extras/meta-packages.
 .. [5] For example, Hopper GPUs are supported starting CUDA 11.8, so they would not work
     with libraries from CUDA 11.7 or below.
 .. [6] While we need some CUDA headers at build time, there is no limitation in the CUDA

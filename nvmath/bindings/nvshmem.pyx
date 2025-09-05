@@ -52,7 +52,7 @@ cdef class uniqueid:
 
     @property
     def ptr(self):
-        """Get the pointer address to the data as Python :py:`int`."""
+        """Get the pointer address to the data as Python :class:`int`."""
         return self._data.ctypes.data
 
     def __int__(self):
@@ -75,7 +75,7 @@ cdef class uniqueid:
 
     @property
     def version(self):
-        """version (~_numpy.int32): """
+        """Union[~_numpy.int32, int]: """
         if self._data.size == 1:
             return int(self._data.version[0])
         return self._data.version
@@ -123,7 +123,7 @@ cdef class uniqueid:
         """Create an uniqueid instance wrapping the given pointer.
 
         Args:
-            ptr (intptr_t): pointer address as Python :py:`int` to the data.
+            ptr (intptr_t): pointer address as Python :class:`int` to the data.
             size (int): number of structs, default=1.
             readonly (bool): whether the data is read-only (to the user). default is `False`.
         """
@@ -167,7 +167,7 @@ cdef class InitAttr:
 
     @property
     def ptr(self):
-        """Get the pointer address to the data as Python :py:`int`."""
+        """Get the pointer address to the data as Python :class:`int`."""
         return self._data.ctypes.data
 
     @property

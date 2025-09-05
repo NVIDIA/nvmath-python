@@ -47,14 +47,14 @@ a = np.random.rand(*shape) + 1j * np.random.rand(*shape)
 
 # Alternative #1 for specifying options, using dataclass.
 options = nvmath.distributed.fft.FFTOptions(reshape=False)
-b = nvmath.distributed.fft.fft(a, nvmath.distributed.fft.Slab.X, options=options)
+b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X, options=options)
 if rank == 0:
     print(f"Does the forward FFT result share the same distribution as the input ? {b.shape == a.shape}")
     print(f"Input type = {type(a)}, FFT output type = {type(b)}")
 
 # Alternative #2 for specifying options, using dict. The two alternatives are entirely
 # equivalent.
-c = nvmath.distributed.fft.ifft(b, nvmath.distributed.fft.Slab.Y, options={"reshape": False})
+c = nvmath.distributed.fft.ifft(b, distribution=nvmath.distributed.fft.Slab.Y, options={"reshape": False})
 if rank == 0:
     print(f"Does the inverse FFT result share the same distribution as the forward input ? {c.shape == a.shape}")
     print(f"Input type = {type(a)}, FFT output type = {type(b)}")

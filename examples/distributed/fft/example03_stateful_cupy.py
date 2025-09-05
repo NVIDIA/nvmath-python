@@ -31,12 +31,12 @@ shape = 512, 512 // nranks, 512
 # cuFFTMp uses the NVSHMEM PGAS model for distributed computation, which requires GPU
 # operands to be on the symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(shape, cp, dtype=cp.complex64)
-# a is a cupy ndarray and can be operated on using cupy operations.
+# a is a cupy ndarray and can be operated on using in-place cupy operations.
 with cp.cuda.Device(device_id):
     a[:] = cp.ones(shape, dtype=cp.complex64)
 
 # Create a stateful FFT object 'f'.
-with nvmath.distributed.fft.FFT(a, nvmath.distributed.fft.Slab.Y) as f:
+with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.Y) as f:
     # Plan the FFT.
     f.plan()
 

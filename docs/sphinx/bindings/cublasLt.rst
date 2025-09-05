@@ -12,23 +12,27 @@ Enums and constants
 .. autosummary::
    :toctree: generated/
 
-   MatmulTile
-   MatmulStages
-   PointerMode
-   PointerModeMask
-   Order
-   MatrixLayoutAttribute
-   MatmulDescAttribute
-   MatrixTransformDescAttribute
-   ReductionScheme
+   BatchMode
+   ClusterShape
+   cuBLASLtError
    Epilogue
-   MatmulSearch
-   MatmulPreferenceAttribute
+   MatmulAlgo
    MatmulAlgoCapAttribute
    MatmulAlgoConfigAttribute
-   ClusterShape
+   MatmulDescAttribute
+   MatmulHeuristicResult
    MatmulInnerShape
-   cuBLASLtError
+   MatmulMatrixScale
+   MatmulPreferenceAttribute
+   MatmulSearch
+   MatmulStages
+   MatmulTile
+   MatrixLayoutAttribute
+   MatrixTransformDescAttribute
+   Order
+   PointerMode
+   PointerModeMask
+   ReductionScheme
 
 
 Functions
@@ -39,46 +43,46 @@ Functions
 
    create
    destroy
-   get_version
+   disable_cpu_instructions_set_mask
    get_cudart_version
-   get_property
-   matmul
-   matrix_transform
-   matrix_layout_create
-   matrix_layout_destroy
-   get_matrix_layout_attribute_dtype
-   matrix_layout_set_attribute
-   matrix_layout_get_attribute
-   matmul_desc_create
-   matmul_desc_destroy
-   get_matmul_desc_attribute_dtype
-   matmul_desc_set_attribute
-   matmul_desc_get_attribute
-   matrix_transform_desc_create
-   matrix_transform_desc_destroy
-   get_matrix_transform_desc_attribute_dtype
-   matrix_transform_desc_set_attribute
-   matrix_transform_desc_get_attribute
-   matmul_preference_create
-   matmul_preference_destroy
-   get_matmul_preference_attribute_dtype
-   matmul_preference_set_attribute
-   matmul_preference_get_attribute
-   matmul_algo_get_heuristic
-   matmul_algo_init
-   matmul_algo_check
    get_matmul_algo_cap_attribute_dtype
-   matmul_algo_cap_get_attribute
    get_matmul_algo_config_attribute_dtype
-   matmul_algo_config_set_attribute
-   matmul_algo_config_get_attribute
+   get_matmul_desc_attribute_dtype
+   get_matmul_preference_attribute_dtype
+   get_matrix_layout_attribute_dtype
+   get_matrix_transform_desc_attribute_dtype
+   get_property
+   get_status_name
+   get_status_string
+   get_version
+   heuristics_cache_get_capacity
+   heuristics_cache_set_capacity
+   logger_force_disable
    logger_open_file
    logger_set_level
    logger_set_mask
-   logger_force_disable
-   get_status_name
-   get_status_string
-   heuristics_cache_get_capacity
-   heuristics_cache_set_capacity
-   disable_cpu_instructions_set_mask
+   matmul
+   matmul_algo_cap_get_attribute
+   matmul_algo_check
+   matmul_algo_config_get_attribute
+   matmul_algo_config_set_attribute
+   matmul_algo_get_heuristic
    matmul_algo_get_ids
+   matmul_algo_init
+   matmul_desc_create
+   matmul_desc_destroy
+   matmul_desc_get_attribute
+   matmul_desc_set_attribute
+   matmul_preference_create
+   matmul_preference_destroy
+   matmul_preference_get_attribute
+   matmul_preference_set_attribute
+   matrix_layout_create
+   matrix_layout_destroy
+   matrix_layout_get_attribute
+   matrix_layout_set_attribute
+   matrix_transform
+   matrix_transform_desc_create
+   matrix_transform_desc_destroy
+   matrix_transform_desc_get_attribute
+   matrix_transform_desc_set_attribute

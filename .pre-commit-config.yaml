@@ -20,6 +20,9 @@ repos:
     - id: trailing-whitespace
     - id: mixed-line-ending
       args: ['--fix=lf']
+    - id: pretty-format-json
+      args: ['--no-sort-keys','--autofix']
+      exclude_types: [jupyter]
 
   - repo: https://github.com/abravalheri/validate-pyproject
     rev: v0.24
@@ -42,10 +45,10 @@ repos:
         # Envorce only one source of configuration.
         args: ["--config-file", "pyproject.toml"]
         additional_dependencies:
-          - cuda-python
+          - cuda-core
+          - cuda-bindings>=12.9.1,<13
           - cupy-cuda12x
-          # TODO: https://github.com/mpi4py/mpi4py/issues/630
-          # - mpi4py
+          - mpi4py>=4.1.0
           - numba
           - numba-cuda
           - numpy
@@ -55,15 +58,8 @@ repos:
           - types-cffi
           - types-pywin32
           - invoke
-          - cython<3
-          - wheel
-
-  # FIXME: Prettier pre-commit plugin is no longer supported
-  # Autoformat: YAML, JSON, Markdown, etc.
-  # - repo: https://github.com/pre-commit/mirrors-prettier
-  #   rev: v4.0.0-alpha.8
-  #   hooks:
-  #     - id: prettier
+          - cython>=3.0.4,!=3.1.0,!=3.1.1
+          - tomli
 
   # Spellcheck
   - repo: https://github.com/codespell-project/codespell

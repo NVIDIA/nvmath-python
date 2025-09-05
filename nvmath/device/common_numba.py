@@ -150,7 +150,7 @@ def overload_type_attribute(numba_type, attribute_base, attribute):
     """Make type attribute available inside jitted code."""
     assert issubclass(numba_type, types.Type)
 
-    @overload_attribute(numba_type, attribute, inline="always", target="cuda")
+    @overload_attribute(numba_type, attribute, jit_options={"forceinline": True}, target="cuda")
     def ol_blas_attribute(blas_numba):
         tp = blas_numba
         if attribute_base != "":

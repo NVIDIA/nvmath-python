@@ -11,10 +11,12 @@ import math
 import re
 from typing import overload
 from warnings import warn
+import weakref
 
 from .common import (
     Layout,
     make_binary_tempfile,
+    delete_binary_tempfiles,
     check_in,
     SHARED_DEVICE_DOCSTRINGS,
     pad_or_truncate,
@@ -553,7 +555,7 @@ class BlasOptionsComplete(BlasOptions):
     @property
     @deprecated("value_type trait is deprecated. Please use {a|b|c}_value_type instead")
     def value_type(self):
-        if not all(vt == self.a_value_type for vt in self._value_types):
+        if not all(vt == self._value_types[0] for vt in self._value_types):
             raise RuntimeError("value_type may be used only if all {a|b|c}_value_type have the same type")
         return self.a_value_type
 
@@ -790,6 +792,8 @@ class BlasCompiled(BlasOptionsComplete):
             _, copy_wait_lto = generate_copy_wait_lto(self.code_type.cc)
             self._ltos += [Code(self.code_type, isa_version, copy_wait_lto)]
 
+        self._finalizer = weakref.finalize(self, delete_binary_tempfiles, self.files)
+
     def _declare_tensors(self, h):
         # Complex will be over-aligned (eg: f32x2 complex is aligned on 8B) with
         # this logic (which is what we want - for performance and vectorization)
@@ -818,7 +822,7 @@ class BlasCompiled(BlasOptionsComplete):
         return [make_binary_tempfile(lto.data, ".ltoir") for lto in self._ltos]
 
     @property
-    def files(self):
+    def files(self) -> list[str]:
         """The list of binary files for the lto functions."""
         return [v.name for v in self._tempfiles]
 

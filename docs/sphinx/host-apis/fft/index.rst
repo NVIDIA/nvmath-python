@@ -11,8 +11,8 @@ The Fast Fourier Transform (FFT) module :mod:`nvmath.fft` in nvmath-python lever
 NVIDIA cuFFT library and provides a powerful suite of APIs that can be directly called from
 the host to efficiently perform discrete Fourier Transformations. Both stateless
 function-form APIs and stateful class-form APIs are provided to support a spectrum of
-N-dimensional FFT operations. These include forward and inverse transformations, as well as
-complex-to-complex (C2C), complex-to-real (C2R), and real-to-complex (R2C) transforms:
+N-dimensional FFT operations. These include forward and inverse complex-to-complex (C2C)
+transformations, as well as complex-to-real (C2R) and real-to-complex (R2C) transforms:
 
 - N-dimensional forward C2C FFT transform by :func:`nvmath.fft.fft`.
 - N-dimensional inverse C2C FFT transform by :func:`nvmath.fft.ifft`.

@@ -93,18 +93,22 @@ def pytest_collection_modifyitems(config, items):
         items[:] = kept
 
 
-try:
-    import cupy
+_mempool = None
 
-    _mempool = cupy.get_default_memory_pool()
 
-    @pytest.fixture(autouse=True)
-    def free_cupy_mempool():
-        """Force the cupy mempool to release all memory after each test."""
-        global _mempool
-        yield
+@pytest.fixture(autouse=True)
+def free_cupy_mempool(request):
+    """Force the cupy mempool to release all memory after each test."""
+    yield
+
+    global _mempool
+    if _mempool is None:
+        # we interact with cupy only if the test imported cupy anyway
+        import sys
+
+        if "cupy" in sys.modules:
+            import cupy
+
+            _mempool = cupy.get_default_memory_pool()
+    if _mempool is not None:
         _mempool.free_all_blocks()
-
-except ModuleNotFoundError:
-    # If cupy is not installed, then we don't need to do anything
-    pass

@@ -6,11 +6,6 @@ import glob
 import os
 import pytest
 
-try:
-    import cupy  # noqa: F401
-except ModuleNotFoundError:
-    pytest.skip("cupy required for sparse tests", allow_module_level=True)
-
 from ..test_utils import run_sample
 
 samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "sparse", "advanced", "direct_solver")

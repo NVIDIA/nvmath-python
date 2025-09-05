@@ -1,0 +1,4 @@
+# pytorch >=2.3 to ensure numpy 1/2 compatibility
+# torch wheels depend on nvidia wheels; do not add if testing system ctk
+torch >=2.3; platform_system!="Windows"
+#pipenv install "torch>=2.3" --index=https://download.pytorch.org/whl/cu118/

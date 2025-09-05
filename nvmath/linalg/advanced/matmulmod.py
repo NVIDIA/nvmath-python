@@ -15,11 +15,6 @@ import typing
 import random
 
 import cuda.core.experimental as ccx
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
 import numpy as np
 
 from nvmath import memory
@@ -390,7 +385,7 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
     )
 
 
-def get_result_traits(mm_traits: MMTraits, epilog_ordering: cublaslt.Order, logger: logging.Logger) -> ResultTraits:
+def get_result_traits(mm_traits: MMTraits, epilog_ordering: cublaslt.Order | None, logger: logging.Logger) -> ResultTraits:
     """
     epilog_ordering = value of type cublaslt.Order or None.
 
@@ -821,9 +816,7 @@ class Matmul:
         self.device_id = utils.get_operands_device_id(operands)
         if self.device_id == "cpu":
             if self.package == "numpy":
-                self.package = "cupy"
-                # TODO: remove this call after cupy is dropped
-                tensor_wrapper.maybe_register_package("cupy")
+                self.package = "cuda"
             self.memory_space = "cpu"
             self.device_id = options.device_id
         self.logger.info(
@@ -1366,7 +1359,8 @@ class Matmul:
             # If it's a scalar, copy to GPU. Float32 is the only type allowed by
             # cublasLtMatmulScale_t for tensor-wide scaling.
             self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
-            self.quantization_scales_device[operand] = tensor_wrapper.wrap_operand(cp.asarray([scale], dtype="float32"))
+            scale_op = tensor_wrapper.wrap_operand(np.asarray([scale], dtype="float32"))
+            self.quantization_scales_device[operand] = scale_op.to(self.device_id, stream_holder)
         else:
             if utils.infer_object_package(scale) != self.package:
                 raise TypeError("The quantization scaling tensors must belong to the same package as the operands.")
@@ -1648,7 +1642,7 @@ class Matmul:
                 # Check if epilog inputs all belong to the same package, which is the same
                 # as the package of the MM operands.
                 epilog_package = utils.get_operands_package(list(epilog_inputs.values()))
-                epilog_package = "cupy" if epilog_package == "numpy" else epilog_package  # Handle the NumPy <=> CuPy asymmetry.
+                epilog_package = "cuda" if epilog_package == "numpy" else epilog_package  # Handle the NumPy <=> CuPy asymmetry.
                 if self.package != epilog_package:
                     message = f"Library package mismatch for epilog: '{self.package}' => '{epilog_package}'"
                     raise TypeError(message)
@@ -1992,7 +1986,7 @@ class Matmul:
 
         device_id = operand.device_id
         if device_id == "cpu":
-            package = "cupy" if package == "numpy" else package  # Handle the NumPy <=> CuPy asymmetry.
+            package = "cuda" if package == "numpy" else package  # Handle the NumPy <=> CuPy asymmetry.
             if self.package != package:
                 message = f"Library package mismatch: '{self.package}' => '{package}'"
                 raise TypeError(message)
@@ -2388,6 +2382,20 @@ class Matmul:
                 stream_holder.ptr,
             )
 
+        def flush_cache():
+            """
+            Write data to a temporary buffer to flush the L2 cache.
+            """
+
+            @functools.cache
+            def get_l2_cache_size(device_id):
+                device = ccx.Device(device_id)
+                return device.properties.l2_cache_size
+
+            l2_cache_size = get_l2_cache_size(self.device_id)
+            cpu_buffer = np.zeros(l2_cache_size, dtype=np.uint8)
+            tensor_wrapper.wrap_operand(cpu_buffer).to(device_id=self.device_id, stream_holder=stream_holder)
+
         # Tune.
         with utils.cuda_call_ctx(stream_holder, blocking=False, timing=False) as (
             self.last_compute_event,
@@ -2411,6 +2419,7 @@ class Matmul:
                     # len(algorithms_buffer) Events and compute the elapsed time at the end.
                     end0.sync()
                     gpu_times[algorithm_idx, i] = end0 - start0
+                    flush_cache()
 
         gpu_times = np.median(gpu_times, axis=1)
 
@@ -2815,7 +2824,7 @@ def matmul(
         >>> r = nvmath.linalg.advanced.matmul(a, b)
 
     Notes:
-        - This function is a convenience wrapper around :class:`Matmul` and and is
+        - This function is a convenience wrapper around :class:`Matmul` and is
           specifically meant for *single* use.
 
     Further examples can be found in the `nvmath/examples/linalg/advanced/matmul

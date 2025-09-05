@@ -8,6 +8,7 @@ import math
 from ast import literal_eval
 
 import pytest
+import cuda.core.experimental as ccx
 
 try:
     import cupy as cp
@@ -52,6 +53,7 @@ from .utils.input_fixtures import (
     get_custom_stream,
     get_primes_up_to,
     init_assert_exec_backend_specified,
+    free_framework_pools,
     # pytest fixture is used but not detected by linter because of strange syntax
     fx_last_operand_layout,  # noqa: F401
 )
@@ -78,7 +80,8 @@ from .utils.check_helpers import (
     as_type,
     has_only_small_factors,
     get_default_tolerance,
-    free_framework_pools,
+    get_cc,
+    get_device_ctx,
 )
 
 assert_exec_backend_specified = init_assert_exec_backend_specified()
@@ -146,6 +149,11 @@ def allow_to_fail_compund_shape(e, shape, axes):
     raise
 
 
+def skip_numpy_with_filter(framework, exec_backend):
+    if cp is None and framework == Framework.numpy and exec_backend == ExecBackend.cufft:
+        pytest.skip("Cannot prepare gpu user data for numpy FFT")
+
+
 rng = random.Random(42)
 
 
@@ -173,7 +181,7 @@ def skip_unsupported_device(fn=None, dev_count=1, min_cc=70):
 
             return test_skipped
 
-        actual_dev_count = cp.cuda.runtime.getDeviceCount()
+        actual_dev_count = ccx.system.num_devices
 
         if actual_dev_count < dev_count:
 
@@ -183,10 +191,7 @@ def skip_unsupported_device(fn=None, dev_count=1, min_cc=70):
             return test_skipped
 
         for d_id in range(dev_count):
-            d = cp.cuda.Device(d_id)
-            cc = d.compute_capability
-            assert isinstance(cc, str) and len(cc) >= 2
-            cc = int(cc)
+            cc = get_cc(d_id)
             if cc < min_cc:
 
                 def test_skipped():
@@ -205,7 +210,7 @@ def skip_unsupported_device(fn=None, dev_count=1, min_cc=70):
 def skip_if_lto_unssuported(fn):
     def test_skipped():
         if not _has_dependencies:
-            pytest.skip("No cufft, cupy, or numba was found")
+            pytest.skip("No cufft, or numba was found")
         else:
             version = nvmath.bindings.cufft.get_version()
             pytest.skip(f"cuFFT ({version}) does not support LTO")
@@ -366,7 +371,7 @@ def test_operand_shape_fft_ifft(
     fft_callbacks,
     ifft_callbacks,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
 
     shape = literal_eval(shape)
     axes = None if batch == "batch_none" else tuple(range(len(shape)))
@@ -538,7 +543,7 @@ def test_operand_shape_ifft_c2r(
     result_layout,
     callbacks,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
 
     shape = literal_eval(shape)
     axes = literal_eval(axes)
@@ -610,7 +615,7 @@ def test_operand_shape_ifft_c2r(
             AllowToFail(allow_to_fail),
             batch := rng.choice(["batch_none", "batch_left", "batch_right"]),
             1 if batch == "batch_none" else rng.choice([1, 2, 3]),
-            rng.choice([f for f in Framework.enabled() if mem_backend in supported_backends.framework_mem[f]]),
+            rng.choice(frameworks),
             ExecBackend.cufft,
             mem_backend,
             dtype,
@@ -643,6 +648,8 @@ def test_operand_shape_ifft_c2r(
         ]
         if ExecBackend.cufft in supported_backends.exec
         for mem_backend in MemBackend
+        for frameworks in [[f for f in Framework.enabled() if mem_backend in supported_backends.framework_mem[f]]]
+        if len(frameworks) > 0
     ],
 )
 def test_sliced_operand(
@@ -659,7 +666,7 @@ def test_sliced_operand(
     result_layout,
     callbacks,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
 
     shape_base = literal_eval(shape_base)
     shape_slice_start = literal_eval(shape_slice_start)
@@ -746,7 +753,7 @@ def test_sliced_operand(
     ),
     [
         (
-            rng.choice([f for f in Framework.enabled() if MemBackend.cuda in supported_backends.framework_mem[f]]),
+            rng.choice(frameworks),
             ExecBackend.cufft,
             MemBackend.cuda,  # cpu -> gpu may make the layout dense, no point to check it here
             AllowToFail(allow_to_fail),
@@ -757,6 +764,8 @@ def test_sliced_operand(
             rng.choice(list(OptFftLayout)),
             rng.choice(list(LtoCallback)),
         )
+        for frameworks in [[f for f in Framework.enabled() if MemBackend.cuda in supported_backends.framework_mem[f]]]
+        if len(frameworks) > 0
         for allow_to_fail, base_shape, axes, unfold_args in [
             (False, (128,), (0,), (0, 8, 1)),
             (False, (128,), (0,), (0, 8, 7)),
@@ -919,7 +928,7 @@ def test_overlapping_stride_operand(
             (False, (2017, 1, 31, 3, 1), (0, 1, 2), (3, 4, 2, 1, 0)),  # 3D batch, repeat strides
             (True, (4952, 3), (0,), (1, 0)),  # 1D batched, 8 * 619
             (True, (3, 4952), (1,), (1, 0)),  # 1D batched, 8 * 619
-            (True, (3, 4812, 2017), (1, 2), (2, 1, 0)),  # 2D batched, 401 * 12
+            (True, (2, 4812, 2017), (1, 2), (2, 1, 0)),  # 2D batched, 401 * 12
             (True, (16, 1, 4812, 3, 1), (0, 1, 2), (3, 4, 2, 1, 0)),  # 3D batch, 401 * 12
         ]
         # fmt: on
@@ -945,7 +954,7 @@ def test_permuted_stride_operand(
     result_layout,
     callbacks,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
 
     base_shape = literal_eval(base_shape)
     base_axes = literal_eval(base_axes)
@@ -1096,7 +1105,7 @@ def _operand_filter_dtype_shape_fft_ifft_case(
     allow_to_fail,
     result_layout,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
 
     shape = literal_eval(shape)
     axes = literal_eval(axes)
@@ -1326,6 +1335,8 @@ def test_operand_and_filter_dtypes_fft_ifft(
     mem_backend,
     result_layout,
 ):
+    skip_numpy_with_filter(framework, exec_backend)
+
     _operand_filter_dtype_shape_fft_ifft_case(
         dtype,
         prolog_filter_dtype,
@@ -1420,6 +1431,7 @@ def test_operand_and_filter_shapes_fft_ifft(
     inplace,
     result_layout,
 ):
+    skip_numpy_with_filter(framework, exec_backend)
     _operand_filter_dtype_shape_fft_ifft_case(
         dtype,
         prolog_filter_dtype,
@@ -1518,7 +1530,8 @@ def test_two_plans_different_cbs(
     callbacks_0,
     callbacks_1,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
+    skip_numpy_with_filter(framework, exec_backend)
 
     shape_0 = literal_eval(shape_0)
     axes_0 = literal_eval(axes_0)
@@ -1689,7 +1702,8 @@ def test_custom_stream(
     result_layout,
     callbacks,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
+    skip_numpy_with_filter(framework, exec_backend)
 
     shape = literal_eval(shape)
     axes = literal_eval(axes)
@@ -1805,11 +1819,13 @@ def test_custom_stream(
     ],
 )
 def test_another_device(framework, exec_backend, mem_backend, dtype, shape, axes, callbacks):
-    device_id = 1
-    device = cp.cuda.Device(device_id)
-    cc = device.compute_capability
+    skip_numpy_with_filter(framework, exec_backend)
 
-    device_ctx = device if mem_backend == MemBackend.cuda else contextlib.nullcontext()
+    device_id = 1
+    device = get_device_ctx(device_id, framework)
+    cc = str(get_cc(device_id))
+
+    device_ctx = device if mem_backend == MemBackend.cuda else contextlib.nullcontext(device)
 
     shape = literal_eval(shape)
     axes = literal_eval(axes)
@@ -1936,10 +1952,12 @@ def test_two_devices(
     callbacks_0,
     callbacks_1,
 ):
-    free_framework_pools(framework, mem_backend)
+    free_framework_pools(framework)
+    skip_numpy_with_filter(framework, exec_backend)
+
     device_id_0, device_id_1 = 0, 1
-    device_0, device_1 = tuple(cp.cuda.Device(did) for did in (device_id_0, device_id_1))
-    cc_0, cc_1 = device_0.compute_capability, device_1.compute_capability
+    device_0, device_1 = tuple(get_device_ctx(did, framework) for did in (device_id_0, device_id_1))
+    cc_0, cc_1 = str(get_cc(device_id_0)), str(get_cc(device_id_1))
 
     device_ctx_0, device_ctx_1 = (
         (device_0, device_1) if mem_backend == MemBackend.cuda else (contextlib.nullcontext(), contextlib.nullcontext())

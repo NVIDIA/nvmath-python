@@ -1,4 +1,5 @@
-cuda-core[cu11] >=0.3,<0.4
+cuda-bindings>=11.8.7,<12
+cuda-core[cu11]==0.3.2 # last supported version for ctk11
 cupy-cuda11x
 nvidia-cublas-cu11
 nvidia-cuda-nvrtc-cu11

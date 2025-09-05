@@ -5,10 +5,14 @@
 import itertools
 import os
 
-import cupy as cp
 import numpy as np
 import pytest
 import scipy.fft
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 from hypothesis import given, strategies as st
 from hypothesis.extra.numpy import arrays, array_shapes
@@ -92,6 +96,15 @@ axes_strategy = st.sampled_from(
     )
 )
 
+out_of_memory_exceptions = (
+    (nvmath.internal.bindings.CudaOutOfMemoryError,)
+    if cp is None
+    else (
+        nvmath.internal.bindings.CudaOutOfMemoryError,
+        cp.cuda.memory.OutOfMemoryError,
+    )
+)
+
 
 def is_axes_valid(a: np.ndarray, axes: tuple[int] | None, is_r2c: bool) -> bool:
     if axes is None:
@@ -129,7 +142,7 @@ def test_fft(a, axes, options, execution):
         return
     try:
         b = nvmath.fft.fft(a, axes=axes, options=options, execution=execution)
-    except cp.cuda.memory.OutOfMemoryError:
+    except out_of_memory_exceptions:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return
@@ -142,7 +155,7 @@ def test_fft(a, axes, options, execution):
             )
             return
         raise e
-    if execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA):
+    if cp is not None and (execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA)):
         c = cp.asnumpy(cp.fft.fftn(cp.asarray(a), axes=axes, norm="backward"))
     else:
         c = scipy.fft.fftn(a, axes=axes, norm="backward")
@@ -157,7 +170,7 @@ def test_ifft(a, axes, options, execution):
         return
     try:
         b = nvmath.fft.ifft(a, axes=axes, options=options, execution=execution)
-    except cp.cuda.memory.OutOfMemoryError:
+    except out_of_memory_exceptions:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return
@@ -170,7 +183,7 @@ def test_ifft(a, axes, options, execution):
             )
             return
         raise e
-    if execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA):
+    if cp is not None and (execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA)):
         c = cp.asnumpy(cp.fft.ifftn(cp.asarray(a), axes=axes, norm="forward"))
     else:
         c = scipy.fft.ifftn(a, axes=axes, norm="forward")
@@ -185,7 +198,7 @@ def test_rfft(a, axes, options, execution):
         return
     try:
         b = nvmath.fft.rfft(a, axes=axes, options=options, execution=execution)
-    except cp.cuda.memory.OutOfMemoryError:
+    except out_of_memory_exceptions:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return
@@ -198,7 +211,7 @@ def test_rfft(a, axes, options, execution):
             )
             return
         raise e
-    if execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA):
+    if cp is not None and (execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA)):
         c = cp.asnumpy(cp.fft.rfftn(cp.asarray(a), axes=axes, norm="backward"))
     else:
         c = scipy.fft.rfftn(a, axes=axes, norm="backward")
@@ -217,7 +230,7 @@ def test_irfft(a, axes, options, execution):
     try:
         b = nvmath.fft.rfft(a, axes=axes, options=options, execution=execution)  # C2R needs complex-Hermitian input
         c = nvmath.fft.irfft(b, axes=axes, options=options, execution=execution)
-    except cp.cuda.memory.OutOfMemoryError:
+    except out_of_memory_exceptions:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return
@@ -231,7 +244,7 @@ def test_irfft(a, axes, options, execution):
             return
         raise e
     assert a.shape == c.shape, f"{a.shape} vs {c.shape}"
-    if execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA):
+    if cp is not None and (execution == "cuda" or isinstance(execution, nvmath.fft.ExecutionCUDA)):
         c_ref = cp.asnumpy(cp.fft.irfftn(cp.asarray(b), s=fft_shape, axes=axes, norm="forward"))
     else:
         c_ref = scipy.fft.irfftn(b, s=fft_shape, axes=axes, norm="forward")
