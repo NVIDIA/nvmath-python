@@ -187,7 +187,7 @@ def _get_fft_concrete_type(dtype, fft_abstract_type):
         if dtype == "complex64":
             return FFTType["C2R"]
         elif dtype == "complex128":
-            return FFTType["Z2R"]
+            return FFTType["Z2D"]
         else:
             raise ValueError(f"Incompatible dtype '{dtype}' for complex-to-real transform.")
     else:
