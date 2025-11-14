@@ -3,22 +3,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable
+import weakref
 import numpy as np
 
 from nvmath.device.common_cuda import ISAVersion
-from .types import np_float16x2, np_float16x4
+from .types import complex32, complex64, complex128, half2, half4
 
 from nvmath.bindings import mathdx
 
 MATHDX_TYPES_TO_NP = {
     mathdx.CommondxValueType.R_16F: np.float16,
-    mathdx.CommondxValueType.R_16F2: np_float16x2,
+    mathdx.CommondxValueType.R_16F2: half2,
     mathdx.CommondxValueType.R_32F: np.float32,
     mathdx.CommondxValueType.R_64F: np.float64,
-    mathdx.CommondxValueType.C_16F: np_float16x2,
-    mathdx.CommondxValueType.C_16F2: np_float16x4,
-    mathdx.CommondxValueType.C_32F: np.complex64,
-    mathdx.CommondxValueType.C_64F: np.complex128,
+    mathdx.CommondxValueType.C_16F: complex32,
+    mathdx.CommondxValueType.C_16F2: half4,
+    mathdx.CommondxValueType.C_32F: complex64,
+    mathdx.CommondxValueType.C_64F: complex128,
     mathdx.CommondxValueType.R_8I: np.int8,
     mathdx.CommondxValueType.R_16I: np.int16,
     mathdx.CommondxValueType.R_32I: np.int32,
@@ -66,16 +67,8 @@ class DescriptorWrapper:
     def __init__(self, descriptor, destructor):
         self.descriptor = descriptor
         self._destructor = destructor
-
-    def __del__(self):
-        if not self.descriptor:
-            return
-
-        self._destructor(self.descriptor)
-
-        # Safety clean up
-        self.descriptor = None
-        self._destructor = None
+        if destructor is not None:
+            weakref.finalize(self, self._destructor, self.descriptor)
 
 
 def get_lto(code_descriptor: int) -> bytes:

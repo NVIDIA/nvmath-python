@@ -8,20 +8,76 @@ from libc.stdint cimport intptr_t, uintptr_t
 
 import os
 import site
-
-import win32api
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
 
+from libc.stddef cimport wchar_t
+from libc.stdint cimport uintptr_t
+from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
+
+from .utils import NotSupportedError
+
+cdef extern from "windows.h" nogil:
+    ctypedef void* HMODULE
+    ctypedef void* HANDLE
+    ctypedef void* FARPROC
+    ctypedef unsigned long DWORD
+    ctypedef const wchar_t *LPCWSTR
+    ctypedef const char *LPCSTR
+
+    cdef DWORD LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+    cdef DWORD LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+    cdef DWORD LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+
+    HMODULE _LoadLibraryExW "LoadLibraryExW"(
+        LPCWSTR lpLibFileName,
+        HANDLE hFile,
+        DWORD dwFlags
+    )
+
+    FARPROC _GetProcAddress "GetProcAddress"(HMODULE hModule, LPCSTR lpProcName)
+
+cdef inline uintptr_t LoadLibraryExW(str path, HANDLE hFile, DWORD dwFlags):
+    cdef uintptr_t result
+    cdef wchar_t* wpath = PyUnicode_AsWideCharString(path, NULL)
+    with nogil:
+        result = <uintptr_t>_LoadLibraryExW(
+            wpath,
+            hFile,
+            dwFlags
+        )
+    PyMem_Free(wpath)
+    return result
+
+cdef inline void *GetProcAddress(uintptr_t hModule, const char* lpProcName) nogil:
+    return _GetProcAddress(<HMODULE>hModule, lpProcName)
+
+cdef int get_cuda_version():
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = LoadLibraryExW("nvcuda.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)
+    if handle == 0:
+        raise NotSupportedError('CUDA driver is not found')
+    cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('something went wrong')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError('something went wrong')
+
+    return driver_ver
+
+
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
-LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cusparse_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cusparseCreate = NULL
 cdef void* __cusparseDestroy = NULL
@@ -295,1564 +351,783 @@ cdef int _check_or_init_cusparse() except -1 nogil:
     if __py_cusparse_init:
         return 0
 
-    cdef int err, driver_ver
-    with gil:
-        # Load driver to check version
-        try:
-            handle = win32api.LoadLibraryEx("nvcuda.dll", 0, LOAD_LIBRARY_SEARCH_SYSTEM32)
-        except Exception as e:
-            raise NotSupportedError(f'CUDA driver is not found ({e})')
-        global __cuDriverGetVersion
-        if __cuDriverGetVersion == NULL:
-            __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
-            if __cuDriverGetVersion == NULL:
-                raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-        if err != 0:
-            raise RuntimeError('something went wrong')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
         # Load library
         handle = <intptr_t>load_library(driver_ver)
 
         # Load function
         global __cusparseCreate
-        try:
-            __cusparseCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreate')
-        except:
-            pass
+        __cusparseCreate = GetProcAddress(handle, 'cusparseCreate')
 
         global __cusparseDestroy
-        try:
-            __cusparseDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDestroy')
-        except:
-            pass
+        __cusparseDestroy = GetProcAddress(handle, 'cusparseDestroy')
 
         global __cusparseGetVersion
-        try:
-            __cusparseGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetVersion')
-        except:
-            pass
+        __cusparseGetVersion = GetProcAddress(handle, 'cusparseGetVersion')
 
         global __cusparseGetProperty
-        try:
-            __cusparseGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetProperty')
-        except:
-            pass
+        __cusparseGetProperty = GetProcAddress(handle, 'cusparseGetProperty')
 
         global __cusparseGetErrorName
-        try:
-            __cusparseGetErrorName = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetErrorName')
-        except:
-            pass
+        __cusparseGetErrorName = GetProcAddress(handle, 'cusparseGetErrorName')
 
         global __cusparseGetErrorString
-        try:
-            __cusparseGetErrorString = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetErrorString')
-        except:
-            pass
+        __cusparseGetErrorString = GetProcAddress(handle, 'cusparseGetErrorString')
 
         global __cusparseSetStream
-        try:
-            __cusparseSetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSetStream')
-        except:
-            pass
+        __cusparseSetStream = GetProcAddress(handle, 'cusparseSetStream')
 
         global __cusparseGetStream
-        try:
-            __cusparseGetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetStream')
-        except:
-            pass
+        __cusparseGetStream = GetProcAddress(handle, 'cusparseGetStream')
 
         global __cusparseGetPointerMode
-        try:
-            __cusparseGetPointerMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetPointerMode')
-        except:
-            pass
+        __cusparseGetPointerMode = GetProcAddress(handle, 'cusparseGetPointerMode')
 
         global __cusparseSetPointerMode
-        try:
-            __cusparseSetPointerMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSetPointerMode')
-        except:
-            pass
+        __cusparseSetPointerMode = GetProcAddress(handle, 'cusparseSetPointerMode')
 
         global __cusparseCreateMatDescr
-        try:
-            __cusparseCreateMatDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateMatDescr')
-        except:
-            pass
+        __cusparseCreateMatDescr = GetProcAddress(handle, 'cusparseCreateMatDescr')
 
         global __cusparseDestroyMatDescr
-        try:
-            __cusparseDestroyMatDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDestroyMatDescr')
-        except:
-            pass
+        __cusparseDestroyMatDescr = GetProcAddress(handle, 'cusparseDestroyMatDescr')
 
         global __cusparseSetMatType
-        try:
-            __cusparseSetMatType = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSetMatType')
-        except:
-            pass
+        __cusparseSetMatType = GetProcAddress(handle, 'cusparseSetMatType')
 
         global __cusparseGetMatType
-        try:
-            __cusparseGetMatType = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetMatType')
-        except:
-            pass
+        __cusparseGetMatType = GetProcAddress(handle, 'cusparseGetMatType')
 
         global __cusparseSetMatFillMode
-        try:
-            __cusparseSetMatFillMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSetMatFillMode')
-        except:
-            pass
+        __cusparseSetMatFillMode = GetProcAddress(handle, 'cusparseSetMatFillMode')
 
         global __cusparseGetMatFillMode
-        try:
-            __cusparseGetMatFillMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetMatFillMode')
-        except:
-            pass
+        __cusparseGetMatFillMode = GetProcAddress(handle, 'cusparseGetMatFillMode')
 
         global __cusparseSetMatDiagType
-        try:
-            __cusparseSetMatDiagType = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSetMatDiagType')
-        except:
-            pass
+        __cusparseSetMatDiagType = GetProcAddress(handle, 'cusparseSetMatDiagType')
 
         global __cusparseGetMatDiagType
-        try:
-            __cusparseGetMatDiagType = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetMatDiagType')
-        except:
-            pass
+        __cusparseGetMatDiagType = GetProcAddress(handle, 'cusparseGetMatDiagType')
 
         global __cusparseSetMatIndexBase
-        try:
-            __cusparseSetMatIndexBase = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSetMatIndexBase')
-        except:
-            pass
+        __cusparseSetMatIndexBase = GetProcAddress(handle, 'cusparseSetMatIndexBase')
 
         global __cusparseGetMatIndexBase
-        try:
-            __cusparseGetMatIndexBase = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGetMatIndexBase')
-        except:
-            pass
+        __cusparseGetMatIndexBase = GetProcAddress(handle, 'cusparseGetMatIndexBase')
 
         global __cusparseSgemvi
-        try:
-            __cusparseSgemvi = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgemvi')
-        except:
-            pass
+        __cusparseSgemvi = GetProcAddress(handle, 'cusparseSgemvi')
 
         global __cusparseSgemvi_bufferSize
-        try:
-            __cusparseSgemvi_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgemvi_bufferSize')
-        except:
-            pass
+        __cusparseSgemvi_bufferSize = GetProcAddress(handle, 'cusparseSgemvi_bufferSize')
 
         global __cusparseDgemvi
-        try:
-            __cusparseDgemvi = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgemvi')
-        except:
-            pass
+        __cusparseDgemvi = GetProcAddress(handle, 'cusparseDgemvi')
 
         global __cusparseDgemvi_bufferSize
-        try:
-            __cusparseDgemvi_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgemvi_bufferSize')
-        except:
-            pass
+        __cusparseDgemvi_bufferSize = GetProcAddress(handle, 'cusparseDgemvi_bufferSize')
 
         global __cusparseCgemvi
-        try:
-            __cusparseCgemvi = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgemvi')
-        except:
-            pass
+        __cusparseCgemvi = GetProcAddress(handle, 'cusparseCgemvi')
 
         global __cusparseCgemvi_bufferSize
-        try:
-            __cusparseCgemvi_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgemvi_bufferSize')
-        except:
-            pass
+        __cusparseCgemvi_bufferSize = GetProcAddress(handle, 'cusparseCgemvi_bufferSize')
 
         global __cusparseZgemvi
-        try:
-            __cusparseZgemvi = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgemvi')
-        except:
-            pass
+        __cusparseZgemvi = GetProcAddress(handle, 'cusparseZgemvi')
 
         global __cusparseZgemvi_bufferSize
-        try:
-            __cusparseZgemvi_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgemvi_bufferSize')
-        except:
-            pass
+        __cusparseZgemvi_bufferSize = GetProcAddress(handle, 'cusparseZgemvi_bufferSize')
 
         global __cusparseSbsrmv
-        try:
-            __cusparseSbsrmv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSbsrmv')
-        except:
-            pass
+        __cusparseSbsrmv = GetProcAddress(handle, 'cusparseSbsrmv')
 
         global __cusparseDbsrmv
-        try:
-            __cusparseDbsrmv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDbsrmv')
-        except:
-            pass
+        __cusparseDbsrmv = GetProcAddress(handle, 'cusparseDbsrmv')
 
         global __cusparseCbsrmv
-        try:
-            __cusparseCbsrmv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCbsrmv')
-        except:
-            pass
+        __cusparseCbsrmv = GetProcAddress(handle, 'cusparseCbsrmv')
 
         global __cusparseZbsrmv
-        try:
-            __cusparseZbsrmv = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZbsrmv')
-        except:
-            pass
+        __cusparseZbsrmv = GetProcAddress(handle, 'cusparseZbsrmv')
 
         global __cusparseSbsrmm
-        try:
-            __cusparseSbsrmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSbsrmm')
-        except:
-            pass
+        __cusparseSbsrmm = GetProcAddress(handle, 'cusparseSbsrmm')
 
         global __cusparseDbsrmm
-        try:
-            __cusparseDbsrmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDbsrmm')
-        except:
-            pass
+        __cusparseDbsrmm = GetProcAddress(handle, 'cusparseDbsrmm')
 
         global __cusparseCbsrmm
-        try:
-            __cusparseCbsrmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCbsrmm')
-        except:
-            pass
+        __cusparseCbsrmm = GetProcAddress(handle, 'cusparseCbsrmm')
 
         global __cusparseZbsrmm
-        try:
-            __cusparseZbsrmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZbsrmm')
-        except:
-            pass
+        __cusparseZbsrmm = GetProcAddress(handle, 'cusparseZbsrmm')
 
         global __cusparseSgtsv2_bufferSizeExt
-        try:
-            __cusparseSgtsv2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsv2_bufferSizeExt')
-        except:
-            pass
+        __cusparseSgtsv2_bufferSizeExt = GetProcAddress(handle, 'cusparseSgtsv2_bufferSizeExt')
 
         global __cusparseDgtsv2_bufferSizeExt
-        try:
-            __cusparseDgtsv2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsv2_bufferSizeExt')
-        except:
-            pass
+        __cusparseDgtsv2_bufferSizeExt = GetProcAddress(handle, 'cusparseDgtsv2_bufferSizeExt')
 
         global __cusparseCgtsv2_bufferSizeExt
-        try:
-            __cusparseCgtsv2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsv2_bufferSizeExt')
-        except:
-            pass
+        __cusparseCgtsv2_bufferSizeExt = GetProcAddress(handle, 'cusparseCgtsv2_bufferSizeExt')
 
         global __cusparseZgtsv2_bufferSizeExt
-        try:
-            __cusparseZgtsv2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsv2_bufferSizeExt')
-        except:
-            pass
+        __cusparseZgtsv2_bufferSizeExt = GetProcAddress(handle, 'cusparseZgtsv2_bufferSizeExt')
 
         global __cusparseSgtsv2
-        try:
-            __cusparseSgtsv2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsv2')
-        except:
-            pass
+        __cusparseSgtsv2 = GetProcAddress(handle, 'cusparseSgtsv2')
 
         global __cusparseDgtsv2
-        try:
-            __cusparseDgtsv2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsv2')
-        except:
-            pass
+        __cusparseDgtsv2 = GetProcAddress(handle, 'cusparseDgtsv2')
 
         global __cusparseCgtsv2
-        try:
-            __cusparseCgtsv2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsv2')
-        except:
-            pass
+        __cusparseCgtsv2 = GetProcAddress(handle, 'cusparseCgtsv2')
 
         global __cusparseZgtsv2
-        try:
-            __cusparseZgtsv2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsv2')
-        except:
-            pass
+        __cusparseZgtsv2 = GetProcAddress(handle, 'cusparseZgtsv2')
 
         global __cusparseSgtsv2_nopivot_bufferSizeExt
-        try:
-            __cusparseSgtsv2_nopivot_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsv2_nopivot_bufferSizeExt')
-        except:
-            pass
+        __cusparseSgtsv2_nopivot_bufferSizeExt = GetProcAddress(handle, 'cusparseSgtsv2_nopivot_bufferSizeExt')
 
         global __cusparseDgtsv2_nopivot_bufferSizeExt
-        try:
-            __cusparseDgtsv2_nopivot_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsv2_nopivot_bufferSizeExt')
-        except:
-            pass
+        __cusparseDgtsv2_nopivot_bufferSizeExt = GetProcAddress(handle, 'cusparseDgtsv2_nopivot_bufferSizeExt')
 
         global __cusparseCgtsv2_nopivot_bufferSizeExt
-        try:
-            __cusparseCgtsv2_nopivot_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsv2_nopivot_bufferSizeExt')
-        except:
-            pass
+        __cusparseCgtsv2_nopivot_bufferSizeExt = GetProcAddress(handle, 'cusparseCgtsv2_nopivot_bufferSizeExt')
 
         global __cusparseZgtsv2_nopivot_bufferSizeExt
-        try:
-            __cusparseZgtsv2_nopivot_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsv2_nopivot_bufferSizeExt')
-        except:
-            pass
+        __cusparseZgtsv2_nopivot_bufferSizeExt = GetProcAddress(handle, 'cusparseZgtsv2_nopivot_bufferSizeExt')
 
         global __cusparseSgtsv2_nopivot
-        try:
-            __cusparseSgtsv2_nopivot = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsv2_nopivot')
-        except:
-            pass
+        __cusparseSgtsv2_nopivot = GetProcAddress(handle, 'cusparseSgtsv2_nopivot')
 
         global __cusparseDgtsv2_nopivot
-        try:
-            __cusparseDgtsv2_nopivot = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsv2_nopivot')
-        except:
-            pass
+        __cusparseDgtsv2_nopivot = GetProcAddress(handle, 'cusparseDgtsv2_nopivot')
 
         global __cusparseCgtsv2_nopivot
-        try:
-            __cusparseCgtsv2_nopivot = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsv2_nopivot')
-        except:
-            pass
+        __cusparseCgtsv2_nopivot = GetProcAddress(handle, 'cusparseCgtsv2_nopivot')
 
         global __cusparseZgtsv2_nopivot
-        try:
-            __cusparseZgtsv2_nopivot = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsv2_nopivot')
-        except:
-            pass
+        __cusparseZgtsv2_nopivot = GetProcAddress(handle, 'cusparseZgtsv2_nopivot')
 
         global __cusparseSgtsv2StridedBatch_bufferSizeExt
-        try:
-            __cusparseSgtsv2StridedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsv2StridedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseSgtsv2StridedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseSgtsv2StridedBatch_bufferSizeExt')
 
         global __cusparseDgtsv2StridedBatch_bufferSizeExt
-        try:
-            __cusparseDgtsv2StridedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsv2StridedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseDgtsv2StridedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseDgtsv2StridedBatch_bufferSizeExt')
 
         global __cusparseCgtsv2StridedBatch_bufferSizeExt
-        try:
-            __cusparseCgtsv2StridedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsv2StridedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseCgtsv2StridedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseCgtsv2StridedBatch_bufferSizeExt')
 
         global __cusparseZgtsv2StridedBatch_bufferSizeExt
-        try:
-            __cusparseZgtsv2StridedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsv2StridedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseZgtsv2StridedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseZgtsv2StridedBatch_bufferSizeExt')
 
         global __cusparseSgtsv2StridedBatch
-        try:
-            __cusparseSgtsv2StridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsv2StridedBatch')
-        except:
-            pass
+        __cusparseSgtsv2StridedBatch = GetProcAddress(handle, 'cusparseSgtsv2StridedBatch')
 
         global __cusparseDgtsv2StridedBatch
-        try:
-            __cusparseDgtsv2StridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsv2StridedBatch')
-        except:
-            pass
+        __cusparseDgtsv2StridedBatch = GetProcAddress(handle, 'cusparseDgtsv2StridedBatch')
 
         global __cusparseCgtsv2StridedBatch
-        try:
-            __cusparseCgtsv2StridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsv2StridedBatch')
-        except:
-            pass
+        __cusparseCgtsv2StridedBatch = GetProcAddress(handle, 'cusparseCgtsv2StridedBatch')
 
         global __cusparseZgtsv2StridedBatch
-        try:
-            __cusparseZgtsv2StridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsv2StridedBatch')
-        except:
-            pass
+        __cusparseZgtsv2StridedBatch = GetProcAddress(handle, 'cusparseZgtsv2StridedBatch')
 
         global __cusparseSgtsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseSgtsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseSgtsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseSgtsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseDgtsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseDgtsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseDgtsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseDgtsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseCgtsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseCgtsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseCgtsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseCgtsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseZgtsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseZgtsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseZgtsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseZgtsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseSgtsvInterleavedBatch
-        try:
-            __cusparseSgtsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgtsvInterleavedBatch')
-        except:
-            pass
+        __cusparseSgtsvInterleavedBatch = GetProcAddress(handle, 'cusparseSgtsvInterleavedBatch')
 
         global __cusparseDgtsvInterleavedBatch
-        try:
-            __cusparseDgtsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgtsvInterleavedBatch')
-        except:
-            pass
+        __cusparseDgtsvInterleavedBatch = GetProcAddress(handle, 'cusparseDgtsvInterleavedBatch')
 
         global __cusparseCgtsvInterleavedBatch
-        try:
-            __cusparseCgtsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgtsvInterleavedBatch')
-        except:
-            pass
+        __cusparseCgtsvInterleavedBatch = GetProcAddress(handle, 'cusparseCgtsvInterleavedBatch')
 
         global __cusparseZgtsvInterleavedBatch
-        try:
-            __cusparseZgtsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgtsvInterleavedBatch')
-        except:
-            pass
+        __cusparseZgtsvInterleavedBatch = GetProcAddress(handle, 'cusparseZgtsvInterleavedBatch')
 
         global __cusparseSgpsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseSgpsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgpsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseSgpsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseSgpsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseDgpsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseDgpsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgpsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseDgpsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseDgpsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseCgpsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseCgpsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgpsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseCgpsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseCgpsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseZgpsvInterleavedBatch_bufferSizeExt
-        try:
-            __cusparseZgpsvInterleavedBatch_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgpsvInterleavedBatch_bufferSizeExt')
-        except:
-            pass
+        __cusparseZgpsvInterleavedBatch_bufferSizeExt = GetProcAddress(handle, 'cusparseZgpsvInterleavedBatch_bufferSizeExt')
 
         global __cusparseSgpsvInterleavedBatch
-        try:
-            __cusparseSgpsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgpsvInterleavedBatch')
-        except:
-            pass
+        __cusparseSgpsvInterleavedBatch = GetProcAddress(handle, 'cusparseSgpsvInterleavedBatch')
 
         global __cusparseDgpsvInterleavedBatch
-        try:
-            __cusparseDgpsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgpsvInterleavedBatch')
-        except:
-            pass
+        __cusparseDgpsvInterleavedBatch = GetProcAddress(handle, 'cusparseDgpsvInterleavedBatch')
 
         global __cusparseCgpsvInterleavedBatch
-        try:
-            __cusparseCgpsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgpsvInterleavedBatch')
-        except:
-            pass
+        __cusparseCgpsvInterleavedBatch = GetProcAddress(handle, 'cusparseCgpsvInterleavedBatch')
 
         global __cusparseZgpsvInterleavedBatch
-        try:
-            __cusparseZgpsvInterleavedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgpsvInterleavedBatch')
-        except:
-            pass
+        __cusparseZgpsvInterleavedBatch = GetProcAddress(handle, 'cusparseZgpsvInterleavedBatch')
 
         global __cusparseScsrgeam2_bufferSizeExt
-        try:
-            __cusparseScsrgeam2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseScsrgeam2_bufferSizeExt')
-        except:
-            pass
+        __cusparseScsrgeam2_bufferSizeExt = GetProcAddress(handle, 'cusparseScsrgeam2_bufferSizeExt')
 
         global __cusparseDcsrgeam2_bufferSizeExt
-        try:
-            __cusparseDcsrgeam2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDcsrgeam2_bufferSizeExt')
-        except:
-            pass
+        __cusparseDcsrgeam2_bufferSizeExt = GetProcAddress(handle, 'cusparseDcsrgeam2_bufferSizeExt')
 
         global __cusparseCcsrgeam2_bufferSizeExt
-        try:
-            __cusparseCcsrgeam2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCcsrgeam2_bufferSizeExt')
-        except:
-            pass
+        __cusparseCcsrgeam2_bufferSizeExt = GetProcAddress(handle, 'cusparseCcsrgeam2_bufferSizeExt')
 
         global __cusparseZcsrgeam2_bufferSizeExt
-        try:
-            __cusparseZcsrgeam2_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZcsrgeam2_bufferSizeExt')
-        except:
-            pass
+        __cusparseZcsrgeam2_bufferSizeExt = GetProcAddress(handle, 'cusparseZcsrgeam2_bufferSizeExt')
 
         global __cusparseXcsrgeam2Nnz
-        try:
-            __cusparseXcsrgeam2Nnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcsrgeam2Nnz')
-        except:
-            pass
+        __cusparseXcsrgeam2Nnz = GetProcAddress(handle, 'cusparseXcsrgeam2Nnz')
 
         global __cusparseScsrgeam2
-        try:
-            __cusparseScsrgeam2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseScsrgeam2')
-        except:
-            pass
+        __cusparseScsrgeam2 = GetProcAddress(handle, 'cusparseScsrgeam2')
 
         global __cusparseDcsrgeam2
-        try:
-            __cusparseDcsrgeam2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDcsrgeam2')
-        except:
-            pass
+        __cusparseDcsrgeam2 = GetProcAddress(handle, 'cusparseDcsrgeam2')
 
         global __cusparseCcsrgeam2
-        try:
-            __cusparseCcsrgeam2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCcsrgeam2')
-        except:
-            pass
+        __cusparseCcsrgeam2 = GetProcAddress(handle, 'cusparseCcsrgeam2')
 
         global __cusparseZcsrgeam2
-        try:
-            __cusparseZcsrgeam2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZcsrgeam2')
-        except:
-            pass
+        __cusparseZcsrgeam2 = GetProcAddress(handle, 'cusparseZcsrgeam2')
 
         global __cusparseSnnz
-        try:
-            __cusparseSnnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSnnz')
-        except:
-            pass
+        __cusparseSnnz = GetProcAddress(handle, 'cusparseSnnz')
 
         global __cusparseDnnz
-        try:
-            __cusparseDnnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnnz')
-        except:
-            pass
+        __cusparseDnnz = GetProcAddress(handle, 'cusparseDnnz')
 
         global __cusparseCnnz
-        try:
-            __cusparseCnnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCnnz')
-        except:
-            pass
+        __cusparseCnnz = GetProcAddress(handle, 'cusparseCnnz')
 
         global __cusparseZnnz
-        try:
-            __cusparseZnnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZnnz')
-        except:
-            pass
+        __cusparseZnnz = GetProcAddress(handle, 'cusparseZnnz')
 
         global __cusparseXcoo2csr
-        try:
-            __cusparseXcoo2csr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcoo2csr')
-        except:
-            pass
+        __cusparseXcoo2csr = GetProcAddress(handle, 'cusparseXcoo2csr')
 
         global __cusparseXcsr2coo
-        try:
-            __cusparseXcsr2coo = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcsr2coo')
-        except:
-            pass
+        __cusparseXcsr2coo = GetProcAddress(handle, 'cusparseXcsr2coo')
 
         global __cusparseSbsr2csr
-        try:
-            __cusparseSbsr2csr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSbsr2csr')
-        except:
-            pass
+        __cusparseSbsr2csr = GetProcAddress(handle, 'cusparseSbsr2csr')
 
         global __cusparseDbsr2csr
-        try:
-            __cusparseDbsr2csr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDbsr2csr')
-        except:
-            pass
+        __cusparseDbsr2csr = GetProcAddress(handle, 'cusparseDbsr2csr')
 
         global __cusparseCbsr2csr
-        try:
-            __cusparseCbsr2csr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCbsr2csr')
-        except:
-            pass
+        __cusparseCbsr2csr = GetProcAddress(handle, 'cusparseCbsr2csr')
 
         global __cusparseZbsr2csr
-        try:
-            __cusparseZbsr2csr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZbsr2csr')
-        except:
-            pass
+        __cusparseZbsr2csr = GetProcAddress(handle, 'cusparseZbsr2csr')
 
         global __cusparseSgebsr2gebsc_bufferSize
-        try:
-            __cusparseSgebsr2gebsc_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgebsr2gebsc_bufferSize')
-        except:
-            pass
+        __cusparseSgebsr2gebsc_bufferSize = GetProcAddress(handle, 'cusparseSgebsr2gebsc_bufferSize')
 
         global __cusparseDgebsr2gebsc_bufferSize
-        try:
-            __cusparseDgebsr2gebsc_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgebsr2gebsc_bufferSize')
-        except:
-            pass
+        __cusparseDgebsr2gebsc_bufferSize = GetProcAddress(handle, 'cusparseDgebsr2gebsc_bufferSize')
 
         global __cusparseCgebsr2gebsc_bufferSize
-        try:
-            __cusparseCgebsr2gebsc_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgebsr2gebsc_bufferSize')
-        except:
-            pass
+        __cusparseCgebsr2gebsc_bufferSize = GetProcAddress(handle, 'cusparseCgebsr2gebsc_bufferSize')
 
         global __cusparseZgebsr2gebsc_bufferSize
-        try:
-            __cusparseZgebsr2gebsc_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgebsr2gebsc_bufferSize')
-        except:
-            pass
+        __cusparseZgebsr2gebsc_bufferSize = GetProcAddress(handle, 'cusparseZgebsr2gebsc_bufferSize')
 
         global __cusparseSgebsr2gebsc_bufferSizeExt
-        try:
-            __cusparseSgebsr2gebsc_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgebsr2gebsc_bufferSizeExt')
-        except:
-            pass
+        __cusparseSgebsr2gebsc_bufferSizeExt = GetProcAddress(handle, 'cusparseSgebsr2gebsc_bufferSizeExt')
 
         global __cusparseDgebsr2gebsc_bufferSizeExt
-        try:
-            __cusparseDgebsr2gebsc_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgebsr2gebsc_bufferSizeExt')
-        except:
-            pass
+        __cusparseDgebsr2gebsc_bufferSizeExt = GetProcAddress(handle, 'cusparseDgebsr2gebsc_bufferSizeExt')
 
         global __cusparseCgebsr2gebsc_bufferSizeExt
-        try:
-            __cusparseCgebsr2gebsc_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgebsr2gebsc_bufferSizeExt')
-        except:
-            pass
+        __cusparseCgebsr2gebsc_bufferSizeExt = GetProcAddress(handle, 'cusparseCgebsr2gebsc_bufferSizeExt')
 
         global __cusparseZgebsr2gebsc_bufferSizeExt
-        try:
-            __cusparseZgebsr2gebsc_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgebsr2gebsc_bufferSizeExt')
-        except:
-            pass
+        __cusparseZgebsr2gebsc_bufferSizeExt = GetProcAddress(handle, 'cusparseZgebsr2gebsc_bufferSizeExt')
 
         global __cusparseSgebsr2gebsc
-        try:
-            __cusparseSgebsr2gebsc = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgebsr2gebsc')
-        except:
-            pass
+        __cusparseSgebsr2gebsc = GetProcAddress(handle, 'cusparseSgebsr2gebsc')
 
         global __cusparseDgebsr2gebsc
-        try:
-            __cusparseDgebsr2gebsc = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgebsr2gebsc')
-        except:
-            pass
+        __cusparseDgebsr2gebsc = GetProcAddress(handle, 'cusparseDgebsr2gebsc')
 
         global __cusparseCgebsr2gebsc
-        try:
-            __cusparseCgebsr2gebsc = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgebsr2gebsc')
-        except:
-            pass
+        __cusparseCgebsr2gebsc = GetProcAddress(handle, 'cusparseCgebsr2gebsc')
 
         global __cusparseZgebsr2gebsc
-        try:
-            __cusparseZgebsr2gebsc = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgebsr2gebsc')
-        except:
-            pass
+        __cusparseZgebsr2gebsc = GetProcAddress(handle, 'cusparseZgebsr2gebsc')
 
         global __cusparseScsr2gebsr_bufferSize
-        try:
-            __cusparseScsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseScsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseScsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseScsr2gebsr_bufferSize')
 
         global __cusparseDcsr2gebsr_bufferSize
-        try:
-            __cusparseDcsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDcsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseDcsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseDcsr2gebsr_bufferSize')
 
         global __cusparseCcsr2gebsr_bufferSize
-        try:
-            __cusparseCcsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCcsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseCcsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseCcsr2gebsr_bufferSize')
 
         global __cusparseZcsr2gebsr_bufferSize
-        try:
-            __cusparseZcsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZcsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseZcsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseZcsr2gebsr_bufferSize')
 
         global __cusparseScsr2gebsr_bufferSizeExt
-        try:
-            __cusparseScsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseScsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseScsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseScsr2gebsr_bufferSizeExt')
 
         global __cusparseDcsr2gebsr_bufferSizeExt
-        try:
-            __cusparseDcsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDcsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseDcsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseDcsr2gebsr_bufferSizeExt')
 
         global __cusparseCcsr2gebsr_bufferSizeExt
-        try:
-            __cusparseCcsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCcsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseCcsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseCcsr2gebsr_bufferSizeExt')
 
         global __cusparseZcsr2gebsr_bufferSizeExt
-        try:
-            __cusparseZcsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZcsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseZcsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseZcsr2gebsr_bufferSizeExt')
 
         global __cusparseXcsr2gebsrNnz
-        try:
-            __cusparseXcsr2gebsrNnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcsr2gebsrNnz')
-        except:
-            pass
+        __cusparseXcsr2gebsrNnz = GetProcAddress(handle, 'cusparseXcsr2gebsrNnz')
 
         global __cusparseScsr2gebsr
-        try:
-            __cusparseScsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseScsr2gebsr')
-        except:
-            pass
+        __cusparseScsr2gebsr = GetProcAddress(handle, 'cusparseScsr2gebsr')
 
         global __cusparseDcsr2gebsr
-        try:
-            __cusparseDcsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDcsr2gebsr')
-        except:
-            pass
+        __cusparseDcsr2gebsr = GetProcAddress(handle, 'cusparseDcsr2gebsr')
 
         global __cusparseCcsr2gebsr
-        try:
-            __cusparseCcsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCcsr2gebsr')
-        except:
-            pass
+        __cusparseCcsr2gebsr = GetProcAddress(handle, 'cusparseCcsr2gebsr')
 
         global __cusparseZcsr2gebsr
-        try:
-            __cusparseZcsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZcsr2gebsr')
-        except:
-            pass
+        __cusparseZcsr2gebsr = GetProcAddress(handle, 'cusparseZcsr2gebsr')
 
         global __cusparseSgebsr2gebsr_bufferSize
-        try:
-            __cusparseSgebsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgebsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseSgebsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseSgebsr2gebsr_bufferSize')
 
         global __cusparseDgebsr2gebsr_bufferSize
-        try:
-            __cusparseDgebsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgebsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseDgebsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseDgebsr2gebsr_bufferSize')
 
         global __cusparseCgebsr2gebsr_bufferSize
-        try:
-            __cusparseCgebsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgebsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseCgebsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseCgebsr2gebsr_bufferSize')
 
         global __cusparseZgebsr2gebsr_bufferSize
-        try:
-            __cusparseZgebsr2gebsr_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgebsr2gebsr_bufferSize')
-        except:
-            pass
+        __cusparseZgebsr2gebsr_bufferSize = GetProcAddress(handle, 'cusparseZgebsr2gebsr_bufferSize')
 
         global __cusparseSgebsr2gebsr_bufferSizeExt
-        try:
-            __cusparseSgebsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgebsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseSgebsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseSgebsr2gebsr_bufferSizeExt')
 
         global __cusparseDgebsr2gebsr_bufferSizeExt
-        try:
-            __cusparseDgebsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgebsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseDgebsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseDgebsr2gebsr_bufferSizeExt')
 
         global __cusparseCgebsr2gebsr_bufferSizeExt
-        try:
-            __cusparseCgebsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgebsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseCgebsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseCgebsr2gebsr_bufferSizeExt')
 
         global __cusparseZgebsr2gebsr_bufferSizeExt
-        try:
-            __cusparseZgebsr2gebsr_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgebsr2gebsr_bufferSizeExt')
-        except:
-            pass
+        __cusparseZgebsr2gebsr_bufferSizeExt = GetProcAddress(handle, 'cusparseZgebsr2gebsr_bufferSizeExt')
 
         global __cusparseXgebsr2gebsrNnz
-        try:
-            __cusparseXgebsr2gebsrNnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXgebsr2gebsrNnz')
-        except:
-            pass
+        __cusparseXgebsr2gebsrNnz = GetProcAddress(handle, 'cusparseXgebsr2gebsrNnz')
 
         global __cusparseSgebsr2gebsr
-        try:
-            __cusparseSgebsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSgebsr2gebsr')
-        except:
-            pass
+        __cusparseSgebsr2gebsr = GetProcAddress(handle, 'cusparseSgebsr2gebsr')
 
         global __cusparseDgebsr2gebsr
-        try:
-            __cusparseDgebsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDgebsr2gebsr')
-        except:
-            pass
+        __cusparseDgebsr2gebsr = GetProcAddress(handle, 'cusparseDgebsr2gebsr')
 
         global __cusparseCgebsr2gebsr
-        try:
-            __cusparseCgebsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCgebsr2gebsr')
-        except:
-            pass
+        __cusparseCgebsr2gebsr = GetProcAddress(handle, 'cusparseCgebsr2gebsr')
 
         global __cusparseZgebsr2gebsr
-        try:
-            __cusparseZgebsr2gebsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseZgebsr2gebsr')
-        except:
-            pass
+        __cusparseZgebsr2gebsr = GetProcAddress(handle, 'cusparseZgebsr2gebsr')
 
         global __cusparseXcoosort_bufferSizeExt
-        try:
-            __cusparseXcoosort_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcoosort_bufferSizeExt')
-        except:
-            pass
+        __cusparseXcoosort_bufferSizeExt = GetProcAddress(handle, 'cusparseXcoosort_bufferSizeExt')
 
         global __cusparseXcoosortByRow
-        try:
-            __cusparseXcoosortByRow = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcoosortByRow')
-        except:
-            pass
+        __cusparseXcoosortByRow = GetProcAddress(handle, 'cusparseXcoosortByRow')
 
         global __cusparseXcoosortByColumn
-        try:
-            __cusparseXcoosortByColumn = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcoosortByColumn')
-        except:
-            pass
+        __cusparseXcoosortByColumn = GetProcAddress(handle, 'cusparseXcoosortByColumn')
 
         global __cusparseXcsrsort_bufferSizeExt
-        try:
-            __cusparseXcsrsort_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcsrsort_bufferSizeExt')
-        except:
-            pass
+        __cusparseXcsrsort_bufferSizeExt = GetProcAddress(handle, 'cusparseXcsrsort_bufferSizeExt')
 
         global __cusparseXcsrsort
-        try:
-            __cusparseXcsrsort = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcsrsort')
-        except:
-            pass
+        __cusparseXcsrsort = GetProcAddress(handle, 'cusparseXcsrsort')
 
         global __cusparseXcscsort_bufferSizeExt
-        try:
-            __cusparseXcscsort_bufferSizeExt = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcscsort_bufferSizeExt')
-        except:
-            pass
+        __cusparseXcscsort_bufferSizeExt = GetProcAddress(handle, 'cusparseXcscsort_bufferSizeExt')
 
         global __cusparseXcscsort
-        try:
-            __cusparseXcscsort = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseXcscsort')
-        except:
-            pass
+        __cusparseXcscsort = GetProcAddress(handle, 'cusparseXcscsort')
 
         global __cusparseCsr2cscEx2
-        try:
-            __cusparseCsr2cscEx2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCsr2cscEx2')
-        except:
-            pass
+        __cusparseCsr2cscEx2 = GetProcAddress(handle, 'cusparseCsr2cscEx2')
 
         global __cusparseCsr2cscEx2_bufferSize
-        try:
-            __cusparseCsr2cscEx2_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCsr2cscEx2_bufferSize')
-        except:
-            pass
+        __cusparseCsr2cscEx2_bufferSize = GetProcAddress(handle, 'cusparseCsr2cscEx2_bufferSize')
 
         global __cusparseCreateSpVec
-        try:
-            __cusparseCreateSpVec = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateSpVec')
-        except:
-            pass
+        __cusparseCreateSpVec = GetProcAddress(handle, 'cusparseCreateSpVec')
 
         global __cusparseDestroySpVec
-        try:
-            __cusparseDestroySpVec = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDestroySpVec')
-        except:
-            pass
+        __cusparseDestroySpVec = GetProcAddress(handle, 'cusparseDestroySpVec')
 
         global __cusparseSpVecGet
-        try:
-            __cusparseSpVecGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpVecGet')
-        except:
-            pass
+        __cusparseSpVecGet = GetProcAddress(handle, 'cusparseSpVecGet')
 
         global __cusparseSpVecGetIndexBase
-        try:
-            __cusparseSpVecGetIndexBase = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpVecGetIndexBase')
-        except:
-            pass
+        __cusparseSpVecGetIndexBase = GetProcAddress(handle, 'cusparseSpVecGetIndexBase')
 
         global __cusparseSpVecGetValues
-        try:
-            __cusparseSpVecGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpVecGetValues')
-        except:
-            pass
+        __cusparseSpVecGetValues = GetProcAddress(handle, 'cusparseSpVecGetValues')
 
         global __cusparseSpVecSetValues
-        try:
-            __cusparseSpVecSetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpVecSetValues')
-        except:
-            pass
+        __cusparseSpVecSetValues = GetProcAddress(handle, 'cusparseSpVecSetValues')
 
         global __cusparseCreateDnVec
-        try:
-            __cusparseCreateDnVec = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateDnVec')
-        except:
-            pass
+        __cusparseCreateDnVec = GetProcAddress(handle, 'cusparseCreateDnVec')
 
         global __cusparseDestroyDnVec
-        try:
-            __cusparseDestroyDnVec = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDestroyDnVec')
-        except:
-            pass
+        __cusparseDestroyDnVec = GetProcAddress(handle, 'cusparseDestroyDnVec')
 
         global __cusparseDnVecGet
-        try:
-            __cusparseDnVecGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnVecGet')
-        except:
-            pass
+        __cusparseDnVecGet = GetProcAddress(handle, 'cusparseDnVecGet')
 
         global __cusparseDnVecGetValues
-        try:
-            __cusparseDnVecGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnVecGetValues')
-        except:
-            pass
+        __cusparseDnVecGetValues = GetProcAddress(handle, 'cusparseDnVecGetValues')
 
         global __cusparseDnVecSetValues
-        try:
-            __cusparseDnVecSetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnVecSetValues')
-        except:
-            pass
+        __cusparseDnVecSetValues = GetProcAddress(handle, 'cusparseDnVecSetValues')
 
         global __cusparseDestroySpMat
-        try:
-            __cusparseDestroySpMat = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDestroySpMat')
-        except:
-            pass
+        __cusparseDestroySpMat = GetProcAddress(handle, 'cusparseDestroySpMat')
 
         global __cusparseSpMatGetFormat
-        try:
-            __cusparseSpMatGetFormat = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatGetFormat')
-        except:
-            pass
+        __cusparseSpMatGetFormat = GetProcAddress(handle, 'cusparseSpMatGetFormat')
 
         global __cusparseSpMatGetIndexBase
-        try:
-            __cusparseSpMatGetIndexBase = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatGetIndexBase')
-        except:
-            pass
+        __cusparseSpMatGetIndexBase = GetProcAddress(handle, 'cusparseSpMatGetIndexBase')
 
         global __cusparseSpMatGetValues
-        try:
-            __cusparseSpMatGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatGetValues')
-        except:
-            pass
+        __cusparseSpMatGetValues = GetProcAddress(handle, 'cusparseSpMatGetValues')
 
         global __cusparseSpMatSetValues
-        try:
-            __cusparseSpMatSetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatSetValues')
-        except:
-            pass
+        __cusparseSpMatSetValues = GetProcAddress(handle, 'cusparseSpMatSetValues')
 
         global __cusparseSpMatGetSize
-        try:
-            __cusparseSpMatGetSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatGetSize')
-        except:
-            pass
+        __cusparseSpMatGetSize = GetProcAddress(handle, 'cusparseSpMatGetSize')
 
         global __cusparseSpMatGetStridedBatch
-        try:
-            __cusparseSpMatGetStridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatGetStridedBatch')
-        except:
-            pass
+        __cusparseSpMatGetStridedBatch = GetProcAddress(handle, 'cusparseSpMatGetStridedBatch')
 
         global __cusparseCooSetStridedBatch
-        try:
-            __cusparseCooSetStridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCooSetStridedBatch')
-        except:
-            pass
+        __cusparseCooSetStridedBatch = GetProcAddress(handle, 'cusparseCooSetStridedBatch')
 
         global __cusparseCsrSetStridedBatch
-        try:
-            __cusparseCsrSetStridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCsrSetStridedBatch')
-        except:
-            pass
+        __cusparseCsrSetStridedBatch = GetProcAddress(handle, 'cusparseCsrSetStridedBatch')
 
         global __cusparseCreateCsr
-        try:
-            __cusparseCreateCsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateCsr')
-        except:
-            pass
+        __cusparseCreateCsr = GetProcAddress(handle, 'cusparseCreateCsr')
 
         global __cusparseCsrGet
-        try:
-            __cusparseCsrGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCsrGet')
-        except:
-            pass
+        __cusparseCsrGet = GetProcAddress(handle, 'cusparseCsrGet')
 
         global __cusparseCsrSetPointers
-        try:
-            __cusparseCsrSetPointers = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCsrSetPointers')
-        except:
-            pass
+        __cusparseCsrSetPointers = GetProcAddress(handle, 'cusparseCsrSetPointers')
 
         global __cusparseCreateCoo
-        try:
-            __cusparseCreateCoo = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateCoo')
-        except:
-            pass
+        __cusparseCreateCoo = GetProcAddress(handle, 'cusparseCreateCoo')
 
         global __cusparseCooGet
-        try:
-            __cusparseCooGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCooGet')
-        except:
-            pass
+        __cusparseCooGet = GetProcAddress(handle, 'cusparseCooGet')
 
         global __cusparseCreateDnMat
-        try:
-            __cusparseCreateDnMat = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateDnMat')
-        except:
-            pass
+        __cusparseCreateDnMat = GetProcAddress(handle, 'cusparseCreateDnMat')
 
         global __cusparseDestroyDnMat
-        try:
-            __cusparseDestroyDnMat = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDestroyDnMat')
-        except:
-            pass
+        __cusparseDestroyDnMat = GetProcAddress(handle, 'cusparseDestroyDnMat')
 
         global __cusparseDnMatGet
-        try:
-            __cusparseDnMatGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnMatGet')
-        except:
-            pass
+        __cusparseDnMatGet = GetProcAddress(handle, 'cusparseDnMatGet')
 
         global __cusparseDnMatGetValues
-        try:
-            __cusparseDnMatGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnMatGetValues')
-        except:
-            pass
+        __cusparseDnMatGetValues = GetProcAddress(handle, 'cusparseDnMatGetValues')
 
         global __cusparseDnMatSetValues
-        try:
-            __cusparseDnMatSetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnMatSetValues')
-        except:
-            pass
+        __cusparseDnMatSetValues = GetProcAddress(handle, 'cusparseDnMatSetValues')
 
         global __cusparseDnMatSetStridedBatch
-        try:
-            __cusparseDnMatSetStridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnMatSetStridedBatch')
-        except:
-            pass
+        __cusparseDnMatSetStridedBatch = GetProcAddress(handle, 'cusparseDnMatSetStridedBatch')
 
         global __cusparseDnMatGetStridedBatch
-        try:
-            __cusparseDnMatGetStridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDnMatGetStridedBatch')
-        except:
-            pass
+        __cusparseDnMatGetStridedBatch = GetProcAddress(handle, 'cusparseDnMatGetStridedBatch')
 
         global __cusparseAxpby
-        try:
-            __cusparseAxpby = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseAxpby')
-        except:
-            pass
+        __cusparseAxpby = GetProcAddress(handle, 'cusparseAxpby')
 
         global __cusparseGather
-        try:
-            __cusparseGather = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseGather')
-        except:
-            pass
+        __cusparseGather = GetProcAddress(handle, 'cusparseGather')
 
         global __cusparseScatter
-        try:
-            __cusparseScatter = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseScatter')
-        except:
-            pass
+        __cusparseScatter = GetProcAddress(handle, 'cusparseScatter')
 
         global __cusparseSpVV_bufferSize
-        try:
-            __cusparseSpVV_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpVV_bufferSize')
-        except:
-            pass
+        __cusparseSpVV_bufferSize = GetProcAddress(handle, 'cusparseSpVV_bufferSize')
 
         global __cusparseSpVV
-        try:
-            __cusparseSpVV = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpVV')
-        except:
-            pass
+        __cusparseSpVV = GetProcAddress(handle, 'cusparseSpVV')
 
         global __cusparseSpMV
-        try:
-            __cusparseSpMV = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMV')
-        except:
-            pass
+        __cusparseSpMV = GetProcAddress(handle, 'cusparseSpMV')
 
         global __cusparseSpMV_bufferSize
-        try:
-            __cusparseSpMV_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMV_bufferSize')
-        except:
-            pass
+        __cusparseSpMV_bufferSize = GetProcAddress(handle, 'cusparseSpMV_bufferSize')
 
         global __cusparseSpMM
-        try:
-            __cusparseSpMM = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMM')
-        except:
-            pass
+        __cusparseSpMM = GetProcAddress(handle, 'cusparseSpMM')
 
         global __cusparseSpMM_bufferSize
-        try:
-            __cusparseSpMM_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMM_bufferSize')
-        except:
-            pass
+        __cusparseSpMM_bufferSize = GetProcAddress(handle, 'cusparseSpMM_bufferSize')
 
         global __cusparseSpGEMM_createDescr
-        try:
-            __cusparseSpGEMM_createDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMM_createDescr')
-        except:
-            pass
+        __cusparseSpGEMM_createDescr = GetProcAddress(handle, 'cusparseSpGEMM_createDescr')
 
         global __cusparseSpGEMM_destroyDescr
-        try:
-            __cusparseSpGEMM_destroyDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMM_destroyDescr')
-        except:
-            pass
+        __cusparseSpGEMM_destroyDescr = GetProcAddress(handle, 'cusparseSpGEMM_destroyDescr')
 
         global __cusparseSpGEMM_workEstimation
-        try:
-            __cusparseSpGEMM_workEstimation = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMM_workEstimation')
-        except:
-            pass
+        __cusparseSpGEMM_workEstimation = GetProcAddress(handle, 'cusparseSpGEMM_workEstimation')
 
         global __cusparseSpGEMM_compute
-        try:
-            __cusparseSpGEMM_compute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMM_compute')
-        except:
-            pass
+        __cusparseSpGEMM_compute = GetProcAddress(handle, 'cusparseSpGEMM_compute')
 
         global __cusparseSpGEMM_copy
-        try:
-            __cusparseSpGEMM_copy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMM_copy')
-        except:
-            pass
+        __cusparseSpGEMM_copy = GetProcAddress(handle, 'cusparseSpGEMM_copy')
 
         global __cusparseCreateCsc
-        try:
-            __cusparseCreateCsc = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateCsc')
-        except:
-            pass
+        __cusparseCreateCsc = GetProcAddress(handle, 'cusparseCreateCsc')
 
         global __cusparseCscSetPointers
-        try:
-            __cusparseCscSetPointers = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCscSetPointers')
-        except:
-            pass
+        __cusparseCscSetPointers = GetProcAddress(handle, 'cusparseCscSetPointers')
 
         global __cusparseCooSetPointers
-        try:
-            __cusparseCooSetPointers = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCooSetPointers')
-        except:
-            pass
+        __cusparseCooSetPointers = GetProcAddress(handle, 'cusparseCooSetPointers')
 
         global __cusparseSparseToDense_bufferSize
-        try:
-            __cusparseSparseToDense_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSparseToDense_bufferSize')
-        except:
-            pass
+        __cusparseSparseToDense_bufferSize = GetProcAddress(handle, 'cusparseSparseToDense_bufferSize')
 
         global __cusparseSparseToDense
-        try:
-            __cusparseSparseToDense = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSparseToDense')
-        except:
-            pass
+        __cusparseSparseToDense = GetProcAddress(handle, 'cusparseSparseToDense')
 
         global __cusparseDenseToSparse_bufferSize
-        try:
-            __cusparseDenseToSparse_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDenseToSparse_bufferSize')
-        except:
-            pass
+        __cusparseDenseToSparse_bufferSize = GetProcAddress(handle, 'cusparseDenseToSparse_bufferSize')
 
         global __cusparseDenseToSparse_analysis
-        try:
-            __cusparseDenseToSparse_analysis = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDenseToSparse_analysis')
-        except:
-            pass
+        __cusparseDenseToSparse_analysis = GetProcAddress(handle, 'cusparseDenseToSparse_analysis')
 
         global __cusparseDenseToSparse_convert
-        try:
-            __cusparseDenseToSparse_convert = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseDenseToSparse_convert')
-        except:
-            pass
+        __cusparseDenseToSparse_convert = GetProcAddress(handle, 'cusparseDenseToSparse_convert')
 
         global __cusparseCreateBlockedEll
-        try:
-            __cusparseCreateBlockedEll = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateBlockedEll')
-        except:
-            pass
+        __cusparseCreateBlockedEll = GetProcAddress(handle, 'cusparseCreateBlockedEll')
 
         global __cusparseBlockedEllGet
-        try:
-            __cusparseBlockedEllGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseBlockedEllGet')
-        except:
-            pass
+        __cusparseBlockedEllGet = GetProcAddress(handle, 'cusparseBlockedEllGet')
 
         global __cusparseSpMM_preprocess
-        try:
-            __cusparseSpMM_preprocess = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMM_preprocess')
-        except:
-            pass
+        __cusparseSpMM_preprocess = GetProcAddress(handle, 'cusparseSpMM_preprocess')
 
         global __cusparseSDDMM_bufferSize
-        try:
-            __cusparseSDDMM_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSDDMM_bufferSize')
-        except:
-            pass
+        __cusparseSDDMM_bufferSize = GetProcAddress(handle, 'cusparseSDDMM_bufferSize')
 
         global __cusparseSDDMM_preprocess
-        try:
-            __cusparseSDDMM_preprocess = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSDDMM_preprocess')
-        except:
-            pass
+        __cusparseSDDMM_preprocess = GetProcAddress(handle, 'cusparseSDDMM_preprocess')
 
         global __cusparseSDDMM
-        try:
-            __cusparseSDDMM = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSDDMM')
-        except:
-            pass
+        __cusparseSDDMM = GetProcAddress(handle, 'cusparseSDDMM')
 
         global __cusparseSpMatGetAttribute
-        try:
-            __cusparseSpMatGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatGetAttribute')
-        except:
-            pass
+        __cusparseSpMatGetAttribute = GetProcAddress(handle, 'cusparseSpMatGetAttribute')
 
         global __cusparseSpMatSetAttribute
-        try:
-            __cusparseSpMatSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMatSetAttribute')
-        except:
-            pass
+        __cusparseSpMatSetAttribute = GetProcAddress(handle, 'cusparseSpMatSetAttribute')
 
         global __cusparseSpSV_createDescr
-        try:
-            __cusparseSpSV_createDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSV_createDescr')
-        except:
-            pass
+        __cusparseSpSV_createDescr = GetProcAddress(handle, 'cusparseSpSV_createDescr')
 
         global __cusparseSpSV_destroyDescr
-        try:
-            __cusparseSpSV_destroyDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSV_destroyDescr')
-        except:
-            pass
+        __cusparseSpSV_destroyDescr = GetProcAddress(handle, 'cusparseSpSV_destroyDescr')
 
         global __cusparseSpSV_bufferSize
-        try:
-            __cusparseSpSV_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSV_bufferSize')
-        except:
-            pass
+        __cusparseSpSV_bufferSize = GetProcAddress(handle, 'cusparseSpSV_bufferSize')
 
         global __cusparseSpSV_analysis
-        try:
-            __cusparseSpSV_analysis = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSV_analysis')
-        except:
-            pass
+        __cusparseSpSV_analysis = GetProcAddress(handle, 'cusparseSpSV_analysis')
 
         global __cusparseSpSV_solve
-        try:
-            __cusparseSpSV_solve = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSV_solve')
-        except:
-            pass
+        __cusparseSpSV_solve = GetProcAddress(handle, 'cusparseSpSV_solve')
 
         global __cusparseSpSM_createDescr
-        try:
-            __cusparseSpSM_createDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSM_createDescr')
-        except:
-            pass
+        __cusparseSpSM_createDescr = GetProcAddress(handle, 'cusparseSpSM_createDescr')
 
         global __cusparseSpSM_destroyDescr
-        try:
-            __cusparseSpSM_destroyDescr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSM_destroyDescr')
-        except:
-            pass
+        __cusparseSpSM_destroyDescr = GetProcAddress(handle, 'cusparseSpSM_destroyDescr')
 
         global __cusparseSpSM_bufferSize
-        try:
-            __cusparseSpSM_bufferSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSM_bufferSize')
-        except:
-            pass
+        __cusparseSpSM_bufferSize = GetProcAddress(handle, 'cusparseSpSM_bufferSize')
 
         global __cusparseSpSM_analysis
-        try:
-            __cusparseSpSM_analysis = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSM_analysis')
-        except:
-            pass
+        __cusparseSpSM_analysis = GetProcAddress(handle, 'cusparseSpSM_analysis')
 
         global __cusparseSpSM_solve
-        try:
-            __cusparseSpSM_solve = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSM_solve')
-        except:
-            pass
+        __cusparseSpSM_solve = GetProcAddress(handle, 'cusparseSpSM_solve')
 
         global __cusparseSpGEMMreuse_workEstimation
-        try:
-            __cusparseSpGEMMreuse_workEstimation = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMMreuse_workEstimation')
-        except:
-            pass
+        __cusparseSpGEMMreuse_workEstimation = GetProcAddress(handle, 'cusparseSpGEMMreuse_workEstimation')
 
         global __cusparseSpGEMMreuse_nnz
-        try:
-            __cusparseSpGEMMreuse_nnz = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMMreuse_nnz')
-        except:
-            pass
+        __cusparseSpGEMMreuse_nnz = GetProcAddress(handle, 'cusparseSpGEMMreuse_nnz')
 
         global __cusparseSpGEMMreuse_copy
-        try:
-            __cusparseSpGEMMreuse_copy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMMreuse_copy')
-        except:
-            pass
+        __cusparseSpGEMMreuse_copy = GetProcAddress(handle, 'cusparseSpGEMMreuse_copy')
 
         global __cusparseSpGEMMreuse_compute
-        try:
-            __cusparseSpGEMMreuse_compute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMMreuse_compute')
-        except:
-            pass
+        __cusparseSpGEMMreuse_compute = GetProcAddress(handle, 'cusparseSpGEMMreuse_compute')
 
         global __cusparseLoggerSetCallback
-        try:
-            __cusparseLoggerSetCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseLoggerSetCallback')
-        except:
-            pass
+        __cusparseLoggerSetCallback = GetProcAddress(handle, 'cusparseLoggerSetCallback')
 
         global __cusparseLoggerSetFile
-        try:
-            __cusparseLoggerSetFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseLoggerSetFile')
-        except:
-            pass
+        __cusparseLoggerSetFile = GetProcAddress(handle, 'cusparseLoggerSetFile')
 
         global __cusparseLoggerOpenFile
-        try:
-            __cusparseLoggerOpenFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseLoggerOpenFile')
-        except:
-            pass
+        __cusparseLoggerOpenFile = GetProcAddress(handle, 'cusparseLoggerOpenFile')
 
         global __cusparseLoggerSetLevel
-        try:
-            __cusparseLoggerSetLevel = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseLoggerSetLevel')
-        except:
-            pass
+        __cusparseLoggerSetLevel = GetProcAddress(handle, 'cusparseLoggerSetLevel')
 
         global __cusparseLoggerSetMask
-        try:
-            __cusparseLoggerSetMask = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseLoggerSetMask')
-        except:
-            pass
+        __cusparseLoggerSetMask = GetProcAddress(handle, 'cusparseLoggerSetMask')
 
         global __cusparseLoggerForceDisable
-        try:
-            __cusparseLoggerForceDisable = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseLoggerForceDisable')
-        except:
-            pass
+        __cusparseLoggerForceDisable = GetProcAddress(handle, 'cusparseLoggerForceDisable')
 
         global __cusparseSpMMOp_createPlan
-        try:
-            __cusparseSpMMOp_createPlan = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMMOp_createPlan')
-        except:
-            pass
+        __cusparseSpMMOp_createPlan = GetProcAddress(handle, 'cusparseSpMMOp_createPlan')
 
         global __cusparseSpMMOp
-        try:
-            __cusparseSpMMOp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMMOp')
-        except:
-            pass
+        __cusparseSpMMOp = GetProcAddress(handle, 'cusparseSpMMOp')
 
         global __cusparseSpMMOp_destroyPlan
-        try:
-            __cusparseSpMMOp_destroyPlan = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMMOp_destroyPlan')
-        except:
-            pass
+        __cusparseSpMMOp_destroyPlan = GetProcAddress(handle, 'cusparseSpMMOp_destroyPlan')
 
         global __cusparseCscGet
-        try:
-            __cusparseCscGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCscGet')
-        except:
-            pass
+        __cusparseCscGet = GetProcAddress(handle, 'cusparseCscGet')
 
         global __cusparseCreateConstSpVec
-        try:
-            __cusparseCreateConstSpVec = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstSpVec')
-        except:
-            pass
+        __cusparseCreateConstSpVec = GetProcAddress(handle, 'cusparseCreateConstSpVec')
 
         global __cusparseConstSpVecGet
-        try:
-            __cusparseConstSpVecGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstSpVecGet')
-        except:
-            pass
+        __cusparseConstSpVecGet = GetProcAddress(handle, 'cusparseConstSpVecGet')
 
         global __cusparseConstSpVecGetValues
-        try:
-            __cusparseConstSpVecGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstSpVecGetValues')
-        except:
-            pass
+        __cusparseConstSpVecGetValues = GetProcAddress(handle, 'cusparseConstSpVecGetValues')
 
         global __cusparseCreateConstDnVec
-        try:
-            __cusparseCreateConstDnVec = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstDnVec')
-        except:
-            pass
+        __cusparseCreateConstDnVec = GetProcAddress(handle, 'cusparseCreateConstDnVec')
 
         global __cusparseConstDnVecGet
-        try:
-            __cusparseConstDnVecGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstDnVecGet')
-        except:
-            pass
+        __cusparseConstDnVecGet = GetProcAddress(handle, 'cusparseConstDnVecGet')
 
         global __cusparseConstDnVecGetValues
-        try:
-            __cusparseConstDnVecGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstDnVecGetValues')
-        except:
-            pass
+        __cusparseConstDnVecGetValues = GetProcAddress(handle, 'cusparseConstDnVecGetValues')
 
         global __cusparseConstSpMatGetValues
-        try:
-            __cusparseConstSpMatGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstSpMatGetValues')
-        except:
-            pass
+        __cusparseConstSpMatGetValues = GetProcAddress(handle, 'cusparseConstSpMatGetValues')
 
         global __cusparseCreateConstCsr
-        try:
-            __cusparseCreateConstCsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstCsr')
-        except:
-            pass
+        __cusparseCreateConstCsr = GetProcAddress(handle, 'cusparseCreateConstCsr')
 
         global __cusparseCreateConstCsc
-        try:
-            __cusparseCreateConstCsc = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstCsc')
-        except:
-            pass
+        __cusparseCreateConstCsc = GetProcAddress(handle, 'cusparseCreateConstCsc')
 
         global __cusparseConstCsrGet
-        try:
-            __cusparseConstCsrGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstCsrGet')
-        except:
-            pass
+        __cusparseConstCsrGet = GetProcAddress(handle, 'cusparseConstCsrGet')
 
         global __cusparseConstCscGet
-        try:
-            __cusparseConstCscGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstCscGet')
-        except:
-            pass
+        __cusparseConstCscGet = GetProcAddress(handle, 'cusparseConstCscGet')
 
         global __cusparseCreateConstCoo
-        try:
-            __cusparseCreateConstCoo = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstCoo')
-        except:
-            pass
+        __cusparseCreateConstCoo = GetProcAddress(handle, 'cusparseCreateConstCoo')
 
         global __cusparseConstCooGet
-        try:
-            __cusparseConstCooGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstCooGet')
-        except:
-            pass
+        __cusparseConstCooGet = GetProcAddress(handle, 'cusparseConstCooGet')
 
         global __cusparseCreateConstBlockedEll
-        try:
-            __cusparseCreateConstBlockedEll = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstBlockedEll')
-        except:
-            pass
+        __cusparseCreateConstBlockedEll = GetProcAddress(handle, 'cusparseCreateConstBlockedEll')
 
         global __cusparseConstBlockedEllGet
-        try:
-            __cusparseConstBlockedEllGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstBlockedEllGet')
-        except:
-            pass
+        __cusparseConstBlockedEllGet = GetProcAddress(handle, 'cusparseConstBlockedEllGet')
 
         global __cusparseCreateConstDnMat
-        try:
-            __cusparseCreateConstDnMat = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstDnMat')
-        except:
-            pass
+        __cusparseCreateConstDnMat = GetProcAddress(handle, 'cusparseCreateConstDnMat')
 
         global __cusparseConstDnMatGet
-        try:
-            __cusparseConstDnMatGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstDnMatGet')
-        except:
-            pass
+        __cusparseConstDnMatGet = GetProcAddress(handle, 'cusparseConstDnMatGet')
 
         global __cusparseConstDnMatGetValues
-        try:
-            __cusparseConstDnMatGetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseConstDnMatGetValues')
-        except:
-            pass
+        __cusparseConstDnMatGetValues = GetProcAddress(handle, 'cusparseConstDnMatGetValues')
 
         global __cusparseSpGEMM_getNumProducts
-        try:
-            __cusparseSpGEMM_getNumProducts = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMM_getNumProducts')
-        except:
-            pass
+        __cusparseSpGEMM_getNumProducts = GetProcAddress(handle, 'cusparseSpGEMM_getNumProducts')
 
         global __cusparseSpGEMM_estimateMemory
-        try:
-            __cusparseSpGEMM_estimateMemory = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpGEMM_estimateMemory')
-        except:
-            pass
+        __cusparseSpGEMM_estimateMemory = GetProcAddress(handle, 'cusparseSpGEMM_estimateMemory')
 
         global __cusparseBsrSetStridedBatch
-        try:
-            __cusparseBsrSetStridedBatch = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseBsrSetStridedBatch')
-        except:
-            pass
+        __cusparseBsrSetStridedBatch = GetProcAddress(handle, 'cusparseBsrSetStridedBatch')
 
         global __cusparseCreateBsr
-        try:
-            __cusparseCreateBsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateBsr')
-        except:
-            pass
+        __cusparseCreateBsr = GetProcAddress(handle, 'cusparseCreateBsr')
 
         global __cusparseCreateConstBsr
-        try:
-            __cusparseCreateConstBsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstBsr')
-        except:
-            pass
+        __cusparseCreateConstBsr = GetProcAddress(handle, 'cusparseCreateConstBsr')
 
         global __cusparseCreateSlicedEll
-        try:
-            __cusparseCreateSlicedEll = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateSlicedEll')
-        except:
-            pass
+        __cusparseCreateSlicedEll = GetProcAddress(handle, 'cusparseCreateSlicedEll')
 
         global __cusparseCreateConstSlicedEll
-        try:
-            __cusparseCreateConstSlicedEll = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseCreateConstSlicedEll')
-        except:
-            pass
+        __cusparseCreateConstSlicedEll = GetProcAddress(handle, 'cusparseCreateConstSlicedEll')
 
         global __cusparseSpSV_updateMatrix
-        try:
-            __cusparseSpSV_updateMatrix = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSV_updateMatrix')
-        except:
-            pass
+        __cusparseSpSV_updateMatrix = GetProcAddress(handle, 'cusparseSpSV_updateMatrix')
 
         global __cusparseSpMV_preprocess
-        try:
-            __cusparseSpMV_preprocess = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpMV_preprocess')
-        except:
-            pass
+        __cusparseSpMV_preprocess = GetProcAddress(handle, 'cusparseSpMV_preprocess')
 
         global __cusparseSpSM_updateMatrix
-        try:
-            __cusparseSpSM_updateMatrix = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusparseSpSM_updateMatrix')
-        except:
-            pass
+        __cusparseSpSM_updateMatrix = GetProcAddress(handle, 'cusparseSpSM_updateMatrix')
 
-    __py_cusparse_init = True
-    return 0
+        __py_cusparse_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import random_complex, mm_perf_GFlops, fp16x2_to_complex64, complex64_to_fp16x2
 from common_numba import time_numba, load_to_shared_1d_float16x2, store_from_shared_1d_float16x2
 
@@ -22,20 +22,19 @@ def main():
     data_type = "complex"
     precision = np.float16
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=precision,
         data_type=data_type,
         arrangement=("row_major", "col_major", "col_major"),
         execution="Block",
         block_size=block_size,
-        compiler="numba",
         leading_dimension="suggested",
     )
 
     grid_dim = 1
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(a, b, c, alpha, beta, output, repeat):
         smem_a = cuda.shared.array(shape=(MM.a_size,), dtype=MM.a_value_type)
         smem_b = cuda.shared.array(shape=(MM.b_size,), dtype=MM.b_value_type)

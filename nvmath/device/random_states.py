@@ -5,7 +5,6 @@
 import operator
 
 from nvmath.device import curand_kernel
-from nvmath.device.common_mathdx import CURAND_HOME  # noqa: F401
 
 from numba import cuda, types
 from numba.extending import models, register_model, typeof_impl

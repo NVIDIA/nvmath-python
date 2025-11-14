@@ -13,7 +13,7 @@ from nvmath.sparse.advanced import DirectSolverMatrixType
 
 
 supported_dtypes = (DType.float32, DType.float64, DType.complex64, DType.complex128)
-supported_index_dtypes = (DType.int32,)
+supported_index_dtypes = (DType.int32, DType.int64)
 
 supported_sparse_array_types = (SparseArrayType.CSR,)
 
@@ -29,5 +29,3 @@ supported_sparse_type_dtype = {
     DirectSolverMatrixType.SPD: [DType.float32, DType.float64],
     DirectSolverMatrixType.HPD: [DType.complex64, DType.complex128],
 }
-
-supported_index_dtype = (DType.int32,)

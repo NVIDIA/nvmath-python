@@ -22,7 +22,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(me
 
 # Prepare sample input data
 m, n, k = 123, 456, 789
-m, n, k = 2, 3, 4
 a = np.random.rand(m, k)
 b = np.random.rand(k, n)
 

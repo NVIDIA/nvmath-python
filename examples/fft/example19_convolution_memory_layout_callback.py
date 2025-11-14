@@ -8,7 +8,7 @@ focusing on memory-layoyt pitfalls.
 
 To run this example, CUDA Toolkit 12.6U2 and device API (dx) dependencies
 are required. The quickest way for pip users to set them up is to install
-nvmath as ``pip install nvmath-python[cu12,dx]``.
+nvmath as ``pip install nvmath-python[cu12-dx]``.
 
 For further details, please see :ref:`FFT callbacks <fft-callback>`.
 """

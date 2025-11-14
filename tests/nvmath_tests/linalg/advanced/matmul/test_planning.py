@@ -11,7 +11,7 @@ from nvmath.linalg.advanced import Matmul, MatmulPlanPreferences
 import numpy as np
 import pytest
 
-from .utils import sample_matrix, allow_cublas_unsupported, assert_tensors_equal
+from ...utils import sample_matrix, allow_cublas_unsupported, assert_tensors_equal
 
 try:
     import cupy

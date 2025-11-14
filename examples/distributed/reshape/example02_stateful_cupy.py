@@ -15,13 +15,14 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The problem consists of a global 3-D array of size (512, 256, 512), that is
 # initially partitioned on the X axis across processes.
@@ -39,10 +40,10 @@ with cp.cuda.Device(device_id):
 # We can get the offset of this process on the partitioned dimension with a prefix
 # reduction.
 x_offset = comm.scan(X // nranks, op=MPI.SUM)
-input_box = [(x_offset - X // nranks, 0, 0), (x_offset, Y, Z)]
+input_box = Box((x_offset - X // nranks, 0, 0), (x_offset, Y, Z))
 
 y_offset = comm.scan(Y // nranks, op=MPI.SUM)
-output_box = [(0, y_offset - Y // nranks, 0), (X, y_offset, Z)]
+output_box = Box((0, y_offset - Y // nranks, 0), (X, y_offset, Z))
 
 # Create a stateful Reshape object 'r'.
 with nvmath.distributed.reshape.Reshape(a, input_box, output_box) as r:

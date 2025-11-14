@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.5.0. Do not modify it directly.
+# This code was automatically generated with version 0.7.0. Do not modify it directly.
 
 from ._internal cimport cudss as _cudss
 
@@ -27,7 +27,7 @@ cdef cudssStatus_t cudssDataGet(cudssHandle_t handle, cudssData_t data, cudssDat
     return _cudss._cudssDataGet(handle, data, param, value, sizeInBytes, sizeWritten)
 
 
-cdef cudssStatus_t cudssExecute(cudssHandle_t handle, cudssPhase_t phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+cdef cudssStatus_t cudssExecute(cudssHandle_t handle, int phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cudss._cudssExecute(handle, phase, solverConfig, solverData, inputMatrix, solution, rhs)
 
 
@@ -61,6 +61,10 @@ cdef cudssStatus_t cudssDataDestroy(cudssHandle_t handle, cudssData_t solverData
 
 cdef cudssStatus_t cudssCreate(cudssHandle_t* handle) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cudss._cudssCreate(handle)
+
+
+cdef cudssStatus_t cudssCreateMg(cudssHandle_t* handle_pt, int device_count, int* device_indices) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cudss._cudssCreateMg(handle_pt, device_count, device_indices)
 
 
 cdef cudssStatus_t cudssDestroy(cudssHandle_t handle) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -125,6 +129,14 @@ cdef cudssStatus_t cudssMatrixSetBatchCsrPointers(cudssMatrix_t matrix, void** r
 
 cdef cudssStatus_t cudssMatrixGetFormat(cudssMatrix_t matrix, int* format) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cudss._cudssMatrixGetFormat(matrix, format)
+
+
+cdef cudssStatus_t cudssMatrixSetDistributionRow1d(cudssMatrix_t matrix, int64_t first_row, int64_t last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cudss._cudssMatrixSetDistributionRow1d(matrix, first_row, last_row)
+
+
+cdef cudssStatus_t cudssMatrixGetDistributionRow1d(cudssMatrix_t matrix, int64_t* first_row, int64_t* last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cudss._cudssMatrixGetDistributionRow1d(matrix, first_row, last_row)
 
 
 cdef cudssStatus_t cudssGetDeviceMemHandler(cudssHandle_t handle, cudssDeviceMemHandler_t* handler) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:

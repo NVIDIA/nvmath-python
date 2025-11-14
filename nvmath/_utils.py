@@ -93,7 +93,13 @@ def module_init_force_cupy_lib_load():
     """
     from nvmath.bindings import _internal
 
-    for lib in ("cublas", "cufft", "curand", "cusolverDn", "cusparse"):
+    # cutensor windows binding is not available for nvmath-python beta7.0.
+    libs = (
+        ("cublas", "cufft", "curand", "cusolverDn", "cusparse", "cutensor")
+        if PLATFORM_LINUX
+        else ("cublas", "cufft", "curand", "cusolverDn", "cusparse")
+    )
+    for lib in libs:
         try:
             mod = getattr(_internal, lib)
             mod._inspect_function_pointers()

@@ -11,7 +11,7 @@ import numpy as np
 from numba import cuda
 from common_cupy import time_cupy
 from common_numba import time_numba
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from nvmath.device.cublasdx import MAX_ALIGNMENT, SharedStorageCalc
 from nvmath.linalg.advanced import Matmul as CublasltMatmul
 from common import random_real
@@ -42,7 +42,7 @@ def main():
     assert n % tile_n == 0
     assert k % tile_k == 0
 
-    MM = matmul(
+    MM = Matmul(
         size=(tile_m, tile_n, tile_k),
         precision=(precision, precision, precision),
         data_type=data_type,
@@ -50,11 +50,7 @@ def main():
         execution="Block",
         block_size=block_size,
         alignment=alignment,
-        global_memory_alignment=alignment,
         static_block_dim=True,
-        compiler="numba",
-        execute_api="tensors",
-        tensor_types=("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
     )
 
     a_size = MM.suggest_layout_smem_a().cosize
@@ -66,7 +62,7 @@ def main():
     assert a_size * np.dtype(precision).itemsize % alignment.a == 0
     assert b_size * np.dtype(precision).itemsize % alignment.b == 0
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(a, b, c, alpha, beta, output):
         block_m = cuda.blockIdx.x
         block_n = cuda.blockIdx.y
@@ -115,8 +111,8 @@ def main():
         gmem_a = make_tensor(a_tile, MM.get_layout_gmem_a(m))
         gmem_b = make_tensor(b_tile, MM.get_layout_gmem_b(k))
 
-        copy(gmem_a, smem_a)
-        copy(gmem_b, smem_b)
+        copy(gmem_a, smem_a, alignment=16)
+        copy(gmem_b, smem_b, alignment=16)
 
         # 4. EXECUTE GEMM WITH ACCUMULATION IN REGISTERS
 
@@ -136,8 +132,8 @@ def main():
             gmem_a = make_tensor(a_tile, MM.get_layout_gmem_a(m))
             gmem_b = make_tensor(b_tile, MM.get_layout_gmem_b(k))
 
-            copy(gmem_a, smem_a_n)
-            copy(gmem_b, smem_b_n)
+            copy(gmem_a, smem_a_n, alignment=16)
+            copy(gmem_b, smem_b_n, alignment=16)
 
             # Accumulate results from this stage
             MM.execute(smem_a, smem_b, rmem_c)
@@ -154,9 +150,9 @@ def main():
         rmem_c_out_buff = cuda.local.array(shape=(c_size,), dtype=MM.c_value_type)
         rmem_c_out = make_tensor(rmem_c_out_buff, MM.suggest_layout_rmem_c())
 
-        copy_fragment(gmem_c, rmem_c_out)
+        copy_fragment(gmem_c, rmem_c_out, alignment=16)
         axpby(alpha, rmem_c, beta, rmem_c_out)
-        copy_fragment(rmem_c_out, gmem_output)
+        copy_fragment(rmem_c_out, gmem_output, alignment=16)
 
     a = random_real((m, k), precision, order="F")
     b = random_real((k, n), precision, order="F")

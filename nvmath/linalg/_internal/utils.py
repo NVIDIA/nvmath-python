@@ -18,35 +18,57 @@ __all__ = [
 
 import typing
 
+from nvmath.bindings import cublas
 from nvmath.bindings import cublasLt as cublaslt
 from nvmath.internal import utils
 
-HANDLES: dict[int, int] = {}
+HANDLES: dict[str, dict[int, int]] = {
+    "cublas": {},
+    "cublaslt": {},
+}
 
 
-def create_handle(device_id: int) -> int:
+def create_handle(device_id: int, binding="cublaslt") -> int:
     """
     Currently for internal use only.
     """
     with utils.device_ctx(device_id):
-        handle = cublaslt.create()
-
+        match binding:
+            case "cublas":
+                handle = cublas.create()
+            case "cublaslt" | _:
+                handle = cublaslt.create()
     return handle
 
 
-def destroy_handle(handle: int):
+def destroy_handle(handle: int, binding="cublaslt"):
     """
     Currently for internal use only.
     """
-    cublaslt.destroy(handle)
+    match binding:
+        case "cublas":
+            cublas.destroy(handle)
+        case "cublaslt" | _:
+            cublaslt.destroy(handle)
 
 
-def get_handle(device_id: int) -> int:
+def get_handle(device_id: int, binding="cublaslt") -> int:
     """
-    Retrieve the BLAS library handle for the specified device. If one doesn't exist, create,
-    cache, and return the handle.
+    Retrieve the cuBLAS[lt] library handle for the specified device. If one doesn't exist,
+    create, cache, and return the handle.
+
+    According to the docs for cublasLtHandle_t, any valid cublasHandle_t can be used in
+    place of cublasLtHandle_t with a simple cast, so we use the same handle for both APIs.
+
+    We never cleanup these handles (allow them to leak) since we expect to have exactly one
+    handle per device / thread.
     """
-    return HANDLES.setdefault(device_id, create_handle(device_id))
+    if device_id in HANDLES[binding]:
+        handle = HANDLES[binding][device_id]
+    else:
+        handle = create_handle(device_id, binding=binding)
+        HANDLES[binding][device_id] = handle
+    return handle
 
 
 def pointer_aligned_to(address):

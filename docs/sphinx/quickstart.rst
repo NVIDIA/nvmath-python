@@ -16,7 +16,11 @@ To quickly install nvmath-python just run the following command:
 
 .. code-block:: bash
 
-    pip install nvmath-python[cu12,dx]
+    pip install nvmath-python[cu12-dx]
+
+.. important::
+    Using at least one of the ``pip`` extras is required for all ``pip`` installs to
+    ensure that nvmath-python's dependencies are correctly constrained.
 
 For more details visit the :doc:`Installation Guide<installation>`.
 
@@ -141,6 +145,8 @@ In this example, we'll use
     ... def kernel(states):
     ...     i = cuda.grid(1)
     ...     random_values = random.normal2(states[i])
+    >>>
+    >>> kernel[blocks, threads](states)
 
 To learn more about this and other Device APIs,
 visit the documentation of :mod:`nvmath.device`.

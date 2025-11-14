@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
 import numpy as np
 from numba import cuda
-from nvmath.device import fft
+from nvmath.device import FFT
 from common import random_complex
 
 
@@ -13,56 +14,40 @@ def main():
     ffts_per_block = 1
     batch_size = 1
 
-    FFT_fwd = fft(
+    FFT_base = functools.partial(
+        FFT,
         fft_type="c2c",
         size=size,
         precision=np.float32,
-        direction="forward",
         ffts_per_block=ffts_per_block,
         elements_per_thread=2,
         execution="Block",
-        compiler="numba",
     )
-    FFT_inv = fft(
-        fft_type="c2c",
-        size=size,
-        precision=np.float32,
-        direction="inverse",
-        ffts_per_block=ffts_per_block,
-        elements_per_thread=2,
-        execution="Block",
-        compiler="numba",
-    )
+    fft = FFT_base(direction="forward")
+    ifft = FFT_base(direction="inverse")
 
-    value_type = FFT_fwd.value_type
-    storage_size = FFT_fwd.storage_size
-    shared_memory_size = FFT_fwd.shared_memory_size
-    fft_stride = FFT_fwd.stride
-    ept = FFT_fwd.elements_per_thread
-    block_dim = FFT_fwd.block_dim
-
-    @cuda.jit(link=FFT_fwd.files + FFT_inv.files)
+    @cuda.jit
     def f(signal, filter):
-        thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
-        shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft.storage_size,), dtype=fft.value_type)
+        shared_mem = cuda.shared.array(shape=(0,), dtype=fft.value_type)
 
         fft_id = (cuda.blockIdx.x * ffts_per_block) + cuda.threadIdx.y
         if fft_id >= batch_size:
             return
         offset = cuda.threadIdx.x
 
-        for i in range(ept):
-            thread_data[i] = signal[fft_id, offset + i * fft_stride]
+        for i in range(fft.elements_per_thread):
+            thread_data[i] = signal[fft_id, offset + i * fft.stride]
 
-        FFT_fwd(thread_data, shared_mem)
+        fft.execute(thread_data, shared_mem)
 
-        for i in range(ept):
-            thread_data[i] = thread_data[i] * filter[fft_id, offset + i * fft_stride]
+        for i in range(fft.elements_per_thread):
+            thread_data[i] = thread_data[i] * filter[fft_id, offset + i * fft.stride]
 
-        FFT_inv(thread_data, shared_mem)
+        ifft.execute(thread_data, shared_mem)
 
-        for i in range(ept):
-            signal[fft_id, offset + i * fft_stride] = thread_data[i]
+        for i in range(fft.elements_per_thread):
+            signal[fft_id, offset + i * fft.stride] = thread_data[i]
 
     data = random_complex((ffts_per_block, size), np.float32)
     filter = random_complex((ffts_per_block, size), np.float32)
@@ -70,7 +55,7 @@ def main():
     data_d = cuda.to_device(data)
     filter_d = cuda.to_device(filter)
 
-    f[1, block_dim, 0, shared_memory_size](data_d, filter_d)
+    f[1, fft.block_dim, 0, fft.shared_memory_size](data_d, filter_d)
     cuda.synchronize()
 
     data_test = data_d.copy_to_host()

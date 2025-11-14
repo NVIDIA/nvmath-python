@@ -74,7 +74,7 @@ dependencies. Pip users should run the following command:
 
 .. code-block:: bash
 
-   pip install nvmath-python[cu12,dx]
+   pip install nvmath-python[cu12-dx]
 
 
 Required dependencies
@@ -82,33 +82,17 @@ Required dependencies
 
 For those who need to collect the required dependencies manually:
 
-- LTO callbacks are supported by cuFFT 11.3 which is shipped with `CUDA Toolkit 12.6 Update
-  2 and newer <https://developer.nvidia.com/cuda-downloads>`_.
-- Using cuFFT LTO callbacks requires nvJitLink from the same CUDA toolkit or newer (within
-  the same major CUDA release, for example version 12).
+- LTO callbacks are supported starting with cuFFT 11.3, shipped with
+  `CUDA Toolkit <https://developer.nvidia.com/cuda-downloads>`_ 12.6 Update 2.
+- The target device must have compute capability 7.0 (7.5 for CTK 13) or higher.
+- Using cuFFT LTO callbacks requires nvJitLink from the same CUDA toolkit or newer, within
+  the same major CUDA release. For example, if cuFFT comes from CUDA Toolkit 13.X, then
+  nvJitLink must come from CUDA Toolkit 13.Y, such that ``Y >= X``.
 - Compiling the callbacks with the :func:`nvmath.fft.compile_prolog` and
-  :func:`nvmath.fft.compile_epilog` helpers requires Numba 0.59+ and nvcc/nvvm from the same
-  CUDA toolkit as nvJitLink or older (within the same major CUDA release). The helpers
-  require the target device to have compute capability 7.0 or higher.
+  :func:`nvmath.fft.compile_epilog` helpers requires numba-cuda 0.18.1 or newer.
 
 For further details, refer to the `cuFFT LTO documentation
 <https://docs.nvidia.com/cuda/cufft/index.html#lto-load-and-store-callback-routines>`_.
-
-
-Older CTKs
-^^^^^^^^^^
-
-Adventurous users who want to try callback functionality and cannot upgrade the CUDA Toolkit
-to 12.6U2, can download and install the older preview release `cuFFT LTO EA version 11.1.3.0
-<https://docs.nvidia.com/cuda/archive/12.6.1/cufft/ltoea/release_notes.html
-#cufft-lto-ea-preview-11-1-3-0>`_ from `here <https://developer.nvidia.com/cufftea>`_, which
-requires at least CUDA Toolkit 12.2. When using LTO EA, setting environmental variables may
-be needed for nvmath to pick the desired cuFFT version. Users should adjust the
-``LD_PRELOAD`` variable, so that the right cuFFT shared library is used:
-
-.. code-block:: bash
-
-   export LD_PRELOAD="/path_to_cufft_lto_ea/libcufft.so"
 
 
 .. _fft-gpu-cpu-execution:
@@ -134,7 +118,7 @@ Libraries) <https://developer.nvidia.com/nvpl>`_ FFT to run the transform. On x8
 architecture, the `MKL library <https://pypi.org/project/mkl/>`_ can be used.
 
 For pip users, the fastest way to get the required dependencies is to use ``'cu12'`` /
-``'cu11'`` and ``'cpu'`` extras:
+``'cu13'`` and ``'cpu'`` extras:
 
 .. code-block:: bash
 

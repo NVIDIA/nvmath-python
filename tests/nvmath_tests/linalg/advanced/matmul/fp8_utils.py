@@ -8,7 +8,7 @@ except ImportError:
     torch = None
 import pytest
 import numpy as np
-from .utils import sample_matrix, assert_tensors_equal, to_numpy
+from ...utils import sample_matrix, assert_tensors_equal, to_numpy
 from nvmath.internal.utils import check_or_create_options
 from nvmath.linalg.advanced import matmul
 from nvmath.linalg.advanced import _configuration

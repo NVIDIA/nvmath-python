@@ -2,13 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.1. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
+
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -28,13 +31,31 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cufft_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cufftPlan1d = NULL
 cdef void* __cufftPlan2d = NULL
@@ -92,6 +113,7 @@ cdef void* __cufftXtSetSubformatDefault = NULL
 cdef void* __cufftSetPlanPropertyInt64 = NULL
 cdef void* __cufftGetPlanPropertyInt64 = NULL
 cdef void* __cufftResetPlanProperty = NULL
+cdef void* ____cufftXtSetJITCallback_12_7 = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
@@ -104,422 +126,413 @@ cdef int _check_or_init_cufft() except -1 nogil:
     if __py_cufft_init:
         return 0
 
-    # Load driver to check version
     cdef void* handle = NULL
-    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
-    global __cuDriverGetVersion
-    if __cuDriverGetVersion == NULL:
-        __cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
-    if __cuDriverGetVersion == NULL:
-        with gil:
-            raise RuntimeError('something went wrong')
-    cdef int err, driver_ver
-    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-    if err != 0:
-        with gil:
-            raise RuntimeError('something went wrong')
-    #dlclose(handle)
-    handle = NULL
 
-    # Load function
-    global __cufftPlan1d
-    __cufftPlan1d = dlsym(RTLD_DEFAULT, 'cufftPlan1d')
-    if __cufftPlan1d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftPlan1d = dlsym(handle, 'cufftPlan1d')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
-    global __cufftPlan2d
-    __cufftPlan2d = dlsym(RTLD_DEFAULT, 'cufftPlan2d')
-    if __cufftPlan2d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftPlan2d = dlsym(handle, 'cufftPlan2d')
+        # Load function
+        global __cufftPlan1d
+        __cufftPlan1d = dlsym(RTLD_DEFAULT, 'cufftPlan1d')
+        if __cufftPlan1d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftPlan1d = dlsym(handle, 'cufftPlan1d')
 
-    global __cufftPlan3d
-    __cufftPlan3d = dlsym(RTLD_DEFAULT, 'cufftPlan3d')
-    if __cufftPlan3d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftPlan3d = dlsym(handle, 'cufftPlan3d')
+        global __cufftPlan2d
+        __cufftPlan2d = dlsym(RTLD_DEFAULT, 'cufftPlan2d')
+        if __cufftPlan2d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftPlan2d = dlsym(handle, 'cufftPlan2d')
 
-    global __cufftPlanMany
-    __cufftPlanMany = dlsym(RTLD_DEFAULT, 'cufftPlanMany')
-    if __cufftPlanMany == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftPlanMany = dlsym(handle, 'cufftPlanMany')
+        global __cufftPlan3d
+        __cufftPlan3d = dlsym(RTLD_DEFAULT, 'cufftPlan3d')
+        if __cufftPlan3d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftPlan3d = dlsym(handle, 'cufftPlan3d')
 
-    global __cufftMakePlan1d
-    __cufftMakePlan1d = dlsym(RTLD_DEFAULT, 'cufftMakePlan1d')
-    if __cufftMakePlan1d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftMakePlan1d = dlsym(handle, 'cufftMakePlan1d')
+        global __cufftPlanMany
+        __cufftPlanMany = dlsym(RTLD_DEFAULT, 'cufftPlanMany')
+        if __cufftPlanMany == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftPlanMany = dlsym(handle, 'cufftPlanMany')
 
-    global __cufftMakePlan2d
-    __cufftMakePlan2d = dlsym(RTLD_DEFAULT, 'cufftMakePlan2d')
-    if __cufftMakePlan2d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftMakePlan2d = dlsym(handle, 'cufftMakePlan2d')
+        global __cufftMakePlan1d
+        __cufftMakePlan1d = dlsym(RTLD_DEFAULT, 'cufftMakePlan1d')
+        if __cufftMakePlan1d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftMakePlan1d = dlsym(handle, 'cufftMakePlan1d')
 
-    global __cufftMakePlan3d
-    __cufftMakePlan3d = dlsym(RTLD_DEFAULT, 'cufftMakePlan3d')
-    if __cufftMakePlan3d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftMakePlan3d = dlsym(handle, 'cufftMakePlan3d')
+        global __cufftMakePlan2d
+        __cufftMakePlan2d = dlsym(RTLD_DEFAULT, 'cufftMakePlan2d')
+        if __cufftMakePlan2d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftMakePlan2d = dlsym(handle, 'cufftMakePlan2d')
 
-    global __cufftMakePlanMany
-    __cufftMakePlanMany = dlsym(RTLD_DEFAULT, 'cufftMakePlanMany')
-    if __cufftMakePlanMany == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftMakePlanMany = dlsym(handle, 'cufftMakePlanMany')
+        global __cufftMakePlan3d
+        __cufftMakePlan3d = dlsym(RTLD_DEFAULT, 'cufftMakePlan3d')
+        if __cufftMakePlan3d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftMakePlan3d = dlsym(handle, 'cufftMakePlan3d')
 
-    global __cufftMakePlanMany64
-    __cufftMakePlanMany64 = dlsym(RTLD_DEFAULT, 'cufftMakePlanMany64')
-    if __cufftMakePlanMany64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftMakePlanMany64 = dlsym(handle, 'cufftMakePlanMany64')
+        global __cufftMakePlanMany
+        __cufftMakePlanMany = dlsym(RTLD_DEFAULT, 'cufftMakePlanMany')
+        if __cufftMakePlanMany == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftMakePlanMany = dlsym(handle, 'cufftMakePlanMany')
 
-    global __cufftGetSizeMany64
-    __cufftGetSizeMany64 = dlsym(RTLD_DEFAULT, 'cufftGetSizeMany64')
-    if __cufftGetSizeMany64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetSizeMany64 = dlsym(handle, 'cufftGetSizeMany64')
+        global __cufftMakePlanMany64
+        __cufftMakePlanMany64 = dlsym(RTLD_DEFAULT, 'cufftMakePlanMany64')
+        if __cufftMakePlanMany64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftMakePlanMany64 = dlsym(handle, 'cufftMakePlanMany64')
 
-    global __cufftEstimate1d
-    __cufftEstimate1d = dlsym(RTLD_DEFAULT, 'cufftEstimate1d')
-    if __cufftEstimate1d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftEstimate1d = dlsym(handle, 'cufftEstimate1d')
+        global __cufftGetSizeMany64
+        __cufftGetSizeMany64 = dlsym(RTLD_DEFAULT, 'cufftGetSizeMany64')
+        if __cufftGetSizeMany64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetSizeMany64 = dlsym(handle, 'cufftGetSizeMany64')
 
-    global __cufftEstimate2d
-    __cufftEstimate2d = dlsym(RTLD_DEFAULT, 'cufftEstimate2d')
-    if __cufftEstimate2d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftEstimate2d = dlsym(handle, 'cufftEstimate2d')
+        global __cufftEstimate1d
+        __cufftEstimate1d = dlsym(RTLD_DEFAULT, 'cufftEstimate1d')
+        if __cufftEstimate1d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftEstimate1d = dlsym(handle, 'cufftEstimate1d')
 
-    global __cufftEstimate3d
-    __cufftEstimate3d = dlsym(RTLD_DEFAULT, 'cufftEstimate3d')
-    if __cufftEstimate3d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftEstimate3d = dlsym(handle, 'cufftEstimate3d')
+        global __cufftEstimate2d
+        __cufftEstimate2d = dlsym(RTLD_DEFAULT, 'cufftEstimate2d')
+        if __cufftEstimate2d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftEstimate2d = dlsym(handle, 'cufftEstimate2d')
 
-    global __cufftEstimateMany
-    __cufftEstimateMany = dlsym(RTLD_DEFAULT, 'cufftEstimateMany')
-    if __cufftEstimateMany == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftEstimateMany = dlsym(handle, 'cufftEstimateMany')
+        global __cufftEstimate3d
+        __cufftEstimate3d = dlsym(RTLD_DEFAULT, 'cufftEstimate3d')
+        if __cufftEstimate3d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftEstimate3d = dlsym(handle, 'cufftEstimate3d')
 
-    global __cufftCreate
-    __cufftCreate = dlsym(RTLD_DEFAULT, 'cufftCreate')
-    if __cufftCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftCreate = dlsym(handle, 'cufftCreate')
+        global __cufftEstimateMany
+        __cufftEstimateMany = dlsym(RTLD_DEFAULT, 'cufftEstimateMany')
+        if __cufftEstimateMany == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftEstimateMany = dlsym(handle, 'cufftEstimateMany')
 
-    global __cufftGetSize1d
-    __cufftGetSize1d = dlsym(RTLD_DEFAULT, 'cufftGetSize1d')
-    if __cufftGetSize1d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetSize1d = dlsym(handle, 'cufftGetSize1d')
+        global __cufftCreate
+        __cufftCreate = dlsym(RTLD_DEFAULT, 'cufftCreate')
+        if __cufftCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftCreate = dlsym(handle, 'cufftCreate')
 
-    global __cufftGetSize2d
-    __cufftGetSize2d = dlsym(RTLD_DEFAULT, 'cufftGetSize2d')
-    if __cufftGetSize2d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetSize2d = dlsym(handle, 'cufftGetSize2d')
+        global __cufftGetSize1d
+        __cufftGetSize1d = dlsym(RTLD_DEFAULT, 'cufftGetSize1d')
+        if __cufftGetSize1d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetSize1d = dlsym(handle, 'cufftGetSize1d')
 
-    global __cufftGetSize3d
-    __cufftGetSize3d = dlsym(RTLD_DEFAULT, 'cufftGetSize3d')
-    if __cufftGetSize3d == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetSize3d = dlsym(handle, 'cufftGetSize3d')
+        global __cufftGetSize2d
+        __cufftGetSize2d = dlsym(RTLD_DEFAULT, 'cufftGetSize2d')
+        if __cufftGetSize2d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetSize2d = dlsym(handle, 'cufftGetSize2d')
 
-    global __cufftGetSizeMany
-    __cufftGetSizeMany = dlsym(RTLD_DEFAULT, 'cufftGetSizeMany')
-    if __cufftGetSizeMany == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetSizeMany = dlsym(handle, 'cufftGetSizeMany')
+        global __cufftGetSize3d
+        __cufftGetSize3d = dlsym(RTLD_DEFAULT, 'cufftGetSize3d')
+        if __cufftGetSize3d == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetSize3d = dlsym(handle, 'cufftGetSize3d')
 
-    global __cufftGetSize
-    __cufftGetSize = dlsym(RTLD_DEFAULT, 'cufftGetSize')
-    if __cufftGetSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetSize = dlsym(handle, 'cufftGetSize')
+        global __cufftGetSizeMany
+        __cufftGetSizeMany = dlsym(RTLD_DEFAULT, 'cufftGetSizeMany')
+        if __cufftGetSizeMany == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetSizeMany = dlsym(handle, 'cufftGetSizeMany')
 
-    global __cufftSetWorkArea
-    __cufftSetWorkArea = dlsym(RTLD_DEFAULT, 'cufftSetWorkArea')
-    if __cufftSetWorkArea == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftSetWorkArea = dlsym(handle, 'cufftSetWorkArea')
+        global __cufftGetSize
+        __cufftGetSize = dlsym(RTLD_DEFAULT, 'cufftGetSize')
+        if __cufftGetSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetSize = dlsym(handle, 'cufftGetSize')
 
-    global __cufftSetAutoAllocation
-    __cufftSetAutoAllocation = dlsym(RTLD_DEFAULT, 'cufftSetAutoAllocation')
-    if __cufftSetAutoAllocation == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftSetAutoAllocation = dlsym(handle, 'cufftSetAutoAllocation')
+        global __cufftSetWorkArea
+        __cufftSetWorkArea = dlsym(RTLD_DEFAULT, 'cufftSetWorkArea')
+        if __cufftSetWorkArea == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftSetWorkArea = dlsym(handle, 'cufftSetWorkArea')
 
-    global __cufftExecC2C
-    __cufftExecC2C = dlsym(RTLD_DEFAULT, 'cufftExecC2C')
-    if __cufftExecC2C == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftExecC2C = dlsym(handle, 'cufftExecC2C')
+        global __cufftSetAutoAllocation
+        __cufftSetAutoAllocation = dlsym(RTLD_DEFAULT, 'cufftSetAutoAllocation')
+        if __cufftSetAutoAllocation == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftSetAutoAllocation = dlsym(handle, 'cufftSetAutoAllocation')
 
-    global __cufftExecR2C
-    __cufftExecR2C = dlsym(RTLD_DEFAULT, 'cufftExecR2C')
-    if __cufftExecR2C == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftExecR2C = dlsym(handle, 'cufftExecR2C')
+        global __cufftExecC2C
+        __cufftExecC2C = dlsym(RTLD_DEFAULT, 'cufftExecC2C')
+        if __cufftExecC2C == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftExecC2C = dlsym(handle, 'cufftExecC2C')
 
-    global __cufftExecC2R
-    __cufftExecC2R = dlsym(RTLD_DEFAULT, 'cufftExecC2R')
-    if __cufftExecC2R == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftExecC2R = dlsym(handle, 'cufftExecC2R')
+        global __cufftExecR2C
+        __cufftExecR2C = dlsym(RTLD_DEFAULT, 'cufftExecR2C')
+        if __cufftExecR2C == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftExecR2C = dlsym(handle, 'cufftExecR2C')
 
-    global __cufftExecZ2Z
-    __cufftExecZ2Z = dlsym(RTLD_DEFAULT, 'cufftExecZ2Z')
-    if __cufftExecZ2Z == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftExecZ2Z = dlsym(handle, 'cufftExecZ2Z')
+        global __cufftExecC2R
+        __cufftExecC2R = dlsym(RTLD_DEFAULT, 'cufftExecC2R')
+        if __cufftExecC2R == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftExecC2R = dlsym(handle, 'cufftExecC2R')
 
-    global __cufftExecD2Z
-    __cufftExecD2Z = dlsym(RTLD_DEFAULT, 'cufftExecD2Z')
-    if __cufftExecD2Z == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftExecD2Z = dlsym(handle, 'cufftExecD2Z')
+        global __cufftExecZ2Z
+        __cufftExecZ2Z = dlsym(RTLD_DEFAULT, 'cufftExecZ2Z')
+        if __cufftExecZ2Z == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftExecZ2Z = dlsym(handle, 'cufftExecZ2Z')
 
-    global __cufftExecZ2D
-    __cufftExecZ2D = dlsym(RTLD_DEFAULT, 'cufftExecZ2D')
-    if __cufftExecZ2D == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftExecZ2D = dlsym(handle, 'cufftExecZ2D')
+        global __cufftExecD2Z
+        __cufftExecD2Z = dlsym(RTLD_DEFAULT, 'cufftExecD2Z')
+        if __cufftExecD2Z == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftExecD2Z = dlsym(handle, 'cufftExecD2Z')
 
-    global __cufftSetStream
-    __cufftSetStream = dlsym(RTLD_DEFAULT, 'cufftSetStream')
-    if __cufftSetStream == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftSetStream = dlsym(handle, 'cufftSetStream')
+        global __cufftExecZ2D
+        __cufftExecZ2D = dlsym(RTLD_DEFAULT, 'cufftExecZ2D')
+        if __cufftExecZ2D == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftExecZ2D = dlsym(handle, 'cufftExecZ2D')
 
-    global __cufftDestroy
-    __cufftDestroy = dlsym(RTLD_DEFAULT, 'cufftDestroy')
-    if __cufftDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftDestroy = dlsym(handle, 'cufftDestroy')
+        global __cufftSetStream
+        __cufftSetStream = dlsym(RTLD_DEFAULT, 'cufftSetStream')
+        if __cufftSetStream == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftSetStream = dlsym(handle, 'cufftSetStream')
 
-    global __cufftGetVersion
-    __cufftGetVersion = dlsym(RTLD_DEFAULT, 'cufftGetVersion')
-    if __cufftGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetVersion = dlsym(handle, 'cufftGetVersion')
+        global __cufftDestroy
+        __cufftDestroy = dlsym(RTLD_DEFAULT, 'cufftDestroy')
+        if __cufftDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftDestroy = dlsym(handle, 'cufftDestroy')
 
-    global __cufftGetProperty
-    __cufftGetProperty = dlsym(RTLD_DEFAULT, 'cufftGetProperty')
-    if __cufftGetProperty == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetProperty = dlsym(handle, 'cufftGetProperty')
+        global __cufftGetVersion
+        __cufftGetVersion = dlsym(RTLD_DEFAULT, 'cufftGetVersion')
+        if __cufftGetVersion == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetVersion = dlsym(handle, 'cufftGetVersion')
 
-    global __cufftXtSetGPUs
-    __cufftXtSetGPUs = dlsym(RTLD_DEFAULT, 'cufftXtSetGPUs')
-    if __cufftXtSetGPUs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtSetGPUs = dlsym(handle, 'cufftXtSetGPUs')
+        global __cufftGetProperty
+        __cufftGetProperty = dlsym(RTLD_DEFAULT, 'cufftGetProperty')
+        if __cufftGetProperty == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetProperty = dlsym(handle, 'cufftGetProperty')
 
-    global __cufftXtMalloc
-    __cufftXtMalloc = dlsym(RTLD_DEFAULT, 'cufftXtMalloc')
-    if __cufftXtMalloc == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtMalloc = dlsym(handle, 'cufftXtMalloc')
+        global __cufftXtSetGPUs
+        __cufftXtSetGPUs = dlsym(RTLD_DEFAULT, 'cufftXtSetGPUs')
+        if __cufftXtSetGPUs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtSetGPUs = dlsym(handle, 'cufftXtSetGPUs')
 
-    global __cufftXtMemcpy
-    __cufftXtMemcpy = dlsym(RTLD_DEFAULT, 'cufftXtMemcpy')
-    if __cufftXtMemcpy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtMemcpy = dlsym(handle, 'cufftXtMemcpy')
+        global __cufftXtMalloc
+        __cufftXtMalloc = dlsym(RTLD_DEFAULT, 'cufftXtMalloc')
+        if __cufftXtMalloc == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtMalloc = dlsym(handle, 'cufftXtMalloc')
 
-    global __cufftXtFree
-    __cufftXtFree = dlsym(RTLD_DEFAULT, 'cufftXtFree')
-    if __cufftXtFree == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtFree = dlsym(handle, 'cufftXtFree')
+        global __cufftXtMemcpy
+        __cufftXtMemcpy = dlsym(RTLD_DEFAULT, 'cufftXtMemcpy')
+        if __cufftXtMemcpy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtMemcpy = dlsym(handle, 'cufftXtMemcpy')
 
-    global __cufftXtSetWorkArea
-    __cufftXtSetWorkArea = dlsym(RTLD_DEFAULT, 'cufftXtSetWorkArea')
-    if __cufftXtSetWorkArea == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtSetWorkArea = dlsym(handle, 'cufftXtSetWorkArea')
+        global __cufftXtFree
+        __cufftXtFree = dlsym(RTLD_DEFAULT, 'cufftXtFree')
+        if __cufftXtFree == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtFree = dlsym(handle, 'cufftXtFree')
 
-    global __cufftXtExecDescriptorC2C
-    __cufftXtExecDescriptorC2C = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorC2C')
-    if __cufftXtExecDescriptorC2C == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExecDescriptorC2C = dlsym(handle, 'cufftXtExecDescriptorC2C')
+        global __cufftXtSetWorkArea
+        __cufftXtSetWorkArea = dlsym(RTLD_DEFAULT, 'cufftXtSetWorkArea')
+        if __cufftXtSetWorkArea == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtSetWorkArea = dlsym(handle, 'cufftXtSetWorkArea')
 
-    global __cufftXtExecDescriptorR2C
-    __cufftXtExecDescriptorR2C = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorR2C')
-    if __cufftXtExecDescriptorR2C == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExecDescriptorR2C = dlsym(handle, 'cufftXtExecDescriptorR2C')
+        global __cufftXtExecDescriptorC2C
+        __cufftXtExecDescriptorC2C = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorC2C')
+        if __cufftXtExecDescriptorC2C == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExecDescriptorC2C = dlsym(handle, 'cufftXtExecDescriptorC2C')
 
-    global __cufftXtExecDescriptorC2R
-    __cufftXtExecDescriptorC2R = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorC2R')
-    if __cufftXtExecDescriptorC2R == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExecDescriptorC2R = dlsym(handle, 'cufftXtExecDescriptorC2R')
+        global __cufftXtExecDescriptorR2C
+        __cufftXtExecDescriptorR2C = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorR2C')
+        if __cufftXtExecDescriptorR2C == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExecDescriptorR2C = dlsym(handle, 'cufftXtExecDescriptorR2C')
 
-    global __cufftXtExecDescriptorZ2Z
-    __cufftXtExecDescriptorZ2Z = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorZ2Z')
-    if __cufftXtExecDescriptorZ2Z == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExecDescriptorZ2Z = dlsym(handle, 'cufftXtExecDescriptorZ2Z')
+        global __cufftXtExecDescriptorC2R
+        __cufftXtExecDescriptorC2R = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorC2R')
+        if __cufftXtExecDescriptorC2R == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExecDescriptorC2R = dlsym(handle, 'cufftXtExecDescriptorC2R')
 
-    global __cufftXtExecDescriptorD2Z
-    __cufftXtExecDescriptorD2Z = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorD2Z')
-    if __cufftXtExecDescriptorD2Z == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExecDescriptorD2Z = dlsym(handle, 'cufftXtExecDescriptorD2Z')
+        global __cufftXtExecDescriptorZ2Z
+        __cufftXtExecDescriptorZ2Z = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorZ2Z')
+        if __cufftXtExecDescriptorZ2Z == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExecDescriptorZ2Z = dlsym(handle, 'cufftXtExecDescriptorZ2Z')
 
-    global __cufftXtExecDescriptorZ2D
-    __cufftXtExecDescriptorZ2D = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorZ2D')
-    if __cufftXtExecDescriptorZ2D == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExecDescriptorZ2D = dlsym(handle, 'cufftXtExecDescriptorZ2D')
+        global __cufftXtExecDescriptorD2Z
+        __cufftXtExecDescriptorD2Z = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorD2Z')
+        if __cufftXtExecDescriptorD2Z == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExecDescriptorD2Z = dlsym(handle, 'cufftXtExecDescriptorD2Z')
 
-    global __cufftXtQueryPlan
-    __cufftXtQueryPlan = dlsym(RTLD_DEFAULT, 'cufftXtQueryPlan')
-    if __cufftXtQueryPlan == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtQueryPlan = dlsym(handle, 'cufftXtQueryPlan')
+        global __cufftXtExecDescriptorZ2D
+        __cufftXtExecDescriptorZ2D = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptorZ2D')
+        if __cufftXtExecDescriptorZ2D == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExecDescriptorZ2D = dlsym(handle, 'cufftXtExecDescriptorZ2D')
 
-    global __cufftXtClearCallback
-    __cufftXtClearCallback = dlsym(RTLD_DEFAULT, 'cufftXtClearCallback')
-    if __cufftXtClearCallback == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtClearCallback = dlsym(handle, 'cufftXtClearCallback')
+        global __cufftXtQueryPlan
+        __cufftXtQueryPlan = dlsym(RTLD_DEFAULT, 'cufftXtQueryPlan')
+        if __cufftXtQueryPlan == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtQueryPlan = dlsym(handle, 'cufftXtQueryPlan')
 
-    global __cufftXtSetCallbackSharedSize
-    __cufftXtSetCallbackSharedSize = dlsym(RTLD_DEFAULT, 'cufftXtSetCallbackSharedSize')
-    if __cufftXtSetCallbackSharedSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtSetCallbackSharedSize = dlsym(handle, 'cufftXtSetCallbackSharedSize')
+        global __cufftXtClearCallback
+        __cufftXtClearCallback = dlsym(RTLD_DEFAULT, 'cufftXtClearCallback')
+        if __cufftXtClearCallback == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtClearCallback = dlsym(handle, 'cufftXtClearCallback')
 
-    global __cufftXtMakePlanMany
-    __cufftXtMakePlanMany = dlsym(RTLD_DEFAULT, 'cufftXtMakePlanMany')
-    if __cufftXtMakePlanMany == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtMakePlanMany = dlsym(handle, 'cufftXtMakePlanMany')
+        global __cufftXtSetCallbackSharedSize
+        __cufftXtSetCallbackSharedSize = dlsym(RTLD_DEFAULT, 'cufftXtSetCallbackSharedSize')
+        if __cufftXtSetCallbackSharedSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtSetCallbackSharedSize = dlsym(handle, 'cufftXtSetCallbackSharedSize')
 
-    global __cufftXtGetSizeMany
-    __cufftXtGetSizeMany = dlsym(RTLD_DEFAULT, 'cufftXtGetSizeMany')
-    if __cufftXtGetSizeMany == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtGetSizeMany = dlsym(handle, 'cufftXtGetSizeMany')
+        global __cufftXtMakePlanMany
+        __cufftXtMakePlanMany = dlsym(RTLD_DEFAULT, 'cufftXtMakePlanMany')
+        if __cufftXtMakePlanMany == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtMakePlanMany = dlsym(handle, 'cufftXtMakePlanMany')
 
-    global __cufftXtExec
-    __cufftXtExec = dlsym(RTLD_DEFAULT, 'cufftXtExec')
-    if __cufftXtExec == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExec = dlsym(handle, 'cufftXtExec')
+        global __cufftXtGetSizeMany
+        __cufftXtGetSizeMany = dlsym(RTLD_DEFAULT, 'cufftXtGetSizeMany')
+        if __cufftXtGetSizeMany == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtGetSizeMany = dlsym(handle, 'cufftXtGetSizeMany')
 
-    global __cufftXtExecDescriptor
-    __cufftXtExecDescriptor = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptor')
-    if __cufftXtExecDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtExecDescriptor = dlsym(handle, 'cufftXtExecDescriptor')
+        global __cufftXtExec
+        __cufftXtExec = dlsym(RTLD_DEFAULT, 'cufftXtExec')
+        if __cufftXtExec == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExec = dlsym(handle, 'cufftXtExec')
 
-    global __cufftXtSetWorkAreaPolicy
-    __cufftXtSetWorkAreaPolicy = dlsym(RTLD_DEFAULT, 'cufftXtSetWorkAreaPolicy')
-    if __cufftXtSetWorkAreaPolicy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtSetWorkAreaPolicy = dlsym(handle, 'cufftXtSetWorkAreaPolicy')
+        global __cufftXtExecDescriptor
+        __cufftXtExecDescriptor = dlsym(RTLD_DEFAULT, 'cufftXtExecDescriptor')
+        if __cufftXtExecDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtExecDescriptor = dlsym(handle, 'cufftXtExecDescriptor')
 
-    global __cufftXtSetJITCallback
-    __cufftXtSetJITCallback = dlsym(RTLD_DEFAULT, 'cufftXtSetJITCallback')
-    if __cufftXtSetJITCallback == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtSetJITCallback = dlsym(handle, 'cufftXtSetJITCallback')
+        global __cufftXtSetWorkAreaPolicy
+        __cufftXtSetWorkAreaPolicy = dlsym(RTLD_DEFAULT, 'cufftXtSetWorkAreaPolicy')
+        if __cufftXtSetWorkAreaPolicy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtSetWorkAreaPolicy = dlsym(handle, 'cufftXtSetWorkAreaPolicy')
 
-    global __cufftXtSetSubformatDefault
-    __cufftXtSetSubformatDefault = dlsym(RTLD_DEFAULT, 'cufftXtSetSubformatDefault')
-    if __cufftXtSetSubformatDefault == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftXtSetSubformatDefault = dlsym(handle, 'cufftXtSetSubformatDefault')
+        global __cufftXtSetJITCallback
+        __cufftXtSetJITCallback = dlsym(RTLD_DEFAULT, 'cufftXtSetJITCallback')
+        if __cufftXtSetJITCallback == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtSetJITCallback = dlsym(handle, 'cufftXtSetJITCallback')
 
-    global __cufftSetPlanPropertyInt64
-    __cufftSetPlanPropertyInt64 = dlsym(RTLD_DEFAULT, 'cufftSetPlanPropertyInt64')
-    if __cufftSetPlanPropertyInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftSetPlanPropertyInt64 = dlsym(handle, 'cufftSetPlanPropertyInt64')
+        global __cufftXtSetSubformatDefault
+        __cufftXtSetSubformatDefault = dlsym(RTLD_DEFAULT, 'cufftXtSetSubformatDefault')
+        if __cufftXtSetSubformatDefault == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftXtSetSubformatDefault = dlsym(handle, 'cufftXtSetSubformatDefault')
 
-    global __cufftGetPlanPropertyInt64
-    __cufftGetPlanPropertyInt64 = dlsym(RTLD_DEFAULT, 'cufftGetPlanPropertyInt64')
-    if __cufftGetPlanPropertyInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftGetPlanPropertyInt64 = dlsym(handle, 'cufftGetPlanPropertyInt64')
+        global __cufftSetPlanPropertyInt64
+        __cufftSetPlanPropertyInt64 = dlsym(RTLD_DEFAULT, 'cufftSetPlanPropertyInt64')
+        if __cufftSetPlanPropertyInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftSetPlanPropertyInt64 = dlsym(handle, 'cufftSetPlanPropertyInt64')
 
-    global __cufftResetPlanProperty
-    __cufftResetPlanProperty = dlsym(RTLD_DEFAULT, 'cufftResetPlanProperty')
-    if __cufftResetPlanProperty == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftResetPlanProperty = dlsym(handle, 'cufftResetPlanProperty')
+        global __cufftGetPlanPropertyInt64
+        __cufftGetPlanPropertyInt64 = dlsym(RTLD_DEFAULT, 'cufftGetPlanPropertyInt64')
+        if __cufftGetPlanPropertyInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftGetPlanPropertyInt64 = dlsym(handle, 'cufftGetPlanPropertyInt64')
 
-    __py_cufft_init = True
-    return 0
+        global __cufftResetPlanProperty
+        __cufftResetPlanProperty = dlsym(RTLD_DEFAULT, 'cufftResetPlanProperty')
+        if __cufftResetPlanProperty == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftResetPlanProperty = dlsym(handle, 'cufftResetPlanProperty')
+
+        global ____cufftXtSetJITCallback_12_7
+        ____cufftXtSetJITCallback_12_7 = dlsym(RTLD_DEFAULT, '__cufftXtSetJITCallback_12_7')
+        if ____cufftXtSetJITCallback_12_7 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            ____cufftXtSetJITCallback_12_7 = dlsym(handle, '__cufftXtSetJITCallback_12_7')
+
+        __py_cufft_init = True
+        return 0
 
 
 cdef dict func_ptrs = None
@@ -700,6 +713,9 @@ cpdef dict _inspect_function_pointers():
 
     global __cufftResetPlanProperty
     data["__cufftResetPlanProperty"] = <intptr_t>__cufftResetPlanProperty
+
+    global ____cufftXtSetJITCallback_12_7
+    data["____cufftXtSetJITCallback_12_7"] = <intptr_t>____cufftXtSetJITCallback_12_7
 
     func_ptrs = data
     return data
@@ -1226,14 +1242,14 @@ cdef cufftResult _cufftXtSetWorkAreaPolicy(cufftHandle plan, cufftXtWorkAreaPoli
         plan, policy, workSize)
 
 
-cdef cufftResult _cufftXtSetJITCallback(cufftHandle plan, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
+cdef cufftResult _cufftXtSetJITCallback(cufftHandle plan, const char* lto_callback_symbol_name, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
     global __cufftXtSetJITCallback
     _check_or_init_cufft()
     if __cufftXtSetJITCallback == NULL:
         with gil:
             raise FunctionNotFoundError("function cufftXtSetJITCallback is not found")
-    return (<cufftResult (*)(cufftHandle, const void*, size_t, cufftXtCallbackType, void**) noexcept nogil>__cufftXtSetJITCallback)(
-        plan, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)
+    return (<cufftResult (*)(cufftHandle, const char*, const void*, size_t, cufftXtCallbackType, void**) noexcept nogil>__cufftXtSetJITCallback)(
+        plan, lto_callback_symbol_name, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)
 
 
 cdef cufftResult _cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat subformat_forward, cufftXtSubFormat subformat_inverse) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
@@ -1274,3 +1290,13 @@ cdef cufftResult _cufftResetPlanProperty(cufftHandle plan, cufftProperty propert
             raise FunctionNotFoundError("function cufftResetPlanProperty is not found")
     return (<cufftResult (*)(cufftHandle, cufftProperty) noexcept nogil>__cufftResetPlanProperty)(
         plan, property)
+
+
+cdef cufftResult ___cufftXtSetJITCallback_12_7(cufftHandle plan, const char* lto_callback_symbol_name, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
+    global ____cufftXtSetJITCallback_12_7
+    _check_or_init_cufft()
+    if ____cufftXtSetJITCallback_12_7 == NULL:
+        with gil:
+            raise FunctionNotFoundError("function __cufftXtSetJITCallback_12_7 is not found")
+    return (<cufftResult (*)(cufftHandle, const char*, const void*, size_t, cufftXtCallbackType, void**) noexcept nogil>____cufftXtSetJITCallback_12_7)(
+        plan, lto_callback_symbol_name, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)

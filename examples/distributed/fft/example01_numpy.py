@@ -26,7 +26,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cuda.core.experimental.system.num_devices
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (64, 256, 128).
 # In this example, the input data is distributed across processes according to
@@ -40,7 +40,7 @@ a = np.random.rand(*shape) + 1j * np.random.rand(*shape)
 # By default, the reshape option is True, which means that the output of the distributed
 # FFT will be re-distributed to retain the same distribution as the input (in this case
 # Slab.Y).
-b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.Y)
+b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.distribution.Slab.Y)
 
 if rank == 0:
     # Note the same shape of a and b (they are both using the same distribution).

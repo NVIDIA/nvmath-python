@@ -10,6 +10,7 @@ from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, m
 from nvmath.device.cublasdx_backend import Arrangement, Precision
 from .helpers import (
     _TOLERANCE,
+    SM80,
     random_real,
     random_complex,
     random_int,
@@ -19,9 +20,8 @@ from .helpers import (
     time_this,
 )
 import time
-from nvmath.device import current_device_lto, matmul, float16x2_type, float32x2_type, float64x2_type, Dim3
-from nvmath.device import TransposeMode, BlasOptions
-from nvmath.device.cublasdx import BlasCompiled, BlasNumba
+from nvmath.device import matmul, float16x2_type, float32x2_type, float64x2_type, Dim3
+from nvmath.device import TransposeMode, Matmul
 import pytest
 
 
@@ -322,10 +322,7 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
     elif block_dim is not None:
         assert MM.block_dim == Dim3(*block_dim)
     assert MM.max_threads_per_block <= 1024
-    assert MM.code_type.kind == "lto"
-
-    assert MM.code_type.cc.major == SM[0]
-    assert MM.code_type.cc.minor == SM[1]
+    assert MM.sm == SM
 
     a_size = MM.a_size
     b_size = MM.b_size
@@ -474,21 +471,21 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
 
 
 def test_valid():
-    base_MM = BlasOptions(
+    base_MM = Matmul(
         size=(8, 4, 16),
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("transposed", "non_transposed"),
         execution="Block",
-        code_type=current_device_lto(),
+        sm=SM80.cc,
     )
 
     count = 0
     for (bd,) in base_MM.valid("block_dim"):
         MM0 = base_MM.create(block_dim=bd, compiler="numba")
-        assert isinstance(MM0, BlasNumba)
+        assert isinstance(MM0, Matmul)
         MM1 = base_MM.create(block_dim=bd, compiler="numba")
-        assert isinstance(MM1, BlasCompiled)
+        assert isinstance(MM1, Matmul)
         count += 1
 
     assert count > 0
@@ -504,7 +501,6 @@ def test_valid():
     ],
 )
 def test_opaque_tensor(tensor_types):
-    print(tensor_types)
     m, n, k = 4, 2, 8
     block_size = 64
     precision = Precision(np.float32, np.float32, np.float64)
@@ -521,9 +517,6 @@ def test_opaque_tensor(tensor_types):
         tensor_types=tensor_types,
         execute_api="tensors",
     )
-
-    print("uids: ", MM._gmem_tensor_uids)
-    print("tids:", MM._target_tensor_uids)
 
     is_suggested_a = "suggested" in tensor_types[0]
     is_suggested_b = "suggested" in tensor_types[1]
@@ -606,3 +599,81 @@ def test_opaque_tensor(tensor_types):
 
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-2
+
+
+def test_make_fragment_like_C():
+    from nvmath.bindings import mathdx
+
+    if mathdx.get_version_ex() < (0, 3, 0):
+        pytest.skip("Partition is supported on libmathdx 0.3.0+")
+    MM = matmul(
+        size=(2, 2, 2),
+        data_type="real",
+        precision=np.float32,
+        arrangement=("col_major", "col_major", "col_major"),
+        execution="Block",
+        execute_api="tensors",
+        compiler="numba",
+        tensor_types=("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
+    )
+
+    c_size = MM.suggest_layout_rmem_c().size
+    assert c_size == 1
+
+    @cuda.jit(link=MM.files)
+    def kernel(c):
+        gmem_c = make_tensor(c, MM.get_layout_gmem_c())
+        partitioner = MM.suggest_partitioner()
+        c_frag = partitioner.partition_like_C(gmem_c)
+
+        if partitioner.is_thread_active():
+            for i in range(c_size):
+                if (not partitioner.is_predicated()) or partitioner.is_index_in_bounds(i):
+                    c_frag[i] = c_frag[i] * 2
+
+    a = np.arange(4, dtype=np.float32).reshape((2, 2))
+    kernel[1, MM.block_dim](a)
+    expected = np.arange(4, dtype=np.float32).reshape((2, 2)) * 2
+    assert np.allclose(a, expected)
+
+
+def test_lto_symbol_duplicate():
+    """
+    Test that two different MM(...) function overloads points to the same LTO
+    symbol without causing a duplicate symbol error at link time.
+
+    Two local arrays have different type (ndim is different), so that triggers
+    overload resolution twice in Numba.
+    """
+    alpha, beta = 1.1, 1.2
+    m, n, k = 4, 2, 8
+    block_size = 64
+    precision = np.float32
+
+    MM = Matmul(
+        size=(m, n, k),
+        precision=precision,
+        data_type="real",
+        arrangement=("col_major", "row_major", "row_major"),
+        execution="Block",
+        block_size=block_size,
+    )
+
+    @cuda.jit
+    def f(a, b, c):
+        shared_a1 = cuda.shared.array(shape=(MM.a_size,), dtype=MM.a_value_type)
+        shared_a1[0] = a[0, 0]
+        shared_a2 = cuda.shared.array(shape=MM.a_dim, dtype=MM.a_value_type)
+        shared_a2[0, 0] = a[0, 0]
+        cuda.syncthreads()
+        MM.execute(alpha, shared_a1, b, beta, c)
+        MM.execute(alpha, shared_a2, b, beta, c)
+
+    a = np.ones(shape=MM.a_dim, dtype=MM.a_value_type)
+    b = np.ones(shape=MM.b_dim, dtype=MM.b_value_type)
+    c = np.ones(shape=MM.c_dim, dtype=MM.c_value_type)
+    a_d = cuda.to_device(a)
+    b_d = cuda.to_device(b)
+    c_d = cuda.to_device(c)
+
+    f[1, MM.block_size](a_d, b_d, c_d)

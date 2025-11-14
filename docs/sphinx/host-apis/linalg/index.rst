@@ -8,8 +8,14 @@ Overview
 ========
 
 The Linear Algebra module :mod:`nvmath.linalg` in nvmath-python leverages various NVIDIA
-math libraries to support multiple linear algebra computations. As of the initial Beta
-release, we offer the specialized matrix multiplication API based on the cuBLASLt library.
+math libraries to support dense [#]_ linear algebra computations. As of version 0.7.0, we
+offer both a generic matrix multiplication API based on the cuBLAS and NVPL libraries and a
+specialized matrix multiplication API (:mod:`nvmath.linalg.advanced`) based on the cuBLASLt
+library. See :ref:`Generic and Specialized APIs <generic specialized>` for motivation.
+
+At a high-level, if your use case is predominantly GEMM and requires particular flexibility
+in matrix data layouts, input and/or compute types, and also in choosing the algorithmic
+implementation, look at the specialized APIs. Otherwise, look at the generic APIs.
 
 .. _linalg-api-reference:
 
@@ -21,12 +27,38 @@ API Reference
 Generic Linear Algebra APIs (:mod:`nvmath.linalg`)
 --------------------------------------------------
 
-Generic APIs will be available in a later release.
+The generic linear algebra module includes matrix multiplication APIs which accept
+structured matrices as input, but do not allow for control over computational precision or
+algorithm selection and planning.
+
+.. autosummary::
+   :toctree: generated/
+
+   matmul
+   Matmul
+   matrix_qualifiers_dtype
+   DiagonalMatrixQualifier
+   GeneralMatrixQualifier
+   HermitianMatrixQualifier
+   InvalidMatmulState
+   SymmetricMatrixQualifier
+   TriangularMatrixQualifier
+
+   :template: dataclass.rst
+
+   ExecutionCPU
+   ExecutionCUDA
+   MatmulOptions
 
 .. module:: nvmath.linalg.advanced
 
 Specialized Linear Algebra APIs (:mod:`nvmath.linalg.advanced`)
 ---------------------------------------------------------------
+
+The specialized linear algebra module includes a matrix multiplication API which only
+accepts general matrices, but provides extra functionality such as epilog functions, more
+options and controls over computational precision, and control over algorithm selection and
+planning.
 
 .. autosummary::
    :toctree: generated/
@@ -67,3 +99,7 @@ Matmul helpers (:mod:`nvmath.linalg.advanced.helpers.matmul`)
    invert_mxfp8_scale
    apply_mxfp8_scale
    get_mxfp8_scale_offset
+
+.. rubric:: Footnotes
+
+.. [#] See :ref:`Sparse Linear Algebra <sparse-overview>` for sparse operations.

@@ -13,13 +13,14 @@ import torch
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Slab
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % torch.cuda.device_count()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 if nranks > 8:
     raise RuntimeError("This example requires <= 8 processes")
@@ -40,7 +41,7 @@ a = nvmath.distributed.fft.allocate_operand(
     shape,
     torch,
     input_dtype=torch.float32,
-    distribution=nvmath.distributed.fft.Slab.X,
+    distribution=Slab.X,
     memory_space="cpu",  # allocate torch tensor on CPU
     fft_type="R2C",
 )
@@ -50,7 +51,7 @@ a[:] = torch.rand(shape, dtype=torch.float32)
 # R2C (forward) FFT.
 # In this example, the R2C operand is distributed according to Slab.X distribution.
 # With reshape=False, the FFT result will be distributed according to Slab.Y distribution.
-b = nvmath.distributed.fft.rfft(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False})
+b = nvmath.distributed.fft.rfft(a, distribution=Slab.X, options={"reshape": False})
 
 # Distributed FFT performs computations in-place. The result is stored in the same
 # buffer as tensor a. Note, however, that tensor b has a different dtype and shape
@@ -65,9 +66,7 @@ if rank == 0:
 # Slab.X distribution.
 # Note that to transform back to the original shape of the real operand (which has odd last
 # axis length), we use the last_axis_parity="odd" option.
-c = nvmath.distributed.fft.irfft(
-    b, distribution=nvmath.distributed.fft.Slab.Y, options={"reshape": False, "last_axis_parity": "odd"}
-)
+c = nvmath.distributed.fft.irfft(b, distribution=Slab.Y, options={"reshape": False, "last_axis_parity": "odd"})
 
 # The shape of tensor c is the same as tensor a (due to Slab.X distribution). Once again,
 # note that a, b and c are sharing the same memory buffer (distributed FFT operations are

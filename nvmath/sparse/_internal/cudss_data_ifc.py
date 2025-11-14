@@ -26,6 +26,18 @@ _tls = threading.local()
 _tls.size_written = np.empty((1,), dtype=np.uint64)
 
 
+# TODO: factor out common utilities (taken from fft.py).
+def complex_to_real_equivalent(name):
+    assert "complex" in name, f"Internal Error ({name=})"
+    m = name.split("complex")
+    assert len(m) in (1, 2)
+    size = int(m[-1]) // 2
+    if len(m) == 1:
+        return f"float{size}"
+    else:
+        return f"{m[0]}float{size}"
+
+
 def _get_attribute(handle, data_ptr, name, attribute, length=1):
     """
     name      = cudss enumerator for the attribute.
@@ -80,10 +92,14 @@ class PlanInfo:
 
         self._N = self._solver._N
         self._batched = self._solver.batched
+        self._index_type = self._solver.index_type
+        self._value_type = self._solver.value_type
+        self._nsuperpanels = np.zeros((1,), dtype=self._index_type)
 
         # Allocate permutation arrays lazily, and only if not batched.
         self._perm_reorder_col = None
         self._perm_reorder_row = None
+        self._perm_matching = None
 
         self._memory_estimates = np.zeros((), dtype=memory_estimates_dtype).view(np.recarray)
 
@@ -116,8 +132,7 @@ class PlanInfo:
             raise RuntimeError("Column permutation is not available for batched systems.")
 
         if self._perm_reorder_col is None:
-            get_dtype = cudss.get_data_param_dtype
-            self._perm_reorder_col = np.empty((self._N,), dtype=get_dtype(DataParamEnum.PERM_REORDER_COL))
+            self._perm_reorder_col = np.empty((self._N,), dtype=self._index_type)
 
         _get_attribute(self._handle, self._data_ptr, DataParamEnum.PERM_REORDER_COL, self._perm_reorder_col, length=self._N)
 
@@ -136,12 +151,43 @@ class PlanInfo:
             raise RuntimeError("Row permutation is not available for batched systems.")
 
         if self._perm_reorder_row is None:
-            get_dtype = cudss.get_data_param_dtype
-            self._perm_reorder_row = np.empty((self._N,), dtype=get_dtype(DataParamEnum.PERM_REORDER_ROW))
+            self._perm_reorder_row = np.empty((self._N,), dtype=self._index_type)
 
         _get_attribute(self._handle, self._data_ptr, DataParamEnum.PERM_REORDER_ROW, self._perm_reorder_row, length=self._N)
 
         return self._perm_reorder_row
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def matching_col_permutation(self):
+        """
+        Query the matching (column) permutation after planning (reordering). See the
+        `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssdataparam-t>`_
+        for more information.
+        """
+        if self._batched:
+            raise RuntimeError("Matching (column) permutation is not available for batched systems.")
+
+        if self._perm_matching is None:
+            self._perm_matching = np.empty((self._N,), dtype=self._index_type)
+
+        _get_attribute(self._handle, self._data_ptr, DataParamEnum.PERM_MATCHING, self._perm_matching, length=self._N)
+
+        return self._perm_matching
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def num_superpanels(self):
+        """
+        Query the number of number of superpanels after planning (symbolic factorization).
+        See the `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssdataparam-t>`_
+        for more information.
+        """
+        _get_attribute(self._handle, self._data_ptr, DataParamEnum.NSUPERPANELS, self._nsuperpanels)
+
+        return self._nsuperpanels.item()
 
 
 class FactorizationInfo:
@@ -161,19 +207,26 @@ class FactorizationInfo:
 
         self._N = self._solver._N
         self._batched = self._solver.batched
+        self._index_type = self._solver.index_type
         self._value_type = self._solver.value_type
 
         get_dtype = cudss.get_data_param_dtype
 
         self._info = np.zeros((1,), dtype=get_dtype(DataParamEnum.INFO))
         self._lu_nnz = np.zeros((1,), dtype=get_dtype(DataParamEnum.LU_NNZ))
-        self._npivots = np.zeros((1,), dtype=get_dtype(DataParamEnum.NPIVOTS))
-        self._inertia = np.zeros((2,), dtype=get_dtype(DataParamEnum.INERTIA))
+
+        # Allocate arrays that depend on the index or value type lazily.
+        self._npivots = None
+        self._inertia = None
 
         # Allocate permutation and diagonal arrays lazily, and only if not batched.
         self._perm_col = None
         self._perm_row = None
         self._diag = None
+
+        # Allocate matching row and col scale arrays lazily, and only if not batched.
+        self._scale_row = None
+        self._scale_col = None
 
     def _check_valid_solver_wrapper(self, *args, **kwargs):
         _check_valid_solver(self)
@@ -213,6 +266,9 @@ class FactorizationInfo:
         <https://docs.nvidia.com/cuda/cudss/types.html#cudssdataparam-t>`_
         for more information.
         """
+        if self._npivots is None:
+            self._npivots = np.empty((1,), dtype=self._index_type)
+
         _get_attribute(self._handle, self._data_ptr, DataParamEnum.NPIVOTS, self._npivots)
 
         return self._npivots.item()
@@ -227,6 +283,9 @@ class FactorizationInfo:
         <https://docs.nvidia.com/cuda/cudss/types.html#cudssdataparam-t>`_
         for more information.
         """
+        if self._inertia is None:
+            self._inertia = np.empty((2,), dtype=self._index_type)
+
         _get_attribute(self._handle, self._data_ptr, DataParamEnum.INERTIA, self._inertia, length=2)
 
         return self._inertia
@@ -244,8 +303,7 @@ class FactorizationInfo:
             raise RuntimeError("Column permutation is not available for batched systems.")
 
         if self._perm_col is None:
-            get_dtype = cudss.get_data_param_dtype
-            self._perm_col = np.empty((self._N,), dtype=get_dtype(DataParamEnum.PERM_COL))
+            self._perm_col = np.empty((self._N,), dtype=self._index_type)
 
         _get_attribute(self._handle, self._data_ptr, DataParamEnum.PERM_COL, self._perm_col, length=self._N)
 
@@ -264,8 +322,7 @@ class FactorizationInfo:
             raise RuntimeError("Row permutation is not available for batched systems.")
 
         if self._perm_row is None:
-            get_dtype = cudss.get_data_param_dtype
-            self._perm_row = np.empty((self._N,), dtype=get_dtype(DataParamEnum.PERM_ROW))
+            self._perm_row = np.empty((self._N,), dtype=self._index_type)
 
         _get_attribute(self._handle, self._data_ptr, DataParamEnum.PERM_ROW, self._perm_row, length=self._N)
 
@@ -289,3 +346,45 @@ class FactorizationInfo:
         _get_attribute(self._handle, self._data_ptr, DataParamEnum.DIAG, self._diag, length=self._N)
 
         return self._diag
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def row_scale_factors(self):
+        """
+        Query the scale factors for the rows of the factorized system, if matching was
+        used. See the `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssdataparam-t>`_
+        for more information.
+        """
+        if self._batched:
+            raise RuntimeError("The factorized system's row scale factors is not available for batched systems.")
+
+        if self._scale_row is None:
+            vtype = self._value_type
+            dtype = complex_to_real_equivalent(vtype) if "complex" in vtype else vtype
+            self._scale_row = np.empty((self._N,), dtype=dtype)
+
+        _get_attribute(self._handle, self._data_ptr, DataParamEnum.SCALE_ROW, self._scale_row, length=self._N)
+
+        return self._scale_row
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def col_scale_factors(self):
+        """
+        Query the scale factors for the columns of the factorized system, if matching was
+        used. See the `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssdataparam-t>`_
+        for more information.
+        """
+        if self._batched:
+            raise RuntimeError("The factorized system's column scale factors is not available for batched systems.")
+
+        if self._scale_col is None:
+            vtype = self._value_type
+            dtype = complex_to_real_equivalent(vtype) if "complex" in vtype else vtype
+            self._scale_col = np.empty((self._N,), dtype=dtype)
+
+        _get_attribute(self._handle, self._data_ptr, DataParamEnum.SCALE_COL, self._scale_col, length=self._N)
+
+        return self._scale_col

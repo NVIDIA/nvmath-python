@@ -6,7 +6,7 @@ import os
 from cuda.bindings import runtime as cudart, nvrtc, driver as cudadrv
 
 from nvmath._utils import PLATFORM_LINUX, PLATFORM_WIN
-from nvmath.device.common_mathdx import CUDA_HOME as _CUDA_HOME
+from cuda import pathfinder
 from importlib.metadata import files, PackageNotFoundError
 
 from .helpers import CHECK_CUDA, CHECK_CUDART, CHECK_NVRTC, make_args, get_unsigned
@@ -64,7 +64,7 @@ def run_and_time(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args
 
 
 def compile_cpp_kernel(cpp, mangled):
-    print(f"compile_cpp_kernel CUDA_HOME = {_CUDA_HOME}, MATHDX_HOME = {_MATHDX_HOME}")
+    print(f"compile_cpp_kernel MATHDX_HOME = {_MATHDX_HOME}")
 
     err, prop = cudart.cudaGetDeviceProperties(0)
     CHECK_CUDART(err)
@@ -72,8 +72,8 @@ def compile_cpp_kernel(cpp, mangled):
 
     opts = (
         [b"--std=c++17", b"--device-as-default-execution-space", b"-DCUFFTDX_DETAIL_USE_CUDA_STL=1"]
-        + [bytes(f"--include-path={h}/include", encoding="ascii") for h in _CUDA_HOME]
-        + [bytes(f"--include-path={h}/include/cccl", encoding="ascii") for h in _CUDA_HOME]
+        + [bytes(f"--include-path={pathfinder.find_nvidia_header_directory('cudart')}", encoding="ascii")]
+        + [bytes(f"--include-path={pathfinder.find_nvidia_header_directory('cccl')}", encoding="ascii")]
         + [
             bytes(f"--include-path={_MATHDX_HOME}/include", encoding="ascii"),
             bytes(f"--include-path={_MATHDX_HOME}/include/cufftdx", encoding="ascii"),

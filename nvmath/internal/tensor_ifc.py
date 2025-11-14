@@ -91,16 +91,19 @@ class TensorHolder(ABC, Generic[Tensor]):
     @property
     @abstractmethod
     def shape(self) -> Sequence[int]:
+        """The extent of each dimension in number of elements."""
         raise NotImplementedError
 
     @property
     @abstractmethod
     def size(self) -> int:
+        """The total number of elements in the tensor."""
         raise NotImplementedError
 
     @property
     @abstractmethod
     def strides(self) -> Sequence[int]:
+        """The stride of each dimension in number of elements."""
         raise NotImplementedError
 
     @abstractmethod
@@ -153,3 +156,11 @@ class TensorHolder(ABC, Generic[Tensor]):
                 the function must avoid copying, if possible, and may copy otherwise.
         """
         raise NotImplementedError
+
+    @property
+    def is_conjugate(self) -> bool:
+        """Return True when self.tensor has a no-op conjugation flag enabled.
+
+        The default implementation always returns False.
+        """
+        return False

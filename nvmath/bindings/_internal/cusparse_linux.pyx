@@ -6,9 +6,12 @@
 
 from libc.stdint cimport intptr_t, uintptr_t
 
+import threading
+
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -28,13 +31,31 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cusparse_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cusparseCreate = NULL
 cdef void* __cusparseDestroy = NULL
@@ -304,1822 +325,1806 @@ cdef int _check_or_init_cusparse() except -1 nogil:
     if __py_cusparse_init:
         return 0
 
-    # Load driver to check version
     cdef void* handle = NULL
-    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
-    global __cuDriverGetVersion
-    if __cuDriverGetVersion == NULL:
-        __cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
-    if __cuDriverGetVersion == NULL:
-        with gil:
-            raise RuntimeError('something went wrong')
-    cdef int err, driver_ver
-    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-    if err != 0:
-        with gil:
-            raise RuntimeError('something went wrong')
-    #dlclose(handle)
-    handle = NULL
-
-    # Load function
-    global __cusparseCreate
-    __cusparseCreate = dlsym(RTLD_DEFAULT, 'cusparseCreate')
-    if __cusparseCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreate = dlsym(handle, 'cusparseCreate')
-
-    global __cusparseDestroy
-    __cusparseDestroy = dlsym(RTLD_DEFAULT, 'cusparseDestroy')
-    if __cusparseDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDestroy = dlsym(handle, 'cusparseDestroy')
-
-    global __cusparseGetVersion
-    __cusparseGetVersion = dlsym(RTLD_DEFAULT, 'cusparseGetVersion')
-    if __cusparseGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetVersion = dlsym(handle, 'cusparseGetVersion')
-
-    global __cusparseGetProperty
-    __cusparseGetProperty = dlsym(RTLD_DEFAULT, 'cusparseGetProperty')
-    if __cusparseGetProperty == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetProperty = dlsym(handle, 'cusparseGetProperty')
-
-    global __cusparseGetErrorName
-    __cusparseGetErrorName = dlsym(RTLD_DEFAULT, 'cusparseGetErrorName')
-    if __cusparseGetErrorName == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetErrorName = dlsym(handle, 'cusparseGetErrorName')
-
-    global __cusparseGetErrorString
-    __cusparseGetErrorString = dlsym(RTLD_DEFAULT, 'cusparseGetErrorString')
-    if __cusparseGetErrorString == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetErrorString = dlsym(handle, 'cusparseGetErrorString')
-
-    global __cusparseSetStream
-    __cusparseSetStream = dlsym(RTLD_DEFAULT, 'cusparseSetStream')
-    if __cusparseSetStream == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSetStream = dlsym(handle, 'cusparseSetStream')
-
-    global __cusparseGetStream
-    __cusparseGetStream = dlsym(RTLD_DEFAULT, 'cusparseGetStream')
-    if __cusparseGetStream == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetStream = dlsym(handle, 'cusparseGetStream')
-
-    global __cusparseGetPointerMode
-    __cusparseGetPointerMode = dlsym(RTLD_DEFAULT, 'cusparseGetPointerMode')
-    if __cusparseGetPointerMode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetPointerMode = dlsym(handle, 'cusparseGetPointerMode')
-
-    global __cusparseSetPointerMode
-    __cusparseSetPointerMode = dlsym(RTLD_DEFAULT, 'cusparseSetPointerMode')
-    if __cusparseSetPointerMode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSetPointerMode = dlsym(handle, 'cusparseSetPointerMode')
-
-    global __cusparseCreateMatDescr
-    __cusparseCreateMatDescr = dlsym(RTLD_DEFAULT, 'cusparseCreateMatDescr')
-    if __cusparseCreateMatDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateMatDescr = dlsym(handle, 'cusparseCreateMatDescr')
-
-    global __cusparseDestroyMatDescr
-    __cusparseDestroyMatDescr = dlsym(RTLD_DEFAULT, 'cusparseDestroyMatDescr')
-    if __cusparseDestroyMatDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDestroyMatDescr = dlsym(handle, 'cusparseDestroyMatDescr')
-
-    global __cusparseSetMatType
-    __cusparseSetMatType = dlsym(RTLD_DEFAULT, 'cusparseSetMatType')
-    if __cusparseSetMatType == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSetMatType = dlsym(handle, 'cusparseSetMatType')
-
-    global __cusparseGetMatType
-    __cusparseGetMatType = dlsym(RTLD_DEFAULT, 'cusparseGetMatType')
-    if __cusparseGetMatType == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetMatType = dlsym(handle, 'cusparseGetMatType')
-
-    global __cusparseSetMatFillMode
-    __cusparseSetMatFillMode = dlsym(RTLD_DEFAULT, 'cusparseSetMatFillMode')
-    if __cusparseSetMatFillMode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSetMatFillMode = dlsym(handle, 'cusparseSetMatFillMode')
-
-    global __cusparseGetMatFillMode
-    __cusparseGetMatFillMode = dlsym(RTLD_DEFAULT, 'cusparseGetMatFillMode')
-    if __cusparseGetMatFillMode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetMatFillMode = dlsym(handle, 'cusparseGetMatFillMode')
-
-    global __cusparseSetMatDiagType
-    __cusparseSetMatDiagType = dlsym(RTLD_DEFAULT, 'cusparseSetMatDiagType')
-    if __cusparseSetMatDiagType == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSetMatDiagType = dlsym(handle, 'cusparseSetMatDiagType')
-
-    global __cusparseGetMatDiagType
-    __cusparseGetMatDiagType = dlsym(RTLD_DEFAULT, 'cusparseGetMatDiagType')
-    if __cusparseGetMatDiagType == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetMatDiagType = dlsym(handle, 'cusparseGetMatDiagType')
-
-    global __cusparseSetMatIndexBase
-    __cusparseSetMatIndexBase = dlsym(RTLD_DEFAULT, 'cusparseSetMatIndexBase')
-    if __cusparseSetMatIndexBase == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSetMatIndexBase = dlsym(handle, 'cusparseSetMatIndexBase')
-
-    global __cusparseGetMatIndexBase
-    __cusparseGetMatIndexBase = dlsym(RTLD_DEFAULT, 'cusparseGetMatIndexBase')
-    if __cusparseGetMatIndexBase == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGetMatIndexBase = dlsym(handle, 'cusparseGetMatIndexBase')
-
-    global __cusparseSgemvi
-    __cusparseSgemvi = dlsym(RTLD_DEFAULT, 'cusparseSgemvi')
-    if __cusparseSgemvi == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgemvi = dlsym(handle, 'cusparseSgemvi')
-
-    global __cusparseSgemvi_bufferSize
-    __cusparseSgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSgemvi_bufferSize')
-    if __cusparseSgemvi_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgemvi_bufferSize = dlsym(handle, 'cusparseSgemvi_bufferSize')
-
-    global __cusparseDgemvi
-    __cusparseDgemvi = dlsym(RTLD_DEFAULT, 'cusparseDgemvi')
-    if __cusparseDgemvi == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgemvi = dlsym(handle, 'cusparseDgemvi')
-
-    global __cusparseDgemvi_bufferSize
-    __cusparseDgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDgemvi_bufferSize')
-    if __cusparseDgemvi_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgemvi_bufferSize = dlsym(handle, 'cusparseDgemvi_bufferSize')
-
-    global __cusparseCgemvi
-    __cusparseCgemvi = dlsym(RTLD_DEFAULT, 'cusparseCgemvi')
-    if __cusparseCgemvi == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgemvi = dlsym(handle, 'cusparseCgemvi')
-
-    global __cusparseCgemvi_bufferSize
-    __cusparseCgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCgemvi_bufferSize')
-    if __cusparseCgemvi_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgemvi_bufferSize = dlsym(handle, 'cusparseCgemvi_bufferSize')
-
-    global __cusparseZgemvi
-    __cusparseZgemvi = dlsym(RTLD_DEFAULT, 'cusparseZgemvi')
-    if __cusparseZgemvi == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgemvi = dlsym(handle, 'cusparseZgemvi')
-
-    global __cusparseZgemvi_bufferSize
-    __cusparseZgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZgemvi_bufferSize')
-    if __cusparseZgemvi_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgemvi_bufferSize = dlsym(handle, 'cusparseZgemvi_bufferSize')
-
-    global __cusparseSbsrmv
-    __cusparseSbsrmv = dlsym(RTLD_DEFAULT, 'cusparseSbsrmv')
-    if __cusparseSbsrmv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSbsrmv = dlsym(handle, 'cusparseSbsrmv')
-
-    global __cusparseDbsrmv
-    __cusparseDbsrmv = dlsym(RTLD_DEFAULT, 'cusparseDbsrmv')
-    if __cusparseDbsrmv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDbsrmv = dlsym(handle, 'cusparseDbsrmv')
-
-    global __cusparseCbsrmv
-    __cusparseCbsrmv = dlsym(RTLD_DEFAULT, 'cusparseCbsrmv')
-    if __cusparseCbsrmv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCbsrmv = dlsym(handle, 'cusparseCbsrmv')
-
-    global __cusparseZbsrmv
-    __cusparseZbsrmv = dlsym(RTLD_DEFAULT, 'cusparseZbsrmv')
-    if __cusparseZbsrmv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZbsrmv = dlsym(handle, 'cusparseZbsrmv')
-
-    global __cusparseSbsrmm
-    __cusparseSbsrmm = dlsym(RTLD_DEFAULT, 'cusparseSbsrmm')
-    if __cusparseSbsrmm == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSbsrmm = dlsym(handle, 'cusparseSbsrmm')
-
-    global __cusparseDbsrmm
-    __cusparseDbsrmm = dlsym(RTLD_DEFAULT, 'cusparseDbsrmm')
-    if __cusparseDbsrmm == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDbsrmm = dlsym(handle, 'cusparseDbsrmm')
-
-    global __cusparseCbsrmm
-    __cusparseCbsrmm = dlsym(RTLD_DEFAULT, 'cusparseCbsrmm')
-    if __cusparseCbsrmm == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCbsrmm = dlsym(handle, 'cusparseCbsrmm')
-
-    global __cusparseZbsrmm
-    __cusparseZbsrmm = dlsym(RTLD_DEFAULT, 'cusparseZbsrmm')
-    if __cusparseZbsrmm == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZbsrmm = dlsym(handle, 'cusparseZbsrmm')
-
-    global __cusparseSgtsv2_bufferSizeExt
-    __cusparseSgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2_bufferSizeExt')
-    if __cusparseSgtsv2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsv2_bufferSizeExt = dlsym(handle, 'cusparseSgtsv2_bufferSizeExt')
-
-    global __cusparseDgtsv2_bufferSizeExt
-    __cusparseDgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2_bufferSizeExt')
-    if __cusparseDgtsv2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsv2_bufferSizeExt = dlsym(handle, 'cusparseDgtsv2_bufferSizeExt')
-
-    global __cusparseCgtsv2_bufferSizeExt
-    __cusparseCgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2_bufferSizeExt')
-    if __cusparseCgtsv2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsv2_bufferSizeExt = dlsym(handle, 'cusparseCgtsv2_bufferSizeExt')
-
-    global __cusparseZgtsv2_bufferSizeExt
-    __cusparseZgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2_bufferSizeExt')
-    if __cusparseZgtsv2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsv2_bufferSizeExt = dlsym(handle, 'cusparseZgtsv2_bufferSizeExt')
-
-    global __cusparseSgtsv2
-    __cusparseSgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2')
-    if __cusparseSgtsv2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsv2 = dlsym(handle, 'cusparseSgtsv2')
-
-    global __cusparseDgtsv2
-    __cusparseDgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2')
-    if __cusparseDgtsv2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsv2 = dlsym(handle, 'cusparseDgtsv2')
-
-    global __cusparseCgtsv2
-    __cusparseCgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2')
-    if __cusparseCgtsv2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsv2 = dlsym(handle, 'cusparseCgtsv2')
-
-    global __cusparseZgtsv2
-    __cusparseZgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2')
-    if __cusparseZgtsv2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsv2 = dlsym(handle, 'cusparseZgtsv2')
-
-    global __cusparseSgtsv2_nopivot_bufferSizeExt
-    __cusparseSgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2_nopivot_bufferSizeExt')
-    if __cusparseSgtsv2_nopivot_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseSgtsv2_nopivot_bufferSizeExt')
-
-    global __cusparseDgtsv2_nopivot_bufferSizeExt
-    __cusparseDgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2_nopivot_bufferSizeExt')
-    if __cusparseDgtsv2_nopivot_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseDgtsv2_nopivot_bufferSizeExt')
-
-    global __cusparseCgtsv2_nopivot_bufferSizeExt
-    __cusparseCgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2_nopivot_bufferSizeExt')
-    if __cusparseCgtsv2_nopivot_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseCgtsv2_nopivot_bufferSizeExt')
-
-    global __cusparseZgtsv2_nopivot_bufferSizeExt
-    __cusparseZgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2_nopivot_bufferSizeExt')
-    if __cusparseZgtsv2_nopivot_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseZgtsv2_nopivot_bufferSizeExt')
-
-    global __cusparseSgtsv2_nopivot
-    __cusparseSgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2_nopivot')
-    if __cusparseSgtsv2_nopivot == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsv2_nopivot = dlsym(handle, 'cusparseSgtsv2_nopivot')
-
-    global __cusparseDgtsv2_nopivot
-    __cusparseDgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2_nopivot')
-    if __cusparseDgtsv2_nopivot == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsv2_nopivot = dlsym(handle, 'cusparseDgtsv2_nopivot')
-
-    global __cusparseCgtsv2_nopivot
-    __cusparseCgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2_nopivot')
-    if __cusparseCgtsv2_nopivot == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsv2_nopivot = dlsym(handle, 'cusparseCgtsv2_nopivot')
-
-    global __cusparseZgtsv2_nopivot
-    __cusparseZgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2_nopivot')
-    if __cusparseZgtsv2_nopivot == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsv2_nopivot = dlsym(handle, 'cusparseZgtsv2_nopivot')
-
-    global __cusparseSgtsv2StridedBatch_bufferSizeExt
-    __cusparseSgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2StridedBatch_bufferSizeExt')
-    if __cusparseSgtsv2StridedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseSgtsv2StridedBatch_bufferSizeExt')
-
-    global __cusparseDgtsv2StridedBatch_bufferSizeExt
-    __cusparseDgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2StridedBatch_bufferSizeExt')
-    if __cusparseDgtsv2StridedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseDgtsv2StridedBatch_bufferSizeExt')
-
-    global __cusparseCgtsv2StridedBatch_bufferSizeExt
-    __cusparseCgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2StridedBatch_bufferSizeExt')
-    if __cusparseCgtsv2StridedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseCgtsv2StridedBatch_bufferSizeExt')
-
-    global __cusparseZgtsv2StridedBatch_bufferSizeExt
-    __cusparseZgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2StridedBatch_bufferSizeExt')
-    if __cusparseZgtsv2StridedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseZgtsv2StridedBatch_bufferSizeExt')
-
-    global __cusparseSgtsv2StridedBatch
-    __cusparseSgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2StridedBatch')
-    if __cusparseSgtsv2StridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsv2StridedBatch = dlsym(handle, 'cusparseSgtsv2StridedBatch')
-
-    global __cusparseDgtsv2StridedBatch
-    __cusparseDgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2StridedBatch')
-    if __cusparseDgtsv2StridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsv2StridedBatch = dlsym(handle, 'cusparseDgtsv2StridedBatch')
-
-    global __cusparseCgtsv2StridedBatch
-    __cusparseCgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2StridedBatch')
-    if __cusparseCgtsv2StridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsv2StridedBatch = dlsym(handle, 'cusparseCgtsv2StridedBatch')
-
-    global __cusparseZgtsv2StridedBatch
-    __cusparseZgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2StridedBatch')
-    if __cusparseZgtsv2StridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsv2StridedBatch = dlsym(handle, 'cusparseZgtsv2StridedBatch')
-
-    global __cusparseSgtsvInterleavedBatch_bufferSizeExt
-    __cusparseSgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsvInterleavedBatch_bufferSizeExt')
-    if __cusparseSgtsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseSgtsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseDgtsvInterleavedBatch_bufferSizeExt
-    __cusparseDgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsvInterleavedBatch_bufferSizeExt')
-    if __cusparseDgtsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseDgtsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseCgtsvInterleavedBatch_bufferSizeExt
-    __cusparseCgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsvInterleavedBatch_bufferSizeExt')
-    if __cusparseCgtsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseCgtsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseZgtsvInterleavedBatch_bufferSizeExt
-    __cusparseZgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsvInterleavedBatch_bufferSizeExt')
-    if __cusparseZgtsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseZgtsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseSgtsvInterleavedBatch
-    __cusparseSgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseSgtsvInterleavedBatch')
-    if __cusparseSgtsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgtsvInterleavedBatch = dlsym(handle, 'cusparseSgtsvInterleavedBatch')
-
-    global __cusparseDgtsvInterleavedBatch
-    __cusparseDgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseDgtsvInterleavedBatch')
-    if __cusparseDgtsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgtsvInterleavedBatch = dlsym(handle, 'cusparseDgtsvInterleavedBatch')
-
-    global __cusparseCgtsvInterleavedBatch
-    __cusparseCgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseCgtsvInterleavedBatch')
-    if __cusparseCgtsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgtsvInterleavedBatch = dlsym(handle, 'cusparseCgtsvInterleavedBatch')
-
-    global __cusparseZgtsvInterleavedBatch
-    __cusparseZgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseZgtsvInterleavedBatch')
-    if __cusparseZgtsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgtsvInterleavedBatch = dlsym(handle, 'cusparseZgtsvInterleavedBatch')
-
-    global __cusparseSgpsvInterleavedBatch_bufferSizeExt
-    __cusparseSgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgpsvInterleavedBatch_bufferSizeExt')
-    if __cusparseSgpsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseSgpsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseDgpsvInterleavedBatch_bufferSizeExt
-    __cusparseDgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgpsvInterleavedBatch_bufferSizeExt')
-    if __cusparseDgpsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseDgpsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseCgpsvInterleavedBatch_bufferSizeExt
-    __cusparseCgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgpsvInterleavedBatch_bufferSizeExt')
-    if __cusparseCgpsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseCgpsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseZgpsvInterleavedBatch_bufferSizeExt
-    __cusparseZgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgpsvInterleavedBatch_bufferSizeExt')
-    if __cusparseZgpsvInterleavedBatch_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseZgpsvInterleavedBatch_bufferSizeExt')
-
-    global __cusparseSgpsvInterleavedBatch
-    __cusparseSgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseSgpsvInterleavedBatch')
-    if __cusparseSgpsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgpsvInterleavedBatch = dlsym(handle, 'cusparseSgpsvInterleavedBatch')
-
-    global __cusparseDgpsvInterleavedBatch
-    __cusparseDgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseDgpsvInterleavedBatch')
-    if __cusparseDgpsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgpsvInterleavedBatch = dlsym(handle, 'cusparseDgpsvInterleavedBatch')
-
-    global __cusparseCgpsvInterleavedBatch
-    __cusparseCgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseCgpsvInterleavedBatch')
-    if __cusparseCgpsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgpsvInterleavedBatch = dlsym(handle, 'cusparseCgpsvInterleavedBatch')
-
-    global __cusparseZgpsvInterleavedBatch
-    __cusparseZgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseZgpsvInterleavedBatch')
-    if __cusparseZgpsvInterleavedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgpsvInterleavedBatch = dlsym(handle, 'cusparseZgpsvInterleavedBatch')
-
-    global __cusparseScsrgeam2_bufferSizeExt
-    __cusparseScsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseScsrgeam2_bufferSizeExt')
-    if __cusparseScsrgeam2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseScsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseScsrgeam2_bufferSizeExt')
-
-    global __cusparseDcsrgeam2_bufferSizeExt
-    __cusparseDcsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDcsrgeam2_bufferSizeExt')
-    if __cusparseDcsrgeam2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDcsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseDcsrgeam2_bufferSizeExt')
-
-    global __cusparseCcsrgeam2_bufferSizeExt
-    __cusparseCcsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCcsrgeam2_bufferSizeExt')
-    if __cusparseCcsrgeam2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCcsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseCcsrgeam2_bufferSizeExt')
-
-    global __cusparseZcsrgeam2_bufferSizeExt
-    __cusparseZcsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZcsrgeam2_bufferSizeExt')
-    if __cusparseZcsrgeam2_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZcsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseZcsrgeam2_bufferSizeExt')
-
-    global __cusparseXcsrgeam2Nnz
-    __cusparseXcsrgeam2Nnz = dlsym(RTLD_DEFAULT, 'cusparseXcsrgeam2Nnz')
-    if __cusparseXcsrgeam2Nnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcsrgeam2Nnz = dlsym(handle, 'cusparseXcsrgeam2Nnz')
-
-    global __cusparseScsrgeam2
-    __cusparseScsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseScsrgeam2')
-    if __cusparseScsrgeam2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseScsrgeam2 = dlsym(handle, 'cusparseScsrgeam2')
-
-    global __cusparseDcsrgeam2
-    __cusparseDcsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseDcsrgeam2')
-    if __cusparseDcsrgeam2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDcsrgeam2 = dlsym(handle, 'cusparseDcsrgeam2')
-
-    global __cusparseCcsrgeam2
-    __cusparseCcsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseCcsrgeam2')
-    if __cusparseCcsrgeam2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCcsrgeam2 = dlsym(handle, 'cusparseCcsrgeam2')
-
-    global __cusparseZcsrgeam2
-    __cusparseZcsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseZcsrgeam2')
-    if __cusparseZcsrgeam2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZcsrgeam2 = dlsym(handle, 'cusparseZcsrgeam2')
-
-    global __cusparseSnnz
-    __cusparseSnnz = dlsym(RTLD_DEFAULT, 'cusparseSnnz')
-    if __cusparseSnnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSnnz = dlsym(handle, 'cusparseSnnz')
-
-    global __cusparseDnnz
-    __cusparseDnnz = dlsym(RTLD_DEFAULT, 'cusparseDnnz')
-    if __cusparseDnnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnnz = dlsym(handle, 'cusparseDnnz')
-
-    global __cusparseCnnz
-    __cusparseCnnz = dlsym(RTLD_DEFAULT, 'cusparseCnnz')
-    if __cusparseCnnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCnnz = dlsym(handle, 'cusparseCnnz')
-
-    global __cusparseZnnz
-    __cusparseZnnz = dlsym(RTLD_DEFAULT, 'cusparseZnnz')
-    if __cusparseZnnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZnnz = dlsym(handle, 'cusparseZnnz')
-
-    global __cusparseXcoo2csr
-    __cusparseXcoo2csr = dlsym(RTLD_DEFAULT, 'cusparseXcoo2csr')
-    if __cusparseXcoo2csr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcoo2csr = dlsym(handle, 'cusparseXcoo2csr')
-
-    global __cusparseXcsr2coo
-    __cusparseXcsr2coo = dlsym(RTLD_DEFAULT, 'cusparseXcsr2coo')
-    if __cusparseXcsr2coo == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcsr2coo = dlsym(handle, 'cusparseXcsr2coo')
-
-    global __cusparseSbsr2csr
-    __cusparseSbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseSbsr2csr')
-    if __cusparseSbsr2csr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSbsr2csr = dlsym(handle, 'cusparseSbsr2csr')
-
-    global __cusparseDbsr2csr
-    __cusparseDbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseDbsr2csr')
-    if __cusparseDbsr2csr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDbsr2csr = dlsym(handle, 'cusparseDbsr2csr')
-
-    global __cusparseCbsr2csr
-    __cusparseCbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseCbsr2csr')
-    if __cusparseCbsr2csr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCbsr2csr = dlsym(handle, 'cusparseCbsr2csr')
-
-    global __cusparseZbsr2csr
-    __cusparseZbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseZbsr2csr')
-    if __cusparseZbsr2csr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZbsr2csr = dlsym(handle, 'cusparseZbsr2csr')
-
-    global __cusparseSgebsr2gebsc_bufferSize
-    __cusparseSgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsc_bufferSize')
-    if __cusparseSgebsr2gebsc_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseSgebsr2gebsc_bufferSize')
-
-    global __cusparseDgebsr2gebsc_bufferSize
-    __cusparseDgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsc_bufferSize')
-    if __cusparseDgebsr2gebsc_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseDgebsr2gebsc_bufferSize')
-
-    global __cusparseCgebsr2gebsc_bufferSize
-    __cusparseCgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsc_bufferSize')
-    if __cusparseCgebsr2gebsc_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseCgebsr2gebsc_bufferSize')
-
-    global __cusparseZgebsr2gebsc_bufferSize
-    __cusparseZgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsc_bufferSize')
-    if __cusparseZgebsr2gebsc_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseZgebsr2gebsc_bufferSize')
-
-    global __cusparseSgebsr2gebsc_bufferSizeExt
-    __cusparseSgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsc_bufferSizeExt')
-    if __cusparseSgebsr2gebsc_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseSgebsr2gebsc_bufferSizeExt')
-
-    global __cusparseDgebsr2gebsc_bufferSizeExt
-    __cusparseDgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsc_bufferSizeExt')
-    if __cusparseDgebsr2gebsc_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseDgebsr2gebsc_bufferSizeExt')
-
-    global __cusparseCgebsr2gebsc_bufferSizeExt
-    __cusparseCgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsc_bufferSizeExt')
-    if __cusparseCgebsr2gebsc_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseCgebsr2gebsc_bufferSizeExt')
-
-    global __cusparseZgebsr2gebsc_bufferSizeExt
-    __cusparseZgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsc_bufferSizeExt')
-    if __cusparseZgebsr2gebsc_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseZgebsr2gebsc_bufferSizeExt')
-
-    global __cusparseSgebsr2gebsc
-    __cusparseSgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsc')
-    if __cusparseSgebsr2gebsc == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgebsr2gebsc = dlsym(handle, 'cusparseSgebsr2gebsc')
-
-    global __cusparseDgebsr2gebsc
-    __cusparseDgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsc')
-    if __cusparseDgebsr2gebsc == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgebsr2gebsc = dlsym(handle, 'cusparseDgebsr2gebsc')
-
-    global __cusparseCgebsr2gebsc
-    __cusparseCgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsc')
-    if __cusparseCgebsr2gebsc == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgebsr2gebsc = dlsym(handle, 'cusparseCgebsr2gebsc')
-
-    global __cusparseZgebsr2gebsc
-    __cusparseZgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsc')
-    if __cusparseZgebsr2gebsc == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgebsr2gebsc = dlsym(handle, 'cusparseZgebsr2gebsc')
-
-    global __cusparseScsr2gebsr_bufferSize
-    __cusparseScsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseScsr2gebsr_bufferSize')
-    if __cusparseScsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseScsr2gebsr_bufferSize = dlsym(handle, 'cusparseScsr2gebsr_bufferSize')
-
-    global __cusparseDcsr2gebsr_bufferSize
-    __cusparseDcsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDcsr2gebsr_bufferSize')
-    if __cusparseDcsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDcsr2gebsr_bufferSize = dlsym(handle, 'cusparseDcsr2gebsr_bufferSize')
-
-    global __cusparseCcsr2gebsr_bufferSize
-    __cusparseCcsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCcsr2gebsr_bufferSize')
-    if __cusparseCcsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCcsr2gebsr_bufferSize = dlsym(handle, 'cusparseCcsr2gebsr_bufferSize')
-
-    global __cusparseZcsr2gebsr_bufferSize
-    __cusparseZcsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZcsr2gebsr_bufferSize')
-    if __cusparseZcsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZcsr2gebsr_bufferSize = dlsym(handle, 'cusparseZcsr2gebsr_bufferSize')
-
-    global __cusparseScsr2gebsr_bufferSizeExt
-    __cusparseScsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseScsr2gebsr_bufferSizeExt')
-    if __cusparseScsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseScsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseScsr2gebsr_bufferSizeExt')
-
-    global __cusparseDcsr2gebsr_bufferSizeExt
-    __cusparseDcsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDcsr2gebsr_bufferSizeExt')
-    if __cusparseDcsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDcsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseDcsr2gebsr_bufferSizeExt')
-
-    global __cusparseCcsr2gebsr_bufferSizeExt
-    __cusparseCcsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCcsr2gebsr_bufferSizeExt')
-    if __cusparseCcsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCcsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseCcsr2gebsr_bufferSizeExt')
-
-    global __cusparseZcsr2gebsr_bufferSizeExt
-    __cusparseZcsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZcsr2gebsr_bufferSizeExt')
-    if __cusparseZcsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZcsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseZcsr2gebsr_bufferSizeExt')
-
-    global __cusparseXcsr2gebsrNnz
-    __cusparseXcsr2gebsrNnz = dlsym(RTLD_DEFAULT, 'cusparseXcsr2gebsrNnz')
-    if __cusparseXcsr2gebsrNnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcsr2gebsrNnz = dlsym(handle, 'cusparseXcsr2gebsrNnz')
-
-    global __cusparseScsr2gebsr
-    __cusparseScsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseScsr2gebsr')
-    if __cusparseScsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseScsr2gebsr = dlsym(handle, 'cusparseScsr2gebsr')
-
-    global __cusparseDcsr2gebsr
-    __cusparseDcsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseDcsr2gebsr')
-    if __cusparseDcsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDcsr2gebsr = dlsym(handle, 'cusparseDcsr2gebsr')
-
-    global __cusparseCcsr2gebsr
-    __cusparseCcsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseCcsr2gebsr')
-    if __cusparseCcsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCcsr2gebsr = dlsym(handle, 'cusparseCcsr2gebsr')
-
-    global __cusparseZcsr2gebsr
-    __cusparseZcsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseZcsr2gebsr')
-    if __cusparseZcsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZcsr2gebsr = dlsym(handle, 'cusparseZcsr2gebsr')
-
-    global __cusparseSgebsr2gebsr_bufferSize
-    __cusparseSgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsr_bufferSize')
-    if __cusparseSgebsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseSgebsr2gebsr_bufferSize')
-
-    global __cusparseDgebsr2gebsr_bufferSize
-    __cusparseDgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsr_bufferSize')
-    if __cusparseDgebsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseDgebsr2gebsr_bufferSize')
-
-    global __cusparseCgebsr2gebsr_bufferSize
-    __cusparseCgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsr_bufferSize')
-    if __cusparseCgebsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseCgebsr2gebsr_bufferSize')
-
-    global __cusparseZgebsr2gebsr_bufferSize
-    __cusparseZgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsr_bufferSize')
-    if __cusparseZgebsr2gebsr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseZgebsr2gebsr_bufferSize')
-
-    global __cusparseSgebsr2gebsr_bufferSizeExt
-    __cusparseSgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsr_bufferSizeExt')
-    if __cusparseSgebsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseSgebsr2gebsr_bufferSizeExt')
-
-    global __cusparseDgebsr2gebsr_bufferSizeExt
-    __cusparseDgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsr_bufferSizeExt')
-    if __cusparseDgebsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseDgebsr2gebsr_bufferSizeExt')
-
-    global __cusparseCgebsr2gebsr_bufferSizeExt
-    __cusparseCgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsr_bufferSizeExt')
-    if __cusparseCgebsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseCgebsr2gebsr_bufferSizeExt')
-
-    global __cusparseZgebsr2gebsr_bufferSizeExt
-    __cusparseZgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsr_bufferSizeExt')
-    if __cusparseZgebsr2gebsr_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseZgebsr2gebsr_bufferSizeExt')
-
-    global __cusparseXgebsr2gebsrNnz
-    __cusparseXgebsr2gebsrNnz = dlsym(RTLD_DEFAULT, 'cusparseXgebsr2gebsrNnz')
-    if __cusparseXgebsr2gebsrNnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXgebsr2gebsrNnz = dlsym(handle, 'cusparseXgebsr2gebsrNnz')
-
-    global __cusparseSgebsr2gebsr
-    __cusparseSgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsr')
-    if __cusparseSgebsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSgebsr2gebsr = dlsym(handle, 'cusparseSgebsr2gebsr')
-
-    global __cusparseDgebsr2gebsr
-    __cusparseDgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsr')
-    if __cusparseDgebsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDgebsr2gebsr = dlsym(handle, 'cusparseDgebsr2gebsr')
-
-    global __cusparseCgebsr2gebsr
-    __cusparseCgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsr')
-    if __cusparseCgebsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCgebsr2gebsr = dlsym(handle, 'cusparseCgebsr2gebsr')
-
-    global __cusparseZgebsr2gebsr
-    __cusparseZgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsr')
-    if __cusparseZgebsr2gebsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseZgebsr2gebsr = dlsym(handle, 'cusparseZgebsr2gebsr')
-
-    global __cusparseXcoosort_bufferSizeExt
-    __cusparseXcoosort_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseXcoosort_bufferSizeExt')
-    if __cusparseXcoosort_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcoosort_bufferSizeExt = dlsym(handle, 'cusparseXcoosort_bufferSizeExt')
-
-    global __cusparseXcoosortByRow
-    __cusparseXcoosortByRow = dlsym(RTLD_DEFAULT, 'cusparseXcoosortByRow')
-    if __cusparseXcoosortByRow == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcoosortByRow = dlsym(handle, 'cusparseXcoosortByRow')
-
-    global __cusparseXcoosortByColumn
-    __cusparseXcoosortByColumn = dlsym(RTLD_DEFAULT, 'cusparseXcoosortByColumn')
-    if __cusparseXcoosortByColumn == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcoosortByColumn = dlsym(handle, 'cusparseXcoosortByColumn')
-
-    global __cusparseXcsrsort_bufferSizeExt
-    __cusparseXcsrsort_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseXcsrsort_bufferSizeExt')
-    if __cusparseXcsrsort_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcsrsort_bufferSizeExt = dlsym(handle, 'cusparseXcsrsort_bufferSizeExt')
-
-    global __cusparseXcsrsort
-    __cusparseXcsrsort = dlsym(RTLD_DEFAULT, 'cusparseXcsrsort')
-    if __cusparseXcsrsort == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcsrsort = dlsym(handle, 'cusparseXcsrsort')
-
-    global __cusparseXcscsort_bufferSizeExt
-    __cusparseXcscsort_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseXcscsort_bufferSizeExt')
-    if __cusparseXcscsort_bufferSizeExt == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcscsort_bufferSizeExt = dlsym(handle, 'cusparseXcscsort_bufferSizeExt')
-
-    global __cusparseXcscsort
-    __cusparseXcscsort = dlsym(RTLD_DEFAULT, 'cusparseXcscsort')
-    if __cusparseXcscsort == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseXcscsort = dlsym(handle, 'cusparseXcscsort')
-
-    global __cusparseCsr2cscEx2
-    __cusparseCsr2cscEx2 = dlsym(RTLD_DEFAULT, 'cusparseCsr2cscEx2')
-    if __cusparseCsr2cscEx2 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCsr2cscEx2 = dlsym(handle, 'cusparseCsr2cscEx2')
-
-    global __cusparseCsr2cscEx2_bufferSize
-    __cusparseCsr2cscEx2_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCsr2cscEx2_bufferSize')
-    if __cusparseCsr2cscEx2_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCsr2cscEx2_bufferSize = dlsym(handle, 'cusparseCsr2cscEx2_bufferSize')
-
-    global __cusparseCreateSpVec
-    __cusparseCreateSpVec = dlsym(RTLD_DEFAULT, 'cusparseCreateSpVec')
-    if __cusparseCreateSpVec == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateSpVec = dlsym(handle, 'cusparseCreateSpVec')
-
-    global __cusparseDestroySpVec
-    __cusparseDestroySpVec = dlsym(RTLD_DEFAULT, 'cusparseDestroySpVec')
-    if __cusparseDestroySpVec == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDestroySpVec = dlsym(handle, 'cusparseDestroySpVec')
-
-    global __cusparseSpVecGet
-    __cusparseSpVecGet = dlsym(RTLD_DEFAULT, 'cusparseSpVecGet')
-    if __cusparseSpVecGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpVecGet = dlsym(handle, 'cusparseSpVecGet')
-
-    global __cusparseSpVecGetIndexBase
-    __cusparseSpVecGetIndexBase = dlsym(RTLD_DEFAULT, 'cusparseSpVecGetIndexBase')
-    if __cusparseSpVecGetIndexBase == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpVecGetIndexBase = dlsym(handle, 'cusparseSpVecGetIndexBase')
-
-    global __cusparseSpVecGetValues
-    __cusparseSpVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseSpVecGetValues')
-    if __cusparseSpVecGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpVecGetValues = dlsym(handle, 'cusparseSpVecGetValues')
-
-    global __cusparseSpVecSetValues
-    __cusparseSpVecSetValues = dlsym(RTLD_DEFAULT, 'cusparseSpVecSetValues')
-    if __cusparseSpVecSetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpVecSetValues = dlsym(handle, 'cusparseSpVecSetValues')
-
-    global __cusparseCreateDnVec
-    __cusparseCreateDnVec = dlsym(RTLD_DEFAULT, 'cusparseCreateDnVec')
-    if __cusparseCreateDnVec == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateDnVec = dlsym(handle, 'cusparseCreateDnVec')
-
-    global __cusparseDestroyDnVec
-    __cusparseDestroyDnVec = dlsym(RTLD_DEFAULT, 'cusparseDestroyDnVec')
-    if __cusparseDestroyDnVec == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDestroyDnVec = dlsym(handle, 'cusparseDestroyDnVec')
-
-    global __cusparseDnVecGet
-    __cusparseDnVecGet = dlsym(RTLD_DEFAULT, 'cusparseDnVecGet')
-    if __cusparseDnVecGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnVecGet = dlsym(handle, 'cusparseDnVecGet')
-
-    global __cusparseDnVecGetValues
-    __cusparseDnVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseDnVecGetValues')
-    if __cusparseDnVecGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnVecGetValues = dlsym(handle, 'cusparseDnVecGetValues')
-
-    global __cusparseDnVecSetValues
-    __cusparseDnVecSetValues = dlsym(RTLD_DEFAULT, 'cusparseDnVecSetValues')
-    if __cusparseDnVecSetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnVecSetValues = dlsym(handle, 'cusparseDnVecSetValues')
-
-    global __cusparseDestroySpMat
-    __cusparseDestroySpMat = dlsym(RTLD_DEFAULT, 'cusparseDestroySpMat')
-    if __cusparseDestroySpMat == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDestroySpMat = dlsym(handle, 'cusparseDestroySpMat')
-
-    global __cusparseSpMatGetFormat
-    __cusparseSpMatGetFormat = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetFormat')
-    if __cusparseSpMatGetFormat == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatGetFormat = dlsym(handle, 'cusparseSpMatGetFormat')
-
-    global __cusparseSpMatGetIndexBase
-    __cusparseSpMatGetIndexBase = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetIndexBase')
-    if __cusparseSpMatGetIndexBase == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatGetIndexBase = dlsym(handle, 'cusparseSpMatGetIndexBase')
-
-    global __cusparseSpMatGetValues
-    __cusparseSpMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetValues')
-    if __cusparseSpMatGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatGetValues = dlsym(handle, 'cusparseSpMatGetValues')
-
-    global __cusparseSpMatSetValues
-    __cusparseSpMatSetValues = dlsym(RTLD_DEFAULT, 'cusparseSpMatSetValues')
-    if __cusparseSpMatSetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatSetValues = dlsym(handle, 'cusparseSpMatSetValues')
-
-    global __cusparseSpMatGetSize
-    __cusparseSpMatGetSize = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetSize')
-    if __cusparseSpMatGetSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatGetSize = dlsym(handle, 'cusparseSpMatGetSize')
-
-    global __cusparseSpMatGetStridedBatch
-    __cusparseSpMatGetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetStridedBatch')
-    if __cusparseSpMatGetStridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatGetStridedBatch = dlsym(handle, 'cusparseSpMatGetStridedBatch')
-
-    global __cusparseCooSetStridedBatch
-    __cusparseCooSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseCooSetStridedBatch')
-    if __cusparseCooSetStridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCooSetStridedBatch = dlsym(handle, 'cusparseCooSetStridedBatch')
-
-    global __cusparseCsrSetStridedBatch
-    __cusparseCsrSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseCsrSetStridedBatch')
-    if __cusparseCsrSetStridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCsrSetStridedBatch = dlsym(handle, 'cusparseCsrSetStridedBatch')
-
-    global __cusparseCreateCsr
-    __cusparseCreateCsr = dlsym(RTLD_DEFAULT, 'cusparseCreateCsr')
-    if __cusparseCreateCsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateCsr = dlsym(handle, 'cusparseCreateCsr')
-
-    global __cusparseCsrGet
-    __cusparseCsrGet = dlsym(RTLD_DEFAULT, 'cusparseCsrGet')
-    if __cusparseCsrGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCsrGet = dlsym(handle, 'cusparseCsrGet')
-
-    global __cusparseCsrSetPointers
-    __cusparseCsrSetPointers = dlsym(RTLD_DEFAULT, 'cusparseCsrSetPointers')
-    if __cusparseCsrSetPointers == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCsrSetPointers = dlsym(handle, 'cusparseCsrSetPointers')
-
-    global __cusparseCreateCoo
-    __cusparseCreateCoo = dlsym(RTLD_DEFAULT, 'cusparseCreateCoo')
-    if __cusparseCreateCoo == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateCoo = dlsym(handle, 'cusparseCreateCoo')
-
-    global __cusparseCooGet
-    __cusparseCooGet = dlsym(RTLD_DEFAULT, 'cusparseCooGet')
-    if __cusparseCooGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCooGet = dlsym(handle, 'cusparseCooGet')
-
-    global __cusparseCreateDnMat
-    __cusparseCreateDnMat = dlsym(RTLD_DEFAULT, 'cusparseCreateDnMat')
-    if __cusparseCreateDnMat == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateDnMat = dlsym(handle, 'cusparseCreateDnMat')
-
-    global __cusparseDestroyDnMat
-    __cusparseDestroyDnMat = dlsym(RTLD_DEFAULT, 'cusparseDestroyDnMat')
-    if __cusparseDestroyDnMat == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDestroyDnMat = dlsym(handle, 'cusparseDestroyDnMat')
-
-    global __cusparseDnMatGet
-    __cusparseDnMatGet = dlsym(RTLD_DEFAULT, 'cusparseDnMatGet')
-    if __cusparseDnMatGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnMatGet = dlsym(handle, 'cusparseDnMatGet')
-
-    global __cusparseDnMatGetValues
-    __cusparseDnMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseDnMatGetValues')
-    if __cusparseDnMatGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnMatGetValues = dlsym(handle, 'cusparseDnMatGetValues')
-
-    global __cusparseDnMatSetValues
-    __cusparseDnMatSetValues = dlsym(RTLD_DEFAULT, 'cusparseDnMatSetValues')
-    if __cusparseDnMatSetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnMatSetValues = dlsym(handle, 'cusparseDnMatSetValues')
-
-    global __cusparseDnMatSetStridedBatch
-    __cusparseDnMatSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseDnMatSetStridedBatch')
-    if __cusparseDnMatSetStridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnMatSetStridedBatch = dlsym(handle, 'cusparseDnMatSetStridedBatch')
-
-    global __cusparseDnMatGetStridedBatch
-    __cusparseDnMatGetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseDnMatGetStridedBatch')
-    if __cusparseDnMatGetStridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDnMatGetStridedBatch = dlsym(handle, 'cusparseDnMatGetStridedBatch')
-
-    global __cusparseAxpby
-    __cusparseAxpby = dlsym(RTLD_DEFAULT, 'cusparseAxpby')
-    if __cusparseAxpby == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseAxpby = dlsym(handle, 'cusparseAxpby')
-
-    global __cusparseGather
-    __cusparseGather = dlsym(RTLD_DEFAULT, 'cusparseGather')
-    if __cusparseGather == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseGather = dlsym(handle, 'cusparseGather')
-
-    global __cusparseScatter
-    __cusparseScatter = dlsym(RTLD_DEFAULT, 'cusparseScatter')
-    if __cusparseScatter == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseScatter = dlsym(handle, 'cusparseScatter')
-
-    global __cusparseSpVV_bufferSize
-    __cusparseSpVV_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpVV_bufferSize')
-    if __cusparseSpVV_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpVV_bufferSize = dlsym(handle, 'cusparseSpVV_bufferSize')
-
-    global __cusparseSpVV
-    __cusparseSpVV = dlsym(RTLD_DEFAULT, 'cusparseSpVV')
-    if __cusparseSpVV == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpVV = dlsym(handle, 'cusparseSpVV')
-
-    global __cusparseSpMV
-    __cusparseSpMV = dlsym(RTLD_DEFAULT, 'cusparseSpMV')
-    if __cusparseSpMV == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMV = dlsym(handle, 'cusparseSpMV')
-
-    global __cusparseSpMV_bufferSize
-    __cusparseSpMV_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpMV_bufferSize')
-    if __cusparseSpMV_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMV_bufferSize = dlsym(handle, 'cusparseSpMV_bufferSize')
-
-    global __cusparseSpMM
-    __cusparseSpMM = dlsym(RTLD_DEFAULT, 'cusparseSpMM')
-    if __cusparseSpMM == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMM = dlsym(handle, 'cusparseSpMM')
-
-    global __cusparseSpMM_bufferSize
-    __cusparseSpMM_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpMM_bufferSize')
-    if __cusparseSpMM_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMM_bufferSize = dlsym(handle, 'cusparseSpMM_bufferSize')
-
-    global __cusparseSpGEMM_createDescr
-    __cusparseSpGEMM_createDescr = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_createDescr')
-    if __cusparseSpGEMM_createDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMM_createDescr = dlsym(handle, 'cusparseSpGEMM_createDescr')
-
-    global __cusparseSpGEMM_destroyDescr
-    __cusparseSpGEMM_destroyDescr = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_destroyDescr')
-    if __cusparseSpGEMM_destroyDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMM_destroyDescr = dlsym(handle, 'cusparseSpGEMM_destroyDescr')
-
-    global __cusparseSpGEMM_workEstimation
-    __cusparseSpGEMM_workEstimation = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_workEstimation')
-    if __cusparseSpGEMM_workEstimation == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMM_workEstimation = dlsym(handle, 'cusparseSpGEMM_workEstimation')
-
-    global __cusparseSpGEMM_compute
-    __cusparseSpGEMM_compute = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_compute')
-    if __cusparseSpGEMM_compute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMM_compute = dlsym(handle, 'cusparseSpGEMM_compute')
-
-    global __cusparseSpGEMM_copy
-    __cusparseSpGEMM_copy = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_copy')
-    if __cusparseSpGEMM_copy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMM_copy = dlsym(handle, 'cusparseSpGEMM_copy')
-
-    global __cusparseCreateCsc
-    __cusparseCreateCsc = dlsym(RTLD_DEFAULT, 'cusparseCreateCsc')
-    if __cusparseCreateCsc == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateCsc = dlsym(handle, 'cusparseCreateCsc')
-
-    global __cusparseCscSetPointers
-    __cusparseCscSetPointers = dlsym(RTLD_DEFAULT, 'cusparseCscSetPointers')
-    if __cusparseCscSetPointers == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCscSetPointers = dlsym(handle, 'cusparseCscSetPointers')
-
-    global __cusparseCooSetPointers
-    __cusparseCooSetPointers = dlsym(RTLD_DEFAULT, 'cusparseCooSetPointers')
-    if __cusparseCooSetPointers == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCooSetPointers = dlsym(handle, 'cusparseCooSetPointers')
-
-    global __cusparseSparseToDense_bufferSize
-    __cusparseSparseToDense_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSparseToDense_bufferSize')
-    if __cusparseSparseToDense_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSparseToDense_bufferSize = dlsym(handle, 'cusparseSparseToDense_bufferSize')
-
-    global __cusparseSparseToDense
-    __cusparseSparseToDense = dlsym(RTLD_DEFAULT, 'cusparseSparseToDense')
-    if __cusparseSparseToDense == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSparseToDense = dlsym(handle, 'cusparseSparseToDense')
-
-    global __cusparseDenseToSparse_bufferSize
-    __cusparseDenseToSparse_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDenseToSparse_bufferSize')
-    if __cusparseDenseToSparse_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDenseToSparse_bufferSize = dlsym(handle, 'cusparseDenseToSparse_bufferSize')
-
-    global __cusparseDenseToSparse_analysis
-    __cusparseDenseToSparse_analysis = dlsym(RTLD_DEFAULT, 'cusparseDenseToSparse_analysis')
-    if __cusparseDenseToSparse_analysis == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDenseToSparse_analysis = dlsym(handle, 'cusparseDenseToSparse_analysis')
-
-    global __cusparseDenseToSparse_convert
-    __cusparseDenseToSparse_convert = dlsym(RTLD_DEFAULT, 'cusparseDenseToSparse_convert')
-    if __cusparseDenseToSparse_convert == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseDenseToSparse_convert = dlsym(handle, 'cusparseDenseToSparse_convert')
-
-    global __cusparseCreateBlockedEll
-    __cusparseCreateBlockedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateBlockedEll')
-    if __cusparseCreateBlockedEll == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateBlockedEll = dlsym(handle, 'cusparseCreateBlockedEll')
-
-    global __cusparseBlockedEllGet
-    __cusparseBlockedEllGet = dlsym(RTLD_DEFAULT, 'cusparseBlockedEllGet')
-    if __cusparseBlockedEllGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseBlockedEllGet = dlsym(handle, 'cusparseBlockedEllGet')
-
-    global __cusparseSpMM_preprocess
-    __cusparseSpMM_preprocess = dlsym(RTLD_DEFAULT, 'cusparseSpMM_preprocess')
-    if __cusparseSpMM_preprocess == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMM_preprocess = dlsym(handle, 'cusparseSpMM_preprocess')
-
-    global __cusparseSDDMM_bufferSize
-    __cusparseSDDMM_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSDDMM_bufferSize')
-    if __cusparseSDDMM_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSDDMM_bufferSize = dlsym(handle, 'cusparseSDDMM_bufferSize')
-
-    global __cusparseSDDMM_preprocess
-    __cusparseSDDMM_preprocess = dlsym(RTLD_DEFAULT, 'cusparseSDDMM_preprocess')
-    if __cusparseSDDMM_preprocess == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSDDMM_preprocess = dlsym(handle, 'cusparseSDDMM_preprocess')
-
-    global __cusparseSDDMM
-    __cusparseSDDMM = dlsym(RTLD_DEFAULT, 'cusparseSDDMM')
-    if __cusparseSDDMM == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSDDMM = dlsym(handle, 'cusparseSDDMM')
-
-    global __cusparseSpMatGetAttribute
-    __cusparseSpMatGetAttribute = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetAttribute')
-    if __cusparseSpMatGetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatGetAttribute = dlsym(handle, 'cusparseSpMatGetAttribute')
-
-    global __cusparseSpMatSetAttribute
-    __cusparseSpMatSetAttribute = dlsym(RTLD_DEFAULT, 'cusparseSpMatSetAttribute')
-    if __cusparseSpMatSetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMatSetAttribute = dlsym(handle, 'cusparseSpMatSetAttribute')
-
-    global __cusparseSpSV_createDescr
-    __cusparseSpSV_createDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSV_createDescr')
-    if __cusparseSpSV_createDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSV_createDescr = dlsym(handle, 'cusparseSpSV_createDescr')
-
-    global __cusparseSpSV_destroyDescr
-    __cusparseSpSV_destroyDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSV_destroyDescr')
-    if __cusparseSpSV_destroyDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSV_destroyDescr = dlsym(handle, 'cusparseSpSV_destroyDescr')
-
-    global __cusparseSpSV_bufferSize
-    __cusparseSpSV_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpSV_bufferSize')
-    if __cusparseSpSV_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSV_bufferSize = dlsym(handle, 'cusparseSpSV_bufferSize')
-
-    global __cusparseSpSV_analysis
-    __cusparseSpSV_analysis = dlsym(RTLD_DEFAULT, 'cusparseSpSV_analysis')
-    if __cusparseSpSV_analysis == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSV_analysis = dlsym(handle, 'cusparseSpSV_analysis')
-
-    global __cusparseSpSV_solve
-    __cusparseSpSV_solve = dlsym(RTLD_DEFAULT, 'cusparseSpSV_solve')
-    if __cusparseSpSV_solve == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSV_solve = dlsym(handle, 'cusparseSpSV_solve')
-
-    global __cusparseSpSM_createDescr
-    __cusparseSpSM_createDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSM_createDescr')
-    if __cusparseSpSM_createDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSM_createDescr = dlsym(handle, 'cusparseSpSM_createDescr')
-
-    global __cusparseSpSM_destroyDescr
-    __cusparseSpSM_destroyDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSM_destroyDescr')
-    if __cusparseSpSM_destroyDescr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSM_destroyDescr = dlsym(handle, 'cusparseSpSM_destroyDescr')
-
-    global __cusparseSpSM_bufferSize
-    __cusparseSpSM_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpSM_bufferSize')
-    if __cusparseSpSM_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSM_bufferSize = dlsym(handle, 'cusparseSpSM_bufferSize')
-
-    global __cusparseSpSM_analysis
-    __cusparseSpSM_analysis = dlsym(RTLD_DEFAULT, 'cusparseSpSM_analysis')
-    if __cusparseSpSM_analysis == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSM_analysis = dlsym(handle, 'cusparseSpSM_analysis')
-
-    global __cusparseSpSM_solve
-    __cusparseSpSM_solve = dlsym(RTLD_DEFAULT, 'cusparseSpSM_solve')
-    if __cusparseSpSM_solve == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSM_solve = dlsym(handle, 'cusparseSpSM_solve')
-
-    global __cusparseSpGEMMreuse_workEstimation
-    __cusparseSpGEMMreuse_workEstimation = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_workEstimation')
-    if __cusparseSpGEMMreuse_workEstimation == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMMreuse_workEstimation = dlsym(handle, 'cusparseSpGEMMreuse_workEstimation')
-
-    global __cusparseSpGEMMreuse_nnz
-    __cusparseSpGEMMreuse_nnz = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_nnz')
-    if __cusparseSpGEMMreuse_nnz == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMMreuse_nnz = dlsym(handle, 'cusparseSpGEMMreuse_nnz')
-
-    global __cusparseSpGEMMreuse_copy
-    __cusparseSpGEMMreuse_copy = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_copy')
-    if __cusparseSpGEMMreuse_copy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMMreuse_copy = dlsym(handle, 'cusparseSpGEMMreuse_copy')
-
-    global __cusparseSpGEMMreuse_compute
-    __cusparseSpGEMMreuse_compute = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_compute')
-    if __cusparseSpGEMMreuse_compute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMMreuse_compute = dlsym(handle, 'cusparseSpGEMMreuse_compute')
-
-    global __cusparseLoggerSetCallback
-    __cusparseLoggerSetCallback = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetCallback')
-    if __cusparseLoggerSetCallback == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseLoggerSetCallback = dlsym(handle, 'cusparseLoggerSetCallback')
-
-    global __cusparseLoggerSetFile
-    __cusparseLoggerSetFile = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetFile')
-    if __cusparseLoggerSetFile == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseLoggerSetFile = dlsym(handle, 'cusparseLoggerSetFile')
-
-    global __cusparseLoggerOpenFile
-    __cusparseLoggerOpenFile = dlsym(RTLD_DEFAULT, 'cusparseLoggerOpenFile')
-    if __cusparseLoggerOpenFile == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseLoggerOpenFile = dlsym(handle, 'cusparseLoggerOpenFile')
-
-    global __cusparseLoggerSetLevel
-    __cusparseLoggerSetLevel = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetLevel')
-    if __cusparseLoggerSetLevel == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseLoggerSetLevel = dlsym(handle, 'cusparseLoggerSetLevel')
-
-    global __cusparseLoggerSetMask
-    __cusparseLoggerSetMask = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetMask')
-    if __cusparseLoggerSetMask == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseLoggerSetMask = dlsym(handle, 'cusparseLoggerSetMask')
-
-    global __cusparseLoggerForceDisable
-    __cusparseLoggerForceDisable = dlsym(RTLD_DEFAULT, 'cusparseLoggerForceDisable')
-    if __cusparseLoggerForceDisable == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseLoggerForceDisable = dlsym(handle, 'cusparseLoggerForceDisable')
-
-    global __cusparseSpMMOp_createPlan
-    __cusparseSpMMOp_createPlan = dlsym(RTLD_DEFAULT, 'cusparseSpMMOp_createPlan')
-    if __cusparseSpMMOp_createPlan == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMMOp_createPlan = dlsym(handle, 'cusparseSpMMOp_createPlan')
-
-    global __cusparseSpMMOp
-    __cusparseSpMMOp = dlsym(RTLD_DEFAULT, 'cusparseSpMMOp')
-    if __cusparseSpMMOp == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMMOp = dlsym(handle, 'cusparseSpMMOp')
-
-    global __cusparseSpMMOp_destroyPlan
-    __cusparseSpMMOp_destroyPlan = dlsym(RTLD_DEFAULT, 'cusparseSpMMOp_destroyPlan')
-    if __cusparseSpMMOp_destroyPlan == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMMOp_destroyPlan = dlsym(handle, 'cusparseSpMMOp_destroyPlan')
-
-    global __cusparseCscGet
-    __cusparseCscGet = dlsym(RTLD_DEFAULT, 'cusparseCscGet')
-    if __cusparseCscGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCscGet = dlsym(handle, 'cusparseCscGet')
-
-    global __cusparseCreateConstSpVec
-    __cusparseCreateConstSpVec = dlsym(RTLD_DEFAULT, 'cusparseCreateConstSpVec')
-    if __cusparseCreateConstSpVec == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstSpVec = dlsym(handle, 'cusparseCreateConstSpVec')
-
-    global __cusparseConstSpVecGet
-    __cusparseConstSpVecGet = dlsym(RTLD_DEFAULT, 'cusparseConstSpVecGet')
-    if __cusparseConstSpVecGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstSpVecGet = dlsym(handle, 'cusparseConstSpVecGet')
-
-    global __cusparseConstSpVecGetValues
-    __cusparseConstSpVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstSpVecGetValues')
-    if __cusparseConstSpVecGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstSpVecGetValues = dlsym(handle, 'cusparseConstSpVecGetValues')
-
-    global __cusparseCreateConstDnVec
-    __cusparseCreateConstDnVec = dlsym(RTLD_DEFAULT, 'cusparseCreateConstDnVec')
-    if __cusparseCreateConstDnVec == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstDnVec = dlsym(handle, 'cusparseCreateConstDnVec')
-
-    global __cusparseConstDnVecGet
-    __cusparseConstDnVecGet = dlsym(RTLD_DEFAULT, 'cusparseConstDnVecGet')
-    if __cusparseConstDnVecGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstDnVecGet = dlsym(handle, 'cusparseConstDnVecGet')
-
-    global __cusparseConstDnVecGetValues
-    __cusparseConstDnVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstDnVecGetValues')
-    if __cusparseConstDnVecGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstDnVecGetValues = dlsym(handle, 'cusparseConstDnVecGetValues')
-
-    global __cusparseConstSpMatGetValues
-    __cusparseConstSpMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstSpMatGetValues')
-    if __cusparseConstSpMatGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstSpMatGetValues = dlsym(handle, 'cusparseConstSpMatGetValues')
-
-    global __cusparseCreateConstCsr
-    __cusparseCreateConstCsr = dlsym(RTLD_DEFAULT, 'cusparseCreateConstCsr')
-    if __cusparseCreateConstCsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstCsr = dlsym(handle, 'cusparseCreateConstCsr')
-
-    global __cusparseCreateConstCsc
-    __cusparseCreateConstCsc = dlsym(RTLD_DEFAULT, 'cusparseCreateConstCsc')
-    if __cusparseCreateConstCsc == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstCsc = dlsym(handle, 'cusparseCreateConstCsc')
-
-    global __cusparseConstCsrGet
-    __cusparseConstCsrGet = dlsym(RTLD_DEFAULT, 'cusparseConstCsrGet')
-    if __cusparseConstCsrGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstCsrGet = dlsym(handle, 'cusparseConstCsrGet')
-
-    global __cusparseConstCscGet
-    __cusparseConstCscGet = dlsym(RTLD_DEFAULT, 'cusparseConstCscGet')
-    if __cusparseConstCscGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstCscGet = dlsym(handle, 'cusparseConstCscGet')
-
-    global __cusparseCreateConstCoo
-    __cusparseCreateConstCoo = dlsym(RTLD_DEFAULT, 'cusparseCreateConstCoo')
-    if __cusparseCreateConstCoo == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstCoo = dlsym(handle, 'cusparseCreateConstCoo')
-
-    global __cusparseConstCooGet
-    __cusparseConstCooGet = dlsym(RTLD_DEFAULT, 'cusparseConstCooGet')
-    if __cusparseConstCooGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstCooGet = dlsym(handle, 'cusparseConstCooGet')
-
-    global __cusparseCreateConstBlockedEll
-    __cusparseCreateConstBlockedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateConstBlockedEll')
-    if __cusparseCreateConstBlockedEll == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstBlockedEll = dlsym(handle, 'cusparseCreateConstBlockedEll')
-
-    global __cusparseConstBlockedEllGet
-    __cusparseConstBlockedEllGet = dlsym(RTLD_DEFAULT, 'cusparseConstBlockedEllGet')
-    if __cusparseConstBlockedEllGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstBlockedEllGet = dlsym(handle, 'cusparseConstBlockedEllGet')
-
-    global __cusparseCreateConstDnMat
-    __cusparseCreateConstDnMat = dlsym(RTLD_DEFAULT, 'cusparseCreateConstDnMat')
-    if __cusparseCreateConstDnMat == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstDnMat = dlsym(handle, 'cusparseCreateConstDnMat')
-
-    global __cusparseConstDnMatGet
-    __cusparseConstDnMatGet = dlsym(RTLD_DEFAULT, 'cusparseConstDnMatGet')
-    if __cusparseConstDnMatGet == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstDnMatGet = dlsym(handle, 'cusparseConstDnMatGet')
-
-    global __cusparseConstDnMatGetValues
-    __cusparseConstDnMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstDnMatGetValues')
-    if __cusparseConstDnMatGetValues == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseConstDnMatGetValues = dlsym(handle, 'cusparseConstDnMatGetValues')
-
-    global __cusparseSpGEMM_getNumProducts
-    __cusparseSpGEMM_getNumProducts = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_getNumProducts')
-    if __cusparseSpGEMM_getNumProducts == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMM_getNumProducts = dlsym(handle, 'cusparseSpGEMM_getNumProducts')
-
-    global __cusparseSpGEMM_estimateMemory
-    __cusparseSpGEMM_estimateMemory = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_estimateMemory')
-    if __cusparseSpGEMM_estimateMemory == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpGEMM_estimateMemory = dlsym(handle, 'cusparseSpGEMM_estimateMemory')
-
-    global __cusparseBsrSetStridedBatch
-    __cusparseBsrSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseBsrSetStridedBatch')
-    if __cusparseBsrSetStridedBatch == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseBsrSetStridedBatch = dlsym(handle, 'cusparseBsrSetStridedBatch')
-
-    global __cusparseCreateBsr
-    __cusparseCreateBsr = dlsym(RTLD_DEFAULT, 'cusparseCreateBsr')
-    if __cusparseCreateBsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateBsr = dlsym(handle, 'cusparseCreateBsr')
-
-    global __cusparseCreateConstBsr
-    __cusparseCreateConstBsr = dlsym(RTLD_DEFAULT, 'cusparseCreateConstBsr')
-    if __cusparseCreateConstBsr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstBsr = dlsym(handle, 'cusparseCreateConstBsr')
-
-    global __cusparseCreateSlicedEll
-    __cusparseCreateSlicedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateSlicedEll')
-    if __cusparseCreateSlicedEll == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateSlicedEll = dlsym(handle, 'cusparseCreateSlicedEll')
-
-    global __cusparseCreateConstSlicedEll
-    __cusparseCreateConstSlicedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateConstSlicedEll')
-    if __cusparseCreateConstSlicedEll == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseCreateConstSlicedEll = dlsym(handle, 'cusparseCreateConstSlicedEll')
-
-    global __cusparseSpSV_updateMatrix
-    __cusparseSpSV_updateMatrix = dlsym(RTLD_DEFAULT, 'cusparseSpSV_updateMatrix')
-    if __cusparseSpSV_updateMatrix == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSV_updateMatrix = dlsym(handle, 'cusparseSpSV_updateMatrix')
-
-    global __cusparseSpMV_preprocess
-    __cusparseSpMV_preprocess = dlsym(RTLD_DEFAULT, 'cusparseSpMV_preprocess')
-    if __cusparseSpMV_preprocess == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpMV_preprocess = dlsym(handle, 'cusparseSpMV_preprocess')
-
-    global __cusparseSpSM_updateMatrix
-    __cusparseSpSM_updateMatrix = dlsym(RTLD_DEFAULT, 'cusparseSpSM_updateMatrix')
-    if __cusparseSpSM_updateMatrix == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusparseSpSM_updateMatrix = dlsym(handle, 'cusparseSpSM_updateMatrix')
-
-    __py_cusparse_init = True
-    return 0
+
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
+
+        # Load function
+        global __cusparseCreate
+        __cusparseCreate = dlsym(RTLD_DEFAULT, 'cusparseCreate')
+        if __cusparseCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreate = dlsym(handle, 'cusparseCreate')
+
+        global __cusparseDestroy
+        __cusparseDestroy = dlsym(RTLD_DEFAULT, 'cusparseDestroy')
+        if __cusparseDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDestroy = dlsym(handle, 'cusparseDestroy')
+
+        global __cusparseGetVersion
+        __cusparseGetVersion = dlsym(RTLD_DEFAULT, 'cusparseGetVersion')
+        if __cusparseGetVersion == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetVersion = dlsym(handle, 'cusparseGetVersion')
+
+        global __cusparseGetProperty
+        __cusparseGetProperty = dlsym(RTLD_DEFAULT, 'cusparseGetProperty')
+        if __cusparseGetProperty == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetProperty = dlsym(handle, 'cusparseGetProperty')
+
+        global __cusparseGetErrorName
+        __cusparseGetErrorName = dlsym(RTLD_DEFAULT, 'cusparseGetErrorName')
+        if __cusparseGetErrorName == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetErrorName = dlsym(handle, 'cusparseGetErrorName')
+
+        global __cusparseGetErrorString
+        __cusparseGetErrorString = dlsym(RTLD_DEFAULT, 'cusparseGetErrorString')
+        if __cusparseGetErrorString == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetErrorString = dlsym(handle, 'cusparseGetErrorString')
+
+        global __cusparseSetStream
+        __cusparseSetStream = dlsym(RTLD_DEFAULT, 'cusparseSetStream')
+        if __cusparseSetStream == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSetStream = dlsym(handle, 'cusparseSetStream')
+
+        global __cusparseGetStream
+        __cusparseGetStream = dlsym(RTLD_DEFAULT, 'cusparseGetStream')
+        if __cusparseGetStream == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetStream = dlsym(handle, 'cusparseGetStream')
+
+        global __cusparseGetPointerMode
+        __cusparseGetPointerMode = dlsym(RTLD_DEFAULT, 'cusparseGetPointerMode')
+        if __cusparseGetPointerMode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetPointerMode = dlsym(handle, 'cusparseGetPointerMode')
+
+        global __cusparseSetPointerMode
+        __cusparseSetPointerMode = dlsym(RTLD_DEFAULT, 'cusparseSetPointerMode')
+        if __cusparseSetPointerMode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSetPointerMode = dlsym(handle, 'cusparseSetPointerMode')
+
+        global __cusparseCreateMatDescr
+        __cusparseCreateMatDescr = dlsym(RTLD_DEFAULT, 'cusparseCreateMatDescr')
+        if __cusparseCreateMatDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateMatDescr = dlsym(handle, 'cusparseCreateMatDescr')
+
+        global __cusparseDestroyMatDescr
+        __cusparseDestroyMatDescr = dlsym(RTLD_DEFAULT, 'cusparseDestroyMatDescr')
+        if __cusparseDestroyMatDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDestroyMatDescr = dlsym(handle, 'cusparseDestroyMatDescr')
+
+        global __cusparseSetMatType
+        __cusparseSetMatType = dlsym(RTLD_DEFAULT, 'cusparseSetMatType')
+        if __cusparseSetMatType == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSetMatType = dlsym(handle, 'cusparseSetMatType')
+
+        global __cusparseGetMatType
+        __cusparseGetMatType = dlsym(RTLD_DEFAULT, 'cusparseGetMatType')
+        if __cusparseGetMatType == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetMatType = dlsym(handle, 'cusparseGetMatType')
+
+        global __cusparseSetMatFillMode
+        __cusparseSetMatFillMode = dlsym(RTLD_DEFAULT, 'cusparseSetMatFillMode')
+        if __cusparseSetMatFillMode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSetMatFillMode = dlsym(handle, 'cusparseSetMatFillMode')
+
+        global __cusparseGetMatFillMode
+        __cusparseGetMatFillMode = dlsym(RTLD_DEFAULT, 'cusparseGetMatFillMode')
+        if __cusparseGetMatFillMode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetMatFillMode = dlsym(handle, 'cusparseGetMatFillMode')
+
+        global __cusparseSetMatDiagType
+        __cusparseSetMatDiagType = dlsym(RTLD_DEFAULT, 'cusparseSetMatDiagType')
+        if __cusparseSetMatDiagType == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSetMatDiagType = dlsym(handle, 'cusparseSetMatDiagType')
+
+        global __cusparseGetMatDiagType
+        __cusparseGetMatDiagType = dlsym(RTLD_DEFAULT, 'cusparseGetMatDiagType')
+        if __cusparseGetMatDiagType == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetMatDiagType = dlsym(handle, 'cusparseGetMatDiagType')
+
+        global __cusparseSetMatIndexBase
+        __cusparseSetMatIndexBase = dlsym(RTLD_DEFAULT, 'cusparseSetMatIndexBase')
+        if __cusparseSetMatIndexBase == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSetMatIndexBase = dlsym(handle, 'cusparseSetMatIndexBase')
+
+        global __cusparseGetMatIndexBase
+        __cusparseGetMatIndexBase = dlsym(RTLD_DEFAULT, 'cusparseGetMatIndexBase')
+        if __cusparseGetMatIndexBase == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGetMatIndexBase = dlsym(handle, 'cusparseGetMatIndexBase')
+
+        global __cusparseSgemvi
+        __cusparseSgemvi = dlsym(RTLD_DEFAULT, 'cusparseSgemvi')
+        if __cusparseSgemvi == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgemvi = dlsym(handle, 'cusparseSgemvi')
+
+        global __cusparseSgemvi_bufferSize
+        __cusparseSgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSgemvi_bufferSize')
+        if __cusparseSgemvi_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgemvi_bufferSize = dlsym(handle, 'cusparseSgemvi_bufferSize')
+
+        global __cusparseDgemvi
+        __cusparseDgemvi = dlsym(RTLD_DEFAULT, 'cusparseDgemvi')
+        if __cusparseDgemvi == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgemvi = dlsym(handle, 'cusparseDgemvi')
+
+        global __cusparseDgemvi_bufferSize
+        __cusparseDgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDgemvi_bufferSize')
+        if __cusparseDgemvi_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgemvi_bufferSize = dlsym(handle, 'cusparseDgemvi_bufferSize')
+
+        global __cusparseCgemvi
+        __cusparseCgemvi = dlsym(RTLD_DEFAULT, 'cusparseCgemvi')
+        if __cusparseCgemvi == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgemvi = dlsym(handle, 'cusparseCgemvi')
+
+        global __cusparseCgemvi_bufferSize
+        __cusparseCgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCgemvi_bufferSize')
+        if __cusparseCgemvi_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgemvi_bufferSize = dlsym(handle, 'cusparseCgemvi_bufferSize')
+
+        global __cusparseZgemvi
+        __cusparseZgemvi = dlsym(RTLD_DEFAULT, 'cusparseZgemvi')
+        if __cusparseZgemvi == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgemvi = dlsym(handle, 'cusparseZgemvi')
+
+        global __cusparseZgemvi_bufferSize
+        __cusparseZgemvi_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZgemvi_bufferSize')
+        if __cusparseZgemvi_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgemvi_bufferSize = dlsym(handle, 'cusparseZgemvi_bufferSize')
+
+        global __cusparseSbsrmv
+        __cusparseSbsrmv = dlsym(RTLD_DEFAULT, 'cusparseSbsrmv')
+        if __cusparseSbsrmv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSbsrmv = dlsym(handle, 'cusparseSbsrmv')
+
+        global __cusparseDbsrmv
+        __cusparseDbsrmv = dlsym(RTLD_DEFAULT, 'cusparseDbsrmv')
+        if __cusparseDbsrmv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDbsrmv = dlsym(handle, 'cusparseDbsrmv')
+
+        global __cusparseCbsrmv
+        __cusparseCbsrmv = dlsym(RTLD_DEFAULT, 'cusparseCbsrmv')
+        if __cusparseCbsrmv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCbsrmv = dlsym(handle, 'cusparseCbsrmv')
+
+        global __cusparseZbsrmv
+        __cusparseZbsrmv = dlsym(RTLD_DEFAULT, 'cusparseZbsrmv')
+        if __cusparseZbsrmv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZbsrmv = dlsym(handle, 'cusparseZbsrmv')
+
+        global __cusparseSbsrmm
+        __cusparseSbsrmm = dlsym(RTLD_DEFAULT, 'cusparseSbsrmm')
+        if __cusparseSbsrmm == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSbsrmm = dlsym(handle, 'cusparseSbsrmm')
+
+        global __cusparseDbsrmm
+        __cusparseDbsrmm = dlsym(RTLD_DEFAULT, 'cusparseDbsrmm')
+        if __cusparseDbsrmm == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDbsrmm = dlsym(handle, 'cusparseDbsrmm')
+
+        global __cusparseCbsrmm
+        __cusparseCbsrmm = dlsym(RTLD_DEFAULT, 'cusparseCbsrmm')
+        if __cusparseCbsrmm == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCbsrmm = dlsym(handle, 'cusparseCbsrmm')
+
+        global __cusparseZbsrmm
+        __cusparseZbsrmm = dlsym(RTLD_DEFAULT, 'cusparseZbsrmm')
+        if __cusparseZbsrmm == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZbsrmm = dlsym(handle, 'cusparseZbsrmm')
+
+        global __cusparseSgtsv2_bufferSizeExt
+        __cusparseSgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2_bufferSizeExt')
+        if __cusparseSgtsv2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsv2_bufferSizeExt = dlsym(handle, 'cusparseSgtsv2_bufferSizeExt')
+
+        global __cusparseDgtsv2_bufferSizeExt
+        __cusparseDgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2_bufferSizeExt')
+        if __cusparseDgtsv2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsv2_bufferSizeExt = dlsym(handle, 'cusparseDgtsv2_bufferSizeExt')
+
+        global __cusparseCgtsv2_bufferSizeExt
+        __cusparseCgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2_bufferSizeExt')
+        if __cusparseCgtsv2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsv2_bufferSizeExt = dlsym(handle, 'cusparseCgtsv2_bufferSizeExt')
+
+        global __cusparseZgtsv2_bufferSizeExt
+        __cusparseZgtsv2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2_bufferSizeExt')
+        if __cusparseZgtsv2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsv2_bufferSizeExt = dlsym(handle, 'cusparseZgtsv2_bufferSizeExt')
+
+        global __cusparseSgtsv2
+        __cusparseSgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2')
+        if __cusparseSgtsv2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsv2 = dlsym(handle, 'cusparseSgtsv2')
+
+        global __cusparseDgtsv2
+        __cusparseDgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2')
+        if __cusparseDgtsv2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsv2 = dlsym(handle, 'cusparseDgtsv2')
+
+        global __cusparseCgtsv2
+        __cusparseCgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2')
+        if __cusparseCgtsv2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsv2 = dlsym(handle, 'cusparseCgtsv2')
+
+        global __cusparseZgtsv2
+        __cusparseZgtsv2 = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2')
+        if __cusparseZgtsv2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsv2 = dlsym(handle, 'cusparseZgtsv2')
+
+        global __cusparseSgtsv2_nopivot_bufferSizeExt
+        __cusparseSgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2_nopivot_bufferSizeExt')
+        if __cusparseSgtsv2_nopivot_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseSgtsv2_nopivot_bufferSizeExt')
+
+        global __cusparseDgtsv2_nopivot_bufferSizeExt
+        __cusparseDgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2_nopivot_bufferSizeExt')
+        if __cusparseDgtsv2_nopivot_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseDgtsv2_nopivot_bufferSizeExt')
+
+        global __cusparseCgtsv2_nopivot_bufferSizeExt
+        __cusparseCgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2_nopivot_bufferSizeExt')
+        if __cusparseCgtsv2_nopivot_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseCgtsv2_nopivot_bufferSizeExt')
+
+        global __cusparseZgtsv2_nopivot_bufferSizeExt
+        __cusparseZgtsv2_nopivot_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2_nopivot_bufferSizeExt')
+        if __cusparseZgtsv2_nopivot_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsv2_nopivot_bufferSizeExt = dlsym(handle, 'cusparseZgtsv2_nopivot_bufferSizeExt')
+
+        global __cusparseSgtsv2_nopivot
+        __cusparseSgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2_nopivot')
+        if __cusparseSgtsv2_nopivot == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsv2_nopivot = dlsym(handle, 'cusparseSgtsv2_nopivot')
+
+        global __cusparseDgtsv2_nopivot
+        __cusparseDgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2_nopivot')
+        if __cusparseDgtsv2_nopivot == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsv2_nopivot = dlsym(handle, 'cusparseDgtsv2_nopivot')
+
+        global __cusparseCgtsv2_nopivot
+        __cusparseCgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2_nopivot')
+        if __cusparseCgtsv2_nopivot == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsv2_nopivot = dlsym(handle, 'cusparseCgtsv2_nopivot')
+
+        global __cusparseZgtsv2_nopivot
+        __cusparseZgtsv2_nopivot = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2_nopivot')
+        if __cusparseZgtsv2_nopivot == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsv2_nopivot = dlsym(handle, 'cusparseZgtsv2_nopivot')
+
+        global __cusparseSgtsv2StridedBatch_bufferSizeExt
+        __cusparseSgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2StridedBatch_bufferSizeExt')
+        if __cusparseSgtsv2StridedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseSgtsv2StridedBatch_bufferSizeExt')
+
+        global __cusparseDgtsv2StridedBatch_bufferSizeExt
+        __cusparseDgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2StridedBatch_bufferSizeExt')
+        if __cusparseDgtsv2StridedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseDgtsv2StridedBatch_bufferSizeExt')
+
+        global __cusparseCgtsv2StridedBatch_bufferSizeExt
+        __cusparseCgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2StridedBatch_bufferSizeExt')
+        if __cusparseCgtsv2StridedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseCgtsv2StridedBatch_bufferSizeExt')
+
+        global __cusparseZgtsv2StridedBatch_bufferSizeExt
+        __cusparseZgtsv2StridedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2StridedBatch_bufferSizeExt')
+        if __cusparseZgtsv2StridedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsv2StridedBatch_bufferSizeExt = dlsym(handle, 'cusparseZgtsv2StridedBatch_bufferSizeExt')
+
+        global __cusparseSgtsv2StridedBatch
+        __cusparseSgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseSgtsv2StridedBatch')
+        if __cusparseSgtsv2StridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsv2StridedBatch = dlsym(handle, 'cusparseSgtsv2StridedBatch')
+
+        global __cusparseDgtsv2StridedBatch
+        __cusparseDgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseDgtsv2StridedBatch')
+        if __cusparseDgtsv2StridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsv2StridedBatch = dlsym(handle, 'cusparseDgtsv2StridedBatch')
+
+        global __cusparseCgtsv2StridedBatch
+        __cusparseCgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseCgtsv2StridedBatch')
+        if __cusparseCgtsv2StridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsv2StridedBatch = dlsym(handle, 'cusparseCgtsv2StridedBatch')
+
+        global __cusparseZgtsv2StridedBatch
+        __cusparseZgtsv2StridedBatch = dlsym(RTLD_DEFAULT, 'cusparseZgtsv2StridedBatch')
+        if __cusparseZgtsv2StridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsv2StridedBatch = dlsym(handle, 'cusparseZgtsv2StridedBatch')
+
+        global __cusparseSgtsvInterleavedBatch_bufferSizeExt
+        __cusparseSgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgtsvInterleavedBatch_bufferSizeExt')
+        if __cusparseSgtsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseSgtsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseDgtsvInterleavedBatch_bufferSizeExt
+        __cusparseDgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgtsvInterleavedBatch_bufferSizeExt')
+        if __cusparseDgtsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseDgtsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseCgtsvInterleavedBatch_bufferSizeExt
+        __cusparseCgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgtsvInterleavedBatch_bufferSizeExt')
+        if __cusparseCgtsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseCgtsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseZgtsvInterleavedBatch_bufferSizeExt
+        __cusparseZgtsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgtsvInterleavedBatch_bufferSizeExt')
+        if __cusparseZgtsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseZgtsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseSgtsvInterleavedBatch
+        __cusparseSgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseSgtsvInterleavedBatch')
+        if __cusparseSgtsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgtsvInterleavedBatch = dlsym(handle, 'cusparseSgtsvInterleavedBatch')
+
+        global __cusparseDgtsvInterleavedBatch
+        __cusparseDgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseDgtsvInterleavedBatch')
+        if __cusparseDgtsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgtsvInterleavedBatch = dlsym(handle, 'cusparseDgtsvInterleavedBatch')
+
+        global __cusparseCgtsvInterleavedBatch
+        __cusparseCgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseCgtsvInterleavedBatch')
+        if __cusparseCgtsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgtsvInterleavedBatch = dlsym(handle, 'cusparseCgtsvInterleavedBatch')
+
+        global __cusparseZgtsvInterleavedBatch
+        __cusparseZgtsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseZgtsvInterleavedBatch')
+        if __cusparseZgtsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgtsvInterleavedBatch = dlsym(handle, 'cusparseZgtsvInterleavedBatch')
+
+        global __cusparseSgpsvInterleavedBatch_bufferSizeExt
+        __cusparseSgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgpsvInterleavedBatch_bufferSizeExt')
+        if __cusparseSgpsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseSgpsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseDgpsvInterleavedBatch_bufferSizeExt
+        __cusparseDgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgpsvInterleavedBatch_bufferSizeExt')
+        if __cusparseDgpsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseDgpsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseCgpsvInterleavedBatch_bufferSizeExt
+        __cusparseCgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgpsvInterleavedBatch_bufferSizeExt')
+        if __cusparseCgpsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseCgpsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseZgpsvInterleavedBatch_bufferSizeExt
+        __cusparseZgpsvInterleavedBatch_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgpsvInterleavedBatch_bufferSizeExt')
+        if __cusparseZgpsvInterleavedBatch_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgpsvInterleavedBatch_bufferSizeExt = dlsym(handle, 'cusparseZgpsvInterleavedBatch_bufferSizeExt')
+
+        global __cusparseSgpsvInterleavedBatch
+        __cusparseSgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseSgpsvInterleavedBatch')
+        if __cusparseSgpsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgpsvInterleavedBatch = dlsym(handle, 'cusparseSgpsvInterleavedBatch')
+
+        global __cusparseDgpsvInterleavedBatch
+        __cusparseDgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseDgpsvInterleavedBatch')
+        if __cusparseDgpsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgpsvInterleavedBatch = dlsym(handle, 'cusparseDgpsvInterleavedBatch')
+
+        global __cusparseCgpsvInterleavedBatch
+        __cusparseCgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseCgpsvInterleavedBatch')
+        if __cusparseCgpsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgpsvInterleavedBatch = dlsym(handle, 'cusparseCgpsvInterleavedBatch')
+
+        global __cusparseZgpsvInterleavedBatch
+        __cusparseZgpsvInterleavedBatch = dlsym(RTLD_DEFAULT, 'cusparseZgpsvInterleavedBatch')
+        if __cusparseZgpsvInterleavedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgpsvInterleavedBatch = dlsym(handle, 'cusparseZgpsvInterleavedBatch')
+
+        global __cusparseScsrgeam2_bufferSizeExt
+        __cusparseScsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseScsrgeam2_bufferSizeExt')
+        if __cusparseScsrgeam2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseScsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseScsrgeam2_bufferSizeExt')
+
+        global __cusparseDcsrgeam2_bufferSizeExt
+        __cusparseDcsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDcsrgeam2_bufferSizeExt')
+        if __cusparseDcsrgeam2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDcsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseDcsrgeam2_bufferSizeExt')
+
+        global __cusparseCcsrgeam2_bufferSizeExt
+        __cusparseCcsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCcsrgeam2_bufferSizeExt')
+        if __cusparseCcsrgeam2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCcsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseCcsrgeam2_bufferSizeExt')
+
+        global __cusparseZcsrgeam2_bufferSizeExt
+        __cusparseZcsrgeam2_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZcsrgeam2_bufferSizeExt')
+        if __cusparseZcsrgeam2_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZcsrgeam2_bufferSizeExt = dlsym(handle, 'cusparseZcsrgeam2_bufferSizeExt')
+
+        global __cusparseXcsrgeam2Nnz
+        __cusparseXcsrgeam2Nnz = dlsym(RTLD_DEFAULT, 'cusparseXcsrgeam2Nnz')
+        if __cusparseXcsrgeam2Nnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcsrgeam2Nnz = dlsym(handle, 'cusparseXcsrgeam2Nnz')
+
+        global __cusparseScsrgeam2
+        __cusparseScsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseScsrgeam2')
+        if __cusparseScsrgeam2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseScsrgeam2 = dlsym(handle, 'cusparseScsrgeam2')
+
+        global __cusparseDcsrgeam2
+        __cusparseDcsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseDcsrgeam2')
+        if __cusparseDcsrgeam2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDcsrgeam2 = dlsym(handle, 'cusparseDcsrgeam2')
+
+        global __cusparseCcsrgeam2
+        __cusparseCcsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseCcsrgeam2')
+        if __cusparseCcsrgeam2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCcsrgeam2 = dlsym(handle, 'cusparseCcsrgeam2')
+
+        global __cusparseZcsrgeam2
+        __cusparseZcsrgeam2 = dlsym(RTLD_DEFAULT, 'cusparseZcsrgeam2')
+        if __cusparseZcsrgeam2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZcsrgeam2 = dlsym(handle, 'cusparseZcsrgeam2')
+
+        global __cusparseSnnz
+        __cusparseSnnz = dlsym(RTLD_DEFAULT, 'cusparseSnnz')
+        if __cusparseSnnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSnnz = dlsym(handle, 'cusparseSnnz')
+
+        global __cusparseDnnz
+        __cusparseDnnz = dlsym(RTLD_DEFAULT, 'cusparseDnnz')
+        if __cusparseDnnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnnz = dlsym(handle, 'cusparseDnnz')
+
+        global __cusparseCnnz
+        __cusparseCnnz = dlsym(RTLD_DEFAULT, 'cusparseCnnz')
+        if __cusparseCnnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCnnz = dlsym(handle, 'cusparseCnnz')
+
+        global __cusparseZnnz
+        __cusparseZnnz = dlsym(RTLD_DEFAULT, 'cusparseZnnz')
+        if __cusparseZnnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZnnz = dlsym(handle, 'cusparseZnnz')
+
+        global __cusparseXcoo2csr
+        __cusparseXcoo2csr = dlsym(RTLD_DEFAULT, 'cusparseXcoo2csr')
+        if __cusparseXcoo2csr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcoo2csr = dlsym(handle, 'cusparseXcoo2csr')
+
+        global __cusparseXcsr2coo
+        __cusparseXcsr2coo = dlsym(RTLD_DEFAULT, 'cusparseXcsr2coo')
+        if __cusparseXcsr2coo == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcsr2coo = dlsym(handle, 'cusparseXcsr2coo')
+
+        global __cusparseSbsr2csr
+        __cusparseSbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseSbsr2csr')
+        if __cusparseSbsr2csr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSbsr2csr = dlsym(handle, 'cusparseSbsr2csr')
+
+        global __cusparseDbsr2csr
+        __cusparseDbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseDbsr2csr')
+        if __cusparseDbsr2csr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDbsr2csr = dlsym(handle, 'cusparseDbsr2csr')
+
+        global __cusparseCbsr2csr
+        __cusparseCbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseCbsr2csr')
+        if __cusparseCbsr2csr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCbsr2csr = dlsym(handle, 'cusparseCbsr2csr')
+
+        global __cusparseZbsr2csr
+        __cusparseZbsr2csr = dlsym(RTLD_DEFAULT, 'cusparseZbsr2csr')
+        if __cusparseZbsr2csr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZbsr2csr = dlsym(handle, 'cusparseZbsr2csr')
+
+        global __cusparseSgebsr2gebsc_bufferSize
+        __cusparseSgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsc_bufferSize')
+        if __cusparseSgebsr2gebsc_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseSgebsr2gebsc_bufferSize')
+
+        global __cusparseDgebsr2gebsc_bufferSize
+        __cusparseDgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsc_bufferSize')
+        if __cusparseDgebsr2gebsc_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseDgebsr2gebsc_bufferSize')
+
+        global __cusparseCgebsr2gebsc_bufferSize
+        __cusparseCgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsc_bufferSize')
+        if __cusparseCgebsr2gebsc_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseCgebsr2gebsc_bufferSize')
+
+        global __cusparseZgebsr2gebsc_bufferSize
+        __cusparseZgebsr2gebsc_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsc_bufferSize')
+        if __cusparseZgebsr2gebsc_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgebsr2gebsc_bufferSize = dlsym(handle, 'cusparseZgebsr2gebsc_bufferSize')
+
+        global __cusparseSgebsr2gebsc_bufferSizeExt
+        __cusparseSgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsc_bufferSizeExt')
+        if __cusparseSgebsr2gebsc_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseSgebsr2gebsc_bufferSizeExt')
+
+        global __cusparseDgebsr2gebsc_bufferSizeExt
+        __cusparseDgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsc_bufferSizeExt')
+        if __cusparseDgebsr2gebsc_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseDgebsr2gebsc_bufferSizeExt')
+
+        global __cusparseCgebsr2gebsc_bufferSizeExt
+        __cusparseCgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsc_bufferSizeExt')
+        if __cusparseCgebsr2gebsc_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseCgebsr2gebsc_bufferSizeExt')
+
+        global __cusparseZgebsr2gebsc_bufferSizeExt
+        __cusparseZgebsr2gebsc_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsc_bufferSizeExt')
+        if __cusparseZgebsr2gebsc_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgebsr2gebsc_bufferSizeExt = dlsym(handle, 'cusparseZgebsr2gebsc_bufferSizeExt')
+
+        global __cusparseSgebsr2gebsc
+        __cusparseSgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsc')
+        if __cusparseSgebsr2gebsc == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgebsr2gebsc = dlsym(handle, 'cusparseSgebsr2gebsc')
+
+        global __cusparseDgebsr2gebsc
+        __cusparseDgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsc')
+        if __cusparseDgebsr2gebsc == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgebsr2gebsc = dlsym(handle, 'cusparseDgebsr2gebsc')
+
+        global __cusparseCgebsr2gebsc
+        __cusparseCgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsc')
+        if __cusparseCgebsr2gebsc == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgebsr2gebsc = dlsym(handle, 'cusparseCgebsr2gebsc')
+
+        global __cusparseZgebsr2gebsc
+        __cusparseZgebsr2gebsc = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsc')
+        if __cusparseZgebsr2gebsc == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgebsr2gebsc = dlsym(handle, 'cusparseZgebsr2gebsc')
+
+        global __cusparseScsr2gebsr_bufferSize
+        __cusparseScsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseScsr2gebsr_bufferSize')
+        if __cusparseScsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseScsr2gebsr_bufferSize = dlsym(handle, 'cusparseScsr2gebsr_bufferSize')
+
+        global __cusparseDcsr2gebsr_bufferSize
+        __cusparseDcsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDcsr2gebsr_bufferSize')
+        if __cusparseDcsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDcsr2gebsr_bufferSize = dlsym(handle, 'cusparseDcsr2gebsr_bufferSize')
+
+        global __cusparseCcsr2gebsr_bufferSize
+        __cusparseCcsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCcsr2gebsr_bufferSize')
+        if __cusparseCcsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCcsr2gebsr_bufferSize = dlsym(handle, 'cusparseCcsr2gebsr_bufferSize')
+
+        global __cusparseZcsr2gebsr_bufferSize
+        __cusparseZcsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZcsr2gebsr_bufferSize')
+        if __cusparseZcsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZcsr2gebsr_bufferSize = dlsym(handle, 'cusparseZcsr2gebsr_bufferSize')
+
+        global __cusparseScsr2gebsr_bufferSizeExt
+        __cusparseScsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseScsr2gebsr_bufferSizeExt')
+        if __cusparseScsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseScsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseScsr2gebsr_bufferSizeExt')
+
+        global __cusparseDcsr2gebsr_bufferSizeExt
+        __cusparseDcsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDcsr2gebsr_bufferSizeExt')
+        if __cusparseDcsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDcsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseDcsr2gebsr_bufferSizeExt')
+
+        global __cusparseCcsr2gebsr_bufferSizeExt
+        __cusparseCcsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCcsr2gebsr_bufferSizeExt')
+        if __cusparseCcsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCcsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseCcsr2gebsr_bufferSizeExt')
+
+        global __cusparseZcsr2gebsr_bufferSizeExt
+        __cusparseZcsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZcsr2gebsr_bufferSizeExt')
+        if __cusparseZcsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZcsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseZcsr2gebsr_bufferSizeExt')
+
+        global __cusparseXcsr2gebsrNnz
+        __cusparseXcsr2gebsrNnz = dlsym(RTLD_DEFAULT, 'cusparseXcsr2gebsrNnz')
+        if __cusparseXcsr2gebsrNnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcsr2gebsrNnz = dlsym(handle, 'cusparseXcsr2gebsrNnz')
+
+        global __cusparseScsr2gebsr
+        __cusparseScsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseScsr2gebsr')
+        if __cusparseScsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseScsr2gebsr = dlsym(handle, 'cusparseScsr2gebsr')
+
+        global __cusparseDcsr2gebsr
+        __cusparseDcsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseDcsr2gebsr')
+        if __cusparseDcsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDcsr2gebsr = dlsym(handle, 'cusparseDcsr2gebsr')
+
+        global __cusparseCcsr2gebsr
+        __cusparseCcsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseCcsr2gebsr')
+        if __cusparseCcsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCcsr2gebsr = dlsym(handle, 'cusparseCcsr2gebsr')
+
+        global __cusparseZcsr2gebsr
+        __cusparseZcsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseZcsr2gebsr')
+        if __cusparseZcsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZcsr2gebsr = dlsym(handle, 'cusparseZcsr2gebsr')
+
+        global __cusparseSgebsr2gebsr_bufferSize
+        __cusparseSgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsr_bufferSize')
+        if __cusparseSgebsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseSgebsr2gebsr_bufferSize')
+
+        global __cusparseDgebsr2gebsr_bufferSize
+        __cusparseDgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsr_bufferSize')
+        if __cusparseDgebsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseDgebsr2gebsr_bufferSize')
+
+        global __cusparseCgebsr2gebsr_bufferSize
+        __cusparseCgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsr_bufferSize')
+        if __cusparseCgebsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseCgebsr2gebsr_bufferSize')
+
+        global __cusparseZgebsr2gebsr_bufferSize
+        __cusparseZgebsr2gebsr_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsr_bufferSize')
+        if __cusparseZgebsr2gebsr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgebsr2gebsr_bufferSize = dlsym(handle, 'cusparseZgebsr2gebsr_bufferSize')
+
+        global __cusparseSgebsr2gebsr_bufferSizeExt
+        __cusparseSgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsr_bufferSizeExt')
+        if __cusparseSgebsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseSgebsr2gebsr_bufferSizeExt')
+
+        global __cusparseDgebsr2gebsr_bufferSizeExt
+        __cusparseDgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsr_bufferSizeExt')
+        if __cusparseDgebsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseDgebsr2gebsr_bufferSizeExt')
+
+        global __cusparseCgebsr2gebsr_bufferSizeExt
+        __cusparseCgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsr_bufferSizeExt')
+        if __cusparseCgebsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseCgebsr2gebsr_bufferSizeExt')
+
+        global __cusparseZgebsr2gebsr_bufferSizeExt
+        __cusparseZgebsr2gebsr_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsr_bufferSizeExt')
+        if __cusparseZgebsr2gebsr_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgebsr2gebsr_bufferSizeExt = dlsym(handle, 'cusparseZgebsr2gebsr_bufferSizeExt')
+
+        global __cusparseXgebsr2gebsrNnz
+        __cusparseXgebsr2gebsrNnz = dlsym(RTLD_DEFAULT, 'cusparseXgebsr2gebsrNnz')
+        if __cusparseXgebsr2gebsrNnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXgebsr2gebsrNnz = dlsym(handle, 'cusparseXgebsr2gebsrNnz')
+
+        global __cusparseSgebsr2gebsr
+        __cusparseSgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseSgebsr2gebsr')
+        if __cusparseSgebsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSgebsr2gebsr = dlsym(handle, 'cusparseSgebsr2gebsr')
+
+        global __cusparseDgebsr2gebsr
+        __cusparseDgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseDgebsr2gebsr')
+        if __cusparseDgebsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDgebsr2gebsr = dlsym(handle, 'cusparseDgebsr2gebsr')
+
+        global __cusparseCgebsr2gebsr
+        __cusparseCgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseCgebsr2gebsr')
+        if __cusparseCgebsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCgebsr2gebsr = dlsym(handle, 'cusparseCgebsr2gebsr')
+
+        global __cusparseZgebsr2gebsr
+        __cusparseZgebsr2gebsr = dlsym(RTLD_DEFAULT, 'cusparseZgebsr2gebsr')
+        if __cusparseZgebsr2gebsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseZgebsr2gebsr = dlsym(handle, 'cusparseZgebsr2gebsr')
+
+        global __cusparseXcoosort_bufferSizeExt
+        __cusparseXcoosort_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseXcoosort_bufferSizeExt')
+        if __cusparseXcoosort_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcoosort_bufferSizeExt = dlsym(handle, 'cusparseXcoosort_bufferSizeExt')
+
+        global __cusparseXcoosortByRow
+        __cusparseXcoosortByRow = dlsym(RTLD_DEFAULT, 'cusparseXcoosortByRow')
+        if __cusparseXcoosortByRow == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcoosortByRow = dlsym(handle, 'cusparseXcoosortByRow')
+
+        global __cusparseXcoosortByColumn
+        __cusparseXcoosortByColumn = dlsym(RTLD_DEFAULT, 'cusparseXcoosortByColumn')
+        if __cusparseXcoosortByColumn == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcoosortByColumn = dlsym(handle, 'cusparseXcoosortByColumn')
+
+        global __cusparseXcsrsort_bufferSizeExt
+        __cusparseXcsrsort_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseXcsrsort_bufferSizeExt')
+        if __cusparseXcsrsort_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcsrsort_bufferSizeExt = dlsym(handle, 'cusparseXcsrsort_bufferSizeExt')
+
+        global __cusparseXcsrsort
+        __cusparseXcsrsort = dlsym(RTLD_DEFAULT, 'cusparseXcsrsort')
+        if __cusparseXcsrsort == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcsrsort = dlsym(handle, 'cusparseXcsrsort')
+
+        global __cusparseXcscsort_bufferSizeExt
+        __cusparseXcscsort_bufferSizeExt = dlsym(RTLD_DEFAULT, 'cusparseXcscsort_bufferSizeExt')
+        if __cusparseXcscsort_bufferSizeExt == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcscsort_bufferSizeExt = dlsym(handle, 'cusparseXcscsort_bufferSizeExt')
+
+        global __cusparseXcscsort
+        __cusparseXcscsort = dlsym(RTLD_DEFAULT, 'cusparseXcscsort')
+        if __cusparseXcscsort == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseXcscsort = dlsym(handle, 'cusparseXcscsort')
+
+        global __cusparseCsr2cscEx2
+        __cusparseCsr2cscEx2 = dlsym(RTLD_DEFAULT, 'cusparseCsr2cscEx2')
+        if __cusparseCsr2cscEx2 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCsr2cscEx2 = dlsym(handle, 'cusparseCsr2cscEx2')
+
+        global __cusparseCsr2cscEx2_bufferSize
+        __cusparseCsr2cscEx2_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseCsr2cscEx2_bufferSize')
+        if __cusparseCsr2cscEx2_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCsr2cscEx2_bufferSize = dlsym(handle, 'cusparseCsr2cscEx2_bufferSize')
+
+        global __cusparseCreateSpVec
+        __cusparseCreateSpVec = dlsym(RTLD_DEFAULT, 'cusparseCreateSpVec')
+        if __cusparseCreateSpVec == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateSpVec = dlsym(handle, 'cusparseCreateSpVec')
+
+        global __cusparseDestroySpVec
+        __cusparseDestroySpVec = dlsym(RTLD_DEFAULT, 'cusparseDestroySpVec')
+        if __cusparseDestroySpVec == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDestroySpVec = dlsym(handle, 'cusparseDestroySpVec')
+
+        global __cusparseSpVecGet
+        __cusparseSpVecGet = dlsym(RTLD_DEFAULT, 'cusparseSpVecGet')
+        if __cusparseSpVecGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpVecGet = dlsym(handle, 'cusparseSpVecGet')
+
+        global __cusparseSpVecGetIndexBase
+        __cusparseSpVecGetIndexBase = dlsym(RTLD_DEFAULT, 'cusparseSpVecGetIndexBase')
+        if __cusparseSpVecGetIndexBase == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpVecGetIndexBase = dlsym(handle, 'cusparseSpVecGetIndexBase')
+
+        global __cusparseSpVecGetValues
+        __cusparseSpVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseSpVecGetValues')
+        if __cusparseSpVecGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpVecGetValues = dlsym(handle, 'cusparseSpVecGetValues')
+
+        global __cusparseSpVecSetValues
+        __cusparseSpVecSetValues = dlsym(RTLD_DEFAULT, 'cusparseSpVecSetValues')
+        if __cusparseSpVecSetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpVecSetValues = dlsym(handle, 'cusparseSpVecSetValues')
+
+        global __cusparseCreateDnVec
+        __cusparseCreateDnVec = dlsym(RTLD_DEFAULT, 'cusparseCreateDnVec')
+        if __cusparseCreateDnVec == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateDnVec = dlsym(handle, 'cusparseCreateDnVec')
+
+        global __cusparseDestroyDnVec
+        __cusparseDestroyDnVec = dlsym(RTLD_DEFAULT, 'cusparseDestroyDnVec')
+        if __cusparseDestroyDnVec == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDestroyDnVec = dlsym(handle, 'cusparseDestroyDnVec')
+
+        global __cusparseDnVecGet
+        __cusparseDnVecGet = dlsym(RTLD_DEFAULT, 'cusparseDnVecGet')
+        if __cusparseDnVecGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnVecGet = dlsym(handle, 'cusparseDnVecGet')
+
+        global __cusparseDnVecGetValues
+        __cusparseDnVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseDnVecGetValues')
+        if __cusparseDnVecGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnVecGetValues = dlsym(handle, 'cusparseDnVecGetValues')
+
+        global __cusparseDnVecSetValues
+        __cusparseDnVecSetValues = dlsym(RTLD_DEFAULT, 'cusparseDnVecSetValues')
+        if __cusparseDnVecSetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnVecSetValues = dlsym(handle, 'cusparseDnVecSetValues')
+
+        global __cusparseDestroySpMat
+        __cusparseDestroySpMat = dlsym(RTLD_DEFAULT, 'cusparseDestroySpMat')
+        if __cusparseDestroySpMat == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDestroySpMat = dlsym(handle, 'cusparseDestroySpMat')
+
+        global __cusparseSpMatGetFormat
+        __cusparseSpMatGetFormat = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetFormat')
+        if __cusparseSpMatGetFormat == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatGetFormat = dlsym(handle, 'cusparseSpMatGetFormat')
+
+        global __cusparseSpMatGetIndexBase
+        __cusparseSpMatGetIndexBase = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetIndexBase')
+        if __cusparseSpMatGetIndexBase == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatGetIndexBase = dlsym(handle, 'cusparseSpMatGetIndexBase')
+
+        global __cusparseSpMatGetValues
+        __cusparseSpMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetValues')
+        if __cusparseSpMatGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatGetValues = dlsym(handle, 'cusparseSpMatGetValues')
+
+        global __cusparseSpMatSetValues
+        __cusparseSpMatSetValues = dlsym(RTLD_DEFAULT, 'cusparseSpMatSetValues')
+        if __cusparseSpMatSetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatSetValues = dlsym(handle, 'cusparseSpMatSetValues')
+
+        global __cusparseSpMatGetSize
+        __cusparseSpMatGetSize = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetSize')
+        if __cusparseSpMatGetSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatGetSize = dlsym(handle, 'cusparseSpMatGetSize')
+
+        global __cusparseSpMatGetStridedBatch
+        __cusparseSpMatGetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetStridedBatch')
+        if __cusparseSpMatGetStridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatGetStridedBatch = dlsym(handle, 'cusparseSpMatGetStridedBatch')
+
+        global __cusparseCooSetStridedBatch
+        __cusparseCooSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseCooSetStridedBatch')
+        if __cusparseCooSetStridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCooSetStridedBatch = dlsym(handle, 'cusparseCooSetStridedBatch')
+
+        global __cusparseCsrSetStridedBatch
+        __cusparseCsrSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseCsrSetStridedBatch')
+        if __cusparseCsrSetStridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCsrSetStridedBatch = dlsym(handle, 'cusparseCsrSetStridedBatch')
+
+        global __cusparseCreateCsr
+        __cusparseCreateCsr = dlsym(RTLD_DEFAULT, 'cusparseCreateCsr')
+        if __cusparseCreateCsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateCsr = dlsym(handle, 'cusparseCreateCsr')
+
+        global __cusparseCsrGet
+        __cusparseCsrGet = dlsym(RTLD_DEFAULT, 'cusparseCsrGet')
+        if __cusparseCsrGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCsrGet = dlsym(handle, 'cusparseCsrGet')
+
+        global __cusparseCsrSetPointers
+        __cusparseCsrSetPointers = dlsym(RTLD_DEFAULT, 'cusparseCsrSetPointers')
+        if __cusparseCsrSetPointers == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCsrSetPointers = dlsym(handle, 'cusparseCsrSetPointers')
+
+        global __cusparseCreateCoo
+        __cusparseCreateCoo = dlsym(RTLD_DEFAULT, 'cusparseCreateCoo')
+        if __cusparseCreateCoo == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateCoo = dlsym(handle, 'cusparseCreateCoo')
+
+        global __cusparseCooGet
+        __cusparseCooGet = dlsym(RTLD_DEFAULT, 'cusparseCooGet')
+        if __cusparseCooGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCooGet = dlsym(handle, 'cusparseCooGet')
+
+        global __cusparseCreateDnMat
+        __cusparseCreateDnMat = dlsym(RTLD_DEFAULT, 'cusparseCreateDnMat')
+        if __cusparseCreateDnMat == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateDnMat = dlsym(handle, 'cusparseCreateDnMat')
+
+        global __cusparseDestroyDnMat
+        __cusparseDestroyDnMat = dlsym(RTLD_DEFAULT, 'cusparseDestroyDnMat')
+        if __cusparseDestroyDnMat == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDestroyDnMat = dlsym(handle, 'cusparseDestroyDnMat')
+
+        global __cusparseDnMatGet
+        __cusparseDnMatGet = dlsym(RTLD_DEFAULT, 'cusparseDnMatGet')
+        if __cusparseDnMatGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnMatGet = dlsym(handle, 'cusparseDnMatGet')
+
+        global __cusparseDnMatGetValues
+        __cusparseDnMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseDnMatGetValues')
+        if __cusparseDnMatGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnMatGetValues = dlsym(handle, 'cusparseDnMatGetValues')
+
+        global __cusparseDnMatSetValues
+        __cusparseDnMatSetValues = dlsym(RTLD_DEFAULT, 'cusparseDnMatSetValues')
+        if __cusparseDnMatSetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnMatSetValues = dlsym(handle, 'cusparseDnMatSetValues')
+
+        global __cusparseDnMatSetStridedBatch
+        __cusparseDnMatSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseDnMatSetStridedBatch')
+        if __cusparseDnMatSetStridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnMatSetStridedBatch = dlsym(handle, 'cusparseDnMatSetStridedBatch')
+
+        global __cusparseDnMatGetStridedBatch
+        __cusparseDnMatGetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseDnMatGetStridedBatch')
+        if __cusparseDnMatGetStridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDnMatGetStridedBatch = dlsym(handle, 'cusparseDnMatGetStridedBatch')
+
+        global __cusparseAxpby
+        __cusparseAxpby = dlsym(RTLD_DEFAULT, 'cusparseAxpby')
+        if __cusparseAxpby == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseAxpby = dlsym(handle, 'cusparseAxpby')
+
+        global __cusparseGather
+        __cusparseGather = dlsym(RTLD_DEFAULT, 'cusparseGather')
+        if __cusparseGather == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseGather = dlsym(handle, 'cusparseGather')
+
+        global __cusparseScatter
+        __cusparseScatter = dlsym(RTLD_DEFAULT, 'cusparseScatter')
+        if __cusparseScatter == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseScatter = dlsym(handle, 'cusparseScatter')
+
+        global __cusparseSpVV_bufferSize
+        __cusparseSpVV_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpVV_bufferSize')
+        if __cusparseSpVV_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpVV_bufferSize = dlsym(handle, 'cusparseSpVV_bufferSize')
+
+        global __cusparseSpVV
+        __cusparseSpVV = dlsym(RTLD_DEFAULT, 'cusparseSpVV')
+        if __cusparseSpVV == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpVV = dlsym(handle, 'cusparseSpVV')
+
+        global __cusparseSpMV
+        __cusparseSpMV = dlsym(RTLD_DEFAULT, 'cusparseSpMV')
+        if __cusparseSpMV == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMV = dlsym(handle, 'cusparseSpMV')
+
+        global __cusparseSpMV_bufferSize
+        __cusparseSpMV_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpMV_bufferSize')
+        if __cusparseSpMV_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMV_bufferSize = dlsym(handle, 'cusparseSpMV_bufferSize')
+
+        global __cusparseSpMM
+        __cusparseSpMM = dlsym(RTLD_DEFAULT, 'cusparseSpMM')
+        if __cusparseSpMM == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMM = dlsym(handle, 'cusparseSpMM')
+
+        global __cusparseSpMM_bufferSize
+        __cusparseSpMM_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpMM_bufferSize')
+        if __cusparseSpMM_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMM_bufferSize = dlsym(handle, 'cusparseSpMM_bufferSize')
+
+        global __cusparseSpGEMM_createDescr
+        __cusparseSpGEMM_createDescr = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_createDescr')
+        if __cusparseSpGEMM_createDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMM_createDescr = dlsym(handle, 'cusparseSpGEMM_createDescr')
+
+        global __cusparseSpGEMM_destroyDescr
+        __cusparseSpGEMM_destroyDescr = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_destroyDescr')
+        if __cusparseSpGEMM_destroyDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMM_destroyDescr = dlsym(handle, 'cusparseSpGEMM_destroyDescr')
+
+        global __cusparseSpGEMM_workEstimation
+        __cusparseSpGEMM_workEstimation = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_workEstimation')
+        if __cusparseSpGEMM_workEstimation == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMM_workEstimation = dlsym(handle, 'cusparseSpGEMM_workEstimation')
+
+        global __cusparseSpGEMM_compute
+        __cusparseSpGEMM_compute = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_compute')
+        if __cusparseSpGEMM_compute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMM_compute = dlsym(handle, 'cusparseSpGEMM_compute')
+
+        global __cusparseSpGEMM_copy
+        __cusparseSpGEMM_copy = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_copy')
+        if __cusparseSpGEMM_copy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMM_copy = dlsym(handle, 'cusparseSpGEMM_copy')
+
+        global __cusparseCreateCsc
+        __cusparseCreateCsc = dlsym(RTLD_DEFAULT, 'cusparseCreateCsc')
+        if __cusparseCreateCsc == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateCsc = dlsym(handle, 'cusparseCreateCsc')
+
+        global __cusparseCscSetPointers
+        __cusparseCscSetPointers = dlsym(RTLD_DEFAULT, 'cusparseCscSetPointers')
+        if __cusparseCscSetPointers == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCscSetPointers = dlsym(handle, 'cusparseCscSetPointers')
+
+        global __cusparseCooSetPointers
+        __cusparseCooSetPointers = dlsym(RTLD_DEFAULT, 'cusparseCooSetPointers')
+        if __cusparseCooSetPointers == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCooSetPointers = dlsym(handle, 'cusparseCooSetPointers')
+
+        global __cusparseSparseToDense_bufferSize
+        __cusparseSparseToDense_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSparseToDense_bufferSize')
+        if __cusparseSparseToDense_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSparseToDense_bufferSize = dlsym(handle, 'cusparseSparseToDense_bufferSize')
+
+        global __cusparseSparseToDense
+        __cusparseSparseToDense = dlsym(RTLD_DEFAULT, 'cusparseSparseToDense')
+        if __cusparseSparseToDense == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSparseToDense = dlsym(handle, 'cusparseSparseToDense')
+
+        global __cusparseDenseToSparse_bufferSize
+        __cusparseDenseToSparse_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseDenseToSparse_bufferSize')
+        if __cusparseDenseToSparse_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDenseToSparse_bufferSize = dlsym(handle, 'cusparseDenseToSparse_bufferSize')
+
+        global __cusparseDenseToSparse_analysis
+        __cusparseDenseToSparse_analysis = dlsym(RTLD_DEFAULT, 'cusparseDenseToSparse_analysis')
+        if __cusparseDenseToSparse_analysis == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDenseToSparse_analysis = dlsym(handle, 'cusparseDenseToSparse_analysis')
+
+        global __cusparseDenseToSparse_convert
+        __cusparseDenseToSparse_convert = dlsym(RTLD_DEFAULT, 'cusparseDenseToSparse_convert')
+        if __cusparseDenseToSparse_convert == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseDenseToSparse_convert = dlsym(handle, 'cusparseDenseToSparse_convert')
+
+        global __cusparseCreateBlockedEll
+        __cusparseCreateBlockedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateBlockedEll')
+        if __cusparseCreateBlockedEll == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateBlockedEll = dlsym(handle, 'cusparseCreateBlockedEll')
+
+        global __cusparseBlockedEllGet
+        __cusparseBlockedEllGet = dlsym(RTLD_DEFAULT, 'cusparseBlockedEllGet')
+        if __cusparseBlockedEllGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseBlockedEllGet = dlsym(handle, 'cusparseBlockedEllGet')
+
+        global __cusparseSpMM_preprocess
+        __cusparseSpMM_preprocess = dlsym(RTLD_DEFAULT, 'cusparseSpMM_preprocess')
+        if __cusparseSpMM_preprocess == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMM_preprocess = dlsym(handle, 'cusparseSpMM_preprocess')
+
+        global __cusparseSDDMM_bufferSize
+        __cusparseSDDMM_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSDDMM_bufferSize')
+        if __cusparseSDDMM_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSDDMM_bufferSize = dlsym(handle, 'cusparseSDDMM_bufferSize')
+
+        global __cusparseSDDMM_preprocess
+        __cusparseSDDMM_preprocess = dlsym(RTLD_DEFAULT, 'cusparseSDDMM_preprocess')
+        if __cusparseSDDMM_preprocess == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSDDMM_preprocess = dlsym(handle, 'cusparseSDDMM_preprocess')
+
+        global __cusparseSDDMM
+        __cusparseSDDMM = dlsym(RTLD_DEFAULT, 'cusparseSDDMM')
+        if __cusparseSDDMM == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSDDMM = dlsym(handle, 'cusparseSDDMM')
+
+        global __cusparseSpMatGetAttribute
+        __cusparseSpMatGetAttribute = dlsym(RTLD_DEFAULT, 'cusparseSpMatGetAttribute')
+        if __cusparseSpMatGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatGetAttribute = dlsym(handle, 'cusparseSpMatGetAttribute')
+
+        global __cusparseSpMatSetAttribute
+        __cusparseSpMatSetAttribute = dlsym(RTLD_DEFAULT, 'cusparseSpMatSetAttribute')
+        if __cusparseSpMatSetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMatSetAttribute = dlsym(handle, 'cusparseSpMatSetAttribute')
+
+        global __cusparseSpSV_createDescr
+        __cusparseSpSV_createDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSV_createDescr')
+        if __cusparseSpSV_createDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSV_createDescr = dlsym(handle, 'cusparseSpSV_createDescr')
+
+        global __cusparseSpSV_destroyDescr
+        __cusparseSpSV_destroyDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSV_destroyDescr')
+        if __cusparseSpSV_destroyDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSV_destroyDescr = dlsym(handle, 'cusparseSpSV_destroyDescr')
+
+        global __cusparseSpSV_bufferSize
+        __cusparseSpSV_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpSV_bufferSize')
+        if __cusparseSpSV_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSV_bufferSize = dlsym(handle, 'cusparseSpSV_bufferSize')
+
+        global __cusparseSpSV_analysis
+        __cusparseSpSV_analysis = dlsym(RTLD_DEFAULT, 'cusparseSpSV_analysis')
+        if __cusparseSpSV_analysis == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSV_analysis = dlsym(handle, 'cusparseSpSV_analysis')
+
+        global __cusparseSpSV_solve
+        __cusparseSpSV_solve = dlsym(RTLD_DEFAULT, 'cusparseSpSV_solve')
+        if __cusparseSpSV_solve == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSV_solve = dlsym(handle, 'cusparseSpSV_solve')
+
+        global __cusparseSpSM_createDescr
+        __cusparseSpSM_createDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSM_createDescr')
+        if __cusparseSpSM_createDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSM_createDescr = dlsym(handle, 'cusparseSpSM_createDescr')
+
+        global __cusparseSpSM_destroyDescr
+        __cusparseSpSM_destroyDescr = dlsym(RTLD_DEFAULT, 'cusparseSpSM_destroyDescr')
+        if __cusparseSpSM_destroyDescr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSM_destroyDescr = dlsym(handle, 'cusparseSpSM_destroyDescr')
+
+        global __cusparseSpSM_bufferSize
+        __cusparseSpSM_bufferSize = dlsym(RTLD_DEFAULT, 'cusparseSpSM_bufferSize')
+        if __cusparseSpSM_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSM_bufferSize = dlsym(handle, 'cusparseSpSM_bufferSize')
+
+        global __cusparseSpSM_analysis
+        __cusparseSpSM_analysis = dlsym(RTLD_DEFAULT, 'cusparseSpSM_analysis')
+        if __cusparseSpSM_analysis == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSM_analysis = dlsym(handle, 'cusparseSpSM_analysis')
+
+        global __cusparseSpSM_solve
+        __cusparseSpSM_solve = dlsym(RTLD_DEFAULT, 'cusparseSpSM_solve')
+        if __cusparseSpSM_solve == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSM_solve = dlsym(handle, 'cusparseSpSM_solve')
+
+        global __cusparseSpGEMMreuse_workEstimation
+        __cusparseSpGEMMreuse_workEstimation = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_workEstimation')
+        if __cusparseSpGEMMreuse_workEstimation == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMMreuse_workEstimation = dlsym(handle, 'cusparseSpGEMMreuse_workEstimation')
+
+        global __cusparseSpGEMMreuse_nnz
+        __cusparseSpGEMMreuse_nnz = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_nnz')
+        if __cusparseSpGEMMreuse_nnz == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMMreuse_nnz = dlsym(handle, 'cusparseSpGEMMreuse_nnz')
+
+        global __cusparseSpGEMMreuse_copy
+        __cusparseSpGEMMreuse_copy = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_copy')
+        if __cusparseSpGEMMreuse_copy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMMreuse_copy = dlsym(handle, 'cusparseSpGEMMreuse_copy')
+
+        global __cusparseSpGEMMreuse_compute
+        __cusparseSpGEMMreuse_compute = dlsym(RTLD_DEFAULT, 'cusparseSpGEMMreuse_compute')
+        if __cusparseSpGEMMreuse_compute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMMreuse_compute = dlsym(handle, 'cusparseSpGEMMreuse_compute')
+
+        global __cusparseLoggerSetCallback
+        __cusparseLoggerSetCallback = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetCallback')
+        if __cusparseLoggerSetCallback == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseLoggerSetCallback = dlsym(handle, 'cusparseLoggerSetCallback')
+
+        global __cusparseLoggerSetFile
+        __cusparseLoggerSetFile = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetFile')
+        if __cusparseLoggerSetFile == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseLoggerSetFile = dlsym(handle, 'cusparseLoggerSetFile')
+
+        global __cusparseLoggerOpenFile
+        __cusparseLoggerOpenFile = dlsym(RTLD_DEFAULT, 'cusparseLoggerOpenFile')
+        if __cusparseLoggerOpenFile == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseLoggerOpenFile = dlsym(handle, 'cusparseLoggerOpenFile')
+
+        global __cusparseLoggerSetLevel
+        __cusparseLoggerSetLevel = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetLevel')
+        if __cusparseLoggerSetLevel == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseLoggerSetLevel = dlsym(handle, 'cusparseLoggerSetLevel')
+
+        global __cusparseLoggerSetMask
+        __cusparseLoggerSetMask = dlsym(RTLD_DEFAULT, 'cusparseLoggerSetMask')
+        if __cusparseLoggerSetMask == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseLoggerSetMask = dlsym(handle, 'cusparseLoggerSetMask')
+
+        global __cusparseLoggerForceDisable
+        __cusparseLoggerForceDisable = dlsym(RTLD_DEFAULT, 'cusparseLoggerForceDisable')
+        if __cusparseLoggerForceDisable == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseLoggerForceDisable = dlsym(handle, 'cusparseLoggerForceDisable')
+
+        global __cusparseSpMMOp_createPlan
+        __cusparseSpMMOp_createPlan = dlsym(RTLD_DEFAULT, 'cusparseSpMMOp_createPlan')
+        if __cusparseSpMMOp_createPlan == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMMOp_createPlan = dlsym(handle, 'cusparseSpMMOp_createPlan')
+
+        global __cusparseSpMMOp
+        __cusparseSpMMOp = dlsym(RTLD_DEFAULT, 'cusparseSpMMOp')
+        if __cusparseSpMMOp == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMMOp = dlsym(handle, 'cusparseSpMMOp')
+
+        global __cusparseSpMMOp_destroyPlan
+        __cusparseSpMMOp_destroyPlan = dlsym(RTLD_DEFAULT, 'cusparseSpMMOp_destroyPlan')
+        if __cusparseSpMMOp_destroyPlan == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMMOp_destroyPlan = dlsym(handle, 'cusparseSpMMOp_destroyPlan')
+
+        global __cusparseCscGet
+        __cusparseCscGet = dlsym(RTLD_DEFAULT, 'cusparseCscGet')
+        if __cusparseCscGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCscGet = dlsym(handle, 'cusparseCscGet')
+
+        global __cusparseCreateConstSpVec
+        __cusparseCreateConstSpVec = dlsym(RTLD_DEFAULT, 'cusparseCreateConstSpVec')
+        if __cusparseCreateConstSpVec == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstSpVec = dlsym(handle, 'cusparseCreateConstSpVec')
+
+        global __cusparseConstSpVecGet
+        __cusparseConstSpVecGet = dlsym(RTLD_DEFAULT, 'cusparseConstSpVecGet')
+        if __cusparseConstSpVecGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstSpVecGet = dlsym(handle, 'cusparseConstSpVecGet')
+
+        global __cusparseConstSpVecGetValues
+        __cusparseConstSpVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstSpVecGetValues')
+        if __cusparseConstSpVecGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstSpVecGetValues = dlsym(handle, 'cusparseConstSpVecGetValues')
+
+        global __cusparseCreateConstDnVec
+        __cusparseCreateConstDnVec = dlsym(RTLD_DEFAULT, 'cusparseCreateConstDnVec')
+        if __cusparseCreateConstDnVec == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstDnVec = dlsym(handle, 'cusparseCreateConstDnVec')
+
+        global __cusparseConstDnVecGet
+        __cusparseConstDnVecGet = dlsym(RTLD_DEFAULT, 'cusparseConstDnVecGet')
+        if __cusparseConstDnVecGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstDnVecGet = dlsym(handle, 'cusparseConstDnVecGet')
+
+        global __cusparseConstDnVecGetValues
+        __cusparseConstDnVecGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstDnVecGetValues')
+        if __cusparseConstDnVecGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstDnVecGetValues = dlsym(handle, 'cusparseConstDnVecGetValues')
+
+        global __cusparseConstSpMatGetValues
+        __cusparseConstSpMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstSpMatGetValues')
+        if __cusparseConstSpMatGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstSpMatGetValues = dlsym(handle, 'cusparseConstSpMatGetValues')
+
+        global __cusparseCreateConstCsr
+        __cusparseCreateConstCsr = dlsym(RTLD_DEFAULT, 'cusparseCreateConstCsr')
+        if __cusparseCreateConstCsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstCsr = dlsym(handle, 'cusparseCreateConstCsr')
+
+        global __cusparseCreateConstCsc
+        __cusparseCreateConstCsc = dlsym(RTLD_DEFAULT, 'cusparseCreateConstCsc')
+        if __cusparseCreateConstCsc == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstCsc = dlsym(handle, 'cusparseCreateConstCsc')
+
+        global __cusparseConstCsrGet
+        __cusparseConstCsrGet = dlsym(RTLD_DEFAULT, 'cusparseConstCsrGet')
+        if __cusparseConstCsrGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstCsrGet = dlsym(handle, 'cusparseConstCsrGet')
+
+        global __cusparseConstCscGet
+        __cusparseConstCscGet = dlsym(RTLD_DEFAULT, 'cusparseConstCscGet')
+        if __cusparseConstCscGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstCscGet = dlsym(handle, 'cusparseConstCscGet')
+
+        global __cusparseCreateConstCoo
+        __cusparseCreateConstCoo = dlsym(RTLD_DEFAULT, 'cusparseCreateConstCoo')
+        if __cusparseCreateConstCoo == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstCoo = dlsym(handle, 'cusparseCreateConstCoo')
+
+        global __cusparseConstCooGet
+        __cusparseConstCooGet = dlsym(RTLD_DEFAULT, 'cusparseConstCooGet')
+        if __cusparseConstCooGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstCooGet = dlsym(handle, 'cusparseConstCooGet')
+
+        global __cusparseCreateConstBlockedEll
+        __cusparseCreateConstBlockedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateConstBlockedEll')
+        if __cusparseCreateConstBlockedEll == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstBlockedEll = dlsym(handle, 'cusparseCreateConstBlockedEll')
+
+        global __cusparseConstBlockedEllGet
+        __cusparseConstBlockedEllGet = dlsym(RTLD_DEFAULT, 'cusparseConstBlockedEllGet')
+        if __cusparseConstBlockedEllGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstBlockedEllGet = dlsym(handle, 'cusparseConstBlockedEllGet')
+
+        global __cusparseCreateConstDnMat
+        __cusparseCreateConstDnMat = dlsym(RTLD_DEFAULT, 'cusparseCreateConstDnMat')
+        if __cusparseCreateConstDnMat == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstDnMat = dlsym(handle, 'cusparseCreateConstDnMat')
+
+        global __cusparseConstDnMatGet
+        __cusparseConstDnMatGet = dlsym(RTLD_DEFAULT, 'cusparseConstDnMatGet')
+        if __cusparseConstDnMatGet == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstDnMatGet = dlsym(handle, 'cusparseConstDnMatGet')
+
+        global __cusparseConstDnMatGetValues
+        __cusparseConstDnMatGetValues = dlsym(RTLD_DEFAULT, 'cusparseConstDnMatGetValues')
+        if __cusparseConstDnMatGetValues == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseConstDnMatGetValues = dlsym(handle, 'cusparseConstDnMatGetValues')
+
+        global __cusparseSpGEMM_getNumProducts
+        __cusparseSpGEMM_getNumProducts = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_getNumProducts')
+        if __cusparseSpGEMM_getNumProducts == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMM_getNumProducts = dlsym(handle, 'cusparseSpGEMM_getNumProducts')
+
+        global __cusparseSpGEMM_estimateMemory
+        __cusparseSpGEMM_estimateMemory = dlsym(RTLD_DEFAULT, 'cusparseSpGEMM_estimateMemory')
+        if __cusparseSpGEMM_estimateMemory == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpGEMM_estimateMemory = dlsym(handle, 'cusparseSpGEMM_estimateMemory')
+
+        global __cusparseBsrSetStridedBatch
+        __cusparseBsrSetStridedBatch = dlsym(RTLD_DEFAULT, 'cusparseBsrSetStridedBatch')
+        if __cusparseBsrSetStridedBatch == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseBsrSetStridedBatch = dlsym(handle, 'cusparseBsrSetStridedBatch')
+
+        global __cusparseCreateBsr
+        __cusparseCreateBsr = dlsym(RTLD_DEFAULT, 'cusparseCreateBsr')
+        if __cusparseCreateBsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateBsr = dlsym(handle, 'cusparseCreateBsr')
+
+        global __cusparseCreateConstBsr
+        __cusparseCreateConstBsr = dlsym(RTLD_DEFAULT, 'cusparseCreateConstBsr')
+        if __cusparseCreateConstBsr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstBsr = dlsym(handle, 'cusparseCreateConstBsr')
+
+        global __cusparseCreateSlicedEll
+        __cusparseCreateSlicedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateSlicedEll')
+        if __cusparseCreateSlicedEll == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateSlicedEll = dlsym(handle, 'cusparseCreateSlicedEll')
+
+        global __cusparseCreateConstSlicedEll
+        __cusparseCreateConstSlicedEll = dlsym(RTLD_DEFAULT, 'cusparseCreateConstSlicedEll')
+        if __cusparseCreateConstSlicedEll == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseCreateConstSlicedEll = dlsym(handle, 'cusparseCreateConstSlicedEll')
+
+        global __cusparseSpSV_updateMatrix
+        __cusparseSpSV_updateMatrix = dlsym(RTLD_DEFAULT, 'cusparseSpSV_updateMatrix')
+        if __cusparseSpSV_updateMatrix == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSV_updateMatrix = dlsym(handle, 'cusparseSpSV_updateMatrix')
+
+        global __cusparseSpMV_preprocess
+        __cusparseSpMV_preprocess = dlsym(RTLD_DEFAULT, 'cusparseSpMV_preprocess')
+        if __cusparseSpMV_preprocess == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpMV_preprocess = dlsym(handle, 'cusparseSpMV_preprocess')
+
+        global __cusparseSpSM_updateMatrix
+        __cusparseSpSM_updateMatrix = dlsym(RTLD_DEFAULT, 'cusparseSpSM_updateMatrix')
+        if __cusparseSpSM_updateMatrix == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusparseSpSM_updateMatrix = dlsym(handle, 'cusparseSpSM_updateMatrix')
+
+        __py_cusparse_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

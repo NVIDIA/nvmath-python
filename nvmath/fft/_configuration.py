@@ -23,7 +23,7 @@ class ExecutionCUDA:
         device_id: CUDA device ordinal (only used if the operand resides on the CPU). The
             default value is 0.
 
-    See Also:
+    .. seealso::
        :class:`ExecutionCPU`, :class:`FFT`, :func:`fft`, :func:`ifft`, :func:`rfft`, and
        :func:`irfft`.
     """
@@ -45,7 +45,7 @@ class ExecutionCPU:
                      If not specified, defaults to the number of CPU cores available to the
                      process.
 
-    See Also:
+    .. seealso::
        :class:`ExecutionCUDA`, :class:`FFT`, :func:`fft`, :func:`ifft`, :func:`rfft`, and
        :func:`irfft`.
     """
@@ -110,7 +110,7 @@ class FFTOptions:
             PyTorch operands, :func:`cupy.cuda.alloc` otherwise). Currently, CPU execution
             does not allow specifying a memory pool.
 
-    See Also:
+    .. seealso::
         :class:`ExecutionCUDA`, :class:`ExecutionCPU`, :class:`FFT`, :func:`fft`,
         :func:`ifft`, :func:`rfft`, and :func:`irfft`.
     """
@@ -164,7 +164,7 @@ class DeviceCallable:
         data:  A device pointer to user data used in the callback. The default is None,
             which means a null pointer will be used in the callback.
 
-    See Also:
+    .. seealso::
         :meth:`FFT.plan`, :func:`fft`, :func:`ifft`, :func:`rfft`, and :func:`irfft`.
     """
 
@@ -200,7 +200,7 @@ KeywordArgType = dict
 class FFTDirection(IntEnum):
     """An IntEnum class specifying the direction of the transform.
 
-    See Also:
+    .. seealso::
         :meth:`FFT.execute`, :func:`fft`
     """
 

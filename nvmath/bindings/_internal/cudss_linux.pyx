@@ -2,17 +2,22 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.5.0. Do not modify it directly.
+# This code was automatically generated with version 0.7.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
+
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
 
+
 ###############################################################################
 # Extern
 ###############################################################################
+
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "<dlfcn.h>" nogil:
     void* dlopen(const char*, int)
@@ -28,11 +33,31 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cudss_init = False
 
 cdef void* __cudssConfigSet = NULL
@@ -48,6 +73,7 @@ cdef void* __cudssConfigDestroy = NULL
 cdef void* __cudssDataCreate = NULL
 cdef void* __cudssDataDestroy = NULL
 cdef void* __cudssCreate = NULL
+cdef void* __cudssCreateMg = NULL
 cdef void* __cudssDestroy = NULL
 cdef void* __cudssGetProperty = NULL
 cdef void* __cudssMatrixCreateDn = NULL
@@ -64,6 +90,8 @@ cdef void* __cudssMatrixGetBatchCsr = NULL
 cdef void* __cudssMatrixSetBatchValues = NULL
 cdef void* __cudssMatrixSetBatchCsrPointers = NULL
 cdef void* __cudssMatrixGetFormat = NULL
+cdef void* __cudssMatrixSetDistributionRow1d = NULL
+cdef void* __cudssMatrixGetDistributionRow1d = NULL
 cdef void* __cudssGetDeviceMemHandler = NULL
 cdef void* __cudssSetDeviceMemHandler = NULL
 
@@ -79,226 +107,248 @@ cdef int _check_or_init_cudss() except -1 nogil:
         return 0
 
     cdef void* handle = NULL
-    # Load function
-    global __cudssConfigSet
-    __cudssConfigSet = dlsym(RTLD_DEFAULT, 'cudssConfigSet')
-    if __cudssConfigSet == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssConfigSet = dlsym(handle, 'cudssConfigSet')
 
-    global __cudssConfigGet
-    __cudssConfigGet = dlsym(RTLD_DEFAULT, 'cudssConfigGet')
-    if __cudssConfigGet == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssConfigGet = dlsym(handle, 'cudssConfigGet')
+    with gil, __symbol_lock:
+        # Load function
+        global __cudssConfigSet
+        __cudssConfigSet = dlsym(RTLD_DEFAULT, 'cudssConfigSet')
+        if __cudssConfigSet == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssConfigSet = dlsym(handle, 'cudssConfigSet')
 
-    global __cudssDataSet
-    __cudssDataSet = dlsym(RTLD_DEFAULT, 'cudssDataSet')
-    if __cudssDataSet == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssDataSet = dlsym(handle, 'cudssDataSet')
+        global __cudssConfigGet
+        __cudssConfigGet = dlsym(RTLD_DEFAULT, 'cudssConfigGet')
+        if __cudssConfigGet == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssConfigGet = dlsym(handle, 'cudssConfigGet')
 
-    global __cudssDataGet
-    __cudssDataGet = dlsym(RTLD_DEFAULT, 'cudssDataGet')
-    if __cudssDataGet == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssDataGet = dlsym(handle, 'cudssDataGet')
+        global __cudssDataSet
+        __cudssDataSet = dlsym(RTLD_DEFAULT, 'cudssDataSet')
+        if __cudssDataSet == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssDataSet = dlsym(handle, 'cudssDataSet')
 
-    global __cudssExecute
-    __cudssExecute = dlsym(RTLD_DEFAULT, 'cudssExecute')
-    if __cudssExecute == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssExecute = dlsym(handle, 'cudssExecute')
+        global __cudssDataGet
+        __cudssDataGet = dlsym(RTLD_DEFAULT, 'cudssDataGet')
+        if __cudssDataGet == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssDataGet = dlsym(handle, 'cudssDataGet')
 
-    global __cudssSetStream
-    __cudssSetStream = dlsym(RTLD_DEFAULT, 'cudssSetStream')
-    if __cudssSetStream == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssSetStream = dlsym(handle, 'cudssSetStream')
+        global __cudssExecute
+        __cudssExecute = dlsym(RTLD_DEFAULT, 'cudssExecute')
+        if __cudssExecute == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssExecute = dlsym(handle, 'cudssExecute')
 
-    global __cudssSetCommLayer
-    __cudssSetCommLayer = dlsym(RTLD_DEFAULT, 'cudssSetCommLayer')
-    if __cudssSetCommLayer == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssSetCommLayer = dlsym(handle, 'cudssSetCommLayer')
+        global __cudssSetStream
+        __cudssSetStream = dlsym(RTLD_DEFAULT, 'cudssSetStream')
+        if __cudssSetStream == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssSetStream = dlsym(handle, 'cudssSetStream')
 
-    global __cudssSetThreadingLayer
-    __cudssSetThreadingLayer = dlsym(RTLD_DEFAULT, 'cudssSetThreadingLayer')
-    if __cudssSetThreadingLayer == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssSetThreadingLayer = dlsym(handle, 'cudssSetThreadingLayer')
+        global __cudssSetCommLayer
+        __cudssSetCommLayer = dlsym(RTLD_DEFAULT, 'cudssSetCommLayer')
+        if __cudssSetCommLayer == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssSetCommLayer = dlsym(handle, 'cudssSetCommLayer')
 
-    global __cudssConfigCreate
-    __cudssConfigCreate = dlsym(RTLD_DEFAULT, 'cudssConfigCreate')
-    if __cudssConfigCreate == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssConfigCreate = dlsym(handle, 'cudssConfigCreate')
+        global __cudssSetThreadingLayer
+        __cudssSetThreadingLayer = dlsym(RTLD_DEFAULT, 'cudssSetThreadingLayer')
+        if __cudssSetThreadingLayer == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssSetThreadingLayer = dlsym(handle, 'cudssSetThreadingLayer')
 
-    global __cudssConfigDestroy
-    __cudssConfigDestroy = dlsym(RTLD_DEFAULT, 'cudssConfigDestroy')
-    if __cudssConfigDestroy == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssConfigDestroy = dlsym(handle, 'cudssConfigDestroy')
+        global __cudssConfigCreate
+        __cudssConfigCreate = dlsym(RTLD_DEFAULT, 'cudssConfigCreate')
+        if __cudssConfigCreate == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssConfigCreate = dlsym(handle, 'cudssConfigCreate')
 
-    global __cudssDataCreate
-    __cudssDataCreate = dlsym(RTLD_DEFAULT, 'cudssDataCreate')
-    if __cudssDataCreate == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssDataCreate = dlsym(handle, 'cudssDataCreate')
+        global __cudssConfigDestroy
+        __cudssConfigDestroy = dlsym(RTLD_DEFAULT, 'cudssConfigDestroy')
+        if __cudssConfigDestroy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssConfigDestroy = dlsym(handle, 'cudssConfigDestroy')
 
-    global __cudssDataDestroy
-    __cudssDataDestroy = dlsym(RTLD_DEFAULT, 'cudssDataDestroy')
-    if __cudssDataDestroy == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssDataDestroy = dlsym(handle, 'cudssDataDestroy')
+        global __cudssDataCreate
+        __cudssDataCreate = dlsym(RTLD_DEFAULT, 'cudssDataCreate')
+        if __cudssDataCreate == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssDataCreate = dlsym(handle, 'cudssDataCreate')
 
-    global __cudssCreate
-    __cudssCreate = dlsym(RTLD_DEFAULT, 'cudssCreate')
-    if __cudssCreate == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssCreate = dlsym(handle, 'cudssCreate')
+        global __cudssDataDestroy
+        __cudssDataDestroy = dlsym(RTLD_DEFAULT, 'cudssDataDestroy')
+        if __cudssDataDestroy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssDataDestroy = dlsym(handle, 'cudssDataDestroy')
 
-    global __cudssDestroy
-    __cudssDestroy = dlsym(RTLD_DEFAULT, 'cudssDestroy')
-    if __cudssDestroy == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssDestroy = dlsym(handle, 'cudssDestroy')
+        global __cudssCreate
+        __cudssCreate = dlsym(RTLD_DEFAULT, 'cudssCreate')
+        if __cudssCreate == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssCreate = dlsym(handle, 'cudssCreate')
 
-    global __cudssGetProperty
-    __cudssGetProperty = dlsym(RTLD_DEFAULT, 'cudssGetProperty')
-    if __cudssGetProperty == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssGetProperty = dlsym(handle, 'cudssGetProperty')
+        global __cudssCreateMg
+        __cudssCreateMg = dlsym(RTLD_DEFAULT, 'cudssCreateMg')
+        if __cudssCreateMg == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssCreateMg = dlsym(handle, 'cudssCreateMg')
 
-    global __cudssMatrixCreateDn
-    __cudssMatrixCreateDn = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateDn')
-    if __cudssMatrixCreateDn == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixCreateDn = dlsym(handle, 'cudssMatrixCreateDn')
+        global __cudssDestroy
+        __cudssDestroy = dlsym(RTLD_DEFAULT, 'cudssDestroy')
+        if __cudssDestroy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssDestroy = dlsym(handle, 'cudssDestroy')
 
-    global __cudssMatrixCreateCsr
-    __cudssMatrixCreateCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateCsr')
-    if __cudssMatrixCreateCsr == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixCreateCsr = dlsym(handle, 'cudssMatrixCreateCsr')
+        global __cudssGetProperty
+        __cudssGetProperty = dlsym(RTLD_DEFAULT, 'cudssGetProperty')
+        if __cudssGetProperty == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssGetProperty = dlsym(handle, 'cudssGetProperty')
 
-    global __cudssMatrixCreateBatchDn
-    __cudssMatrixCreateBatchDn = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateBatchDn')
-    if __cudssMatrixCreateBatchDn == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixCreateBatchDn = dlsym(handle, 'cudssMatrixCreateBatchDn')
+        global __cudssMatrixCreateDn
+        __cudssMatrixCreateDn = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateDn')
+        if __cudssMatrixCreateDn == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixCreateDn = dlsym(handle, 'cudssMatrixCreateDn')
 
-    global __cudssMatrixCreateBatchCsr
-    __cudssMatrixCreateBatchCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateBatchCsr')
-    if __cudssMatrixCreateBatchCsr == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixCreateBatchCsr = dlsym(handle, 'cudssMatrixCreateBatchCsr')
+        global __cudssMatrixCreateCsr
+        __cudssMatrixCreateCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateCsr')
+        if __cudssMatrixCreateCsr == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixCreateCsr = dlsym(handle, 'cudssMatrixCreateCsr')
 
-    global __cudssMatrixDestroy
-    __cudssMatrixDestroy = dlsym(RTLD_DEFAULT, 'cudssMatrixDestroy')
-    if __cudssMatrixDestroy == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixDestroy = dlsym(handle, 'cudssMatrixDestroy')
+        global __cudssMatrixCreateBatchDn
+        __cudssMatrixCreateBatchDn = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateBatchDn')
+        if __cudssMatrixCreateBatchDn == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixCreateBatchDn = dlsym(handle, 'cudssMatrixCreateBatchDn')
 
-    global __cudssMatrixGetDn
-    __cudssMatrixGetDn = dlsym(RTLD_DEFAULT, 'cudssMatrixGetDn')
-    if __cudssMatrixGetDn == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixGetDn = dlsym(handle, 'cudssMatrixGetDn')
+        global __cudssMatrixCreateBatchCsr
+        __cudssMatrixCreateBatchCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixCreateBatchCsr')
+        if __cudssMatrixCreateBatchCsr == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixCreateBatchCsr = dlsym(handle, 'cudssMatrixCreateBatchCsr')
 
-    global __cudssMatrixGetCsr
-    __cudssMatrixGetCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixGetCsr')
-    if __cudssMatrixGetCsr == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixGetCsr = dlsym(handle, 'cudssMatrixGetCsr')
+        global __cudssMatrixDestroy
+        __cudssMatrixDestroy = dlsym(RTLD_DEFAULT, 'cudssMatrixDestroy')
+        if __cudssMatrixDestroy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixDestroy = dlsym(handle, 'cudssMatrixDestroy')
 
-    global __cudssMatrixSetValues
-    __cudssMatrixSetValues = dlsym(RTLD_DEFAULT, 'cudssMatrixSetValues')
-    if __cudssMatrixSetValues == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixSetValues = dlsym(handle, 'cudssMatrixSetValues')
+        global __cudssMatrixGetDn
+        __cudssMatrixGetDn = dlsym(RTLD_DEFAULT, 'cudssMatrixGetDn')
+        if __cudssMatrixGetDn == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixGetDn = dlsym(handle, 'cudssMatrixGetDn')
 
-    global __cudssMatrixSetCsrPointers
-    __cudssMatrixSetCsrPointers = dlsym(RTLD_DEFAULT, 'cudssMatrixSetCsrPointers')
-    if __cudssMatrixSetCsrPointers == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixSetCsrPointers = dlsym(handle, 'cudssMatrixSetCsrPointers')
+        global __cudssMatrixGetCsr
+        __cudssMatrixGetCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixGetCsr')
+        if __cudssMatrixGetCsr == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixGetCsr = dlsym(handle, 'cudssMatrixGetCsr')
 
-    global __cudssMatrixGetBatchDn
-    __cudssMatrixGetBatchDn = dlsym(RTLD_DEFAULT, 'cudssMatrixGetBatchDn')
-    if __cudssMatrixGetBatchDn == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixGetBatchDn = dlsym(handle, 'cudssMatrixGetBatchDn')
+        global __cudssMatrixSetValues
+        __cudssMatrixSetValues = dlsym(RTLD_DEFAULT, 'cudssMatrixSetValues')
+        if __cudssMatrixSetValues == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixSetValues = dlsym(handle, 'cudssMatrixSetValues')
 
-    global __cudssMatrixGetBatchCsr
-    __cudssMatrixGetBatchCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixGetBatchCsr')
-    if __cudssMatrixGetBatchCsr == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixGetBatchCsr = dlsym(handle, 'cudssMatrixGetBatchCsr')
+        global __cudssMatrixSetCsrPointers
+        __cudssMatrixSetCsrPointers = dlsym(RTLD_DEFAULT, 'cudssMatrixSetCsrPointers')
+        if __cudssMatrixSetCsrPointers == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixSetCsrPointers = dlsym(handle, 'cudssMatrixSetCsrPointers')
 
-    global __cudssMatrixSetBatchValues
-    __cudssMatrixSetBatchValues = dlsym(RTLD_DEFAULT, 'cudssMatrixSetBatchValues')
-    if __cudssMatrixSetBatchValues == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixSetBatchValues = dlsym(handle, 'cudssMatrixSetBatchValues')
+        global __cudssMatrixGetBatchDn
+        __cudssMatrixGetBatchDn = dlsym(RTLD_DEFAULT, 'cudssMatrixGetBatchDn')
+        if __cudssMatrixGetBatchDn == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixGetBatchDn = dlsym(handle, 'cudssMatrixGetBatchDn')
 
-    global __cudssMatrixSetBatchCsrPointers
-    __cudssMatrixSetBatchCsrPointers = dlsym(RTLD_DEFAULT, 'cudssMatrixSetBatchCsrPointers')
-    if __cudssMatrixSetBatchCsrPointers == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixSetBatchCsrPointers = dlsym(handle, 'cudssMatrixSetBatchCsrPointers')
+        global __cudssMatrixGetBatchCsr
+        __cudssMatrixGetBatchCsr = dlsym(RTLD_DEFAULT, 'cudssMatrixGetBatchCsr')
+        if __cudssMatrixGetBatchCsr == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixGetBatchCsr = dlsym(handle, 'cudssMatrixGetBatchCsr')
 
-    global __cudssMatrixGetFormat
-    __cudssMatrixGetFormat = dlsym(RTLD_DEFAULT, 'cudssMatrixGetFormat')
-    if __cudssMatrixGetFormat == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssMatrixGetFormat = dlsym(handle, 'cudssMatrixGetFormat')
+        global __cudssMatrixSetBatchValues
+        __cudssMatrixSetBatchValues = dlsym(RTLD_DEFAULT, 'cudssMatrixSetBatchValues')
+        if __cudssMatrixSetBatchValues == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixSetBatchValues = dlsym(handle, 'cudssMatrixSetBatchValues')
 
-    global __cudssGetDeviceMemHandler
-    __cudssGetDeviceMemHandler = dlsym(RTLD_DEFAULT, 'cudssGetDeviceMemHandler')
-    if __cudssGetDeviceMemHandler == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssGetDeviceMemHandler = dlsym(handle, 'cudssGetDeviceMemHandler')
+        global __cudssMatrixSetBatchCsrPointers
+        __cudssMatrixSetBatchCsrPointers = dlsym(RTLD_DEFAULT, 'cudssMatrixSetBatchCsrPointers')
+        if __cudssMatrixSetBatchCsrPointers == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixSetBatchCsrPointers = dlsym(handle, 'cudssMatrixSetBatchCsrPointers')
 
-    global __cudssSetDeviceMemHandler
-    __cudssSetDeviceMemHandler = dlsym(RTLD_DEFAULT, 'cudssSetDeviceMemHandler')
-    if __cudssSetDeviceMemHandler == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cudssSetDeviceMemHandler = dlsym(handle, 'cudssSetDeviceMemHandler')
+        global __cudssMatrixGetFormat
+        __cudssMatrixGetFormat = dlsym(RTLD_DEFAULT, 'cudssMatrixGetFormat')
+        if __cudssMatrixGetFormat == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixGetFormat = dlsym(handle, 'cudssMatrixGetFormat')
 
-    __py_cudss_init = True
-    return 0
+        global __cudssMatrixSetDistributionRow1d
+        __cudssMatrixSetDistributionRow1d = dlsym(RTLD_DEFAULT, 'cudssMatrixSetDistributionRow1d')
+        if __cudssMatrixSetDistributionRow1d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixSetDistributionRow1d = dlsym(handle, 'cudssMatrixSetDistributionRow1d')
+
+        global __cudssMatrixGetDistributionRow1d
+        __cudssMatrixGetDistributionRow1d = dlsym(RTLD_DEFAULT, 'cudssMatrixGetDistributionRow1d')
+        if __cudssMatrixGetDistributionRow1d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssMatrixGetDistributionRow1d = dlsym(handle, 'cudssMatrixGetDistributionRow1d')
+
+        global __cudssGetDeviceMemHandler
+        __cudssGetDeviceMemHandler = dlsym(RTLD_DEFAULT, 'cudssGetDeviceMemHandler')
+        if __cudssGetDeviceMemHandler == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssGetDeviceMemHandler = dlsym(handle, 'cudssGetDeviceMemHandler')
+
+        global __cudssSetDeviceMemHandler
+        __cudssSetDeviceMemHandler = dlsym(RTLD_DEFAULT, 'cudssSetDeviceMemHandler')
+        if __cudssSetDeviceMemHandler == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cudssSetDeviceMemHandler = dlsym(handle, 'cudssSetDeviceMemHandler')
+        __py_cudss_init = True
+        return 0
 
 
 cdef dict func_ptrs = None
@@ -351,6 +401,9 @@ cpdef dict _inspect_function_pointers():
     global __cudssCreate
     data["__cudssCreate"] = <intptr_t>__cudssCreate
 
+    global __cudssCreateMg
+    data["__cudssCreateMg"] = <intptr_t>__cudssCreateMg
+
     global __cudssDestroy
     data["__cudssDestroy"] = <intptr_t>__cudssDestroy
 
@@ -398,6 +451,12 @@ cpdef dict _inspect_function_pointers():
 
     global __cudssMatrixGetFormat
     data["__cudssMatrixGetFormat"] = <intptr_t>__cudssMatrixGetFormat
+
+    global __cudssMatrixSetDistributionRow1d
+    data["__cudssMatrixSetDistributionRow1d"] = <intptr_t>__cudssMatrixSetDistributionRow1d
+
+    global __cudssMatrixGetDistributionRow1d
+    data["__cudssMatrixGetDistributionRow1d"] = <intptr_t>__cudssMatrixGetDistributionRow1d
 
     global __cudssGetDeviceMemHandler
     data["__cudssGetDeviceMemHandler"] = <intptr_t>__cudssGetDeviceMemHandler
@@ -460,13 +519,13 @@ cdef cudssStatus_t _cudssDataGet(cudssHandle_t handle, cudssData_t data, cudssDa
         handle, data, param, value, sizeInBytes, sizeWritten)
 
 
-cdef cudssStatus_t _cudssExecute(cudssHandle_t handle, cudssPhase_t phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+cdef cudssStatus_t _cudssExecute(cudssHandle_t handle, int phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cudssExecute
     _check_or_init_cudss()
     if __cudssExecute == NULL:
         with gil:
             raise FunctionNotFoundError("function cudssExecute is not found")
-    return (<cudssStatus_t (*)(cudssHandle_t, cudssPhase_t, cudssConfig_t, cudssData_t, cudssMatrix_t, cudssMatrix_t, cudssMatrix_t) noexcept nogil>__cudssExecute)(
+    return (<cudssStatus_t (*)(cudssHandle_t, int, cudssConfig_t, cudssData_t, cudssMatrix_t, cudssMatrix_t, cudssMatrix_t) noexcept nogil>__cudssExecute)(
         handle, phase, solverConfig, solverData, inputMatrix, solution, rhs)
 
 
@@ -548,6 +607,16 @@ cdef cudssStatus_t _cudssCreate(cudssHandle_t* handle) except?_CUDSSSTATUS_T_INT
             raise FunctionNotFoundError("function cudssCreate is not found")
     return (<cudssStatus_t (*)(cudssHandle_t*) noexcept nogil>__cudssCreate)(
         handle)
+
+
+cdef cudssStatus_t _cudssCreateMg(cudssHandle_t* handle_pt, int device_count, int* device_indices) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cudssCreateMg
+    _check_or_init_cudss()
+    if __cudssCreateMg == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cudssCreateMg is not found")
+    return (<cudssStatus_t (*)(cudssHandle_t*, int, int*) noexcept nogil>__cudssCreateMg)(
+        handle_pt, device_count, device_indices)
 
 
 cdef cudssStatus_t _cudssDestroy(cudssHandle_t handle) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -708,6 +777,26 @@ cdef cudssStatus_t _cudssMatrixGetFormat(cudssMatrix_t matrix, int* format) exce
             raise FunctionNotFoundError("function cudssMatrixGetFormat is not found")
     return (<cudssStatus_t (*)(cudssMatrix_t, int*) noexcept nogil>__cudssMatrixGetFormat)(
         matrix, format)
+
+
+cdef cudssStatus_t _cudssMatrixSetDistributionRow1d(cudssMatrix_t matrix, int64_t first_row, int64_t last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cudssMatrixSetDistributionRow1d
+    _check_or_init_cudss()
+    if __cudssMatrixSetDistributionRow1d == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cudssMatrixSetDistributionRow1d is not found")
+    return (<cudssStatus_t (*)(cudssMatrix_t, int64_t, int64_t) noexcept nogil>__cudssMatrixSetDistributionRow1d)(
+        matrix, first_row, last_row)
+
+
+cdef cudssStatus_t _cudssMatrixGetDistributionRow1d(cudssMatrix_t matrix, int64_t* first_row, int64_t* last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cudssMatrixGetDistributionRow1d
+    _check_or_init_cudss()
+    if __cudssMatrixGetDistributionRow1d == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cudssMatrixGetDistributionRow1d is not found")
+    return (<cudssStatus_t (*)(cudssMatrix_t, int64_t*, int64_t*) noexcept nogil>__cudssMatrixGetDistributionRow1d)(
+        matrix, first_row, last_row)
 
 
 cdef cudssStatus_t _cudssGetDeviceMemHandler(cudssHandle_t handle, cudssDeviceMemHandler_t* handler) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:

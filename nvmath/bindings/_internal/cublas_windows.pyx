@@ -8,20 +8,76 @@ from libc.stdint cimport intptr_t, uintptr_t
 
 import os
 import site
-
-import win32api
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
 
+from libc.stddef cimport wchar_t
+from libc.stdint cimport uintptr_t
+from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
+
+from .utils import NotSupportedError
+
+cdef extern from "windows.h" nogil:
+    ctypedef void* HMODULE
+    ctypedef void* HANDLE
+    ctypedef void* FARPROC
+    ctypedef unsigned long DWORD
+    ctypedef const wchar_t *LPCWSTR
+    ctypedef const char *LPCSTR
+
+    cdef DWORD LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+    cdef DWORD LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+    cdef DWORD LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+
+    HMODULE _LoadLibraryExW "LoadLibraryExW"(
+        LPCWSTR lpLibFileName,
+        HANDLE hFile,
+        DWORD dwFlags
+    )
+
+    FARPROC _GetProcAddress "GetProcAddress"(HMODULE hModule, LPCSTR lpProcName)
+
+cdef inline uintptr_t LoadLibraryExW(str path, HANDLE hFile, DWORD dwFlags):
+    cdef uintptr_t result
+    cdef wchar_t* wpath = PyUnicode_AsWideCharString(path, NULL)
+    with nogil:
+        result = <uintptr_t>_LoadLibraryExW(
+            wpath,
+            hFile,
+            dwFlags
+        )
+    PyMem_Free(wpath)
+    return result
+
+cdef inline void *GetProcAddress(uintptr_t hModule, const char* lpProcName) nogil:
+    return _GetProcAddress(<HMODULE>hModule, lpProcName)
+
+cdef int get_cuda_version():
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = LoadLibraryExW("nvcuda.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)
+    if handle == 0:
+        raise NotSupportedError('CUDA driver is not found')
+    cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('something went wrong')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError('something went wrong')
+
+    return driver_ver
+
+
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
-LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cublas_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cublasCreate_v2 = NULL
 cdef void* __cublasDestroy_v2 = NULL
@@ -544,3064 +600,1533 @@ cdef int _check_or_init_cublas() except -1 nogil:
     if __py_cublas_init:
         return 0
 
-    cdef int err, driver_ver
-    with gil:
-        # Load driver to check version
-        try:
-            handle = win32api.LoadLibraryEx("nvcuda.dll", 0, LOAD_LIBRARY_SEARCH_SYSTEM32)
-        except Exception as e:
-            raise NotSupportedError(f'CUDA driver is not found ({e})')
-        global __cuDriverGetVersion
-        if __cuDriverGetVersion == NULL:
-            __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
-            if __cuDriverGetVersion == NULL:
-                raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-        if err != 0:
-            raise RuntimeError('something went wrong')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
         # Load library
         handle = <intptr_t>load_library(driver_ver)
 
         # Load function
         global __cublasCreate_v2
-        try:
-            __cublasCreate_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCreate_v2')
-        except:
-            pass
+        __cublasCreate_v2 = GetProcAddress(handle, 'cublasCreate_v2')
 
         global __cublasDestroy_v2
-        try:
-            __cublasDestroy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDestroy_v2')
-        except:
-            pass
+        __cublasDestroy_v2 = GetProcAddress(handle, 'cublasDestroy_v2')
 
         global __cublasGetVersion_v2
-        try:
-            __cublasGetVersion_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetVersion_v2')
-        except:
-            pass
+        __cublasGetVersion_v2 = GetProcAddress(handle, 'cublasGetVersion_v2')
 
         global __cublasGetProperty
-        try:
-            __cublasGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetProperty')
-        except:
-            pass
+        __cublasGetProperty = GetProcAddress(handle, 'cublasGetProperty')
 
         global __cublasGetCudartVersion
-        try:
-            __cublasGetCudartVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetCudartVersion')
-        except:
-            pass
+        __cublasGetCudartVersion = GetProcAddress(handle, 'cublasGetCudartVersion')
 
         global __cublasSetWorkspace_v2
-        try:
-            __cublasSetWorkspace_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetWorkspace_v2')
-        except:
-            pass
+        __cublasSetWorkspace_v2 = GetProcAddress(handle, 'cublasSetWorkspace_v2')
 
         global __cublasSetStream_v2
-        try:
-            __cublasSetStream_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetStream_v2')
-        except:
-            pass
+        __cublasSetStream_v2 = GetProcAddress(handle, 'cublasSetStream_v2')
 
         global __cublasGetStream_v2
-        try:
-            __cublasGetStream_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetStream_v2')
-        except:
-            pass
+        __cublasGetStream_v2 = GetProcAddress(handle, 'cublasGetStream_v2')
 
         global __cublasGetPointerMode_v2
-        try:
-            __cublasGetPointerMode_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetPointerMode_v2')
-        except:
-            pass
+        __cublasGetPointerMode_v2 = GetProcAddress(handle, 'cublasGetPointerMode_v2')
 
         global __cublasSetPointerMode_v2
-        try:
-            __cublasSetPointerMode_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetPointerMode_v2')
-        except:
-            pass
+        __cublasSetPointerMode_v2 = GetProcAddress(handle, 'cublasSetPointerMode_v2')
 
         global __cublasGetAtomicsMode
-        try:
-            __cublasGetAtomicsMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetAtomicsMode')
-        except:
-            pass
+        __cublasGetAtomicsMode = GetProcAddress(handle, 'cublasGetAtomicsMode')
 
         global __cublasSetAtomicsMode
-        try:
-            __cublasSetAtomicsMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetAtomicsMode')
-        except:
-            pass
+        __cublasSetAtomicsMode = GetProcAddress(handle, 'cublasSetAtomicsMode')
 
         global __cublasGetMathMode
-        try:
-            __cublasGetMathMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetMathMode')
-        except:
-            pass
+        __cublasGetMathMode = GetProcAddress(handle, 'cublasGetMathMode')
 
         global __cublasSetMathMode
-        try:
-            __cublasSetMathMode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetMathMode')
-        except:
-            pass
+        __cublasSetMathMode = GetProcAddress(handle, 'cublasSetMathMode')
 
         global __cublasLoggerConfigure
-        try:
-            __cublasLoggerConfigure = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLoggerConfigure')
-        except:
-            pass
+        __cublasLoggerConfigure = GetProcAddress(handle, 'cublasLoggerConfigure')
 
         global __cublasSetLoggerCallback
-        try:
-            __cublasSetLoggerCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetLoggerCallback')
-        except:
-            pass
+        __cublasSetLoggerCallback = GetProcAddress(handle, 'cublasSetLoggerCallback')
 
         global __cublasGetLoggerCallback
-        try:
-            __cublasGetLoggerCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetLoggerCallback')
-        except:
-            pass
+        __cublasGetLoggerCallback = GetProcAddress(handle, 'cublasGetLoggerCallback')
 
         global __cublasSetVector
-        try:
-            __cublasSetVector = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetVector')
-        except:
-            pass
+        __cublasSetVector = GetProcAddress(handle, 'cublasSetVector')
 
         global __cublasGetVector
-        try:
-            __cublasGetVector = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetVector')
-        except:
-            pass
+        __cublasGetVector = GetProcAddress(handle, 'cublasGetVector')
 
         global __cublasSetMatrix
-        try:
-            __cublasSetMatrix = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetMatrix')
-        except:
-            pass
+        __cublasSetMatrix = GetProcAddress(handle, 'cublasSetMatrix')
 
         global __cublasGetMatrix
-        try:
-            __cublasGetMatrix = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetMatrix')
-        except:
-            pass
+        __cublasGetMatrix = GetProcAddress(handle, 'cublasGetMatrix')
 
         global __cublasSetVectorAsync
-        try:
-            __cublasSetVectorAsync = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetVectorAsync')
-        except:
-            pass
+        __cublasSetVectorAsync = GetProcAddress(handle, 'cublasSetVectorAsync')
 
         global __cublasGetVectorAsync
-        try:
-            __cublasGetVectorAsync = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetVectorAsync')
-        except:
-            pass
+        __cublasGetVectorAsync = GetProcAddress(handle, 'cublasGetVectorAsync')
 
         global __cublasSetMatrixAsync
-        try:
-            __cublasSetMatrixAsync = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetMatrixAsync')
-        except:
-            pass
+        __cublasSetMatrixAsync = GetProcAddress(handle, 'cublasSetMatrixAsync')
 
         global __cublasGetMatrixAsync
-        try:
-            __cublasGetMatrixAsync = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetMatrixAsync')
-        except:
-            pass
+        __cublasGetMatrixAsync = GetProcAddress(handle, 'cublasGetMatrixAsync')
 
         global __cublasNrm2Ex
-        try:
-            __cublasNrm2Ex = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasNrm2Ex')
-        except:
-            pass
+        __cublasNrm2Ex = GetProcAddress(handle, 'cublasNrm2Ex')
 
         global __cublasSnrm2_v2
-        try:
-            __cublasSnrm2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSnrm2_v2')
-        except:
-            pass
+        __cublasSnrm2_v2 = GetProcAddress(handle, 'cublasSnrm2_v2')
 
         global __cublasDnrm2_v2
-        try:
-            __cublasDnrm2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDnrm2_v2')
-        except:
-            pass
+        __cublasDnrm2_v2 = GetProcAddress(handle, 'cublasDnrm2_v2')
 
         global __cublasScnrm2_v2
-        try:
-            __cublasScnrm2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScnrm2_v2')
-        except:
-            pass
+        __cublasScnrm2_v2 = GetProcAddress(handle, 'cublasScnrm2_v2')
 
         global __cublasDznrm2_v2
-        try:
-            __cublasDznrm2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDznrm2_v2')
-        except:
-            pass
+        __cublasDznrm2_v2 = GetProcAddress(handle, 'cublasDznrm2_v2')
 
         global __cublasDotEx
-        try:
-            __cublasDotEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDotEx')
-        except:
-            pass
+        __cublasDotEx = GetProcAddress(handle, 'cublasDotEx')
 
         global __cublasDotcEx
-        try:
-            __cublasDotcEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDotcEx')
-        except:
-            pass
+        __cublasDotcEx = GetProcAddress(handle, 'cublasDotcEx')
 
         global __cublasSdot_v2
-        try:
-            __cublasSdot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSdot_v2')
-        except:
-            pass
+        __cublasSdot_v2 = GetProcAddress(handle, 'cublasSdot_v2')
 
         global __cublasDdot_v2
-        try:
-            __cublasDdot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDdot_v2')
-        except:
-            pass
+        __cublasDdot_v2 = GetProcAddress(handle, 'cublasDdot_v2')
 
         global __cublasCdotu_v2
-        try:
-            __cublasCdotu_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCdotu_v2')
-        except:
-            pass
+        __cublasCdotu_v2 = GetProcAddress(handle, 'cublasCdotu_v2')
 
         global __cublasCdotc_v2
-        try:
-            __cublasCdotc_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCdotc_v2')
-        except:
-            pass
+        __cublasCdotc_v2 = GetProcAddress(handle, 'cublasCdotc_v2')
 
         global __cublasZdotu_v2
-        try:
-            __cublasZdotu_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdotu_v2')
-        except:
-            pass
+        __cublasZdotu_v2 = GetProcAddress(handle, 'cublasZdotu_v2')
 
         global __cublasZdotc_v2
-        try:
-            __cublasZdotc_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdotc_v2')
-        except:
-            pass
+        __cublasZdotc_v2 = GetProcAddress(handle, 'cublasZdotc_v2')
 
         global __cublasScalEx
-        try:
-            __cublasScalEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScalEx')
-        except:
-            pass
+        __cublasScalEx = GetProcAddress(handle, 'cublasScalEx')
 
         global __cublasSscal_v2
-        try:
-            __cublasSscal_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSscal_v2')
-        except:
-            pass
+        __cublasSscal_v2 = GetProcAddress(handle, 'cublasSscal_v2')
 
         global __cublasDscal_v2
-        try:
-            __cublasDscal_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDscal_v2')
-        except:
-            pass
+        __cublasDscal_v2 = GetProcAddress(handle, 'cublasDscal_v2')
 
         global __cublasCscal_v2
-        try:
-            __cublasCscal_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCscal_v2')
-        except:
-            pass
+        __cublasCscal_v2 = GetProcAddress(handle, 'cublasCscal_v2')
 
         global __cublasCsscal_v2
-        try:
-            __cublasCsscal_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsscal_v2')
-        except:
-            pass
+        __cublasCsscal_v2 = GetProcAddress(handle, 'cublasCsscal_v2')
 
         global __cublasZscal_v2
-        try:
-            __cublasZscal_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZscal_v2')
-        except:
-            pass
+        __cublasZscal_v2 = GetProcAddress(handle, 'cublasZscal_v2')
 
         global __cublasZdscal_v2
-        try:
-            __cublasZdscal_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdscal_v2')
-        except:
-            pass
+        __cublasZdscal_v2 = GetProcAddress(handle, 'cublasZdscal_v2')
 
         global __cublasAxpyEx
-        try:
-            __cublasAxpyEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasAxpyEx')
-        except:
-            pass
+        __cublasAxpyEx = GetProcAddress(handle, 'cublasAxpyEx')
 
         global __cublasSaxpy_v2
-        try:
-            __cublasSaxpy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSaxpy_v2')
-        except:
-            pass
+        __cublasSaxpy_v2 = GetProcAddress(handle, 'cublasSaxpy_v2')
 
         global __cublasDaxpy_v2
-        try:
-            __cublasDaxpy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDaxpy_v2')
-        except:
-            pass
+        __cublasDaxpy_v2 = GetProcAddress(handle, 'cublasDaxpy_v2')
 
         global __cublasCaxpy_v2
-        try:
-            __cublasCaxpy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCaxpy_v2')
-        except:
-            pass
+        __cublasCaxpy_v2 = GetProcAddress(handle, 'cublasCaxpy_v2')
 
         global __cublasZaxpy_v2
-        try:
-            __cublasZaxpy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZaxpy_v2')
-        except:
-            pass
+        __cublasZaxpy_v2 = GetProcAddress(handle, 'cublasZaxpy_v2')
 
         global __cublasCopyEx
-        try:
-            __cublasCopyEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCopyEx')
-        except:
-            pass
+        __cublasCopyEx = GetProcAddress(handle, 'cublasCopyEx')
 
         global __cublasScopy_v2
-        try:
-            __cublasScopy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScopy_v2')
-        except:
-            pass
+        __cublasScopy_v2 = GetProcAddress(handle, 'cublasScopy_v2')
 
         global __cublasDcopy_v2
-        try:
-            __cublasDcopy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDcopy_v2')
-        except:
-            pass
+        __cublasDcopy_v2 = GetProcAddress(handle, 'cublasDcopy_v2')
 
         global __cublasCcopy_v2
-        try:
-            __cublasCcopy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCcopy_v2')
-        except:
-            pass
+        __cublasCcopy_v2 = GetProcAddress(handle, 'cublasCcopy_v2')
 
         global __cublasZcopy_v2
-        try:
-            __cublasZcopy_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZcopy_v2')
-        except:
-            pass
+        __cublasZcopy_v2 = GetProcAddress(handle, 'cublasZcopy_v2')
 
         global __cublasSswap_v2
-        try:
-            __cublasSswap_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSswap_v2')
-        except:
-            pass
+        __cublasSswap_v2 = GetProcAddress(handle, 'cublasSswap_v2')
 
         global __cublasDswap_v2
-        try:
-            __cublasDswap_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDswap_v2')
-        except:
-            pass
+        __cublasDswap_v2 = GetProcAddress(handle, 'cublasDswap_v2')
 
         global __cublasCswap_v2
-        try:
-            __cublasCswap_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCswap_v2')
-        except:
-            pass
+        __cublasCswap_v2 = GetProcAddress(handle, 'cublasCswap_v2')
 
         global __cublasZswap_v2
-        try:
-            __cublasZswap_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZswap_v2')
-        except:
-            pass
+        __cublasZswap_v2 = GetProcAddress(handle, 'cublasZswap_v2')
 
         global __cublasSwapEx
-        try:
-            __cublasSwapEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSwapEx')
-        except:
-            pass
+        __cublasSwapEx = GetProcAddress(handle, 'cublasSwapEx')
 
         global __cublasIsamax_v2
-        try:
-            __cublasIsamax_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIsamax_v2')
-        except:
-            pass
+        __cublasIsamax_v2 = GetProcAddress(handle, 'cublasIsamax_v2')
 
         global __cublasIdamax_v2
-        try:
-            __cublasIdamax_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIdamax_v2')
-        except:
-            pass
+        __cublasIdamax_v2 = GetProcAddress(handle, 'cublasIdamax_v2')
 
         global __cublasIcamax_v2
-        try:
-            __cublasIcamax_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIcamax_v2')
-        except:
-            pass
+        __cublasIcamax_v2 = GetProcAddress(handle, 'cublasIcamax_v2')
 
         global __cublasIzamax_v2
-        try:
-            __cublasIzamax_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIzamax_v2')
-        except:
-            pass
+        __cublasIzamax_v2 = GetProcAddress(handle, 'cublasIzamax_v2')
 
         global __cublasIamaxEx
-        try:
-            __cublasIamaxEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIamaxEx')
-        except:
-            pass
+        __cublasIamaxEx = GetProcAddress(handle, 'cublasIamaxEx')
 
         global __cublasIsamin_v2
-        try:
-            __cublasIsamin_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIsamin_v2')
-        except:
-            pass
+        __cublasIsamin_v2 = GetProcAddress(handle, 'cublasIsamin_v2')
 
         global __cublasIdamin_v2
-        try:
-            __cublasIdamin_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIdamin_v2')
-        except:
-            pass
+        __cublasIdamin_v2 = GetProcAddress(handle, 'cublasIdamin_v2')
 
         global __cublasIcamin_v2
-        try:
-            __cublasIcamin_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIcamin_v2')
-        except:
-            pass
+        __cublasIcamin_v2 = GetProcAddress(handle, 'cublasIcamin_v2')
 
         global __cublasIzamin_v2
-        try:
-            __cublasIzamin_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIzamin_v2')
-        except:
-            pass
+        __cublasIzamin_v2 = GetProcAddress(handle, 'cublasIzamin_v2')
 
         global __cublasIaminEx
-        try:
-            __cublasIaminEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIaminEx')
-        except:
-            pass
+        __cublasIaminEx = GetProcAddress(handle, 'cublasIaminEx')
 
         global __cublasAsumEx
-        try:
-            __cublasAsumEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasAsumEx')
-        except:
-            pass
+        __cublasAsumEx = GetProcAddress(handle, 'cublasAsumEx')
 
         global __cublasSasum_v2
-        try:
-            __cublasSasum_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSasum_v2')
-        except:
-            pass
+        __cublasSasum_v2 = GetProcAddress(handle, 'cublasSasum_v2')
 
         global __cublasDasum_v2
-        try:
-            __cublasDasum_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDasum_v2')
-        except:
-            pass
+        __cublasDasum_v2 = GetProcAddress(handle, 'cublasDasum_v2')
 
         global __cublasScasum_v2
-        try:
-            __cublasScasum_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScasum_v2')
-        except:
-            pass
+        __cublasScasum_v2 = GetProcAddress(handle, 'cublasScasum_v2')
 
         global __cublasDzasum_v2
-        try:
-            __cublasDzasum_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDzasum_v2')
-        except:
-            pass
+        __cublasDzasum_v2 = GetProcAddress(handle, 'cublasDzasum_v2')
 
         global __cublasSrot_v2
-        try:
-            __cublasSrot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSrot_v2')
-        except:
-            pass
+        __cublasSrot_v2 = GetProcAddress(handle, 'cublasSrot_v2')
 
         global __cublasDrot_v2
-        try:
-            __cublasDrot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDrot_v2')
-        except:
-            pass
+        __cublasDrot_v2 = GetProcAddress(handle, 'cublasDrot_v2')
 
         global __cublasCrot_v2
-        try:
-            __cublasCrot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCrot_v2')
-        except:
-            pass
+        __cublasCrot_v2 = GetProcAddress(handle, 'cublasCrot_v2')
 
         global __cublasCsrot_v2
-        try:
-            __cublasCsrot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsrot_v2')
-        except:
-            pass
+        __cublasCsrot_v2 = GetProcAddress(handle, 'cublasCsrot_v2')
 
         global __cublasZrot_v2
-        try:
-            __cublasZrot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZrot_v2')
-        except:
-            pass
+        __cublasZrot_v2 = GetProcAddress(handle, 'cublasZrot_v2')
 
         global __cublasZdrot_v2
-        try:
-            __cublasZdrot_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdrot_v2')
-        except:
-            pass
+        __cublasZdrot_v2 = GetProcAddress(handle, 'cublasZdrot_v2')
 
         global __cublasRotEx
-        try:
-            __cublasRotEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasRotEx')
-        except:
-            pass
+        __cublasRotEx = GetProcAddress(handle, 'cublasRotEx')
 
         global __cublasSrotg_v2
-        try:
-            __cublasSrotg_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSrotg_v2')
-        except:
-            pass
+        __cublasSrotg_v2 = GetProcAddress(handle, 'cublasSrotg_v2')
 
         global __cublasDrotg_v2
-        try:
-            __cublasDrotg_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDrotg_v2')
-        except:
-            pass
+        __cublasDrotg_v2 = GetProcAddress(handle, 'cublasDrotg_v2')
 
         global __cublasCrotg_v2
-        try:
-            __cublasCrotg_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCrotg_v2')
-        except:
-            pass
+        __cublasCrotg_v2 = GetProcAddress(handle, 'cublasCrotg_v2')
 
         global __cublasZrotg_v2
-        try:
-            __cublasZrotg_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZrotg_v2')
-        except:
-            pass
+        __cublasZrotg_v2 = GetProcAddress(handle, 'cublasZrotg_v2')
 
         global __cublasRotgEx
-        try:
-            __cublasRotgEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasRotgEx')
-        except:
-            pass
+        __cublasRotgEx = GetProcAddress(handle, 'cublasRotgEx')
 
         global __cublasSrotm_v2
-        try:
-            __cublasSrotm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSrotm_v2')
-        except:
-            pass
+        __cublasSrotm_v2 = GetProcAddress(handle, 'cublasSrotm_v2')
 
         global __cublasDrotm_v2
-        try:
-            __cublasDrotm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDrotm_v2')
-        except:
-            pass
+        __cublasDrotm_v2 = GetProcAddress(handle, 'cublasDrotm_v2')
 
         global __cublasRotmEx
-        try:
-            __cublasRotmEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasRotmEx')
-        except:
-            pass
+        __cublasRotmEx = GetProcAddress(handle, 'cublasRotmEx')
 
         global __cublasSrotmg_v2
-        try:
-            __cublasSrotmg_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSrotmg_v2')
-        except:
-            pass
+        __cublasSrotmg_v2 = GetProcAddress(handle, 'cublasSrotmg_v2')
 
         global __cublasDrotmg_v2
-        try:
-            __cublasDrotmg_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDrotmg_v2')
-        except:
-            pass
+        __cublasDrotmg_v2 = GetProcAddress(handle, 'cublasDrotmg_v2')
 
         global __cublasRotmgEx
-        try:
-            __cublasRotmgEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasRotmgEx')
-        except:
-            pass
+        __cublasRotmgEx = GetProcAddress(handle, 'cublasRotmgEx')
 
         global __cublasSgemv_v2
-        try:
-            __cublasSgemv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemv_v2')
-        except:
-            pass
+        __cublasSgemv_v2 = GetProcAddress(handle, 'cublasSgemv_v2')
 
         global __cublasDgemv_v2
-        try:
-            __cublasDgemv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemv_v2')
-        except:
-            pass
+        __cublasDgemv_v2 = GetProcAddress(handle, 'cublasDgemv_v2')
 
         global __cublasCgemv_v2
-        try:
-            __cublasCgemv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemv_v2')
-        except:
-            pass
+        __cublasCgemv_v2 = GetProcAddress(handle, 'cublasCgemv_v2')
 
         global __cublasZgemv_v2
-        try:
-            __cublasZgemv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemv_v2')
-        except:
-            pass
+        __cublasZgemv_v2 = GetProcAddress(handle, 'cublasZgemv_v2')
 
         global __cublasSgbmv_v2
-        try:
-            __cublasSgbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgbmv_v2')
-        except:
-            pass
+        __cublasSgbmv_v2 = GetProcAddress(handle, 'cublasSgbmv_v2')
 
         global __cublasDgbmv_v2
-        try:
-            __cublasDgbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgbmv_v2')
-        except:
-            pass
+        __cublasDgbmv_v2 = GetProcAddress(handle, 'cublasDgbmv_v2')
 
         global __cublasCgbmv_v2
-        try:
-            __cublasCgbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgbmv_v2')
-        except:
-            pass
+        __cublasCgbmv_v2 = GetProcAddress(handle, 'cublasCgbmv_v2')
 
         global __cublasZgbmv_v2
-        try:
-            __cublasZgbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgbmv_v2')
-        except:
-            pass
+        __cublasZgbmv_v2 = GetProcAddress(handle, 'cublasZgbmv_v2')
 
         global __cublasStrmv_v2
-        try:
-            __cublasStrmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrmv_v2')
-        except:
-            pass
+        __cublasStrmv_v2 = GetProcAddress(handle, 'cublasStrmv_v2')
 
         global __cublasDtrmv_v2
-        try:
-            __cublasDtrmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrmv_v2')
-        except:
-            pass
+        __cublasDtrmv_v2 = GetProcAddress(handle, 'cublasDtrmv_v2')
 
         global __cublasCtrmv_v2
-        try:
-            __cublasCtrmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrmv_v2')
-        except:
-            pass
+        __cublasCtrmv_v2 = GetProcAddress(handle, 'cublasCtrmv_v2')
 
         global __cublasZtrmv_v2
-        try:
-            __cublasZtrmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrmv_v2')
-        except:
-            pass
+        __cublasZtrmv_v2 = GetProcAddress(handle, 'cublasZtrmv_v2')
 
         global __cublasStbmv_v2
-        try:
-            __cublasStbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStbmv_v2')
-        except:
-            pass
+        __cublasStbmv_v2 = GetProcAddress(handle, 'cublasStbmv_v2')
 
         global __cublasDtbmv_v2
-        try:
-            __cublasDtbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtbmv_v2')
-        except:
-            pass
+        __cublasDtbmv_v2 = GetProcAddress(handle, 'cublasDtbmv_v2')
 
         global __cublasCtbmv_v2
-        try:
-            __cublasCtbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtbmv_v2')
-        except:
-            pass
+        __cublasCtbmv_v2 = GetProcAddress(handle, 'cublasCtbmv_v2')
 
         global __cublasZtbmv_v2
-        try:
-            __cublasZtbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtbmv_v2')
-        except:
-            pass
+        __cublasZtbmv_v2 = GetProcAddress(handle, 'cublasZtbmv_v2')
 
         global __cublasStpmv_v2
-        try:
-            __cublasStpmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStpmv_v2')
-        except:
-            pass
+        __cublasStpmv_v2 = GetProcAddress(handle, 'cublasStpmv_v2')
 
         global __cublasDtpmv_v2
-        try:
-            __cublasDtpmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtpmv_v2')
-        except:
-            pass
+        __cublasDtpmv_v2 = GetProcAddress(handle, 'cublasDtpmv_v2')
 
         global __cublasCtpmv_v2
-        try:
-            __cublasCtpmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtpmv_v2')
-        except:
-            pass
+        __cublasCtpmv_v2 = GetProcAddress(handle, 'cublasCtpmv_v2')
 
         global __cublasZtpmv_v2
-        try:
-            __cublasZtpmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtpmv_v2')
-        except:
-            pass
+        __cublasZtpmv_v2 = GetProcAddress(handle, 'cublasZtpmv_v2')
 
         global __cublasStrsv_v2
-        try:
-            __cublasStrsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrsv_v2')
-        except:
-            pass
+        __cublasStrsv_v2 = GetProcAddress(handle, 'cublasStrsv_v2')
 
         global __cublasDtrsv_v2
-        try:
-            __cublasDtrsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrsv_v2')
-        except:
-            pass
+        __cublasDtrsv_v2 = GetProcAddress(handle, 'cublasDtrsv_v2')
 
         global __cublasCtrsv_v2
-        try:
-            __cublasCtrsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrsv_v2')
-        except:
-            pass
+        __cublasCtrsv_v2 = GetProcAddress(handle, 'cublasCtrsv_v2')
 
         global __cublasZtrsv_v2
-        try:
-            __cublasZtrsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrsv_v2')
-        except:
-            pass
+        __cublasZtrsv_v2 = GetProcAddress(handle, 'cublasZtrsv_v2')
 
         global __cublasStpsv_v2
-        try:
-            __cublasStpsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStpsv_v2')
-        except:
-            pass
+        __cublasStpsv_v2 = GetProcAddress(handle, 'cublasStpsv_v2')
 
         global __cublasDtpsv_v2
-        try:
-            __cublasDtpsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtpsv_v2')
-        except:
-            pass
+        __cublasDtpsv_v2 = GetProcAddress(handle, 'cublasDtpsv_v2')
 
         global __cublasCtpsv_v2
-        try:
-            __cublasCtpsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtpsv_v2')
-        except:
-            pass
+        __cublasCtpsv_v2 = GetProcAddress(handle, 'cublasCtpsv_v2')
 
         global __cublasZtpsv_v2
-        try:
-            __cublasZtpsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtpsv_v2')
-        except:
-            pass
+        __cublasZtpsv_v2 = GetProcAddress(handle, 'cublasZtpsv_v2')
 
         global __cublasStbsv_v2
-        try:
-            __cublasStbsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStbsv_v2')
-        except:
-            pass
+        __cublasStbsv_v2 = GetProcAddress(handle, 'cublasStbsv_v2')
 
         global __cublasDtbsv_v2
-        try:
-            __cublasDtbsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtbsv_v2')
-        except:
-            pass
+        __cublasDtbsv_v2 = GetProcAddress(handle, 'cublasDtbsv_v2')
 
         global __cublasCtbsv_v2
-        try:
-            __cublasCtbsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtbsv_v2')
-        except:
-            pass
+        __cublasCtbsv_v2 = GetProcAddress(handle, 'cublasCtbsv_v2')
 
         global __cublasZtbsv_v2
-        try:
-            __cublasZtbsv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtbsv_v2')
-        except:
-            pass
+        __cublasZtbsv_v2 = GetProcAddress(handle, 'cublasZtbsv_v2')
 
         global __cublasSsymv_v2
-        try:
-            __cublasSsymv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsymv_v2')
-        except:
-            pass
+        __cublasSsymv_v2 = GetProcAddress(handle, 'cublasSsymv_v2')
 
         global __cublasDsymv_v2
-        try:
-            __cublasDsymv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsymv_v2')
-        except:
-            pass
+        __cublasDsymv_v2 = GetProcAddress(handle, 'cublasDsymv_v2')
 
         global __cublasCsymv_v2
-        try:
-            __cublasCsymv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsymv_v2')
-        except:
-            pass
+        __cublasCsymv_v2 = GetProcAddress(handle, 'cublasCsymv_v2')
 
         global __cublasZsymv_v2
-        try:
-            __cublasZsymv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsymv_v2')
-        except:
-            pass
+        __cublasZsymv_v2 = GetProcAddress(handle, 'cublasZsymv_v2')
 
         global __cublasChemv_v2
-        try:
-            __cublasChemv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChemv_v2')
-        except:
-            pass
+        __cublasChemv_v2 = GetProcAddress(handle, 'cublasChemv_v2')
 
         global __cublasZhemv_v2
-        try:
-            __cublasZhemv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhemv_v2')
-        except:
-            pass
+        __cublasZhemv_v2 = GetProcAddress(handle, 'cublasZhemv_v2')
 
         global __cublasSsbmv_v2
-        try:
-            __cublasSsbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsbmv_v2')
-        except:
-            pass
+        __cublasSsbmv_v2 = GetProcAddress(handle, 'cublasSsbmv_v2')
 
         global __cublasDsbmv_v2
-        try:
-            __cublasDsbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsbmv_v2')
-        except:
-            pass
+        __cublasDsbmv_v2 = GetProcAddress(handle, 'cublasDsbmv_v2')
 
         global __cublasChbmv_v2
-        try:
-            __cublasChbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChbmv_v2')
-        except:
-            pass
+        __cublasChbmv_v2 = GetProcAddress(handle, 'cublasChbmv_v2')
 
         global __cublasZhbmv_v2
-        try:
-            __cublasZhbmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhbmv_v2')
-        except:
-            pass
+        __cublasZhbmv_v2 = GetProcAddress(handle, 'cublasZhbmv_v2')
 
         global __cublasSspmv_v2
-        try:
-            __cublasSspmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSspmv_v2')
-        except:
-            pass
+        __cublasSspmv_v2 = GetProcAddress(handle, 'cublasSspmv_v2')
 
         global __cublasDspmv_v2
-        try:
-            __cublasDspmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDspmv_v2')
-        except:
-            pass
+        __cublasDspmv_v2 = GetProcAddress(handle, 'cublasDspmv_v2')
 
         global __cublasChpmv_v2
-        try:
-            __cublasChpmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChpmv_v2')
-        except:
-            pass
+        __cublasChpmv_v2 = GetProcAddress(handle, 'cublasChpmv_v2')
 
         global __cublasZhpmv_v2
-        try:
-            __cublasZhpmv_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhpmv_v2')
-        except:
-            pass
+        __cublasZhpmv_v2 = GetProcAddress(handle, 'cublasZhpmv_v2')
 
         global __cublasSger_v2
-        try:
-            __cublasSger_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSger_v2')
-        except:
-            pass
+        __cublasSger_v2 = GetProcAddress(handle, 'cublasSger_v2')
 
         global __cublasDger_v2
-        try:
-            __cublasDger_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDger_v2')
-        except:
-            pass
+        __cublasDger_v2 = GetProcAddress(handle, 'cublasDger_v2')
 
         global __cublasCgeru_v2
-        try:
-            __cublasCgeru_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgeru_v2')
-        except:
-            pass
+        __cublasCgeru_v2 = GetProcAddress(handle, 'cublasCgeru_v2')
 
         global __cublasCgerc_v2
-        try:
-            __cublasCgerc_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgerc_v2')
-        except:
-            pass
+        __cublasCgerc_v2 = GetProcAddress(handle, 'cublasCgerc_v2')
 
         global __cublasZgeru_v2
-        try:
-            __cublasZgeru_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgeru_v2')
-        except:
-            pass
+        __cublasZgeru_v2 = GetProcAddress(handle, 'cublasZgeru_v2')
 
         global __cublasZgerc_v2
-        try:
-            __cublasZgerc_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgerc_v2')
-        except:
-            pass
+        __cublasZgerc_v2 = GetProcAddress(handle, 'cublasZgerc_v2')
 
         global __cublasSsyr_v2
-        try:
-            __cublasSsyr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyr_v2')
-        except:
-            pass
+        __cublasSsyr_v2 = GetProcAddress(handle, 'cublasSsyr_v2')
 
         global __cublasDsyr_v2
-        try:
-            __cublasDsyr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyr_v2')
-        except:
-            pass
+        __cublasDsyr_v2 = GetProcAddress(handle, 'cublasDsyr_v2')
 
         global __cublasCsyr_v2
-        try:
-            __cublasCsyr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyr_v2')
-        except:
-            pass
+        __cublasCsyr_v2 = GetProcAddress(handle, 'cublasCsyr_v2')
 
         global __cublasZsyr_v2
-        try:
-            __cublasZsyr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyr_v2')
-        except:
-            pass
+        __cublasZsyr_v2 = GetProcAddress(handle, 'cublasZsyr_v2')
 
         global __cublasCher_v2
-        try:
-            __cublasCher_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCher_v2')
-        except:
-            pass
+        __cublasCher_v2 = GetProcAddress(handle, 'cublasCher_v2')
 
         global __cublasZher_v2
-        try:
-            __cublasZher_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZher_v2')
-        except:
-            pass
+        __cublasZher_v2 = GetProcAddress(handle, 'cublasZher_v2')
 
         global __cublasSspr_v2
-        try:
-            __cublasSspr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSspr_v2')
-        except:
-            pass
+        __cublasSspr_v2 = GetProcAddress(handle, 'cublasSspr_v2')
 
         global __cublasDspr_v2
-        try:
-            __cublasDspr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDspr_v2')
-        except:
-            pass
+        __cublasDspr_v2 = GetProcAddress(handle, 'cublasDspr_v2')
 
         global __cublasChpr_v2
-        try:
-            __cublasChpr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChpr_v2')
-        except:
-            pass
+        __cublasChpr_v2 = GetProcAddress(handle, 'cublasChpr_v2')
 
         global __cublasZhpr_v2
-        try:
-            __cublasZhpr_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhpr_v2')
-        except:
-            pass
+        __cublasZhpr_v2 = GetProcAddress(handle, 'cublasZhpr_v2')
 
         global __cublasSsyr2_v2
-        try:
-            __cublasSsyr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyr2_v2')
-        except:
-            pass
+        __cublasSsyr2_v2 = GetProcAddress(handle, 'cublasSsyr2_v2')
 
         global __cublasDsyr2_v2
-        try:
-            __cublasDsyr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyr2_v2')
-        except:
-            pass
+        __cublasDsyr2_v2 = GetProcAddress(handle, 'cublasDsyr2_v2')
 
         global __cublasCsyr2_v2
-        try:
-            __cublasCsyr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyr2_v2')
-        except:
-            pass
+        __cublasCsyr2_v2 = GetProcAddress(handle, 'cublasCsyr2_v2')
 
         global __cublasZsyr2_v2
-        try:
-            __cublasZsyr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyr2_v2')
-        except:
-            pass
+        __cublasZsyr2_v2 = GetProcAddress(handle, 'cublasZsyr2_v2')
 
         global __cublasCher2_v2
-        try:
-            __cublasCher2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCher2_v2')
-        except:
-            pass
+        __cublasCher2_v2 = GetProcAddress(handle, 'cublasCher2_v2')
 
         global __cublasZher2_v2
-        try:
-            __cublasZher2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZher2_v2')
-        except:
-            pass
+        __cublasZher2_v2 = GetProcAddress(handle, 'cublasZher2_v2')
 
         global __cublasSspr2_v2
-        try:
-            __cublasSspr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSspr2_v2')
-        except:
-            pass
+        __cublasSspr2_v2 = GetProcAddress(handle, 'cublasSspr2_v2')
 
         global __cublasDspr2_v2
-        try:
-            __cublasDspr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDspr2_v2')
-        except:
-            pass
+        __cublasDspr2_v2 = GetProcAddress(handle, 'cublasDspr2_v2')
 
         global __cublasChpr2_v2
-        try:
-            __cublasChpr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChpr2_v2')
-        except:
-            pass
+        __cublasChpr2_v2 = GetProcAddress(handle, 'cublasChpr2_v2')
 
         global __cublasZhpr2_v2
-        try:
-            __cublasZhpr2_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhpr2_v2')
-        except:
-            pass
+        __cublasZhpr2_v2 = GetProcAddress(handle, 'cublasZhpr2_v2')
 
         global __cublasSgemm_v2
-        try:
-            __cublasSgemm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemm_v2')
-        except:
-            pass
+        __cublasSgemm_v2 = GetProcAddress(handle, 'cublasSgemm_v2')
 
         global __cublasDgemm_v2
-        try:
-            __cublasDgemm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemm_v2')
-        except:
-            pass
+        __cublasDgemm_v2 = GetProcAddress(handle, 'cublasDgemm_v2')
 
         global __cublasCgemm_v2
-        try:
-            __cublasCgemm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm_v2')
-        except:
-            pass
+        __cublasCgemm_v2 = GetProcAddress(handle, 'cublasCgemm_v2')
 
         global __cublasCgemm3m
-        try:
-            __cublasCgemm3m = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3m')
-        except:
-            pass
+        __cublasCgemm3m = GetProcAddress(handle, 'cublasCgemm3m')
 
         global __cublasCgemm3mEx
-        try:
-            __cublasCgemm3mEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3mEx')
-        except:
-            pass
+        __cublasCgemm3mEx = GetProcAddress(handle, 'cublasCgemm3mEx')
 
         global __cublasZgemm_v2
-        try:
-            __cublasZgemm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemm_v2')
-        except:
-            pass
+        __cublasZgemm_v2 = GetProcAddress(handle, 'cublasZgemm_v2')
 
         global __cublasZgemm3m
-        try:
-            __cublasZgemm3m = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemm3m')
-        except:
-            pass
+        __cublasZgemm3m = GetProcAddress(handle, 'cublasZgemm3m')
 
         global __cublasSgemmEx
-        try:
-            __cublasSgemmEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmEx')
-        except:
-            pass
+        __cublasSgemmEx = GetProcAddress(handle, 'cublasSgemmEx')
 
         global __cublasGemmEx
-        try:
-            __cublasGemmEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmEx')
-        except:
-            pass
+        __cublasGemmEx = GetProcAddress(handle, 'cublasGemmEx')
 
         global __cublasCgemmEx
-        try:
-            __cublasCgemmEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemmEx')
-        except:
-            pass
+        __cublasCgemmEx = GetProcAddress(handle, 'cublasCgemmEx')
 
         global __cublasUint8gemmBias
-        try:
-            __cublasUint8gemmBias = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasUint8gemmBias')
-        except:
-            pass
+        __cublasUint8gemmBias = GetProcAddress(handle, 'cublasUint8gemmBias')
 
         global __cublasSsyrk_v2
-        try:
-            __cublasSsyrk_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyrk_v2')
-        except:
-            pass
+        __cublasSsyrk_v2 = GetProcAddress(handle, 'cublasSsyrk_v2')
 
         global __cublasDsyrk_v2
-        try:
-            __cublasDsyrk_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyrk_v2')
-        except:
-            pass
+        __cublasDsyrk_v2 = GetProcAddress(handle, 'cublasDsyrk_v2')
 
         global __cublasCsyrk_v2
-        try:
-            __cublasCsyrk_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrk_v2')
-        except:
-            pass
+        __cublasCsyrk_v2 = GetProcAddress(handle, 'cublasCsyrk_v2')
 
         global __cublasZsyrk_v2
-        try:
-            __cublasZsyrk_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyrk_v2')
-        except:
-            pass
+        __cublasZsyrk_v2 = GetProcAddress(handle, 'cublasZsyrk_v2')
 
         global __cublasCsyrkEx
-        try:
-            __cublasCsyrkEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrkEx')
-        except:
-            pass
+        __cublasCsyrkEx = GetProcAddress(handle, 'cublasCsyrkEx')
 
         global __cublasCsyrk3mEx
-        try:
-            __cublasCsyrk3mEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrk3mEx')
-        except:
-            pass
+        __cublasCsyrk3mEx = GetProcAddress(handle, 'cublasCsyrk3mEx')
 
         global __cublasCherk_v2
-        try:
-            __cublasCherk_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherk_v2')
-        except:
-            pass
+        __cublasCherk_v2 = GetProcAddress(handle, 'cublasCherk_v2')
 
         global __cublasZherk_v2
-        try:
-            __cublasZherk_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZherk_v2')
-        except:
-            pass
+        __cublasZherk_v2 = GetProcAddress(handle, 'cublasZherk_v2')
 
         global __cublasCherkEx
-        try:
-            __cublasCherkEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherkEx')
-        except:
-            pass
+        __cublasCherkEx = GetProcAddress(handle, 'cublasCherkEx')
 
         global __cublasCherk3mEx
-        try:
-            __cublasCherk3mEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherk3mEx')
-        except:
-            pass
+        __cublasCherk3mEx = GetProcAddress(handle, 'cublasCherk3mEx')
 
         global __cublasSsyr2k_v2
-        try:
-            __cublasSsyr2k_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyr2k_v2')
-        except:
-            pass
+        __cublasSsyr2k_v2 = GetProcAddress(handle, 'cublasSsyr2k_v2')
 
         global __cublasDsyr2k_v2
-        try:
-            __cublasDsyr2k_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyr2k_v2')
-        except:
-            pass
+        __cublasDsyr2k_v2 = GetProcAddress(handle, 'cublasDsyr2k_v2')
 
         global __cublasCsyr2k_v2
-        try:
-            __cublasCsyr2k_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyr2k_v2')
-        except:
-            pass
+        __cublasCsyr2k_v2 = GetProcAddress(handle, 'cublasCsyr2k_v2')
 
         global __cublasZsyr2k_v2
-        try:
-            __cublasZsyr2k_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyr2k_v2')
-        except:
-            pass
+        __cublasZsyr2k_v2 = GetProcAddress(handle, 'cublasZsyr2k_v2')
 
         global __cublasCher2k_v2
-        try:
-            __cublasCher2k_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCher2k_v2')
-        except:
-            pass
+        __cublasCher2k_v2 = GetProcAddress(handle, 'cublasCher2k_v2')
 
         global __cublasZher2k_v2
-        try:
-            __cublasZher2k_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZher2k_v2')
-        except:
-            pass
+        __cublasZher2k_v2 = GetProcAddress(handle, 'cublasZher2k_v2')
 
         global __cublasSsyrkx
-        try:
-            __cublasSsyrkx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyrkx')
-        except:
-            pass
+        __cublasSsyrkx = GetProcAddress(handle, 'cublasSsyrkx')
 
         global __cublasDsyrkx
-        try:
-            __cublasDsyrkx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyrkx')
-        except:
-            pass
+        __cublasDsyrkx = GetProcAddress(handle, 'cublasDsyrkx')
 
         global __cublasCsyrkx
-        try:
-            __cublasCsyrkx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrkx')
-        except:
-            pass
+        __cublasCsyrkx = GetProcAddress(handle, 'cublasCsyrkx')
 
         global __cublasZsyrkx
-        try:
-            __cublasZsyrkx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyrkx')
-        except:
-            pass
+        __cublasZsyrkx = GetProcAddress(handle, 'cublasZsyrkx')
 
         global __cublasCherkx
-        try:
-            __cublasCherkx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherkx')
-        except:
-            pass
+        __cublasCherkx = GetProcAddress(handle, 'cublasCherkx')
 
         global __cublasZherkx
-        try:
-            __cublasZherkx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZherkx')
-        except:
-            pass
+        __cublasZherkx = GetProcAddress(handle, 'cublasZherkx')
 
         global __cublasSsymm_v2
-        try:
-            __cublasSsymm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsymm_v2')
-        except:
-            pass
+        __cublasSsymm_v2 = GetProcAddress(handle, 'cublasSsymm_v2')
 
         global __cublasDsymm_v2
-        try:
-            __cublasDsymm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsymm_v2')
-        except:
-            pass
+        __cublasDsymm_v2 = GetProcAddress(handle, 'cublasDsymm_v2')
 
         global __cublasCsymm_v2
-        try:
-            __cublasCsymm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsymm_v2')
-        except:
-            pass
+        __cublasCsymm_v2 = GetProcAddress(handle, 'cublasCsymm_v2')
 
         global __cublasZsymm_v2
-        try:
-            __cublasZsymm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsymm_v2')
-        except:
-            pass
+        __cublasZsymm_v2 = GetProcAddress(handle, 'cublasZsymm_v2')
 
         global __cublasChemm_v2
-        try:
-            __cublasChemm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChemm_v2')
-        except:
-            pass
+        __cublasChemm_v2 = GetProcAddress(handle, 'cublasChemm_v2')
 
         global __cublasZhemm_v2
-        try:
-            __cublasZhemm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhemm_v2')
-        except:
-            pass
+        __cublasZhemm_v2 = GetProcAddress(handle, 'cublasZhemm_v2')
 
         global __cublasStrsm_v2
-        try:
-            __cublasStrsm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrsm_v2')
-        except:
-            pass
+        __cublasStrsm_v2 = GetProcAddress(handle, 'cublasStrsm_v2')
 
         global __cublasDtrsm_v2
-        try:
-            __cublasDtrsm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrsm_v2')
-        except:
-            pass
+        __cublasDtrsm_v2 = GetProcAddress(handle, 'cublasDtrsm_v2')
 
         global __cublasCtrsm_v2
-        try:
-            __cublasCtrsm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrsm_v2')
-        except:
-            pass
+        __cublasCtrsm_v2 = GetProcAddress(handle, 'cublasCtrsm_v2')
 
         global __cublasZtrsm_v2
-        try:
-            __cublasZtrsm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrsm_v2')
-        except:
-            pass
+        __cublasZtrsm_v2 = GetProcAddress(handle, 'cublasZtrsm_v2')
 
         global __cublasStrmm_v2
-        try:
-            __cublasStrmm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrmm_v2')
-        except:
-            pass
+        __cublasStrmm_v2 = GetProcAddress(handle, 'cublasStrmm_v2')
 
         global __cublasDtrmm_v2
-        try:
-            __cublasDtrmm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrmm_v2')
-        except:
-            pass
+        __cublasDtrmm_v2 = GetProcAddress(handle, 'cublasDtrmm_v2')
 
         global __cublasCtrmm_v2
-        try:
-            __cublasCtrmm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrmm_v2')
-        except:
-            pass
+        __cublasCtrmm_v2 = GetProcAddress(handle, 'cublasCtrmm_v2')
 
         global __cublasZtrmm_v2
-        try:
-            __cublasZtrmm_v2 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrmm_v2')
-        except:
-            pass
+        __cublasZtrmm_v2 = GetProcAddress(handle, 'cublasZtrmm_v2')
 
         global __cublasSgemmBatched
-        try:
-            __cublasSgemmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmBatched')
-        except:
-            pass
+        __cublasSgemmBatched = GetProcAddress(handle, 'cublasSgemmBatched')
 
         global __cublasDgemmBatched
-        try:
-            __cublasDgemmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemmBatched')
-        except:
-            pass
+        __cublasDgemmBatched = GetProcAddress(handle, 'cublasDgemmBatched')
 
         global __cublasCgemmBatched
-        try:
-            __cublasCgemmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemmBatched')
-        except:
-            pass
+        __cublasCgemmBatched = GetProcAddress(handle, 'cublasCgemmBatched')
 
         global __cublasCgemm3mBatched
-        try:
-            __cublasCgemm3mBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3mBatched')
-        except:
-            pass
+        __cublasCgemm3mBatched = GetProcAddress(handle, 'cublasCgemm3mBatched')
 
         global __cublasZgemmBatched
-        try:
-            __cublasZgemmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemmBatched')
-        except:
-            pass
+        __cublasZgemmBatched = GetProcAddress(handle, 'cublasZgemmBatched')
 
         global __cublasGemmBatchedEx
-        try:
-            __cublasGemmBatchedEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmBatchedEx')
-        except:
-            pass
+        __cublasGemmBatchedEx = GetProcAddress(handle, 'cublasGemmBatchedEx')
 
         global __cublasGemmStridedBatchedEx
-        try:
-            __cublasGemmStridedBatchedEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmStridedBatchedEx')
-        except:
-            pass
+        __cublasGemmStridedBatchedEx = GetProcAddress(handle, 'cublasGemmStridedBatchedEx')
 
         global __cublasSgemmStridedBatched
-        try:
-            __cublasSgemmStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmStridedBatched')
-        except:
-            pass
+        __cublasSgemmStridedBatched = GetProcAddress(handle, 'cublasSgemmStridedBatched')
 
         global __cublasDgemmStridedBatched
-        try:
-            __cublasDgemmStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemmStridedBatched')
-        except:
-            pass
+        __cublasDgemmStridedBatched = GetProcAddress(handle, 'cublasDgemmStridedBatched')
 
         global __cublasCgemmStridedBatched
-        try:
-            __cublasCgemmStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemmStridedBatched')
-        except:
-            pass
+        __cublasCgemmStridedBatched = GetProcAddress(handle, 'cublasCgemmStridedBatched')
 
         global __cublasCgemm3mStridedBatched
-        try:
-            __cublasCgemm3mStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3mStridedBatched')
-        except:
-            pass
+        __cublasCgemm3mStridedBatched = GetProcAddress(handle, 'cublasCgemm3mStridedBatched')
 
         global __cublasZgemmStridedBatched
-        try:
-            __cublasZgemmStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemmStridedBatched')
-        except:
-            pass
+        __cublasZgemmStridedBatched = GetProcAddress(handle, 'cublasZgemmStridedBatched')
 
         global __cublasSgeam
-        try:
-            __cublasSgeam = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgeam')
-        except:
-            pass
+        __cublasSgeam = GetProcAddress(handle, 'cublasSgeam')
 
         global __cublasDgeam
-        try:
-            __cublasDgeam = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgeam')
-        except:
-            pass
+        __cublasDgeam = GetProcAddress(handle, 'cublasDgeam')
 
         global __cublasCgeam
-        try:
-            __cublasCgeam = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgeam')
-        except:
-            pass
+        __cublasCgeam = GetProcAddress(handle, 'cublasCgeam')
 
         global __cublasZgeam
-        try:
-            __cublasZgeam = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgeam')
-        except:
-            pass
+        __cublasZgeam = GetProcAddress(handle, 'cublasZgeam')
 
         global __cublasSgetrfBatched
-        try:
-            __cublasSgetrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgetrfBatched')
-        except:
-            pass
+        __cublasSgetrfBatched = GetProcAddress(handle, 'cublasSgetrfBatched')
 
         global __cublasDgetrfBatched
-        try:
-            __cublasDgetrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgetrfBatched')
-        except:
-            pass
+        __cublasDgetrfBatched = GetProcAddress(handle, 'cublasDgetrfBatched')
 
         global __cublasCgetrfBatched
-        try:
-            __cublasCgetrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgetrfBatched')
-        except:
-            pass
+        __cublasCgetrfBatched = GetProcAddress(handle, 'cublasCgetrfBatched')
 
         global __cublasZgetrfBatched
-        try:
-            __cublasZgetrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgetrfBatched')
-        except:
-            pass
+        __cublasZgetrfBatched = GetProcAddress(handle, 'cublasZgetrfBatched')
 
         global __cublasSgetriBatched
-        try:
-            __cublasSgetriBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgetriBatched')
-        except:
-            pass
+        __cublasSgetriBatched = GetProcAddress(handle, 'cublasSgetriBatched')
 
         global __cublasDgetriBatched
-        try:
-            __cublasDgetriBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgetriBatched')
-        except:
-            pass
+        __cublasDgetriBatched = GetProcAddress(handle, 'cublasDgetriBatched')
 
         global __cublasCgetriBatched
-        try:
-            __cublasCgetriBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgetriBatched')
-        except:
-            pass
+        __cublasCgetriBatched = GetProcAddress(handle, 'cublasCgetriBatched')
 
         global __cublasZgetriBatched
-        try:
-            __cublasZgetriBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgetriBatched')
-        except:
-            pass
+        __cublasZgetriBatched = GetProcAddress(handle, 'cublasZgetriBatched')
 
         global __cublasSgetrsBatched
-        try:
-            __cublasSgetrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgetrsBatched')
-        except:
-            pass
+        __cublasSgetrsBatched = GetProcAddress(handle, 'cublasSgetrsBatched')
 
         global __cublasDgetrsBatched
-        try:
-            __cublasDgetrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgetrsBatched')
-        except:
-            pass
+        __cublasDgetrsBatched = GetProcAddress(handle, 'cublasDgetrsBatched')
 
         global __cublasCgetrsBatched
-        try:
-            __cublasCgetrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgetrsBatched')
-        except:
-            pass
+        __cublasCgetrsBatched = GetProcAddress(handle, 'cublasCgetrsBatched')
 
         global __cublasZgetrsBatched
-        try:
-            __cublasZgetrsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgetrsBatched')
-        except:
-            pass
+        __cublasZgetrsBatched = GetProcAddress(handle, 'cublasZgetrsBatched')
 
         global __cublasStrsmBatched
-        try:
-            __cublasStrsmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrsmBatched')
-        except:
-            pass
+        __cublasStrsmBatched = GetProcAddress(handle, 'cublasStrsmBatched')
 
         global __cublasDtrsmBatched
-        try:
-            __cublasDtrsmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrsmBatched')
-        except:
-            pass
+        __cublasDtrsmBatched = GetProcAddress(handle, 'cublasDtrsmBatched')
 
         global __cublasCtrsmBatched
-        try:
-            __cublasCtrsmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrsmBatched')
-        except:
-            pass
+        __cublasCtrsmBatched = GetProcAddress(handle, 'cublasCtrsmBatched')
 
         global __cublasZtrsmBatched
-        try:
-            __cublasZtrsmBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrsmBatched')
-        except:
-            pass
+        __cublasZtrsmBatched = GetProcAddress(handle, 'cublasZtrsmBatched')
 
         global __cublasSmatinvBatched
-        try:
-            __cublasSmatinvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSmatinvBatched')
-        except:
-            pass
+        __cublasSmatinvBatched = GetProcAddress(handle, 'cublasSmatinvBatched')
 
         global __cublasDmatinvBatched
-        try:
-            __cublasDmatinvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDmatinvBatched')
-        except:
-            pass
+        __cublasDmatinvBatched = GetProcAddress(handle, 'cublasDmatinvBatched')
 
         global __cublasCmatinvBatched
-        try:
-            __cublasCmatinvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCmatinvBatched')
-        except:
-            pass
+        __cublasCmatinvBatched = GetProcAddress(handle, 'cublasCmatinvBatched')
 
         global __cublasZmatinvBatched
-        try:
-            __cublasZmatinvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZmatinvBatched')
-        except:
-            pass
+        __cublasZmatinvBatched = GetProcAddress(handle, 'cublasZmatinvBatched')
 
         global __cublasSgeqrfBatched
-        try:
-            __cublasSgeqrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgeqrfBatched')
-        except:
-            pass
+        __cublasSgeqrfBatched = GetProcAddress(handle, 'cublasSgeqrfBatched')
 
         global __cublasDgeqrfBatched
-        try:
-            __cublasDgeqrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgeqrfBatched')
-        except:
-            pass
+        __cublasDgeqrfBatched = GetProcAddress(handle, 'cublasDgeqrfBatched')
 
         global __cublasCgeqrfBatched
-        try:
-            __cublasCgeqrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgeqrfBatched')
-        except:
-            pass
+        __cublasCgeqrfBatched = GetProcAddress(handle, 'cublasCgeqrfBatched')
 
         global __cublasZgeqrfBatched
-        try:
-            __cublasZgeqrfBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgeqrfBatched')
-        except:
-            pass
+        __cublasZgeqrfBatched = GetProcAddress(handle, 'cublasZgeqrfBatched')
 
         global __cublasSgelsBatched
-        try:
-            __cublasSgelsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgelsBatched')
-        except:
-            pass
+        __cublasSgelsBatched = GetProcAddress(handle, 'cublasSgelsBatched')
 
         global __cublasDgelsBatched
-        try:
-            __cublasDgelsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgelsBatched')
-        except:
-            pass
+        __cublasDgelsBatched = GetProcAddress(handle, 'cublasDgelsBatched')
 
         global __cublasCgelsBatched
-        try:
-            __cublasCgelsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgelsBatched')
-        except:
-            pass
+        __cublasCgelsBatched = GetProcAddress(handle, 'cublasCgelsBatched')
 
         global __cublasZgelsBatched
-        try:
-            __cublasZgelsBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgelsBatched')
-        except:
-            pass
+        __cublasZgelsBatched = GetProcAddress(handle, 'cublasZgelsBatched')
 
         global __cublasSdgmm
-        try:
-            __cublasSdgmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSdgmm')
-        except:
-            pass
+        __cublasSdgmm = GetProcAddress(handle, 'cublasSdgmm')
 
         global __cublasDdgmm
-        try:
-            __cublasDdgmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDdgmm')
-        except:
-            pass
+        __cublasDdgmm = GetProcAddress(handle, 'cublasDdgmm')
 
         global __cublasCdgmm
-        try:
-            __cublasCdgmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCdgmm')
-        except:
-            pass
+        __cublasCdgmm = GetProcAddress(handle, 'cublasCdgmm')
 
         global __cublasZdgmm
-        try:
-            __cublasZdgmm = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdgmm')
-        except:
-            pass
+        __cublasZdgmm = GetProcAddress(handle, 'cublasZdgmm')
 
         global __cublasStpttr
-        try:
-            __cublasStpttr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStpttr')
-        except:
-            pass
+        __cublasStpttr = GetProcAddress(handle, 'cublasStpttr')
 
         global __cublasDtpttr
-        try:
-            __cublasDtpttr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtpttr')
-        except:
-            pass
+        __cublasDtpttr = GetProcAddress(handle, 'cublasDtpttr')
 
         global __cublasCtpttr
-        try:
-            __cublasCtpttr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtpttr')
-        except:
-            pass
+        __cublasCtpttr = GetProcAddress(handle, 'cublasCtpttr')
 
         global __cublasZtpttr
-        try:
-            __cublasZtpttr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtpttr')
-        except:
-            pass
+        __cublasZtpttr = GetProcAddress(handle, 'cublasZtpttr')
 
         global __cublasStrttp
-        try:
-            __cublasStrttp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrttp')
-        except:
-            pass
+        __cublasStrttp = GetProcAddress(handle, 'cublasStrttp')
 
         global __cublasDtrttp
-        try:
-            __cublasDtrttp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrttp')
-        except:
-            pass
+        __cublasDtrttp = GetProcAddress(handle, 'cublasDtrttp')
 
         global __cublasCtrttp
-        try:
-            __cublasCtrttp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrttp')
-        except:
-            pass
+        __cublasCtrttp = GetProcAddress(handle, 'cublasCtrttp')
 
         global __cublasZtrttp
-        try:
-            __cublasZtrttp = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrttp')
-        except:
-            pass
+        __cublasZtrttp = GetProcAddress(handle, 'cublasZtrttp')
 
         global __cublasGetSmCountTarget
-        try:
-            __cublasGetSmCountTarget = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetSmCountTarget')
-        except:
-            pass
+        __cublasGetSmCountTarget = GetProcAddress(handle, 'cublasGetSmCountTarget')
 
         global __cublasSetSmCountTarget
-        try:
-            __cublasSetSmCountTarget = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetSmCountTarget')
-        except:
-            pass
+        __cublasSetSmCountTarget = GetProcAddress(handle, 'cublasSetSmCountTarget')
 
         global __cublasGetStatusName
-        try:
-            __cublasGetStatusName = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetStatusName')
-        except:
-            pass
+        __cublasGetStatusName = GetProcAddress(handle, 'cublasGetStatusName')
 
         global __cublasGetStatusString
-        try:
-            __cublasGetStatusString = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetStatusString')
-        except:
-            pass
+        __cublasGetStatusString = GetProcAddress(handle, 'cublasGetStatusString')
 
         global __cublasSgemvBatched
-        try:
-            __cublasSgemvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemvBatched')
-        except:
-            pass
+        __cublasSgemvBatched = GetProcAddress(handle, 'cublasSgemvBatched')
 
         global __cublasDgemvBatched
-        try:
-            __cublasDgemvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemvBatched')
-        except:
-            pass
+        __cublasDgemvBatched = GetProcAddress(handle, 'cublasDgemvBatched')
 
         global __cublasCgemvBatched
-        try:
-            __cublasCgemvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemvBatched')
-        except:
-            pass
+        __cublasCgemvBatched = GetProcAddress(handle, 'cublasCgemvBatched')
 
         global __cublasZgemvBatched
-        try:
-            __cublasZgemvBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemvBatched')
-        except:
-            pass
+        __cublasZgemvBatched = GetProcAddress(handle, 'cublasZgemvBatched')
 
         global __cublasSgemvStridedBatched
-        try:
-            __cublasSgemvStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemvStridedBatched')
-        except:
-            pass
+        __cublasSgemvStridedBatched = GetProcAddress(handle, 'cublasSgemvStridedBatched')
 
         global __cublasDgemvStridedBatched
-        try:
-            __cublasDgemvStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemvStridedBatched')
-        except:
-            pass
+        __cublasDgemvStridedBatched = GetProcAddress(handle, 'cublasDgemvStridedBatched')
 
         global __cublasCgemvStridedBatched
-        try:
-            __cublasCgemvStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemvStridedBatched')
-        except:
-            pass
+        __cublasCgemvStridedBatched = GetProcAddress(handle, 'cublasCgemvStridedBatched')
 
         global __cublasZgemvStridedBatched
-        try:
-            __cublasZgemvStridedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemvStridedBatched')
-        except:
-            pass
+        __cublasZgemvStridedBatched = GetProcAddress(handle, 'cublasZgemvStridedBatched')
 
         global __cublasSetVector_64
-        try:
-            __cublasSetVector_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetVector_64')
-        except:
-            pass
+        __cublasSetVector_64 = GetProcAddress(handle, 'cublasSetVector_64')
 
         global __cublasGetVector_64
-        try:
-            __cublasGetVector_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetVector_64')
-        except:
-            pass
+        __cublasGetVector_64 = GetProcAddress(handle, 'cublasGetVector_64')
 
         global __cublasSetMatrix_64
-        try:
-            __cublasSetMatrix_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetMatrix_64')
-        except:
-            pass
+        __cublasSetMatrix_64 = GetProcAddress(handle, 'cublasSetMatrix_64')
 
         global __cublasGetMatrix_64
-        try:
-            __cublasGetMatrix_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetMatrix_64')
-        except:
-            pass
+        __cublasGetMatrix_64 = GetProcAddress(handle, 'cublasGetMatrix_64')
 
         global __cublasSetVectorAsync_64
-        try:
-            __cublasSetVectorAsync_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetVectorAsync_64')
-        except:
-            pass
+        __cublasSetVectorAsync_64 = GetProcAddress(handle, 'cublasSetVectorAsync_64')
 
         global __cublasGetVectorAsync_64
-        try:
-            __cublasGetVectorAsync_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetVectorAsync_64')
-        except:
-            pass
+        __cublasGetVectorAsync_64 = GetProcAddress(handle, 'cublasGetVectorAsync_64')
 
         global __cublasSetMatrixAsync_64
-        try:
-            __cublasSetMatrixAsync_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetMatrixAsync_64')
-        except:
-            pass
+        __cublasSetMatrixAsync_64 = GetProcAddress(handle, 'cublasSetMatrixAsync_64')
 
         global __cublasGetMatrixAsync_64
-        try:
-            __cublasGetMatrixAsync_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetMatrixAsync_64')
-        except:
-            pass
+        __cublasGetMatrixAsync_64 = GetProcAddress(handle, 'cublasGetMatrixAsync_64')
 
         global __cublasNrm2Ex_64
-        try:
-            __cublasNrm2Ex_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasNrm2Ex_64')
-        except:
-            pass
+        __cublasNrm2Ex_64 = GetProcAddress(handle, 'cublasNrm2Ex_64')
 
         global __cublasSnrm2_v2_64
-        try:
-            __cublasSnrm2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSnrm2_v2_64')
-        except:
-            pass
+        __cublasSnrm2_v2_64 = GetProcAddress(handle, 'cublasSnrm2_v2_64')
 
         global __cublasDnrm2_v2_64
-        try:
-            __cublasDnrm2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDnrm2_v2_64')
-        except:
-            pass
+        __cublasDnrm2_v2_64 = GetProcAddress(handle, 'cublasDnrm2_v2_64')
 
         global __cublasScnrm2_v2_64
-        try:
-            __cublasScnrm2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScnrm2_v2_64')
-        except:
-            pass
+        __cublasScnrm2_v2_64 = GetProcAddress(handle, 'cublasScnrm2_v2_64')
 
         global __cublasDznrm2_v2_64
-        try:
-            __cublasDznrm2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDznrm2_v2_64')
-        except:
-            pass
+        __cublasDznrm2_v2_64 = GetProcAddress(handle, 'cublasDznrm2_v2_64')
 
         global __cublasDotEx_64
-        try:
-            __cublasDotEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDotEx_64')
-        except:
-            pass
+        __cublasDotEx_64 = GetProcAddress(handle, 'cublasDotEx_64')
 
         global __cublasDotcEx_64
-        try:
-            __cublasDotcEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDotcEx_64')
-        except:
-            pass
+        __cublasDotcEx_64 = GetProcAddress(handle, 'cublasDotcEx_64')
 
         global __cublasSdot_v2_64
-        try:
-            __cublasSdot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSdot_v2_64')
-        except:
-            pass
+        __cublasSdot_v2_64 = GetProcAddress(handle, 'cublasSdot_v2_64')
 
         global __cublasDdot_v2_64
-        try:
-            __cublasDdot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDdot_v2_64')
-        except:
-            pass
+        __cublasDdot_v2_64 = GetProcAddress(handle, 'cublasDdot_v2_64')
 
         global __cublasCdotu_v2_64
-        try:
-            __cublasCdotu_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCdotu_v2_64')
-        except:
-            pass
+        __cublasCdotu_v2_64 = GetProcAddress(handle, 'cublasCdotu_v2_64')
 
         global __cublasCdotc_v2_64
-        try:
-            __cublasCdotc_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCdotc_v2_64')
-        except:
-            pass
+        __cublasCdotc_v2_64 = GetProcAddress(handle, 'cublasCdotc_v2_64')
 
         global __cublasZdotu_v2_64
-        try:
-            __cublasZdotu_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdotu_v2_64')
-        except:
-            pass
+        __cublasZdotu_v2_64 = GetProcAddress(handle, 'cublasZdotu_v2_64')
 
         global __cublasZdotc_v2_64
-        try:
-            __cublasZdotc_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdotc_v2_64')
-        except:
-            pass
+        __cublasZdotc_v2_64 = GetProcAddress(handle, 'cublasZdotc_v2_64')
 
         global __cublasScalEx_64
-        try:
-            __cublasScalEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScalEx_64')
-        except:
-            pass
+        __cublasScalEx_64 = GetProcAddress(handle, 'cublasScalEx_64')
 
         global __cublasSscal_v2_64
-        try:
-            __cublasSscal_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSscal_v2_64')
-        except:
-            pass
+        __cublasSscal_v2_64 = GetProcAddress(handle, 'cublasSscal_v2_64')
 
         global __cublasDscal_v2_64
-        try:
-            __cublasDscal_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDscal_v2_64')
-        except:
-            pass
+        __cublasDscal_v2_64 = GetProcAddress(handle, 'cublasDscal_v2_64')
 
         global __cublasCscal_v2_64
-        try:
-            __cublasCscal_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCscal_v2_64')
-        except:
-            pass
+        __cublasCscal_v2_64 = GetProcAddress(handle, 'cublasCscal_v2_64')
 
         global __cublasCsscal_v2_64
-        try:
-            __cublasCsscal_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsscal_v2_64')
-        except:
-            pass
+        __cublasCsscal_v2_64 = GetProcAddress(handle, 'cublasCsscal_v2_64')
 
         global __cublasZscal_v2_64
-        try:
-            __cublasZscal_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZscal_v2_64')
-        except:
-            pass
+        __cublasZscal_v2_64 = GetProcAddress(handle, 'cublasZscal_v2_64')
 
         global __cublasZdscal_v2_64
-        try:
-            __cublasZdscal_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdscal_v2_64')
-        except:
-            pass
+        __cublasZdscal_v2_64 = GetProcAddress(handle, 'cublasZdscal_v2_64')
 
         global __cublasAxpyEx_64
-        try:
-            __cublasAxpyEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasAxpyEx_64')
-        except:
-            pass
+        __cublasAxpyEx_64 = GetProcAddress(handle, 'cublasAxpyEx_64')
 
         global __cublasSaxpy_v2_64
-        try:
-            __cublasSaxpy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSaxpy_v2_64')
-        except:
-            pass
+        __cublasSaxpy_v2_64 = GetProcAddress(handle, 'cublasSaxpy_v2_64')
 
         global __cublasDaxpy_v2_64
-        try:
-            __cublasDaxpy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDaxpy_v2_64')
-        except:
-            pass
+        __cublasDaxpy_v2_64 = GetProcAddress(handle, 'cublasDaxpy_v2_64')
 
         global __cublasCaxpy_v2_64
-        try:
-            __cublasCaxpy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCaxpy_v2_64')
-        except:
-            pass
+        __cublasCaxpy_v2_64 = GetProcAddress(handle, 'cublasCaxpy_v2_64')
 
         global __cublasZaxpy_v2_64
-        try:
-            __cublasZaxpy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZaxpy_v2_64')
-        except:
-            pass
+        __cublasZaxpy_v2_64 = GetProcAddress(handle, 'cublasZaxpy_v2_64')
 
         global __cublasCopyEx_64
-        try:
-            __cublasCopyEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCopyEx_64')
-        except:
-            pass
+        __cublasCopyEx_64 = GetProcAddress(handle, 'cublasCopyEx_64')
 
         global __cublasScopy_v2_64
-        try:
-            __cublasScopy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScopy_v2_64')
-        except:
-            pass
+        __cublasScopy_v2_64 = GetProcAddress(handle, 'cublasScopy_v2_64')
 
         global __cublasDcopy_v2_64
-        try:
-            __cublasDcopy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDcopy_v2_64')
-        except:
-            pass
+        __cublasDcopy_v2_64 = GetProcAddress(handle, 'cublasDcopy_v2_64')
 
         global __cublasCcopy_v2_64
-        try:
-            __cublasCcopy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCcopy_v2_64')
-        except:
-            pass
+        __cublasCcopy_v2_64 = GetProcAddress(handle, 'cublasCcopy_v2_64')
 
         global __cublasZcopy_v2_64
-        try:
-            __cublasZcopy_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZcopy_v2_64')
-        except:
-            pass
+        __cublasZcopy_v2_64 = GetProcAddress(handle, 'cublasZcopy_v2_64')
 
         global __cublasSswap_v2_64
-        try:
-            __cublasSswap_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSswap_v2_64')
-        except:
-            pass
+        __cublasSswap_v2_64 = GetProcAddress(handle, 'cublasSswap_v2_64')
 
         global __cublasDswap_v2_64
-        try:
-            __cublasDswap_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDswap_v2_64')
-        except:
-            pass
+        __cublasDswap_v2_64 = GetProcAddress(handle, 'cublasDswap_v2_64')
 
         global __cublasCswap_v2_64
-        try:
-            __cublasCswap_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCswap_v2_64')
-        except:
-            pass
+        __cublasCswap_v2_64 = GetProcAddress(handle, 'cublasCswap_v2_64')
 
         global __cublasZswap_v2_64
-        try:
-            __cublasZswap_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZswap_v2_64')
-        except:
-            pass
+        __cublasZswap_v2_64 = GetProcAddress(handle, 'cublasZswap_v2_64')
 
         global __cublasSwapEx_64
-        try:
-            __cublasSwapEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSwapEx_64')
-        except:
-            pass
+        __cublasSwapEx_64 = GetProcAddress(handle, 'cublasSwapEx_64')
 
         global __cublasIsamax_v2_64
-        try:
-            __cublasIsamax_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIsamax_v2_64')
-        except:
-            pass
+        __cublasIsamax_v2_64 = GetProcAddress(handle, 'cublasIsamax_v2_64')
 
         global __cublasIdamax_v2_64
-        try:
-            __cublasIdamax_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIdamax_v2_64')
-        except:
-            pass
+        __cublasIdamax_v2_64 = GetProcAddress(handle, 'cublasIdamax_v2_64')
 
         global __cublasIcamax_v2_64
-        try:
-            __cublasIcamax_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIcamax_v2_64')
-        except:
-            pass
+        __cublasIcamax_v2_64 = GetProcAddress(handle, 'cublasIcamax_v2_64')
 
         global __cublasIzamax_v2_64
-        try:
-            __cublasIzamax_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIzamax_v2_64')
-        except:
-            pass
+        __cublasIzamax_v2_64 = GetProcAddress(handle, 'cublasIzamax_v2_64')
 
         global __cublasIamaxEx_64
-        try:
-            __cublasIamaxEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIamaxEx_64')
-        except:
-            pass
+        __cublasIamaxEx_64 = GetProcAddress(handle, 'cublasIamaxEx_64')
 
         global __cublasIsamin_v2_64
-        try:
-            __cublasIsamin_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIsamin_v2_64')
-        except:
-            pass
+        __cublasIsamin_v2_64 = GetProcAddress(handle, 'cublasIsamin_v2_64')
 
         global __cublasIdamin_v2_64
-        try:
-            __cublasIdamin_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIdamin_v2_64')
-        except:
-            pass
+        __cublasIdamin_v2_64 = GetProcAddress(handle, 'cublasIdamin_v2_64')
 
         global __cublasIcamin_v2_64
-        try:
-            __cublasIcamin_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIcamin_v2_64')
-        except:
-            pass
+        __cublasIcamin_v2_64 = GetProcAddress(handle, 'cublasIcamin_v2_64')
 
         global __cublasIzamin_v2_64
-        try:
-            __cublasIzamin_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIzamin_v2_64')
-        except:
-            pass
+        __cublasIzamin_v2_64 = GetProcAddress(handle, 'cublasIzamin_v2_64')
 
         global __cublasIaminEx_64
-        try:
-            __cublasIaminEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasIaminEx_64')
-        except:
-            pass
+        __cublasIaminEx_64 = GetProcAddress(handle, 'cublasIaminEx_64')
 
         global __cublasAsumEx_64
-        try:
-            __cublasAsumEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasAsumEx_64')
-        except:
-            pass
+        __cublasAsumEx_64 = GetProcAddress(handle, 'cublasAsumEx_64')
 
         global __cublasSasum_v2_64
-        try:
-            __cublasSasum_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSasum_v2_64')
-        except:
-            pass
+        __cublasSasum_v2_64 = GetProcAddress(handle, 'cublasSasum_v2_64')
 
         global __cublasDasum_v2_64
-        try:
-            __cublasDasum_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDasum_v2_64')
-        except:
-            pass
+        __cublasDasum_v2_64 = GetProcAddress(handle, 'cublasDasum_v2_64')
 
         global __cublasScasum_v2_64
-        try:
-            __cublasScasum_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasScasum_v2_64')
-        except:
-            pass
+        __cublasScasum_v2_64 = GetProcAddress(handle, 'cublasScasum_v2_64')
 
         global __cublasDzasum_v2_64
-        try:
-            __cublasDzasum_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDzasum_v2_64')
-        except:
-            pass
+        __cublasDzasum_v2_64 = GetProcAddress(handle, 'cublasDzasum_v2_64')
 
         global __cublasSrot_v2_64
-        try:
-            __cublasSrot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSrot_v2_64')
-        except:
-            pass
+        __cublasSrot_v2_64 = GetProcAddress(handle, 'cublasSrot_v2_64')
 
         global __cublasDrot_v2_64
-        try:
-            __cublasDrot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDrot_v2_64')
-        except:
-            pass
+        __cublasDrot_v2_64 = GetProcAddress(handle, 'cublasDrot_v2_64')
 
         global __cublasCrot_v2_64
-        try:
-            __cublasCrot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCrot_v2_64')
-        except:
-            pass
+        __cublasCrot_v2_64 = GetProcAddress(handle, 'cublasCrot_v2_64')
 
         global __cublasCsrot_v2_64
-        try:
-            __cublasCsrot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsrot_v2_64')
-        except:
-            pass
+        __cublasCsrot_v2_64 = GetProcAddress(handle, 'cublasCsrot_v2_64')
 
         global __cublasZrot_v2_64
-        try:
-            __cublasZrot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZrot_v2_64')
-        except:
-            pass
+        __cublasZrot_v2_64 = GetProcAddress(handle, 'cublasZrot_v2_64')
 
         global __cublasZdrot_v2_64
-        try:
-            __cublasZdrot_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdrot_v2_64')
-        except:
-            pass
+        __cublasZdrot_v2_64 = GetProcAddress(handle, 'cublasZdrot_v2_64')
 
         global __cublasRotEx_64
-        try:
-            __cublasRotEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasRotEx_64')
-        except:
-            pass
+        __cublasRotEx_64 = GetProcAddress(handle, 'cublasRotEx_64')
 
         global __cublasSrotm_v2_64
-        try:
-            __cublasSrotm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSrotm_v2_64')
-        except:
-            pass
+        __cublasSrotm_v2_64 = GetProcAddress(handle, 'cublasSrotm_v2_64')
 
         global __cublasDrotm_v2_64
-        try:
-            __cublasDrotm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDrotm_v2_64')
-        except:
-            pass
+        __cublasDrotm_v2_64 = GetProcAddress(handle, 'cublasDrotm_v2_64')
 
         global __cublasRotmEx_64
-        try:
-            __cublasRotmEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasRotmEx_64')
-        except:
-            pass
+        __cublasRotmEx_64 = GetProcAddress(handle, 'cublasRotmEx_64')
 
         global __cublasSgemv_v2_64
-        try:
-            __cublasSgemv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemv_v2_64')
-        except:
-            pass
+        __cublasSgemv_v2_64 = GetProcAddress(handle, 'cublasSgemv_v2_64')
 
         global __cublasDgemv_v2_64
-        try:
-            __cublasDgemv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemv_v2_64')
-        except:
-            pass
+        __cublasDgemv_v2_64 = GetProcAddress(handle, 'cublasDgemv_v2_64')
 
         global __cublasCgemv_v2_64
-        try:
-            __cublasCgemv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemv_v2_64')
-        except:
-            pass
+        __cublasCgemv_v2_64 = GetProcAddress(handle, 'cublasCgemv_v2_64')
 
         global __cublasZgemv_v2_64
-        try:
-            __cublasZgemv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemv_v2_64')
-        except:
-            pass
+        __cublasZgemv_v2_64 = GetProcAddress(handle, 'cublasZgemv_v2_64')
 
         global __cublasSgbmv_v2_64
-        try:
-            __cublasSgbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgbmv_v2_64')
-        except:
-            pass
+        __cublasSgbmv_v2_64 = GetProcAddress(handle, 'cublasSgbmv_v2_64')
 
         global __cublasDgbmv_v2_64
-        try:
-            __cublasDgbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgbmv_v2_64')
-        except:
-            pass
+        __cublasDgbmv_v2_64 = GetProcAddress(handle, 'cublasDgbmv_v2_64')
 
         global __cublasCgbmv_v2_64
-        try:
-            __cublasCgbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgbmv_v2_64')
-        except:
-            pass
+        __cublasCgbmv_v2_64 = GetProcAddress(handle, 'cublasCgbmv_v2_64')
 
         global __cublasZgbmv_v2_64
-        try:
-            __cublasZgbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgbmv_v2_64')
-        except:
-            pass
+        __cublasZgbmv_v2_64 = GetProcAddress(handle, 'cublasZgbmv_v2_64')
 
         global __cublasStrmv_v2_64
-        try:
-            __cublasStrmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrmv_v2_64')
-        except:
-            pass
+        __cublasStrmv_v2_64 = GetProcAddress(handle, 'cublasStrmv_v2_64')
 
         global __cublasDtrmv_v2_64
-        try:
-            __cublasDtrmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrmv_v2_64')
-        except:
-            pass
+        __cublasDtrmv_v2_64 = GetProcAddress(handle, 'cublasDtrmv_v2_64')
 
         global __cublasCtrmv_v2_64
-        try:
-            __cublasCtrmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrmv_v2_64')
-        except:
-            pass
+        __cublasCtrmv_v2_64 = GetProcAddress(handle, 'cublasCtrmv_v2_64')
 
         global __cublasZtrmv_v2_64
-        try:
-            __cublasZtrmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrmv_v2_64')
-        except:
-            pass
+        __cublasZtrmv_v2_64 = GetProcAddress(handle, 'cublasZtrmv_v2_64')
 
         global __cublasStbmv_v2_64
-        try:
-            __cublasStbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStbmv_v2_64')
-        except:
-            pass
+        __cublasStbmv_v2_64 = GetProcAddress(handle, 'cublasStbmv_v2_64')
 
         global __cublasDtbmv_v2_64
-        try:
-            __cublasDtbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtbmv_v2_64')
-        except:
-            pass
+        __cublasDtbmv_v2_64 = GetProcAddress(handle, 'cublasDtbmv_v2_64')
 
         global __cublasCtbmv_v2_64
-        try:
-            __cublasCtbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtbmv_v2_64')
-        except:
-            pass
+        __cublasCtbmv_v2_64 = GetProcAddress(handle, 'cublasCtbmv_v2_64')
 
         global __cublasZtbmv_v2_64
-        try:
-            __cublasZtbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtbmv_v2_64')
-        except:
-            pass
+        __cublasZtbmv_v2_64 = GetProcAddress(handle, 'cublasZtbmv_v2_64')
 
         global __cublasStpmv_v2_64
-        try:
-            __cublasStpmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStpmv_v2_64')
-        except:
-            pass
+        __cublasStpmv_v2_64 = GetProcAddress(handle, 'cublasStpmv_v2_64')
 
         global __cublasDtpmv_v2_64
-        try:
-            __cublasDtpmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtpmv_v2_64')
-        except:
-            pass
+        __cublasDtpmv_v2_64 = GetProcAddress(handle, 'cublasDtpmv_v2_64')
 
         global __cublasCtpmv_v2_64
-        try:
-            __cublasCtpmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtpmv_v2_64')
-        except:
-            pass
+        __cublasCtpmv_v2_64 = GetProcAddress(handle, 'cublasCtpmv_v2_64')
 
         global __cublasZtpmv_v2_64
-        try:
-            __cublasZtpmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtpmv_v2_64')
-        except:
-            pass
+        __cublasZtpmv_v2_64 = GetProcAddress(handle, 'cublasZtpmv_v2_64')
 
         global __cublasStrsv_v2_64
-        try:
-            __cublasStrsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrsv_v2_64')
-        except:
-            pass
+        __cublasStrsv_v2_64 = GetProcAddress(handle, 'cublasStrsv_v2_64')
 
         global __cublasDtrsv_v2_64
-        try:
-            __cublasDtrsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrsv_v2_64')
-        except:
-            pass
+        __cublasDtrsv_v2_64 = GetProcAddress(handle, 'cublasDtrsv_v2_64')
 
         global __cublasCtrsv_v2_64
-        try:
-            __cublasCtrsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrsv_v2_64')
-        except:
-            pass
+        __cublasCtrsv_v2_64 = GetProcAddress(handle, 'cublasCtrsv_v2_64')
 
         global __cublasZtrsv_v2_64
-        try:
-            __cublasZtrsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrsv_v2_64')
-        except:
-            pass
+        __cublasZtrsv_v2_64 = GetProcAddress(handle, 'cublasZtrsv_v2_64')
 
         global __cublasStpsv_v2_64
-        try:
-            __cublasStpsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStpsv_v2_64')
-        except:
-            pass
+        __cublasStpsv_v2_64 = GetProcAddress(handle, 'cublasStpsv_v2_64')
 
         global __cublasDtpsv_v2_64
-        try:
-            __cublasDtpsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtpsv_v2_64')
-        except:
-            pass
+        __cublasDtpsv_v2_64 = GetProcAddress(handle, 'cublasDtpsv_v2_64')
 
         global __cublasCtpsv_v2_64
-        try:
-            __cublasCtpsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtpsv_v2_64')
-        except:
-            pass
+        __cublasCtpsv_v2_64 = GetProcAddress(handle, 'cublasCtpsv_v2_64')
 
         global __cublasZtpsv_v2_64
-        try:
-            __cublasZtpsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtpsv_v2_64')
-        except:
-            pass
+        __cublasZtpsv_v2_64 = GetProcAddress(handle, 'cublasZtpsv_v2_64')
 
         global __cublasStbsv_v2_64
-        try:
-            __cublasStbsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStbsv_v2_64')
-        except:
-            pass
+        __cublasStbsv_v2_64 = GetProcAddress(handle, 'cublasStbsv_v2_64')
 
         global __cublasDtbsv_v2_64
-        try:
-            __cublasDtbsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtbsv_v2_64')
-        except:
-            pass
+        __cublasDtbsv_v2_64 = GetProcAddress(handle, 'cublasDtbsv_v2_64')
 
         global __cublasCtbsv_v2_64
-        try:
-            __cublasCtbsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtbsv_v2_64')
-        except:
-            pass
+        __cublasCtbsv_v2_64 = GetProcAddress(handle, 'cublasCtbsv_v2_64')
 
         global __cublasZtbsv_v2_64
-        try:
-            __cublasZtbsv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtbsv_v2_64')
-        except:
-            pass
+        __cublasZtbsv_v2_64 = GetProcAddress(handle, 'cublasZtbsv_v2_64')
 
         global __cublasSsymv_v2_64
-        try:
-            __cublasSsymv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsymv_v2_64')
-        except:
-            pass
+        __cublasSsymv_v2_64 = GetProcAddress(handle, 'cublasSsymv_v2_64')
 
         global __cublasDsymv_v2_64
-        try:
-            __cublasDsymv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsymv_v2_64')
-        except:
-            pass
+        __cublasDsymv_v2_64 = GetProcAddress(handle, 'cublasDsymv_v2_64')
 
         global __cublasCsymv_v2_64
-        try:
-            __cublasCsymv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsymv_v2_64')
-        except:
-            pass
+        __cublasCsymv_v2_64 = GetProcAddress(handle, 'cublasCsymv_v2_64')
 
         global __cublasZsymv_v2_64
-        try:
-            __cublasZsymv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsymv_v2_64')
-        except:
-            pass
+        __cublasZsymv_v2_64 = GetProcAddress(handle, 'cublasZsymv_v2_64')
 
         global __cublasChemv_v2_64
-        try:
-            __cublasChemv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChemv_v2_64')
-        except:
-            pass
+        __cublasChemv_v2_64 = GetProcAddress(handle, 'cublasChemv_v2_64')
 
         global __cublasZhemv_v2_64
-        try:
-            __cublasZhemv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhemv_v2_64')
-        except:
-            pass
+        __cublasZhemv_v2_64 = GetProcAddress(handle, 'cublasZhemv_v2_64')
 
         global __cublasSsbmv_v2_64
-        try:
-            __cublasSsbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsbmv_v2_64')
-        except:
-            pass
+        __cublasSsbmv_v2_64 = GetProcAddress(handle, 'cublasSsbmv_v2_64')
 
         global __cublasDsbmv_v2_64
-        try:
-            __cublasDsbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsbmv_v2_64')
-        except:
-            pass
+        __cublasDsbmv_v2_64 = GetProcAddress(handle, 'cublasDsbmv_v2_64')
 
         global __cublasChbmv_v2_64
-        try:
-            __cublasChbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChbmv_v2_64')
-        except:
-            pass
+        __cublasChbmv_v2_64 = GetProcAddress(handle, 'cublasChbmv_v2_64')
 
         global __cublasZhbmv_v2_64
-        try:
-            __cublasZhbmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhbmv_v2_64')
-        except:
-            pass
+        __cublasZhbmv_v2_64 = GetProcAddress(handle, 'cublasZhbmv_v2_64')
 
         global __cublasSspmv_v2_64
-        try:
-            __cublasSspmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSspmv_v2_64')
-        except:
-            pass
+        __cublasSspmv_v2_64 = GetProcAddress(handle, 'cublasSspmv_v2_64')
 
         global __cublasDspmv_v2_64
-        try:
-            __cublasDspmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDspmv_v2_64')
-        except:
-            pass
+        __cublasDspmv_v2_64 = GetProcAddress(handle, 'cublasDspmv_v2_64')
 
         global __cublasChpmv_v2_64
-        try:
-            __cublasChpmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChpmv_v2_64')
-        except:
-            pass
+        __cublasChpmv_v2_64 = GetProcAddress(handle, 'cublasChpmv_v2_64')
 
         global __cublasZhpmv_v2_64
-        try:
-            __cublasZhpmv_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhpmv_v2_64')
-        except:
-            pass
+        __cublasZhpmv_v2_64 = GetProcAddress(handle, 'cublasZhpmv_v2_64')
 
         global __cublasSger_v2_64
-        try:
-            __cublasSger_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSger_v2_64')
-        except:
-            pass
+        __cublasSger_v2_64 = GetProcAddress(handle, 'cublasSger_v2_64')
 
         global __cublasDger_v2_64
-        try:
-            __cublasDger_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDger_v2_64')
-        except:
-            pass
+        __cublasDger_v2_64 = GetProcAddress(handle, 'cublasDger_v2_64')
 
         global __cublasCgeru_v2_64
-        try:
-            __cublasCgeru_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgeru_v2_64')
-        except:
-            pass
+        __cublasCgeru_v2_64 = GetProcAddress(handle, 'cublasCgeru_v2_64')
 
         global __cublasCgerc_v2_64
-        try:
-            __cublasCgerc_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgerc_v2_64')
-        except:
-            pass
+        __cublasCgerc_v2_64 = GetProcAddress(handle, 'cublasCgerc_v2_64')
 
         global __cublasZgeru_v2_64
-        try:
-            __cublasZgeru_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgeru_v2_64')
-        except:
-            pass
+        __cublasZgeru_v2_64 = GetProcAddress(handle, 'cublasZgeru_v2_64')
 
         global __cublasZgerc_v2_64
-        try:
-            __cublasZgerc_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgerc_v2_64')
-        except:
-            pass
+        __cublasZgerc_v2_64 = GetProcAddress(handle, 'cublasZgerc_v2_64')
 
         global __cublasSsyr_v2_64
-        try:
-            __cublasSsyr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyr_v2_64')
-        except:
-            pass
+        __cublasSsyr_v2_64 = GetProcAddress(handle, 'cublasSsyr_v2_64')
 
         global __cublasDsyr_v2_64
-        try:
-            __cublasDsyr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyr_v2_64')
-        except:
-            pass
+        __cublasDsyr_v2_64 = GetProcAddress(handle, 'cublasDsyr_v2_64')
 
         global __cublasCsyr_v2_64
-        try:
-            __cublasCsyr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyr_v2_64')
-        except:
-            pass
+        __cublasCsyr_v2_64 = GetProcAddress(handle, 'cublasCsyr_v2_64')
 
         global __cublasZsyr_v2_64
-        try:
-            __cublasZsyr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyr_v2_64')
-        except:
-            pass
+        __cublasZsyr_v2_64 = GetProcAddress(handle, 'cublasZsyr_v2_64')
 
         global __cublasCher_v2_64
-        try:
-            __cublasCher_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCher_v2_64')
-        except:
-            pass
+        __cublasCher_v2_64 = GetProcAddress(handle, 'cublasCher_v2_64')
 
         global __cublasZher_v2_64
-        try:
-            __cublasZher_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZher_v2_64')
-        except:
-            pass
+        __cublasZher_v2_64 = GetProcAddress(handle, 'cublasZher_v2_64')
 
         global __cublasSspr_v2_64
-        try:
-            __cublasSspr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSspr_v2_64')
-        except:
-            pass
+        __cublasSspr_v2_64 = GetProcAddress(handle, 'cublasSspr_v2_64')
 
         global __cublasDspr_v2_64
-        try:
-            __cublasDspr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDspr_v2_64')
-        except:
-            pass
+        __cublasDspr_v2_64 = GetProcAddress(handle, 'cublasDspr_v2_64')
 
         global __cublasChpr_v2_64
-        try:
-            __cublasChpr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChpr_v2_64')
-        except:
-            pass
+        __cublasChpr_v2_64 = GetProcAddress(handle, 'cublasChpr_v2_64')
 
         global __cublasZhpr_v2_64
-        try:
-            __cublasZhpr_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhpr_v2_64')
-        except:
-            pass
+        __cublasZhpr_v2_64 = GetProcAddress(handle, 'cublasZhpr_v2_64')
 
         global __cublasSsyr2_v2_64
-        try:
-            __cublasSsyr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyr2_v2_64')
-        except:
-            pass
+        __cublasSsyr2_v2_64 = GetProcAddress(handle, 'cublasSsyr2_v2_64')
 
         global __cublasDsyr2_v2_64
-        try:
-            __cublasDsyr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyr2_v2_64')
-        except:
-            pass
+        __cublasDsyr2_v2_64 = GetProcAddress(handle, 'cublasDsyr2_v2_64')
 
         global __cublasCsyr2_v2_64
-        try:
-            __cublasCsyr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyr2_v2_64')
-        except:
-            pass
+        __cublasCsyr2_v2_64 = GetProcAddress(handle, 'cublasCsyr2_v2_64')
 
         global __cublasZsyr2_v2_64
-        try:
-            __cublasZsyr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyr2_v2_64')
-        except:
-            pass
+        __cublasZsyr2_v2_64 = GetProcAddress(handle, 'cublasZsyr2_v2_64')
 
         global __cublasCher2_v2_64
-        try:
-            __cublasCher2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCher2_v2_64')
-        except:
-            pass
+        __cublasCher2_v2_64 = GetProcAddress(handle, 'cublasCher2_v2_64')
 
         global __cublasZher2_v2_64
-        try:
-            __cublasZher2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZher2_v2_64')
-        except:
-            pass
+        __cublasZher2_v2_64 = GetProcAddress(handle, 'cublasZher2_v2_64')
 
         global __cublasSspr2_v2_64
-        try:
-            __cublasSspr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSspr2_v2_64')
-        except:
-            pass
+        __cublasSspr2_v2_64 = GetProcAddress(handle, 'cublasSspr2_v2_64')
 
         global __cublasDspr2_v2_64
-        try:
-            __cublasDspr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDspr2_v2_64')
-        except:
-            pass
+        __cublasDspr2_v2_64 = GetProcAddress(handle, 'cublasDspr2_v2_64')
 
         global __cublasChpr2_v2_64
-        try:
-            __cublasChpr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChpr2_v2_64')
-        except:
-            pass
+        __cublasChpr2_v2_64 = GetProcAddress(handle, 'cublasChpr2_v2_64')
 
         global __cublasZhpr2_v2_64
-        try:
-            __cublasZhpr2_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhpr2_v2_64')
-        except:
-            pass
+        __cublasZhpr2_v2_64 = GetProcAddress(handle, 'cublasZhpr2_v2_64')
 
         global __cublasSgemvBatched_64
-        try:
-            __cublasSgemvBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemvBatched_64')
-        except:
-            pass
+        __cublasSgemvBatched_64 = GetProcAddress(handle, 'cublasSgemvBatched_64')
 
         global __cublasDgemvBatched_64
-        try:
-            __cublasDgemvBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemvBatched_64')
-        except:
-            pass
+        __cublasDgemvBatched_64 = GetProcAddress(handle, 'cublasDgemvBatched_64')
 
         global __cublasCgemvBatched_64
-        try:
-            __cublasCgemvBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemvBatched_64')
-        except:
-            pass
+        __cublasCgemvBatched_64 = GetProcAddress(handle, 'cublasCgemvBatched_64')
 
         global __cublasZgemvBatched_64
-        try:
-            __cublasZgemvBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemvBatched_64')
-        except:
-            pass
+        __cublasZgemvBatched_64 = GetProcAddress(handle, 'cublasZgemvBatched_64')
 
         global __cublasSgemvStridedBatched_64
-        try:
-            __cublasSgemvStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemvStridedBatched_64')
-        except:
-            pass
+        __cublasSgemvStridedBatched_64 = GetProcAddress(handle, 'cublasSgemvStridedBatched_64')
 
         global __cublasDgemvStridedBatched_64
-        try:
-            __cublasDgemvStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemvStridedBatched_64')
-        except:
-            pass
+        __cublasDgemvStridedBatched_64 = GetProcAddress(handle, 'cublasDgemvStridedBatched_64')
 
         global __cublasCgemvStridedBatched_64
-        try:
-            __cublasCgemvStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemvStridedBatched_64')
-        except:
-            pass
+        __cublasCgemvStridedBatched_64 = GetProcAddress(handle, 'cublasCgemvStridedBatched_64')
 
         global __cublasZgemvStridedBatched_64
-        try:
-            __cublasZgemvStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemvStridedBatched_64')
-        except:
-            pass
+        __cublasZgemvStridedBatched_64 = GetProcAddress(handle, 'cublasZgemvStridedBatched_64')
 
         global __cublasSgemm_v2_64
-        try:
-            __cublasSgemm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemm_v2_64')
-        except:
-            pass
+        __cublasSgemm_v2_64 = GetProcAddress(handle, 'cublasSgemm_v2_64')
 
         global __cublasDgemm_v2_64
-        try:
-            __cublasDgemm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemm_v2_64')
-        except:
-            pass
+        __cublasDgemm_v2_64 = GetProcAddress(handle, 'cublasDgemm_v2_64')
 
         global __cublasCgemm_v2_64
-        try:
-            __cublasCgemm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm_v2_64')
-        except:
-            pass
+        __cublasCgemm_v2_64 = GetProcAddress(handle, 'cublasCgemm_v2_64')
 
         global __cublasCgemm3m_64
-        try:
-            __cublasCgemm3m_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3m_64')
-        except:
-            pass
+        __cublasCgemm3m_64 = GetProcAddress(handle, 'cublasCgemm3m_64')
 
         global __cublasCgemm3mEx_64
-        try:
-            __cublasCgemm3mEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3mEx_64')
-        except:
-            pass
+        __cublasCgemm3mEx_64 = GetProcAddress(handle, 'cublasCgemm3mEx_64')
 
         global __cublasZgemm_v2_64
-        try:
-            __cublasZgemm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemm_v2_64')
-        except:
-            pass
+        __cublasZgemm_v2_64 = GetProcAddress(handle, 'cublasZgemm_v2_64')
 
         global __cublasZgemm3m_64
-        try:
-            __cublasZgemm3m_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemm3m_64')
-        except:
-            pass
+        __cublasZgemm3m_64 = GetProcAddress(handle, 'cublasZgemm3m_64')
 
         global __cublasSgemmEx_64
-        try:
-            __cublasSgemmEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmEx_64')
-        except:
-            pass
+        __cublasSgemmEx_64 = GetProcAddress(handle, 'cublasSgemmEx_64')
 
         global __cublasGemmEx_64
-        try:
-            __cublasGemmEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmEx_64')
-        except:
-            pass
+        __cublasGemmEx_64 = GetProcAddress(handle, 'cublasGemmEx_64')
 
         global __cublasCgemmEx_64
-        try:
-            __cublasCgemmEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemmEx_64')
-        except:
-            pass
+        __cublasCgemmEx_64 = GetProcAddress(handle, 'cublasCgemmEx_64')
 
         global __cublasSsyrk_v2_64
-        try:
-            __cublasSsyrk_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyrk_v2_64')
-        except:
-            pass
+        __cublasSsyrk_v2_64 = GetProcAddress(handle, 'cublasSsyrk_v2_64')
 
         global __cublasDsyrk_v2_64
-        try:
-            __cublasDsyrk_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyrk_v2_64')
-        except:
-            pass
+        __cublasDsyrk_v2_64 = GetProcAddress(handle, 'cublasDsyrk_v2_64')
 
         global __cublasCsyrk_v2_64
-        try:
-            __cublasCsyrk_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrk_v2_64')
-        except:
-            pass
+        __cublasCsyrk_v2_64 = GetProcAddress(handle, 'cublasCsyrk_v2_64')
 
         global __cublasZsyrk_v2_64
-        try:
-            __cublasZsyrk_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyrk_v2_64')
-        except:
-            pass
+        __cublasZsyrk_v2_64 = GetProcAddress(handle, 'cublasZsyrk_v2_64')
 
         global __cublasCsyrkEx_64
-        try:
-            __cublasCsyrkEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrkEx_64')
-        except:
-            pass
+        __cublasCsyrkEx_64 = GetProcAddress(handle, 'cublasCsyrkEx_64')
 
         global __cublasCsyrk3mEx_64
-        try:
-            __cublasCsyrk3mEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrk3mEx_64')
-        except:
-            pass
+        __cublasCsyrk3mEx_64 = GetProcAddress(handle, 'cublasCsyrk3mEx_64')
 
         global __cublasCherk_v2_64
-        try:
-            __cublasCherk_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherk_v2_64')
-        except:
-            pass
+        __cublasCherk_v2_64 = GetProcAddress(handle, 'cublasCherk_v2_64')
 
         global __cublasZherk_v2_64
-        try:
-            __cublasZherk_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZherk_v2_64')
-        except:
-            pass
+        __cublasZherk_v2_64 = GetProcAddress(handle, 'cublasZherk_v2_64')
 
         global __cublasCherkEx_64
-        try:
-            __cublasCherkEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherkEx_64')
-        except:
-            pass
+        __cublasCherkEx_64 = GetProcAddress(handle, 'cublasCherkEx_64')
 
         global __cublasCherk3mEx_64
-        try:
-            __cublasCherk3mEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherk3mEx_64')
-        except:
-            pass
+        __cublasCherk3mEx_64 = GetProcAddress(handle, 'cublasCherk3mEx_64')
 
         global __cublasSsyr2k_v2_64
-        try:
-            __cublasSsyr2k_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyr2k_v2_64')
-        except:
-            pass
+        __cublasSsyr2k_v2_64 = GetProcAddress(handle, 'cublasSsyr2k_v2_64')
 
         global __cublasDsyr2k_v2_64
-        try:
-            __cublasDsyr2k_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyr2k_v2_64')
-        except:
-            pass
+        __cublasDsyr2k_v2_64 = GetProcAddress(handle, 'cublasDsyr2k_v2_64')
 
         global __cublasCsyr2k_v2_64
-        try:
-            __cublasCsyr2k_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyr2k_v2_64')
-        except:
-            pass
+        __cublasCsyr2k_v2_64 = GetProcAddress(handle, 'cublasCsyr2k_v2_64')
 
         global __cublasZsyr2k_v2_64
-        try:
-            __cublasZsyr2k_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyr2k_v2_64')
-        except:
-            pass
+        __cublasZsyr2k_v2_64 = GetProcAddress(handle, 'cublasZsyr2k_v2_64')
 
         global __cublasCher2k_v2_64
-        try:
-            __cublasCher2k_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCher2k_v2_64')
-        except:
-            pass
+        __cublasCher2k_v2_64 = GetProcAddress(handle, 'cublasCher2k_v2_64')
 
         global __cublasZher2k_v2_64
-        try:
-            __cublasZher2k_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZher2k_v2_64')
-        except:
-            pass
+        __cublasZher2k_v2_64 = GetProcAddress(handle, 'cublasZher2k_v2_64')
 
         global __cublasSsyrkx_64
-        try:
-            __cublasSsyrkx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsyrkx_64')
-        except:
-            pass
+        __cublasSsyrkx_64 = GetProcAddress(handle, 'cublasSsyrkx_64')
 
         global __cublasDsyrkx_64
-        try:
-            __cublasDsyrkx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsyrkx_64')
-        except:
-            pass
+        __cublasDsyrkx_64 = GetProcAddress(handle, 'cublasDsyrkx_64')
 
         global __cublasCsyrkx_64
-        try:
-            __cublasCsyrkx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsyrkx_64')
-        except:
-            pass
+        __cublasCsyrkx_64 = GetProcAddress(handle, 'cublasCsyrkx_64')
 
         global __cublasZsyrkx_64
-        try:
-            __cublasZsyrkx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsyrkx_64')
-        except:
-            pass
+        __cublasZsyrkx_64 = GetProcAddress(handle, 'cublasZsyrkx_64')
 
         global __cublasCherkx_64
-        try:
-            __cublasCherkx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCherkx_64')
-        except:
-            pass
+        __cublasCherkx_64 = GetProcAddress(handle, 'cublasCherkx_64')
 
         global __cublasZherkx_64
-        try:
-            __cublasZherkx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZherkx_64')
-        except:
-            pass
+        __cublasZherkx_64 = GetProcAddress(handle, 'cublasZherkx_64')
 
         global __cublasSsymm_v2_64
-        try:
-            __cublasSsymm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSsymm_v2_64')
-        except:
-            pass
+        __cublasSsymm_v2_64 = GetProcAddress(handle, 'cublasSsymm_v2_64')
 
         global __cublasDsymm_v2_64
-        try:
-            __cublasDsymm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDsymm_v2_64')
-        except:
-            pass
+        __cublasDsymm_v2_64 = GetProcAddress(handle, 'cublasDsymm_v2_64')
 
         global __cublasCsymm_v2_64
-        try:
-            __cublasCsymm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCsymm_v2_64')
-        except:
-            pass
+        __cublasCsymm_v2_64 = GetProcAddress(handle, 'cublasCsymm_v2_64')
 
         global __cublasZsymm_v2_64
-        try:
-            __cublasZsymm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZsymm_v2_64')
-        except:
-            pass
+        __cublasZsymm_v2_64 = GetProcAddress(handle, 'cublasZsymm_v2_64')
 
         global __cublasChemm_v2_64
-        try:
-            __cublasChemm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasChemm_v2_64')
-        except:
-            pass
+        __cublasChemm_v2_64 = GetProcAddress(handle, 'cublasChemm_v2_64')
 
         global __cublasZhemm_v2_64
-        try:
-            __cublasZhemm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZhemm_v2_64')
-        except:
-            pass
+        __cublasZhemm_v2_64 = GetProcAddress(handle, 'cublasZhemm_v2_64')
 
         global __cublasStrsm_v2_64
-        try:
-            __cublasStrsm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrsm_v2_64')
-        except:
-            pass
+        __cublasStrsm_v2_64 = GetProcAddress(handle, 'cublasStrsm_v2_64')
 
         global __cublasDtrsm_v2_64
-        try:
-            __cublasDtrsm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrsm_v2_64')
-        except:
-            pass
+        __cublasDtrsm_v2_64 = GetProcAddress(handle, 'cublasDtrsm_v2_64')
 
         global __cublasCtrsm_v2_64
-        try:
-            __cublasCtrsm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrsm_v2_64')
-        except:
-            pass
+        __cublasCtrsm_v2_64 = GetProcAddress(handle, 'cublasCtrsm_v2_64')
 
         global __cublasZtrsm_v2_64
-        try:
-            __cublasZtrsm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrsm_v2_64')
-        except:
-            pass
+        __cublasZtrsm_v2_64 = GetProcAddress(handle, 'cublasZtrsm_v2_64')
 
         global __cublasStrmm_v2_64
-        try:
-            __cublasStrmm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrmm_v2_64')
-        except:
-            pass
+        __cublasStrmm_v2_64 = GetProcAddress(handle, 'cublasStrmm_v2_64')
 
         global __cublasDtrmm_v2_64
-        try:
-            __cublasDtrmm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrmm_v2_64')
-        except:
-            pass
+        __cublasDtrmm_v2_64 = GetProcAddress(handle, 'cublasDtrmm_v2_64')
 
         global __cublasCtrmm_v2_64
-        try:
-            __cublasCtrmm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrmm_v2_64')
-        except:
-            pass
+        __cublasCtrmm_v2_64 = GetProcAddress(handle, 'cublasCtrmm_v2_64')
 
         global __cublasZtrmm_v2_64
-        try:
-            __cublasZtrmm_v2_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrmm_v2_64')
-        except:
-            pass
+        __cublasZtrmm_v2_64 = GetProcAddress(handle, 'cublasZtrmm_v2_64')
 
         global __cublasSgemmBatched_64
-        try:
-            __cublasSgemmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmBatched_64')
-        except:
-            pass
+        __cublasSgemmBatched_64 = GetProcAddress(handle, 'cublasSgemmBatched_64')
 
         global __cublasDgemmBatched_64
-        try:
-            __cublasDgemmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemmBatched_64')
-        except:
-            pass
+        __cublasDgemmBatched_64 = GetProcAddress(handle, 'cublasDgemmBatched_64')
 
         global __cublasCgemmBatched_64
-        try:
-            __cublasCgemmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemmBatched_64')
-        except:
-            pass
+        __cublasCgemmBatched_64 = GetProcAddress(handle, 'cublasCgemmBatched_64')
 
         global __cublasCgemm3mBatched_64
-        try:
-            __cublasCgemm3mBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3mBatched_64')
-        except:
-            pass
+        __cublasCgemm3mBatched_64 = GetProcAddress(handle, 'cublasCgemm3mBatched_64')
 
         global __cublasZgemmBatched_64
-        try:
-            __cublasZgemmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemmBatched_64')
-        except:
-            pass
+        __cublasZgemmBatched_64 = GetProcAddress(handle, 'cublasZgemmBatched_64')
 
         global __cublasSgemmStridedBatched_64
-        try:
-            __cublasSgemmStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmStridedBatched_64')
-        except:
-            pass
+        __cublasSgemmStridedBatched_64 = GetProcAddress(handle, 'cublasSgemmStridedBatched_64')
 
         global __cublasDgemmStridedBatched_64
-        try:
-            __cublasDgemmStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemmStridedBatched_64')
-        except:
-            pass
+        __cublasDgemmStridedBatched_64 = GetProcAddress(handle, 'cublasDgemmStridedBatched_64')
 
         global __cublasCgemmStridedBatched_64
-        try:
-            __cublasCgemmStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemmStridedBatched_64')
-        except:
-            pass
+        __cublasCgemmStridedBatched_64 = GetProcAddress(handle, 'cublasCgemmStridedBatched_64')
 
         global __cublasCgemm3mStridedBatched_64
-        try:
-            __cublasCgemm3mStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgemm3mStridedBatched_64')
-        except:
-            pass
+        __cublasCgemm3mStridedBatched_64 = GetProcAddress(handle, 'cublasCgemm3mStridedBatched_64')
 
         global __cublasZgemmStridedBatched_64
-        try:
-            __cublasZgemmStridedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgemmStridedBatched_64')
-        except:
-            pass
+        __cublasZgemmStridedBatched_64 = GetProcAddress(handle, 'cublasZgemmStridedBatched_64')
 
         global __cublasGemmBatchedEx_64
-        try:
-            __cublasGemmBatchedEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmBatchedEx_64')
-        except:
-            pass
+        __cublasGemmBatchedEx_64 = GetProcAddress(handle, 'cublasGemmBatchedEx_64')
 
         global __cublasGemmStridedBatchedEx_64
-        try:
-            __cublasGemmStridedBatchedEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmStridedBatchedEx_64')
-        except:
-            pass
+        __cublasGemmStridedBatchedEx_64 = GetProcAddress(handle, 'cublasGemmStridedBatchedEx_64')
 
         global __cublasSgeam_64
-        try:
-            __cublasSgeam_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgeam_64')
-        except:
-            pass
+        __cublasSgeam_64 = GetProcAddress(handle, 'cublasSgeam_64')
 
         global __cublasDgeam_64
-        try:
-            __cublasDgeam_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgeam_64')
-        except:
-            pass
+        __cublasDgeam_64 = GetProcAddress(handle, 'cublasDgeam_64')
 
         global __cublasCgeam_64
-        try:
-            __cublasCgeam_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCgeam_64')
-        except:
-            pass
+        __cublasCgeam_64 = GetProcAddress(handle, 'cublasCgeam_64')
 
         global __cublasZgeam_64
-        try:
-            __cublasZgeam_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZgeam_64')
-        except:
-            pass
+        __cublasZgeam_64 = GetProcAddress(handle, 'cublasZgeam_64')
 
         global __cublasStrsmBatched_64
-        try:
-            __cublasStrsmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasStrsmBatched_64')
-        except:
-            pass
+        __cublasStrsmBatched_64 = GetProcAddress(handle, 'cublasStrsmBatched_64')
 
         global __cublasDtrsmBatched_64
-        try:
-            __cublasDtrsmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDtrsmBatched_64')
-        except:
-            pass
+        __cublasDtrsmBatched_64 = GetProcAddress(handle, 'cublasDtrsmBatched_64')
 
         global __cublasCtrsmBatched_64
-        try:
-            __cublasCtrsmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCtrsmBatched_64')
-        except:
-            pass
+        __cublasCtrsmBatched_64 = GetProcAddress(handle, 'cublasCtrsmBatched_64')
 
         global __cublasZtrsmBatched_64
-        try:
-            __cublasZtrsmBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZtrsmBatched_64')
-        except:
-            pass
+        __cublasZtrsmBatched_64 = GetProcAddress(handle, 'cublasZtrsmBatched_64')
 
         global __cublasSdgmm_64
-        try:
-            __cublasSdgmm_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSdgmm_64')
-        except:
-            pass
+        __cublasSdgmm_64 = GetProcAddress(handle, 'cublasSdgmm_64')
 
         global __cublasDdgmm_64
-        try:
-            __cublasDdgmm_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDdgmm_64')
-        except:
-            pass
+        __cublasDdgmm_64 = GetProcAddress(handle, 'cublasDdgmm_64')
 
         global __cublasCdgmm_64
-        try:
-            __cublasCdgmm_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasCdgmm_64')
-        except:
-            pass
+        __cublasCdgmm_64 = GetProcAddress(handle, 'cublasCdgmm_64')
 
         global __cublasZdgmm_64
-        try:
-            __cublasZdgmm_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasZdgmm_64')
-        except:
-            pass
+        __cublasZdgmm_64 = GetProcAddress(handle, 'cublasZdgmm_64')
 
         global __cublasSgemmGroupedBatched
-        try:
-            __cublasSgemmGroupedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmGroupedBatched')
-        except:
-            pass
+        __cublasSgemmGroupedBatched = GetProcAddress(handle, 'cublasSgemmGroupedBatched')
 
         global __cublasSgemmGroupedBatched_64
-        try:
-            __cublasSgemmGroupedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSgemmGroupedBatched_64')
-        except:
-            pass
+        __cublasSgemmGroupedBatched_64 = GetProcAddress(handle, 'cublasSgemmGroupedBatched_64')
 
         global __cublasDgemmGroupedBatched
-        try:
-            __cublasDgemmGroupedBatched = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemmGroupedBatched')
-        except:
-            pass
+        __cublasDgemmGroupedBatched = GetProcAddress(handle, 'cublasDgemmGroupedBatched')
 
         global __cublasDgemmGroupedBatched_64
-        try:
-            __cublasDgemmGroupedBatched_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasDgemmGroupedBatched_64')
-        except:
-            pass
+        __cublasDgemmGroupedBatched_64 = GetProcAddress(handle, 'cublasDgemmGroupedBatched_64')
 
         global __cublasGemmGroupedBatchedEx
-        try:
-            __cublasGemmGroupedBatchedEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmGroupedBatchedEx')
-        except:
-            pass
+        __cublasGemmGroupedBatchedEx = GetProcAddress(handle, 'cublasGemmGroupedBatchedEx')
 
         global __cublasGemmGroupedBatchedEx_64
-        try:
-            __cublasGemmGroupedBatchedEx_64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGemmGroupedBatchedEx_64')
-        except:
-            pass
+        __cublasGemmGroupedBatchedEx_64 = GetProcAddress(handle, 'cublasGemmGroupedBatchedEx_64')
 
         global __cublasGetEmulationStrategy
-        try:
-            __cublasGetEmulationStrategy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasGetEmulationStrategy')
-        except:
-            pass
+        __cublasGetEmulationStrategy = GetProcAddress(handle, 'cublasGetEmulationStrategy')
 
         global __cublasSetEmulationStrategy
-        try:
-            __cublasSetEmulationStrategy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasSetEmulationStrategy')
-        except:
-            pass
+        __cublasSetEmulationStrategy = GetProcAddress(handle, 'cublasSetEmulationStrategy')
 
-    __py_cublas_init = True
-    return 0
+        __py_cublas_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

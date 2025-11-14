@@ -6,9 +6,12 @@
 
 from libc.stdint cimport intptr_t, uintptr_t
 
+import threading
+
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -28,13 +31,31 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_curand_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __curandCreateGenerator = NULL
 cdef void* __curandCreateGeneratorHost = NULL
@@ -77,233 +98,217 @@ cdef int _check_or_init_curand() except -1 nogil:
     if __py_curand_init:
         return 0
 
-    # Load driver to check version
     cdef void* handle = NULL
-    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
-    global __cuDriverGetVersion
-    if __cuDriverGetVersion == NULL:
-        __cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
-    if __cuDriverGetVersion == NULL:
-        with gil:
-            raise RuntimeError('something went wrong')
-    cdef int err, driver_ver
-    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-    if err != 0:
-        with gil:
-            raise RuntimeError('something went wrong')
-    #dlclose(handle)
-    handle = NULL
 
-    # Load function
-    global __curandCreateGenerator
-    __curandCreateGenerator = dlsym(RTLD_DEFAULT, 'curandCreateGenerator')
-    if __curandCreateGenerator == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandCreateGenerator = dlsym(handle, 'curandCreateGenerator')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
-    global __curandCreateGeneratorHost
-    __curandCreateGeneratorHost = dlsym(RTLD_DEFAULT, 'curandCreateGeneratorHost')
-    if __curandCreateGeneratorHost == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandCreateGeneratorHost = dlsym(handle, 'curandCreateGeneratorHost')
+        # Load function
+        global __curandCreateGenerator
+        __curandCreateGenerator = dlsym(RTLD_DEFAULT, 'curandCreateGenerator')
+        if __curandCreateGenerator == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandCreateGenerator = dlsym(handle, 'curandCreateGenerator')
 
-    global __curandDestroyGenerator
-    __curandDestroyGenerator = dlsym(RTLD_DEFAULT, 'curandDestroyGenerator')
-    if __curandDestroyGenerator == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandDestroyGenerator = dlsym(handle, 'curandDestroyGenerator')
+        global __curandCreateGeneratorHost
+        __curandCreateGeneratorHost = dlsym(RTLD_DEFAULT, 'curandCreateGeneratorHost')
+        if __curandCreateGeneratorHost == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandCreateGeneratorHost = dlsym(handle, 'curandCreateGeneratorHost')
 
-    global __curandGetVersion
-    __curandGetVersion = dlsym(RTLD_DEFAULT, 'curandGetVersion')
-    if __curandGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGetVersion = dlsym(handle, 'curandGetVersion')
+        global __curandDestroyGenerator
+        __curandDestroyGenerator = dlsym(RTLD_DEFAULT, 'curandDestroyGenerator')
+        if __curandDestroyGenerator == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandDestroyGenerator = dlsym(handle, 'curandDestroyGenerator')
 
-    global __curandGetProperty
-    __curandGetProperty = dlsym(RTLD_DEFAULT, 'curandGetProperty')
-    if __curandGetProperty == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGetProperty = dlsym(handle, 'curandGetProperty')
+        global __curandGetVersion
+        __curandGetVersion = dlsym(RTLD_DEFAULT, 'curandGetVersion')
+        if __curandGetVersion == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGetVersion = dlsym(handle, 'curandGetVersion')
 
-    global __curandSetStream
-    __curandSetStream = dlsym(RTLD_DEFAULT, 'curandSetStream')
-    if __curandSetStream == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandSetStream = dlsym(handle, 'curandSetStream')
+        global __curandGetProperty
+        __curandGetProperty = dlsym(RTLD_DEFAULT, 'curandGetProperty')
+        if __curandGetProperty == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGetProperty = dlsym(handle, 'curandGetProperty')
 
-    global __curandSetPseudoRandomGeneratorSeed
-    __curandSetPseudoRandomGeneratorSeed = dlsym(RTLD_DEFAULT, 'curandSetPseudoRandomGeneratorSeed')
-    if __curandSetPseudoRandomGeneratorSeed == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandSetPseudoRandomGeneratorSeed = dlsym(handle, 'curandSetPseudoRandomGeneratorSeed')
+        global __curandSetStream
+        __curandSetStream = dlsym(RTLD_DEFAULT, 'curandSetStream')
+        if __curandSetStream == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandSetStream = dlsym(handle, 'curandSetStream')
 
-    global __curandSetGeneratorOffset
-    __curandSetGeneratorOffset = dlsym(RTLD_DEFAULT, 'curandSetGeneratorOffset')
-    if __curandSetGeneratorOffset == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandSetGeneratorOffset = dlsym(handle, 'curandSetGeneratorOffset')
+        global __curandSetPseudoRandomGeneratorSeed
+        __curandSetPseudoRandomGeneratorSeed = dlsym(RTLD_DEFAULT, 'curandSetPseudoRandomGeneratorSeed')
+        if __curandSetPseudoRandomGeneratorSeed == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandSetPseudoRandomGeneratorSeed = dlsym(handle, 'curandSetPseudoRandomGeneratorSeed')
 
-    global __curandSetGeneratorOrdering
-    __curandSetGeneratorOrdering = dlsym(RTLD_DEFAULT, 'curandSetGeneratorOrdering')
-    if __curandSetGeneratorOrdering == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandSetGeneratorOrdering = dlsym(handle, 'curandSetGeneratorOrdering')
+        global __curandSetGeneratorOffset
+        __curandSetGeneratorOffset = dlsym(RTLD_DEFAULT, 'curandSetGeneratorOffset')
+        if __curandSetGeneratorOffset == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandSetGeneratorOffset = dlsym(handle, 'curandSetGeneratorOffset')
 
-    global __curandSetQuasiRandomGeneratorDimensions
-    __curandSetQuasiRandomGeneratorDimensions = dlsym(RTLD_DEFAULT, 'curandSetQuasiRandomGeneratorDimensions')
-    if __curandSetQuasiRandomGeneratorDimensions == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandSetQuasiRandomGeneratorDimensions = dlsym(handle, 'curandSetQuasiRandomGeneratorDimensions')
+        global __curandSetGeneratorOrdering
+        __curandSetGeneratorOrdering = dlsym(RTLD_DEFAULT, 'curandSetGeneratorOrdering')
+        if __curandSetGeneratorOrdering == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandSetGeneratorOrdering = dlsym(handle, 'curandSetGeneratorOrdering')
 
-    global __curandGenerate
-    __curandGenerate = dlsym(RTLD_DEFAULT, 'curandGenerate')
-    if __curandGenerate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerate = dlsym(handle, 'curandGenerate')
+        global __curandSetQuasiRandomGeneratorDimensions
+        __curandSetQuasiRandomGeneratorDimensions = dlsym(RTLD_DEFAULT, 'curandSetQuasiRandomGeneratorDimensions')
+        if __curandSetQuasiRandomGeneratorDimensions == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandSetQuasiRandomGeneratorDimensions = dlsym(handle, 'curandSetQuasiRandomGeneratorDimensions')
 
-    global __curandGenerateLongLong
-    __curandGenerateLongLong = dlsym(RTLD_DEFAULT, 'curandGenerateLongLong')
-    if __curandGenerateLongLong == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateLongLong = dlsym(handle, 'curandGenerateLongLong')
+        global __curandGenerate
+        __curandGenerate = dlsym(RTLD_DEFAULT, 'curandGenerate')
+        if __curandGenerate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerate = dlsym(handle, 'curandGenerate')
 
-    global __curandGenerateUniform
-    __curandGenerateUniform = dlsym(RTLD_DEFAULT, 'curandGenerateUniform')
-    if __curandGenerateUniform == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateUniform = dlsym(handle, 'curandGenerateUniform')
+        global __curandGenerateLongLong
+        __curandGenerateLongLong = dlsym(RTLD_DEFAULT, 'curandGenerateLongLong')
+        if __curandGenerateLongLong == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateLongLong = dlsym(handle, 'curandGenerateLongLong')
 
-    global __curandGenerateUniformDouble
-    __curandGenerateUniformDouble = dlsym(RTLD_DEFAULT, 'curandGenerateUniformDouble')
-    if __curandGenerateUniformDouble == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateUniformDouble = dlsym(handle, 'curandGenerateUniformDouble')
+        global __curandGenerateUniform
+        __curandGenerateUniform = dlsym(RTLD_DEFAULT, 'curandGenerateUniform')
+        if __curandGenerateUniform == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateUniform = dlsym(handle, 'curandGenerateUniform')
 
-    global __curandGenerateNormal
-    __curandGenerateNormal = dlsym(RTLD_DEFAULT, 'curandGenerateNormal')
-    if __curandGenerateNormal == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateNormal = dlsym(handle, 'curandGenerateNormal')
+        global __curandGenerateUniformDouble
+        __curandGenerateUniformDouble = dlsym(RTLD_DEFAULT, 'curandGenerateUniformDouble')
+        if __curandGenerateUniformDouble == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateUniformDouble = dlsym(handle, 'curandGenerateUniformDouble')
 
-    global __curandGenerateNormalDouble
-    __curandGenerateNormalDouble = dlsym(RTLD_DEFAULT, 'curandGenerateNormalDouble')
-    if __curandGenerateNormalDouble == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateNormalDouble = dlsym(handle, 'curandGenerateNormalDouble')
+        global __curandGenerateNormal
+        __curandGenerateNormal = dlsym(RTLD_DEFAULT, 'curandGenerateNormal')
+        if __curandGenerateNormal == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateNormal = dlsym(handle, 'curandGenerateNormal')
 
-    global __curandGenerateLogNormal
-    __curandGenerateLogNormal = dlsym(RTLD_DEFAULT, 'curandGenerateLogNormal')
-    if __curandGenerateLogNormal == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateLogNormal = dlsym(handle, 'curandGenerateLogNormal')
+        global __curandGenerateNormalDouble
+        __curandGenerateNormalDouble = dlsym(RTLD_DEFAULT, 'curandGenerateNormalDouble')
+        if __curandGenerateNormalDouble == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateNormalDouble = dlsym(handle, 'curandGenerateNormalDouble')
 
-    global __curandGenerateLogNormalDouble
-    __curandGenerateLogNormalDouble = dlsym(RTLD_DEFAULT, 'curandGenerateLogNormalDouble')
-    if __curandGenerateLogNormalDouble == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateLogNormalDouble = dlsym(handle, 'curandGenerateLogNormalDouble')
+        global __curandGenerateLogNormal
+        __curandGenerateLogNormal = dlsym(RTLD_DEFAULT, 'curandGenerateLogNormal')
+        if __curandGenerateLogNormal == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateLogNormal = dlsym(handle, 'curandGenerateLogNormal')
 
-    global __curandCreatePoissonDistribution
-    __curandCreatePoissonDistribution = dlsym(RTLD_DEFAULT, 'curandCreatePoissonDistribution')
-    if __curandCreatePoissonDistribution == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandCreatePoissonDistribution = dlsym(handle, 'curandCreatePoissonDistribution')
+        global __curandGenerateLogNormalDouble
+        __curandGenerateLogNormalDouble = dlsym(RTLD_DEFAULT, 'curandGenerateLogNormalDouble')
+        if __curandGenerateLogNormalDouble == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateLogNormalDouble = dlsym(handle, 'curandGenerateLogNormalDouble')
 
-    global __curandDestroyDistribution
-    __curandDestroyDistribution = dlsym(RTLD_DEFAULT, 'curandDestroyDistribution')
-    if __curandDestroyDistribution == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandDestroyDistribution = dlsym(handle, 'curandDestroyDistribution')
+        global __curandCreatePoissonDistribution
+        __curandCreatePoissonDistribution = dlsym(RTLD_DEFAULT, 'curandCreatePoissonDistribution')
+        if __curandCreatePoissonDistribution == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandCreatePoissonDistribution = dlsym(handle, 'curandCreatePoissonDistribution')
 
-    global __curandGeneratePoisson
-    __curandGeneratePoisson = dlsym(RTLD_DEFAULT, 'curandGeneratePoisson')
-    if __curandGeneratePoisson == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGeneratePoisson = dlsym(handle, 'curandGeneratePoisson')
+        global __curandDestroyDistribution
+        __curandDestroyDistribution = dlsym(RTLD_DEFAULT, 'curandDestroyDistribution')
+        if __curandDestroyDistribution == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandDestroyDistribution = dlsym(handle, 'curandDestroyDistribution')
 
-    global __curandGeneratePoissonMethod
-    __curandGeneratePoissonMethod = dlsym(RTLD_DEFAULT, 'curandGeneratePoissonMethod')
-    if __curandGeneratePoissonMethod == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGeneratePoissonMethod = dlsym(handle, 'curandGeneratePoissonMethod')
+        global __curandGeneratePoisson
+        __curandGeneratePoisson = dlsym(RTLD_DEFAULT, 'curandGeneratePoisson')
+        if __curandGeneratePoisson == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGeneratePoisson = dlsym(handle, 'curandGeneratePoisson')
 
-    global __curandGenerateBinomial
-    __curandGenerateBinomial = dlsym(RTLD_DEFAULT, 'curandGenerateBinomial')
-    if __curandGenerateBinomial == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateBinomial = dlsym(handle, 'curandGenerateBinomial')
+        global __curandGeneratePoissonMethod
+        __curandGeneratePoissonMethod = dlsym(RTLD_DEFAULT, 'curandGeneratePoissonMethod')
+        if __curandGeneratePoissonMethod == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGeneratePoissonMethod = dlsym(handle, 'curandGeneratePoissonMethod')
 
-    global __curandGenerateBinomialMethod
-    __curandGenerateBinomialMethod = dlsym(RTLD_DEFAULT, 'curandGenerateBinomialMethod')
-    if __curandGenerateBinomialMethod == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateBinomialMethod = dlsym(handle, 'curandGenerateBinomialMethod')
+        global __curandGenerateBinomial
+        __curandGenerateBinomial = dlsym(RTLD_DEFAULT, 'curandGenerateBinomial')
+        if __curandGenerateBinomial == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateBinomial = dlsym(handle, 'curandGenerateBinomial')
 
-    global __curandGenerateSeeds
-    __curandGenerateSeeds = dlsym(RTLD_DEFAULT, 'curandGenerateSeeds')
-    if __curandGenerateSeeds == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGenerateSeeds = dlsym(handle, 'curandGenerateSeeds')
+        global __curandGenerateBinomialMethod
+        __curandGenerateBinomialMethod = dlsym(RTLD_DEFAULT, 'curandGenerateBinomialMethod')
+        if __curandGenerateBinomialMethod == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateBinomialMethod = dlsym(handle, 'curandGenerateBinomialMethod')
 
-    global __curandGetDirectionVectors32
-    __curandGetDirectionVectors32 = dlsym(RTLD_DEFAULT, 'curandGetDirectionVectors32')
-    if __curandGetDirectionVectors32 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGetDirectionVectors32 = dlsym(handle, 'curandGetDirectionVectors32')
+        global __curandGenerateSeeds
+        __curandGenerateSeeds = dlsym(RTLD_DEFAULT, 'curandGenerateSeeds')
+        if __curandGenerateSeeds == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGenerateSeeds = dlsym(handle, 'curandGenerateSeeds')
 
-    global __curandGetScrambleConstants32
-    __curandGetScrambleConstants32 = dlsym(RTLD_DEFAULT, 'curandGetScrambleConstants32')
-    if __curandGetScrambleConstants32 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGetScrambleConstants32 = dlsym(handle, 'curandGetScrambleConstants32')
+        global __curandGetDirectionVectors32
+        __curandGetDirectionVectors32 = dlsym(RTLD_DEFAULT, 'curandGetDirectionVectors32')
+        if __curandGetDirectionVectors32 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGetDirectionVectors32 = dlsym(handle, 'curandGetDirectionVectors32')
 
-    global __curandGetDirectionVectors64
-    __curandGetDirectionVectors64 = dlsym(RTLD_DEFAULT, 'curandGetDirectionVectors64')
-    if __curandGetDirectionVectors64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGetDirectionVectors64 = dlsym(handle, 'curandGetDirectionVectors64')
+        global __curandGetScrambleConstants32
+        __curandGetScrambleConstants32 = dlsym(RTLD_DEFAULT, 'curandGetScrambleConstants32')
+        if __curandGetScrambleConstants32 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGetScrambleConstants32 = dlsym(handle, 'curandGetScrambleConstants32')
 
-    global __curandGetScrambleConstants64
-    __curandGetScrambleConstants64 = dlsym(RTLD_DEFAULT, 'curandGetScrambleConstants64')
-    if __curandGetScrambleConstants64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __curandGetScrambleConstants64 = dlsym(handle, 'curandGetScrambleConstants64')
+        global __curandGetDirectionVectors64
+        __curandGetDirectionVectors64 = dlsym(RTLD_DEFAULT, 'curandGetDirectionVectors64')
+        if __curandGetDirectionVectors64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGetDirectionVectors64 = dlsym(handle, 'curandGetDirectionVectors64')
 
-    __py_curand_init = True
-    return 0
+        global __curandGetScrambleConstants64
+        __curandGetScrambleConstants64 = dlsym(RTLD_DEFAULT, 'curandGetScrambleConstants64')
+        if __curandGetScrambleConstants64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __curandGetScrambleConstants64 = dlsym(handle, 'curandGetScrambleConstants64')
+
+        __py_curand_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

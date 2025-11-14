@@ -1,2 +1,0 @@
-numba # numba-cuda defines version restriction
-numba-cuda >= 0.18.1

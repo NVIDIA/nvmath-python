@@ -44,9 +44,9 @@ mathdx.cublasdx_set_operator_int64s(
 mathdx.cublasdx_set_option_str(h, mathdx.CommondxOption.SYMBOL_NAME, "matmul")
 
 # Define the input and output tensors
-smem_a = mathdx.cublasdx_bind_tensor(h, mathdx.CublasdxTensorType.SUGGESTED_SMEM_A)
-smem_b = mathdx.cublasdx_bind_tensor(h, mathdx.CublasdxTensorType.SUGGESTED_SMEM_B)
-rmem_c = mathdx.cublasdx_bind_tensor(h, mathdx.CublasdxTensorType.SUGGESTED_RMEM_C)
+smem_a = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.SUGGESTED_SMEM_A)
+smem_b = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.SUGGESTED_SMEM_B)
+rmem_c = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.SUGGESTED_RMEM_C)
 
 tensors = [smem_a, smem_b, rmem_c]
 mathdx.cublasdx_finalize_tensors(h, len(tensors), tensors)
@@ -63,7 +63,7 @@ for t in tensors:
     print(f"Tensor {t}: name {name}, storage size {size}B, alignment {alignment}B, uid {uid}")
 
 # Define a function operating on those input and output tensors
-gemm_sa_sb_rc = mathdx.cublasdx_bind_device_function(h, mathdx.CublasdxDeviceFunctionType.EXECUTE, len(tensors), tensors)
+gemm_sa_sb_rc = mathdx.cublasdx_create_device_function(h, mathdx.CublasdxDeviceFunctionType.EXECUTE, len(tensors), tensors)
 mangled_name_size = mathdx.cublasdx_get_device_function_trait_str_size(gemm_sa_sb_rc, mathdx.CublasdxDeviceFunctionTrait.SYMBOL)
 mangled_name = bytearray(mangled_name_size)
 mangled_name_size = mathdx.cublasdx_get_device_function_trait_str(
@@ -85,6 +85,9 @@ mathdx.commondx_get_code_ltoir(code, lto_size, lto)
 
 
 print(f"Generated LTOIR for gemm device function, {lto_size} bytes at ..")
+
+for t in tensors:
+    mathdx.cublasdx_destroy_tensor(t)
 
 mathdx.commondx_destroy_code(code)
 # TODO: destroy update in original example (cpp)

@@ -1,4 +1,4 @@
-# This code was automatically generated with version 0.2.3. Do not modify it directly.
+# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
 
 from ._internal cimport mathdx as _mathdx
 
@@ -87,8 +87,8 @@ cdef commondxStatusType cublasdxSetTensorOptionInt64(cublasdxTensor tensor, cubl
     return _mathdx._cublasdxSetTensorOptionInt64(tensor, option, value)
 
 
-cdef commondxStatusType cublasdxFinalizeTensors(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
-    return _mathdx._cublasdxFinalizeTensors(handle, count, array)
+cdef commondxStatusType cublasdxFinalizeTensorsNew(size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxFinalizeTensorsNew(count, array)
 
 
 cdef commondxStatusType cublasdxGetTensorTraitInt64(cublasdxTensor tensor, cublasdxTensorTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -103,8 +103,8 @@ cdef commondxStatusType cublasdxGetTensorTraitStr(cublasdxTensor tensor, cublasd
     return _mathdx._cublasdxGetTensorTraitStr(tensor, trait, size, value)
 
 
-cdef commondxStatusType cublasdxBindDeviceFunction(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
-    return _mathdx._cublasdxBindDeviceFunction(handle, device_function_type, count, array, device_function)
+cdef commondxStatusType cublasdxCreateDeviceFunctionOld(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxCreateDeviceFunctionOld(handle, device_function_type, count, array, device_function)
 
 
 cdef commondxStatusType cublasdxFinalizeDeviceFunctions(commondxCode code, size_t count, const cublasdxDeviceFunction* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -285,3 +285,26 @@ cdef const char* cusolverdxOperatorTypeToStr(cusolverdxOperatorType op) except?N
 
 cdef const char* cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NULL nogil:
     return _mathdx._cusolverdxTraitTypeToStr(trait)
+
+
+cdef commondxStatusType cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxCreateTensorNew(handle, tensor_type, tensor)
+
+
+cdef commondxStatusType cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxMakeTensorLike(input, value_type, output)
+
+
+cdef commondxStatusType cublasdxDestroyTensorNew(cublasdxTensor tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxDestroyTensorNew(tensor)
+
+
+cdef commondxStatusType cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxCreateDeviceFunctionNew(handle, device_function_type, count, array, device_function)
+
+
+cdef commondxStatusType cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxDestroyDeviceFunctionNew(device_function)
+
+cdef commondxStatusType cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxFinalizeTensors203(handle, count, array)

@@ -175,7 +175,7 @@ compile_prolog.__doc__ = """
     Returns:
         The function compiled to LTO-IR as `bytes` object.
 
-    See Also:
+    .. seealso::
         :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`,
         :meth:`~nvmath.fft.compile_epilog`.
 
@@ -205,7 +205,7 @@ compile_epilog.__doc__ = """
     Returns:
         The function compiled to LTO-IR as `bytes` object.
 
-    See Also:
+    .. seealso::
         :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`,
         :meth:`~nvmath.fft.compile_prolog`.
 

@@ -53,7 +53,7 @@ from nvmath.linalg.advanced.matmulmod import EPILOG_INPUT_HANDLERS_MAP, EPILOG_M
 from nvmath.memory import BaseCUDAMemoryManager
 
 from nvmath_tests.helpers import nvmath_seed
-from .utils import get_absolute_tolerance
+from ...utils import get_absolute_tolerance
 
 MatmulEpilog_BIAS_list = [
     MatmulEpilog.BIAS,
@@ -569,7 +569,7 @@ def test_matmul_negative(a, b, c, alpha_value, beta_value, epilog, epilog_inputs
             "or as a dict with valid Matrix multiplication plan preferences." in str(e)
         ):
             assert not isinstance(preferences, MatmulPlanPreferences)
-        elif "The allocator must be an object of type that fulfils the BaseCUDAMemoryManager protocol" in str(e):
+        elif "The allocator must be an object of type that fulfills the BaseCUDAMemoryManager protocol" in str(e):
             assert not isinstance(options["allocator"], BaseCUDAMemoryManager)
         elif "int() argument must be a string, a bytes-like object or a number, not 'NoneType'" in str(e):
             assert preferences["reduction_scheme_mask"] is None or preferences["numerical_impl_mask"] is None

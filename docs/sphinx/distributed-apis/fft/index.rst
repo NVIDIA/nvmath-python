@@ -32,8 +32,8 @@ some key differences:
 
 * The operands to the API are the **local partition** of the global operands and
   the user specifies the **distribution** (how the data is partitioned across
-  processes). There are two types of distribution supported for FFT: ``Slab`` and custom
-  ``Box`` (these are described below).
+  processes). There are two types of distribution natively supported by FFT:
+  :ref:`distribution-slab` and custom :ref:`distribution-box`.
 
 * GPU operands need to be allocated on **symmetric memory**. Refer to
   :doc:`Distributed API Utilities <../utils>` for examples and details of how to
@@ -53,22 +53,31 @@ some key differences:
   operation. This helper is described below.
 
 
-Slab distribution
------------------
+Operand distribution
+--------------------
 
-``Slab`` is a 1D data decomposition where the data is partitioned across processes along one
-dimension (currently X or Y).
+To perform a distributed FFT operation you have to specify how the operand is distributed
+across processes. Distributed FFT natively supports the :ref:`distribution-slab` and
+:ref:`distribution-box` distributions. The distribution provided must be compatible with
+one of these.
+
+Slab
+~~~~
 
 .. tip::
-    ``Slab`` is the most optimized distribution mode to use with distributed FFT.
+    :ref:`distribution-slab` (or compatible distribution) is the most optimized
+    distribution to use with distributed FFT.
 
-To illustrate with a simple example:
+Currently, distributed FFT supports Slab decomposition on X or Y.
+Here is an example of a distributed FFT using Slab distribution:
 
 .. tip::
     Reminder to initialize the distributed context first as per
     :ref:`distributed-api-initialize`.
 
 .. code-block:: python
+
+    from nvmath.distributed.distribution import Slab
 
     # Get number of processes from mpi4py communicator.
     nranks = communicator.Get_size()
@@ -85,7 +94,7 @@ To illustrate with a simple example:
     # By default, the reshape option is True, which means that the output of the
     # distributed FFT will be re-distributed to retain the same distribution as
     # the input (in this case Slab.Y).
-    b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.Y)
+    b = nvmath.distributed.fft.fft(a, distribution=Slab.Y)
 
 For the purposes of the transform with ``reshape=False``, ``Slab.X``
 and ``Slab.Y`` are considered complementary distributions. If ``reshape=False``, the
@@ -93,6 +102,8 @@ returned operand will use the complementary distribution. The following example 
 this using GPU operands:
 
 .. code-block:: python
+
+    from nvmath.distributed.distribution import Slab
 
     # The global 3-D FFT size is (512, 256, 512).
     # Here, the input data is distributed across processes according to the
@@ -109,11 +120,11 @@ this using GPU operands:
     # Forward FFT.
     # Here, the forward FFT operand is distributed according to Slab.X distribution.
     # With reshape=False, the FFT result will be distributed according to Slab.Y distribution.
-    b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False})
+    b = nvmath.distributed.fft.fft(a, distribution=Slab.X, options={"reshape": False})
 
     # Now we can perform an inverse FFT with reshape=False and get the
     # result in Slab.X distribution (recall that `b` has Slab.Y distribution).
-    c = nvmath.distributed.fft.ifft(b, distribution=nvmath.distributed.fft.Slab.Y, options={"reshape": False})
+    c = nvmath.distributed.fft.ifft(b, distribution=Slab.Y, options={"reshape": False})
 
     # Synchronize the default stream
     with cp.cuda.Device(device_id):
@@ -127,17 +138,15 @@ this using GPU operands:
     Distributed FFT operations are in-place, which needs to be taken into account
     when freeing the GPU operands on symmetric memory (as shown in the above example).
 
-Refer to :class:`nvmath.distributed.fft.Slab` for more details.
-
-Custom box distribution
------------------------
+Custom box
+~~~~~~~~~~
 
 Distributed FFT also supports arbitrary data distributions in the form of 2D/3D boxes.
-Please refer to :ref:`distributed-reshape-box` for an overview.
+Refer to :ref:`distribution-box` for an overview.
 
 .. tip::
-    While efficient, ``Box`` distribution is less optimized than ``Slab``
-    for distributed FFT.
+    While efficient, :ref:`distribution-box` distribution is less optimized than
+    :ref:`distribution-slab` for distributed FFT.
 
 To perform a distributed FFT using a custom ``Box`` distribution, each process specifies
 its own input and output box, which determines the distribution of the input and output
@@ -149,6 +158,8 @@ With box distribution there is also the notion of complementary distribution:
 Here is an example of a distributed FFT across 4 GPUs using a custom pencil distribution:
 
 .. code-block:: python
+
+    from nvmath.distributed.distribution import Box
 
     # Get process rank from mpi4py communicator.
     rank = communicator.Get_rank()
@@ -164,13 +175,13 @@ Here is an example of a distributed FFT across 4 GPUs using a custom pencil dist
 
     # Forward FFT.
     if rank == 0:
-        input_box = [(0, 0, 0), (32, 128, 128)]
+        input_box = Box((0, 0, 0), (32, 128, 128))
     elif rank == 1:
-        input_box = [(0, 128, 0), (32, 256, 128)]
+        input_box = Box((0, 128, 0), (32, 256, 128))
     elif rank == 2:
-        input_box = [(32, 0, 0), (64, 128, 128)]
+        input_box = Box((32, 0, 0), (64, 128, 128))
     else:
-        input_box = [(32, 128, 0), (64, 256, 128)]
+        input_box = Box((32, 128, 0), (64, 256, 128))
     # Use the same pencil distribution for the output.
     output_box = input_box
     b = nvmath.distributed.fft.fft(a, distribution=[input_box, output_box])
@@ -267,4 +278,3 @@ FFT support (:mod:`nvmath.distributed.fft`)
 
    FFTOptions
    FFTDirection
-   Slab

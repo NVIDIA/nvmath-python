@@ -35,7 +35,7 @@ from nvmath.sparse._internal import cudss_config_ifc, cudss_data_ifc, cudss_util
 from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
 
 
-VALID_INDEX_TYPES = ("int32",)
+VALID_INDEX_TYPES = ("int32", "int64")
 
 VALID_DTYPES = ("float32", "float64", "complex64", "complex128")
 
@@ -195,6 +195,10 @@ has the same shape as the corresponding tensor in ``b``.
 
           * The solution ``x`` always has the same form as the RHS ``b``. It is a sequence of matrices or vectors if
             ``b`` is explicitly-batched, or a higher-dimensional ndarray/tensor if ``b`` is implicitly-batched.
+
+        .. tip::  For a description of the CSR sparse format, see
+           `here <https://docs.nvidia.com/nvpl/latest/sparse/storage_format/sparse_matrix.html#compressed-sparse-row-csr>`_
+           for example.
 """.strip(),
     }
 )
@@ -202,6 +206,16 @@ has the same shape as the corresponding tensor in ``b``.
 
 class InvalidDirectSolverState(Exception):
     pass
+
+
+def _check_cudss_version():
+    required = (0, 7)
+    available = cudss.get_property(0), cudss.get_property(1)
+    if available != required:
+        raise RuntimeError(
+            f"nvmath-python requires cuDSS version {'.'.join(str(i) for i in required)}, while you "
+            f"have cuDSS version {'.'.join(str(i) for i in available)}."
+        )
 
 
 @utils.docstring_decorator(SHARED_DSS_DOCUMENTATION, skip_missing=False)
@@ -249,7 +263,10 @@ class DirectSolver:
 
         stream: {stream}
 
-    See Also:
+    Semantics:
+        {semantics}
+
+    .. seealso::
         :class:`DirectSolverPlanConfig`, :class:`DirectSolverFactorizationConfig`,
         :class:`DirectSolverSolutionConfig`, :class:`DirectSolverPlanInfo`,
         :class:`DirectSolverFactorizationInfo`, :class:`DirectSolverOptions`,
@@ -325,7 +342,7 @@ class DirectSolver:
 
         >>> x = solver.solve()
 
-        Finally, free the object's resources. To avoid having to explicitly making this
+        Finally, free the object's resources. To avoid having to explicitly make this
         call, it's recommended to use the DirectSolver object as a context manager as
         shown below, if possible.
 
@@ -404,8 +421,13 @@ class DirectSolver:
         execution: ExecutionCUDA | ExecutionHybrid | None = None,
         stream: utils.AnyStream | int | None = None,
     ):
+        # Check if the required cuDSS version is available.
+        _check_cudss_version()
+
         # Process options.
-        self.options: Any = utils.check_or_create_options(DirectSolverOptions, options, "sparse direct solver options")
+        self.options: DirectSolverOptions = utils.check_or_create_options(
+            DirectSolverOptions, options, "sparse direct solver options"
+        )  # type: ignore[assignment]
 
         # Process execution options. The default execution space is CUDA.
         self.execution_options = utils.check_or_create_one_of_options(
@@ -452,7 +474,7 @@ The specified LHS sequence = {a}."""
         self.batched = self.explicitly_batched_lhs or self.implicitly_batched_lhs
 
         # The LHS batch shape should be empty for explicit batching.
-        self.lhs_batch_shape: Any = None if self.explicitly_batched_lhs else tuple(self.a.shape[:-2])
+        self.lhs_batch_shape = None if self.explicitly_batched_lhs else tuple(self.a.shape[:-2])
 
         # Set the LHS package.
         if self.explicitly_batched_lhs:
@@ -468,7 +490,7 @@ The specified LHS sequence = {a}."""
         if self.explicitly_batched_lhs:
             self.batch_count = len(self.a)
         elif self.implicitly_batched_lhs:
-            self.batch_count = math.prod(self.lhs_batch_shape)
+            self.batch_count = math.prod(self.lhs_batch_shape)  # type: ignore[arg-type]
             # Create the sequence of batch coordinates to use for creating batched CSR
             # matrix type.
             self.batch_indices = tuple(itertools.product(*list(map(range, self.lhs_batch_shape))))  # type: ignore
@@ -566,11 +588,17 @@ compatible choices: {cudss_utils.COMPATIBLE_LHS_RHS_PACKAGES}."""
             self._N = n
             self.lhs_nnz = self.a.values.size
 
-        # Note that torch by default uses int64 which is not supported. SciPy and CuPy adapt
-        # the index type based on the dimension.
+        # Note that torch by default uses int64 which doesn't seem to give correct results
+        # for batched solves. SciPy and CuPy adapt the index type based on the dimension.
         if self.index_type not in VALID_INDEX_TYPES:
             raise TypeError(
                 f"The index type {self.index_type} is not supported. The supported index types are {VALID_INDEX_TYPES}."
+            )
+
+        if self.index_type == "int64" and self.batch_count > 1:
+            raise RuntimeError(
+                "The index type 'int64' is not supported for batched solve. The supported index types are: "
+                f"{', '.join(set(VALID_INDEX_TYPES) - {'int64'})}"
             )
 
         if self.value_type not in VALID_DTYPES:
@@ -926,7 +954,7 @@ than 1 (num_threads = {num_threads}.""")
             A :class:`DirectSolverPlanConfig` object, whose attributes can be set (or
             queried) to configure the planning phase.
 
-        See Also:
+        .. seealso::
             :class:`DirectSolverPlanConfig`, :meth:`plan`.
         """
         return self._plan_config
@@ -940,7 +968,7 @@ than 1 (num_threads = {num_threads}.""")
             A :class:`DirectSolverFactorizationConfig` object, whose attributes can be set
             (or queried) to configure the factorization phase.
 
-        See Also:
+        .. seealso::
             :class:`DirectSolverFactorizationConfig`, :meth:`factorize`.
         """
         return self._factorization_config
@@ -954,7 +982,7 @@ than 1 (num_threads = {num_threads}.""")
             A :class:`DirectSolverSolutionConfig` object, whose attributes can be set
             (or queried) to configure the factorization phase.
 
-        See Also:
+        .. seealso::
             :class:`DirectSolverSolutionConfig`, :meth:`solve`.
         """
         return self._solution_config
@@ -968,7 +996,7 @@ than 1 (num_threads = {num_threads}.""")
             A :class:`DirectSolverPlanInfo` object, whose attributes can be queried for
             information regarding the planning phase.
 
-        See Also:
+        .. seealso::
             :class:`DirectSolverPlanInfo`, :meth:`plan`.
         """
         return self._plan_info
@@ -984,7 +1012,7 @@ than 1 (num_threads = {num_threads}.""")
             A :class:`DirectSolverFactorizationInfo` object, whose attributes can be
             queried for information regarding the factorization phase.
 
-        See Also:
+        .. seealso::
             :class:`DirectSolverFactorizationInfo`, :meth:`factorize`.
         """
         return self._factorization_info
@@ -1295,7 +1323,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
             A :class:`DirectSolverPlanInfo` object, whose attributes can be queried for
             information regarding the plan.
 
-        See Also:
+        .. seealso::
             :attr:`plan_config`, :class:`DirectSolverPlanConfig`,
             :class:`DirectSolverPlanInfo`.
 
@@ -1326,8 +1354,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
             ...     # returns a DirectSolverPlanInfo object.
             ...     plan_info = solver.plan()
             ...     # Query the column permutation, memory estimates, ...
-            ...     plan_info.col_permutation
-            array([6, 1, 4, 0, 3, 2, 5, 7], dtype=int32)
+            ...     col_perm = plan_info.col_permutation
 
         Further examples can be found in the `nvmath/examples/sparse/advanced/direct_solver
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/advanced/direct_solver>`_
@@ -1359,7 +1386,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
             A :class:`DirectSolverFactorizationInfo` object, whose attributes can be
             queried for information regarding the numerical factorization.
 
-        See Also:
+        .. seealso::
             :attr:`factorization_config`, :class:`DirectSolverFactorizationConfig`,
             :class:`DirectSolverFactorizationInfo`.
 
@@ -1421,7 +1448,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
         Returns:
            {result}
 
-        See Also:
+        .. seealso::
             :attr:`solution_config`, :class:`DirectSolverSolutionConfig`.
 
         Examples:
@@ -1547,6 +1574,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
             # Release internal resource references.
             self.resources_a = self.resources_b = self.resources_x = None
             self.resources_ra = self.resources_rb = self.resources_rx = None
+            self.a = self.b = None
 
             # Free matrix pointers.
             cudss.matrix_destroy(self.x_ptr)
@@ -1623,7 +1651,7 @@ def direct_solver(
     Semantics:
         {semantics}
 
-    See Also:
+    .. seealso::
         :class:`DirectSolver`, :class:`DirectSolverOptions`, :class:`ExecutionCUDA`,
         :class:`ExecutionHybrid`.
 

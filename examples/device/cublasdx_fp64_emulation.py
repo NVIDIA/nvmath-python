@@ -23,12 +23,12 @@ from numba import cuda
 import numpy as np
 from numba import int32, int8, int16, float64, int64, types
 from numba.types import Tuple
-import cuda.cccl.cooperative.experimental as cudax
+from cuda import coop
 
 from common import mm_perf_GFlops, random_real
 from common_numba import time_numba
-from nvmath.device import matmul
-from nvmath.device.cublasdx import MAX_ALIGNMENT, BlasOptionsComplete, SharedStorageCalc
+from nvmath.device import Matmul
+from nvmath.device.cublasdx import MAX_ALIGNMENT, SharedStorageCalc
 from nvmath.device.common import (
     clear,
     copy,
@@ -133,7 +133,7 @@ def build_split_kernel(k, threads, splits=7, order="C"):
     def op_max(a, b):
         return a if a > b else b
 
-    block_reduce = cudax.block.reduce(int16, threads, op_max)
+    block_reduce = coop.block.reduce(int16, threads, op_max)
 
     items_per_thread = (k + threads - 1) // threads
 
@@ -189,8 +189,8 @@ def build_split_kernel(k, threads, splits=7, order="C"):
     return split_kernel
 
 
-def matmul_specification(tile_m, tile_n, tile_k, block_size, alignment) -> BlasOptionsComplete:
-    return matmul(
+def matmul_specification(tile_m, tile_n, tile_k, block_size, alignment) -> Matmul:
+    return Matmul(
         size=(tile_m, tile_n, tile_k),
         precision=(np.int8, np.int8, np.int32),
         data_type="real",
@@ -198,15 +198,11 @@ def matmul_specification(tile_m, tile_n, tile_k, block_size, alignment) -> BlasO
         execution="Block",
         block_size=block_size,
         alignment=alignment,
-        global_memory_alignment=alignment,
         static_block_dim=True,
-        compiler="numba",
-        execute_api="tensors",
-        tensor_types=("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
     )
 
 
-def build_single_matmul(m: int, n: int, k: int, MM: BlasOptionsComplete):
+def build_single_matmul(m: int, n: int, k: int, MM: Matmul):
     tile_m, tile_n, tile_k = MM.size
 
     assert m % tile_m == 0
@@ -215,7 +211,7 @@ def build_single_matmul(m: int, n: int, k: int, MM: BlasOptionsComplete):
 
     grid_dim = Dim3(m // tile_m, n // tile_n, 1)
 
-    @cuda.jit(link=MM.files, device=True, forceinline=True)
+    @cuda.jit(device=True, forceinline=True)
     def matmul_func(a, b, smem_a, smem_b, smem_a_n, smem_b_n, rmem_c):
         block_m = cuda.blockIdx.x
         block_n = cuda.blockIdx.y
@@ -233,8 +229,8 @@ def build_single_matmul(m: int, n: int, k: int, MM: BlasOptionsComplete):
         gmem_a = make_tensor(a_tile, MM.get_layout_gmem_a(k))
         gmem_b = make_tensor(b_tile, MM.get_layout_gmem_b(k))
 
-        copy(gmem_a, smem_a)
-        copy(gmem_b, smem_b)
+        copy(gmem_a, smem_a, alignment=16)
+        copy(gmem_b, smem_b, alignment=16)
 
         # 3. EXECUTE GEMM WITH ACCUMULATION IN REGISTERS
         for stage in range(1, stages):
@@ -248,8 +244,8 @@ def build_single_matmul(m: int, n: int, k: int, MM: BlasOptionsComplete):
             gmem_a = make_tensor(a_tile, MM.get_layout_gmem_a(k))
             gmem_b = make_tensor(b_tile, MM.get_layout_gmem_b(k))
 
-            copy(gmem_a, smem_a_n)
-            copy(gmem_b, smem_b_n)
+            copy(gmem_a, smem_a_n, alignment=16)
+            copy(gmem_b, smem_b_n, alignment=16)
 
             # Accumulate results from this stage
             MM.execute(smem_a, smem_b, rmem_c)
@@ -290,7 +286,7 @@ def build_looped_matmul(
     b_size = MM.suggest_layout_smem_b().cosize
     c_size = MM.suggest_layout_rmem_c().cosize
 
-    @cuda.jit(link=MM.files, device=device, forceinline=device)
+    @cuda.jit(device=device, forceinline=device)
     def matmul_kernel(a_split, b_split, output):
         block_m = cuda.blockIdx.x
         block_n = cuda.blockIdx.y
@@ -351,7 +347,7 @@ def build_looped_matmul(
             0,
         ]
         gmem_output = make_tensor(output_tile, MM.get_layout_gmem_c(m))
-        copy_fragment(rmem_c_out1, gmem_output)
+        copy_fragment(rmem_c_out1, gmem_output, alignment=16)
 
         output_tile = output[
             block_m * tile_m : (block_m + 1) * tile_m,
@@ -359,7 +355,7 @@ def build_looped_matmul(
             1,
         ]
         gmem_output = make_tensor(output_tile, MM.get_layout_gmem_c(m))
-        copy_fragment(rmem_c_out2, gmem_output)
+        copy_fragment(rmem_c_out2, gmem_output, alignment=16)
 
     smem_calc = SharedStorageCalc()
     itemsize = np.dtype(np.int8).itemsize
@@ -369,7 +365,7 @@ def build_looped_matmul(
     smem_calc.add(MM.alignment.b, itemsize, MM.suggest_layout_smem_b())
     shared_memory_size = smem_calc.get()
 
-    return matmul_kernel, grid_dim, MM.block_dim, shared_memory_size, MM.files
+    return matmul_kernel, grid_dim, MM.block_dim, shared_memory_size
 
 
 @cuda.jit(float64(int16, int64), device=True, forceinline=True, cache=CUDA_CACHE)
@@ -463,7 +459,7 @@ def main(m, n, k, tile_m, tile_n, tile_k, block_size, run_perf=True):
     split_a_kernel = build_split_kernel(k, split_block_size, splits=splits, order="C")
     split_b_kernel = build_split_kernel(k, split_block_size, splits=splits, order="F")
 
-    cumulative_matmul, grid_dim, block_dim, shared_memory_size, files = build_looped_matmul(
+    cumulative_matmul, grid_dim, block_dim, shared_memory_size = build_looped_matmul(
         m,
         n,
         k,
@@ -479,7 +475,7 @@ def main(m, n, k, tile_m, tile_n, tile_k, block_size, run_perf=True):
     assert block_dim[1] == 1 and block_dim[2] == 1
     compose_kernel = build_compose_kernel((tile_m, tile_n), block_dim[0], exp_shift, device=True)
 
-    @cuda.jit(link=files)
+    @cuda.jit
     def fused_kernel(alpha, a_split_d, b_split_d, m_o_d, max_e_a_d, max_e_b_d, beta, c, o_d):
         cumulative_matmul(a_split_d, b_split_d, m_o_d)
         cuda.syncthreads()

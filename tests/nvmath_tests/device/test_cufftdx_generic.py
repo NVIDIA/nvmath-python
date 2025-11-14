@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
-from nvmath.device import fft, CodeType, ComputeCapability, FFTOptions
-from nvmath.device.cufftdx import FFTCompiled
+from nvmath.device import fft, Code, CodeType, ComputeCapability, FFT
+from nvmath.device.cufftdx import compile_fft_execute
+from nvmath.device.types import half4, complex64, complex128
 import pytest
 import numpy as np
 from .helpers import (
@@ -20,29 +21,24 @@ from .helpers import (
     SM86,
     SM89,
     SM90,
-    AssertFilesClosed,
     skip_unsupported_sm,
 )
 
 
-def test_files_closed():
-    with AssertFilesClosed():
-        _ = fft(fft_type="c2c", size=32, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
-
-
 @pytest.mark.parametrize("execute_api", ["shared_memory", "register_memory"])
 def test_third_party_block_symbol(execute_api):
-    FFT = fft(
+    fft = FFT(
         fft_type="c2c",
         size=256,
         precision=np.float32,
         direction="forward",
-        code_type=SM90,
+        sm=SM90.cc,
         execution="Block",
-        execute_api=execute_api,
     )
 
-    assert len(FFT.symbol) > 0
+    _, symbol = compile_fft_execute(fft, code_type=SM90, execute_api=execute_api)
+
+    assert len(symbol) > 0
 
 
 @pytest.mark.parametrize(
@@ -50,68 +46,69 @@ def test_third_party_block_symbol(execute_api):
     ["Block", "Thread"],
 )
 def test_third_party_symbol(execution):
-    FFT = fft(fft_type="c2c", size=16, precision=np.float32, direction="forward", code_type=SM90, execution=execution)
+    fft = FFT(fft_type="c2c", size=16, precision=np.float32, direction="forward", sm=SM90.cc, execution=execution)
+    _, symbol = compile_fft_execute(fft, code_type=SM90)
 
-    assert len(FFT.symbol) > 0
+    assert len(symbol) > 0
 
 
 def test_third_party_code():
-    FFT = fft(fft_type="c2c", size=32, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
+    fft = FFT(fft_type="c2c", size=32, precision=np.float32, direction="forward", sm=SM80.cc, execution="Block")
+    code, _ = compile_fft_execute(fft, code_type=SM80)
 
-    assert isinstance(FFT, FFTCompiled)
-    assert all(code.endswith(".ltoir") for code in FFT.files)
-    assert len(FFT.codes) > 0
-    for code in FFT.codes:
-        print(code.code_type, code.isa_version)
-    assert all(code.code_type.kind == "lto" for code in FFT.codes)
-    assert all(code.isa_version.major >= 12 for code in FFT.codes)
-    assert all(code.isa_version.minor >= 0 for code in FFT.codes)
-    assert all(code.code_type.cc.major == 8 for code in FFT.codes)
-    assert all(code.code_type.cc.minor == 0 for code in FFT.codes)
-    assert all(isinstance(code.data, bytes) for code in FFT.codes)
-    assert all(len(code.data) > 0 for code in FFT.codes)
+    assert isinstance(code, Code)
+    assert code.code_type.kind == "lto"
+    assert code.isa_version.major >= 12
+    assert code.isa_version.minor >= 0
+    assert code.code_type.cc.major == 8
+    assert code.code_type.cc.minor == 0
+    assert isinstance(code.data, bytes)
+    assert len(code.data) > 0
 
 
 #                                            2      | 2, 2^2, ... | 2, 2^2, ... | 2, 2^2, ...  # noqa: W505
 @pytest.mark.parametrize("size, mincount", [(2, 1), (16, 4), (128, 4), (2048, 4)])
 def test_knobs_c2c_ept_fpb(size, mincount):
-    FO = FFTOptions(fft_type="c2c", size=size, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
-    valid = FO.valid("elements_per_thread", "ffts_per_block")
+    FO = functools.partial(
+        FFT, fft_type="c2c", size=size, precision=np.float32, direction="forward", sm=SM80.cc, execution="Block"
+    )
+    valid = FO().valid("elements_per_thread", "ffts_per_block")
     assert len(list(valid)) >= mincount
     for ept, fpb in valid:
         print("ept, fpb = ", ept, fpb)
-        FFT = FO.create(elements_per_thread=ept, ffts_per_block=fpb)
-        assert isinstance(FFT, FFTCompiled)
-        assert FFT.elements_per_thread == ept
-        assert FFT.ffts_per_block == fpb
-        assert len(FFT.files) > 0
+        fft = FO(elements_per_thread=ept, ffts_per_block=fpb)
+        assert isinstance(fft, FFT)
+        assert fft.elements_per_thread == ept
+        assert fft.ffts_per_block == fpb
 
 
 #                                            3, 3^2 | 11      |2, 2^2, 2^3, ...
 @pytest.mark.parametrize("size, mincount", [(9, 2), (121, 1), (2048, 4)])
 def test_knobs_c2c_ept_only(size, mincount):
-    FO = FFTOptions(fft_type="c2c", size=size, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
-    valid = FO.valid("elements_per_thread")
+    FO = functools.partial(
+        FFT, fft_type="c2c", size=size, precision=np.float32, direction="forward", sm=SM80.cc, execution="Block"
+    )
+    valid = FO().valid("elements_per_thread")
     assert len(list(valid)) >= mincount
     for (ept,) in valid:
         print("ept = ", ept)
-        FFT = FO.create(elements_per_thread=ept)
-        assert isinstance(FFT, FFTCompiled)
-        assert FFT.elements_per_thread == ept
-        assert len(FFT.files) > 0
+        fft = FO(elements_per_thread=ept)
+        assert isinstance(fft, FFT)
+        assert fft.elements_per_thread == ept
 
 
 @pytest.mark.parametrize("size, mincount", [(7, 1), (36, 1), (2048, 1)])
 def test_knobs_c2c_fpb_only(size, mincount):
-    FO = FFTOptions(fft_type="c2c", size=size, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
-    valid = FO.valid("ffts_per_block")
+    FO = functools.partial(
+        FFT, fft_type="c2c", size=size, precision=np.float32, direction="forward", sm=SM80.cc, execution="Block"
+    )
+    valid = FO().valid("ffts_per_block")
     assert len(list(valid)) >= mincount
     for (fpb,) in valid:
         print("fpb = ", fpb)
-        FFT = FO.create(ffts_per_block=fpb)
-        assert isinstance(FFT, FFTCompiled)
-        assert FFT.ffts_per_block == fpb
-        assert len(FFT.files) > 0
+        fft = FO(ffts_per_block=fpb)
+        assert isinstance(fft, FFT)
+        assert fft.ffts_per_block == fpb
 
 
 @pytest.mark.parametrize(
@@ -132,99 +129,99 @@ def test_knobs_c2c_fpb_only(size, mincount):
     ],
 )
 def test_knobs_r2c_c2r(fft_type, complex_layout, real_mode):
-    FO = FFTOptions(
+    FO = functools.partial(
+        FFT,
         fft_type=fft_type,
         size=512,
         precision=np.float32,
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
         real_fft_options={"complex_layout": complex_layout, "real_mode": real_mode},
     )
-    valid = FO.valid("elements_per_thread", "ffts_per_block")
+    valid = FO().valid("elements_per_thread", "ffts_per_block")
     assert len(valid) > 2
     for ept, fpb in valid:
         print("ept, fpb = ", ept, fpb)
-        FFT = FO.create(elements_per_thread=ept, ffts_per_block=fpb)
-        assert isinstance(FFT, FFTCompiled)
-        assert FFT.elements_per_thread == ept
-        assert FFT.ffts_per_block == fpb
-        assert len(FFT.files) > 0
+        fft = FO(elements_per_thread=ept, ffts_per_block=fpb)
+        assert isinstance(fft, FFT)
+        assert fft.elements_per_thread == ept
+        assert fft.ffts_per_block == fpb
     # Max EPT is usually 32, but folded allows for EPT=64
     if real_mode == "folded":
         assert 64 in [e for (e, _) in valid]
 
 
 def test_knobs_0():
-    FO = FFTOptions(fft_type="c2c", size=4, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
-    val = FO.valid("elements_per_thread", "ffts_per_block")
+    fft = FFT(fft_type="c2c", size=4, precision=np.float32, direction="forward", sm=SM80.cc, execution="Block")
+    val = fft.valid("elements_per_thread", "ffts_per_block")
     print(val)
 
 
 def test_knobs_1():
-    FO = FFTOptions(
+    fft = FFT(
         fft_type="c2c",
         size=4,
         precision=np.float32,
         direction="forward",
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
         ffts_per_block="suggested",
         elements_per_thread="suggested",
     )
-    assert FO.ffts_per_block is not None
-    assert FO.elements_per_thread is not None
-    assert FO.ffts_per_block > 1
-    assert isinstance(FO, FFTOptions)
-    ffts_per_block = FO.ffts_per_block
+    assert fft.ffts_per_block is not None
+    assert fft.elements_per_thread is not None
+    assert fft.ffts_per_block > 1
+    assert isinstance(fft, FFT)
+    ffts_per_block = fft.ffts_per_block
 
-    FFT = fft(
+    fft = FFT(
         fft_type="c2c",
         size=4,
         precision=np.float32,
         direction="forward",
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
         ffts_per_block=ffts_per_block,
     )
-    assert isinstance(FFT, FFTCompiled)
-    assert FFT.ffts_per_block == ffts_per_block
+    assert isinstance(fft, FFT)
+    assert fft.ffts_per_block == ffts_per_block
 
 
 def test_knobs_2():
-    FO = FFTOptions(
+    FO = FFT(
         fft_type="c2c",
         size=4,
         precision=np.float32,
         direction="forward",
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
         ffts_per_block="suggested",
     )
-    assert FO.ffts_per_block is not None
-    assert FO.elements_per_thread is None
-    assert FO.ffts_per_block > 1
+    assert FO._ffts_per_block is not None
+    assert FO._elements_per_thread is None
+    assert FO._ffts_per_block > 1
 
 
 def test_knobs_3():
-    FO = FFTOptions(
+    FO = FFT(
         fft_type="c2c",
         size=4,
         precision=np.float32,
         direction="forward",
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
         elements_per_thread="suggested",
     )
-    assert FO.ffts_per_block is None
-    assert FO.elements_per_thread is not None
+    assert FO._ffts_per_block is None
+    assert FO._elements_per_thread is not None
 
 
 def test_functools_partial():
-    base = functools.partial(fft, size=32, precision=np.float32, code_type=SM80, execution="Block")
+    base = functools.partial(FFT, size=32, precision=np.float32, sm=SM80.cc, execution="Block")
     R2C = base(fft_type="r2c")
     C2R = base(fft_type="c2r")
-    assert isinstance(R2C, FFTCompiled)
-    assert isinstance(C2R, FFTCompiled)
+    assert isinstance(R2C, FFT)
+    assert isinstance(C2R, FFT)
 
     assert R2C.fft_type == "r2c"
     assert C2R.fft_type == "c2r"
@@ -232,87 +229,88 @@ def test_functools_partial():
 
 
 def test_partial_fft():
-    FO = FFTOptions(
+    FO = FFT(
         fft_type="c2c",
         size=32,
         precision=np.float32,
         direction="forward",
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
         ffts_per_block="suggested",
     )
     suggested_ffts_per_block = FO.ffts_per_block
 
-    FFT = fft(
+    fft = FFT(
         fft_type="c2c",
         size=32,
         precision=np.float32,
         direction="forward",
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
         ffts_per_block=suggested_ffts_per_block,
     )
-    assert isinstance(FFT, FFTCompiled)
-    assert FFT.ffts_per_block == suggested_ffts_per_block
+    assert isinstance(fft, FFT)
+    assert fft.ffts_per_block == suggested_ffts_per_block
 
 
 def test_valid_knobs_0():
-    FO = FFTOptions(fft_type="c2c", size=32, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
+    FO = FFT(fft_type="c2c", size=32, precision=np.float32, direction="forward", sm=SM80.cc, execution="Block")
     valids = FO.valid("elements_per_thread", "ffts_per_block")
     count = 0
     for ept, bpb in valids:
         count += 1
-        FFT = fft(
+        fft = FFT(
             fft_type="c2c",
             size=32,
             precision=np.float32,
             direction="forward",
-            code_type=SM80,
+            sm=SM80.cc,
             execution="Block",
             elements_per_thread=ept,
             ffts_per_block=bpb,
         )
-        assert isinstance(FFT, FFTCompiled)
-        assert FFT.elements_per_thread == ept
-        assert FFT.ffts_per_block == bpb
+        assert isinstance(fft, FFT)
+        assert fft.elements_per_thread == ept
+        assert fft.ffts_per_block == bpb
 
     assert count > 0
 
 
 def test_valid_knobs_1():
-    FO = FFTOptions(fft_type="c2c", size=32, precision=np.float32, direction="forward", code_type=SM80, execution="Block")
-    valids = FO.valid("elements_per_thread", "ffts_per_block")
+    FO = functools.partial(
+        FFT, fft_type="c2c", size=32, precision=np.float32, direction="forward", sm=SM80.cc, execution="Block"
+    )
+    valids = FO().valid("elements_per_thread", "ffts_per_block")
     count = 0
     for ept, bpb in valids:
         count += 1
 
-        FFT = FO.create(elements_per_thread=ept, ffts_per_block=bpb)
-        assert isinstance(FFT, FFTCompiled)
-        assert FFT.elements_per_thread == ept
-        assert FFT.ffts_per_block == bpb
-        assert len(FFT.files) > 0
+        fft = FO(elements_per_thread=ept, ffts_per_block=bpb)
+        assert isinstance(fft, FFT)
+        assert fft.elements_per_thread == ept
+        assert fft.ffts_per_block == bpb
 
     assert count > 0
 
 
 @pytest.mark.parametrize(
-    "code_type, ept, bpb",
+    "sm, ept, bpb",
     [
-        (SM80, 2, 128),
-        (SM86, 2, 64),
-        (SM89, 2, 32),
+        (SM80.cc, 2, 128),
+        (SM86.cc, 2, 64),
+        (SM89.cc, 2, 32),
     ],
 )
-def test_valid_knob_values(code_type, ept, bpb):
-    FO = FFTOptions(
+def test_valid_knob_values(sm, ept, bpb):
+    fft = FFT(
         fft_type="c2c",
         size=2,
         precision=np.float32,
         direction="forward",
-        code_type=code_type,
+        sm=sm,
         execution="Block",
     )
-    valids = FO.valid("elements_per_thread", "ffts_per_block")
+    valids = fft.valid("elements_per_thread", "ffts_per_block")
 
     assert len(valids) == 1
     assert valids[0] == (ept, bpb)
@@ -328,16 +326,16 @@ def test_valid_knob_values(code_type, ept, bpb):
     ],
 )
 def test_invalid_knob_values(knobs):
-    FO = FFTOptions(
+    fft = FFT(
         fft_type="c2c",
         size=2,
         precision=np.float32,
         direction="forward",
-        code_type=SM80,
+        sm=SM80.cc,
         execution="Block",
     )
     with pytest.raises(ValueError, match="Unsupported knob"):
-        FO.valid(*knobs)
+        fft.valid(*knobs)
 
 
 @pytest.mark.parametrize(
@@ -353,13 +351,6 @@ def test_invalid_knob_values(knobs):
         ("direction", None),
         ("direction", "both"),
         ("direction", "INVERSE"),
-        ("code_type", None),
-        ("code_type", CodeType("lto", ComputeCapability(-1, 0))),
-        ("code_type", CodeType("lto", ComputeCapability(5, 0))),
-        ("code_type", CodeType("sass", ComputeCapability(7, 0))),
-        ("code_type", CodeType("ptx", ComputeCapability(7, 0))),
-        ("code_type", CodeType("lto", ComputeCapability(1000, 0))),  # invalid cc > supported Max cc
-        ("code_type", ("lto", "lto", ComputeCapability(10, 0))),  # len(code_type) != 2
         ("execution", None),
         ("execution", "CGA"),
         ("ffts_per_block", -1),
@@ -384,46 +375,69 @@ def test_negative(opt, value):
     else:
         opts[opt] = value
     with pytest.raises(Exception):
-        FFT = fft(**opts)  # noqa: F841
+        FFT = fft(**opts)
+        # trigger compilation
+        value_type = FFT.value_type  # noqa: F841
+
+
+@pytest.mark.parametrize(
+    "opt, value",
+    [
+        ("code_type", None),
+        ("code_type", CodeType("lto", ComputeCapability(-1, 0))),
+        ("code_type", CodeType("lto", ComputeCapability(5, 0))),
+        ("code_type", CodeType("sass", ComputeCapability(7, 0))),
+        ("code_type", CodeType("ptx", ComputeCapability(7, 0))),
+        ("code_type", CodeType("lto", ComputeCapability(1000, 0))),  # invalid cc > supported Max cc
+        ("code_type", ("lto", "lto", ComputeCapability(10, 0))),  # len(code_type) != 2
+    ],
+)
+def test_negative_compile(opt, value):
+    fft = FFT(fft_type="c2c", size=256, precision=np.float32, direction="forward", execution="Block")
+
+    with pytest.raises(Exception):
+        compile_fft_execute(fft, code_type=value)
 
 
 @pytest.mark.parametrize("code_type", [SM70, SM72, SM75, SM80, SM86, SM89, SM90, SM100, SM101, SM103, SM120, SM121])
 def test_sm(code_type):
     skip_unsupported_sm(code_type)
-    FFT = fft(fft_type="c2c", size=256, precision=np.float32, direction="forward", code_type=code_type, execution="Block")
-    assert all(isinstance(code.data, bytes) for code in FFT.codes)
-    assert all(len(code.data) > 0 for code in FFT.codes)
+    fft = FFT(fft_type="c2c", size=256, precision=np.float32, direction="forward", execution="Block")
+    code, symbol = compile_fft_execute(fft, code_type=code_type)
+
+    assert isinstance(code.data, bytes)
+    assert len(code.data) > 0
+    assert len(symbol) > 0
 
 
 @pytest.mark.parametrize(
     "precision,value_type",
     [
-        (
-            np.float16,
-            np.dtype([("x", np.float16), ("y", np.float16), ("z", np.float16), ("w", np.float16)], align=True),
-        ),  # ~ complex<__half2>
-        (np.float32, np.complex64),  # complex<float>
-        (np.float64, np.complex128),  # complex<double>
+        (np.float16, half4),  # ~ complex<__half2>
+        (np.float32, complex64),  # complex<float>
+        (np.float64, complex128),  # complex<double>
     ],
 )
 def test_value_type(precision, value_type):
     for fft_type in ["c2r", "r2c", "c2c"]:
-        FFT = fft(
+        fft = FFT(
             fft_type=fft_type,
             size=256,
             precision=precision,
             direction="forward" if fft_type == "c2c" else None,
-            code_type=SM90,
+            sm=SM90.cc,
             execution="Block",
         )
-        assert FFT.value_type == value_type
+        assert fft.value_type == value_type
 
 
-@pytest.mark.parametrize("code_type", [("lto", (7, 0)), ("lto", (8, 0))])
+@pytest.mark.parametrize("code_type", [("lto", (7, 5)), ("lto", (8, 0))])
 def test_sm_tuple(code_type):
-    FFT = fft(fft_type="c2c", size=256, precision=np.float32, direction="forward", code_type=code_type, execution="Block")
-    assert all(isinstance(code.data, bytes) for code in FFT.codes)
-    assert all(len(code.data) > 0 for code in FFT.codes)
-    assert all(code.code_type.kind == code_type[0] for code in FFT.codes)
-    assert all(code.code_type.cc.major == code_type[1][0] for code in FFT.codes)
-    assert all(code.code_type.cc.minor == code_type[1][1] for code in FFT.codes)
+    fft = FFT(fft_type="c2c", size=256, precision=np.float32, direction="forward", execution="Block")
+    code, symbol = compile_fft_execute(fft, code_type=code_type)
+    assert isinstance(code.data, bytes)
+    assert len(code.data) > 0
+    assert len(symbol) > 0
+    assert code.code_type.kind == code_type[0]
+    assert code.code_type.cc.major == code_type[1][0]
+    assert code.code_type.cc.minor == code_type[1][1]

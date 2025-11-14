@@ -180,11 +180,13 @@ favicons = [
 # Output file base name for HTML help builder.
 htmlhelp_basename = "nvmath-python-doc"
 
-# TODO: remove this once examples are published.
-linkcheck_ignore = [
-    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/.*",
-    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft/.*",
-]
+# If we need to generate docs that point to examples on GitHub that haven't been
+# published yet, add the links that we want to ignore here (so as not to break
+# docs build).
+# Example of URL ignore pattern:
+# "https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft/.*"
+# NOTE: remove ignore patterns once examples are published.
+linkcheck_ignore = []
 
 
 def autodoc_process_docstring(app, what, name, obj, options, lines):
@@ -196,6 +198,7 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
     if isinstance(obj, np.dtype):
         docs = {}
         from nvmath.sparse._internal.cudss_data_ifc import memory_estimates_dtype
+        from nvmath.linalg.generic._configuration.qualifiers import matrix_qualifiers_dtype, MM_QUALIFIERS_DOCUMENTATION
 
         # TODO: find better way to declare docs in the source code.
         if obj == memory_estimates_dtype:
@@ -208,20 +211,43 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
                 "hybrid_max_device_memory": "(if in hybrid memory mode) maximum host memory for the hybrid memory mode",
                 "reserved": "reserved for future use",
             }
+        elif obj == matrix_qualifiers_dtype:
+            docs = {
+                "abbreviation": MM_QUALIFIERS_DOCUMENTATION["abbreviation"],
+                "conjugate": MM_QUALIFIERS_DOCUMENTATION["conjugate"],
+                "transpose": MM_QUALIFIERS_DOCUMENTATION["transpose"],
+                "uplo": MM_QUALIFIERS_DOCUMENTATION["uplo"],
+                "diag": MM_QUALIFIERS_DOCUMENTATION["diag"],
+                "incx": MM_QUALIFIERS_DOCUMENTATION["incx"],
+            }
 
-        _, *mod, struct = name.split(".")
-        mod = ".".join(mod)
-        if mod == "bindings":
-            # handle bindings
-            struct = snake_to_camel([mod] + struct.split("_")[:-1])
-            line = f"NumPy dtype object that represents the `{struct}` struct.\n"
+        # Generate the main description line
+        if obj == matrix_qualifiers_dtype:
+            line = "A NumPy custom dtype which describes a structured matrix.\n"
         else:
-            # handle dtype in high-level Pythonic APIs
-            struct = " ".join(struct.split("_")[:-1])
-            line = f"NumPy dtype object that encapsulates the {struct} in {mod}.\n"
+            _, *mod, struct = name.split(".")
+            mod = ".".join(mod)
+            if mod == "bindings":
+                # handle bindings
+                struct = snake_to_camel([mod] + struct.split("_")[:-1])
+                line = f"NumPy dtype object that represents the `{struct}` struct.\n"
+            else:
+                # handle dtype in high-level Pythonic APIs
+                struct = " ".join(struct.split("_")[:-1])
+                line = f"NumPy dtype object that encapsulates the {struct} in {mod}.\n"
+
         lines.clear()
         lines.append(line)
         lines.append("\n")
+
+        # Add seealso section for matrix_qualifiers_dtype
+        if obj == matrix_qualifiers_dtype:
+            lines.append(".. seealso::\n")
+            lines.append("    :class:`GeneralMatrixQualifier`, :class:`HermitianMatrixQualifier`,\n")
+            lines.append("    :class:`SymmetricMatrixQualifier`, :class:`TriangularMatrixQualifier`,\n")
+            lines.append("    :class:`DiagonalMatrixQualifier`\n")
+            lines.append("\n")
+
         for k in obj.fields:
             docs_value = docs.get(k, "")
             lines.append(f":param {k}: {docs_value}\n")
@@ -345,7 +371,11 @@ autosummary_generate = True
 autosummary_filename_map = {
     # avoid name clash with the fft func
     "nvmath.fft.FFT": "nvmath.fft.FFT-class",
+    "nvmath.device.FFT": "nvmath.device.FFT-class",
+    "nvmath.device.Matmul": "nvmath.device.Matmul-class",
     "nvmath.linalg.advanced.Matmul": "nvmath.linalg.advanced.Matmul-class",
+    "nvmath.linalg.generic.Matmul": "nvmath.linalg.generic.Matmul-class",
+    "nvmath.distributed.linalg.advanced.Matmul": "nvmath.distributed.linalg.advanced.Matmul-class",
     "nvmath.distributed.fft.FFT": "nvmath.distributed.fft.FFT-class",
     "nvmath.distributed.reshape.Reshape": "nvmath.distributed.reshape.Reshape-class",
 }
@@ -357,6 +387,7 @@ intersphinx_mapping = {
     "cudss": ("https://docs.nvidia.com/cuda/cudss/", None),
     "cufft": ("https://docs.nvidia.com/cuda/cufft/", None),
     "cupy": ("https://docs.cupy.dev/en/stable/", None),
+    "cuquantum": ("https://docs.nvidia.com/cuda/cuquantum/latest/", None),
     # curand is not using sphinx yet - June, 2025
     # "curand": ("https://docs.nvidia.com/cuda/curand/", None),
     "cusolver": ("https://docs.nvidia.com/cuda/cusolver/", None),

@@ -27,6 +27,8 @@ def is_contiguous_and_dense(shape: Sequence[int], strides: Sequence[int]) -> boo
     Check if the provided (shape, strides) result in a contiguous memory layout
     with no extra stride in least strided dimension.
     """
+    if not shape and not strides:
+        return True
     sorted_strides, sorted_shape = zip(*sorted(zip(strides, shape, strict=True)), strict=True)
     if len(sorted_strides) > 0 and sorted_strides[0] != 1:
         return False
@@ -45,6 +47,8 @@ def is_overlapping_layout(shape: Sequence[int], strides: Sequence[int]) -> bool:
     The check should return False for contiguous
     or contiguous and sliced tensors.
     """
+    if not shape and not strides:
+        return False
     sorted_strides, sorted_shape = zip(*sorted(zip(strides, shape, strict=True)), strict=True)
     cur_max_offset = 0
     for s in range(1, len(sorted_strides)):

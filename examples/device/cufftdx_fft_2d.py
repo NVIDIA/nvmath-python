@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import fft, Dim3
+from nvmath.device import FFT, Dim3
 from common import random_complex
 import functools
 
@@ -22,25 +22,17 @@ def main():
     ept_x = 16
     fpb_x = 8
 
-    FFT_base = functools.partial(
-        fft, fft_type="c2c", direction="forward", precision=np.float32, execution="Block", compiler="numba"
-    )
-    FFT_y = FFT_base(size=fft_size_y, elements_per_thread=ept_y, ffts_per_block=fpb_y)
-    FFT_x = FFT_base(size=fft_size_x, elements_per_thread=ept_x, ffts_per_block=fpb_x)
-
-    value_type = FFT_x.value_type
-    storage_size_x = FFT_x.storage_size
-    storage_size_y = FFT_y.storage_size
-    stride_x = FFT_x.stride
-    stride_y = FFT_y.stride
+    FFT_base = functools.partial(FFT, fft_type="c2c", direction="forward", precision=np.float32, execution="Block")
+    fft_y = FFT_base(size=fft_size_y, elements_per_thread=ept_y, ffts_per_block=fpb_y)
+    fft_x = FFT_base(size=fft_size_x, elements_per_thread=ept_x, ffts_per_block=fpb_x)
 
     grid_dim_y = Dim3(fft_size_x // fpb_y, 1, 1)
     grid_dim_x = Dim3(fft_size_y // fpb_x, 1, 1)
 
-    @cuda.jit(link=FFT_y.files)
+    @cuda.jit
     def f_y(input, output):
-        thread_data = cuda.local.array(shape=(storage_size_y,), dtype=value_type)
-        shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft_y.storage_size,), dtype=fft_y.value_type)
+        shared_mem = cuda.shared.array(shape=(0,), dtype=fft_y.value_type)
 
         local_fft_id = cuda.threadIdx.y
         fft_id = cuda.blockIdx.x * fpb_y + local_fft_id
@@ -48,19 +40,19 @@ def main():
         index = cuda.threadIdx.x
         for i in range(ept_y):
             thread_data[i] = input[fft_id, index]
-            index += stride_y
+            index += fft_y.stride
 
-        FFT_y(thread_data, shared_mem)
+        fft_y.execute(thread_data, shared_mem)
 
         index = cuda.threadIdx.x
         for i in range(ept_y):
             output[fft_id, index] = thread_data[i]
-            index += stride_y
+            index += fft_y.stride
 
-    @cuda.jit(link=FFT_x.files)
+    @cuda.jit
     def f_x(input, output):
-        thread_data = cuda.local.array(shape=(storage_size_x,), dtype=value_type)
-        shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft_x.storage_size,), dtype=fft_x.value_type)
+        shared_mem = cuda.shared.array(shape=(0,), dtype=fft_x.value_type)
 
         local_fft_id = cuda.threadIdx.y
         fft_id = cuda.blockIdx.x * fpb_x + local_fft_id
@@ -68,14 +60,14 @@ def main():
         index = cuda.threadIdx.x
         for i in range(ept_x):
             thread_data[i] = input[index, fft_id]
-            index += stride_x
+            index += fft_x.stride
 
-        FFT_x(thread_data, shared_mem)
+        fft_x.execute(thread_data, shared_mem)
 
         index = cuda.threadIdx.x
         for i in range(ept_x):
             output[index, fft_id] = thread_data[i]
-            index += stride_x
+            index += fft_x.stride
 
     input = random_complex((fft_size_x, fft_size_y), real_dtype=np.float32)
     output = np.zeros((fft_size_x, fft_size_y), dtype=np.complex64)
@@ -84,8 +76,8 @@ def main():
 
     print("input [:10,:10]:", input[:10, :10])
 
-    f_y[grid_dim_y, FFT_y.block_dim, 0, FFT_y.shared_memory_size](input_d, output_d)
-    f_x[grid_dim_x, FFT_x.block_dim, 0, FFT_x.shared_memory_size](output_d, output_d)
+    f_y[grid_dim_y, fft_y.block_dim, 0, fft_y.shared_memory_size](input_d, output_d)
+    f_x[grid_dim_x, fft_x.block_dim, 0, fft_x.shared_memory_size](output_d, output_d)
     cuda.synchronize()
 
     output_test = output_d.copy_to_host()

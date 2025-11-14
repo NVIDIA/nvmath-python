@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.3.0. Do not modify it directly.
+# This code was automatically generated with version 0.4.2. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 ###############################################################################
@@ -33,8 +33,13 @@ cdef extern from *:
     #define FFTW_PRESERVE_INPUT     0x0C
     #define FFTW_UNALIGNED          0x10
 
+    #ifdef _WIN32
+    typedef __declspec(align(16)) double fftw_complex[2];
+    typedef __declspec(align(8)) float fftwf_complex[2];
+    #else
     typedef double fftw_complex[2] __attribute__ ((aligned (16)));
     typedef float fftwf_complex[2] __attribute__ ((aligned (8)));
+    #endif
     """
 
     cdef const int FFTW_FORWARD

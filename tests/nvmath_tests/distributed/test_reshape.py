@@ -7,6 +7,7 @@ import pytest
 import re
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 from nvmath.internal.utils import device_ctx, get_or_create_stream
 from nvmath.distributed import free_symmetric_memory
 from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand, maybe_register_package
@@ -34,14 +35,14 @@ def nvmath_distributed():
         pass
 
     device_id = MPI.COMM_WORLD.Get_rank() % cuda.core.experimental.system.num_devices
-    nvmath.distributed.initialize(device_id, MPI.COMM_WORLD)
+    nvmath.distributed.initialize(device_id, MPI.COMM_WORLD, backends=["nvshmem"])
 
     yield
 
     nvmath.distributed.finalize()
 
 
-def _calculate_local_box(global_shape, partition_dim, rank, nranks):
+def _calculate_local_box(global_shape, partition_dim, rank, nranks) -> Box:
     """Given a global shape of data that is partitioned across ranks along the
     `partition_dim` dimension, return the local box of this rank (as a lower and
     upper coordinate in the global shape).
@@ -53,7 +54,7 @@ def _calculate_local_box(global_shape, partition_dim, rank, nranks):
     shape = calc_slab_shape(global_shape, partition_dim, rank, nranks)
     upper = list(shape)
     upper[partition_dim] += lower[partition_dim]
-    return lower, upper
+    return Box(lower, upper)
 
 
 @pytest.mark.parametrize("dtype", [np.int8, np.int16])
@@ -90,7 +91,7 @@ def test_wrong_boxes1(nvmath_distributed, check_symmetric_memory_leaks):
         ValueError, match=re.escape("The global number of elements is incompatible with the inferred global shape (2, 2)")
     ):
         data = np.array([0, 1, 2, 3], dtype=np.int32).reshape((2, 2))
-        nvmath.distributed.reshape.reshape(data, input_box=[(0, 0), (2, 2)], output_box=[(0, 0), (2, 2)])
+        nvmath.distributed.reshape.reshape(data, input_box=Box((0, 0), (2, 2)), output_box=Box((0, 0), (2, 2)))
 
 
 def test_wrong_boxes2(nvmath_distributed, check_symmetric_memory_leaks):
@@ -112,10 +113,10 @@ def test_wrong_boxes2(nvmath_distributed, check_symmetric_memory_leaks):
     ):
         if rank % 2 == 0:
             data = np.array([0, 1, 2, 3], dtype=dtype).reshape((2, 2))
-            nvmath.distributed.reshape.reshape(data, input_box=[(0, 0), (2, 2)], output_box=[(0, 0), (2, 2)])
+            nvmath.distributed.reshape.reshape(data, input_box=Box((0, 0), (2, 2)), output_box=Box((0, 0), (2, 2)))
         else:
             data = np.array([4, 5, 6, 7], dtype=dtype).reshape((2, 2))
-            nvmath.distributed.reshape.reshape(data, input_box=[(4, 4), (6, 6)], output_box=[(4, 4), (6, 6)])
+            nvmath.distributed.reshape.reshape(data, input_box=Box((4, 4), (6, 6)), output_box=Box((4, 4), (6, 6)))
 
 
 def test_wrong_boxes3(nvmath_distributed, check_symmetric_memory_leaks):
@@ -131,7 +132,7 @@ def test_wrong_boxes3(nvmath_distributed, check_symmetric_memory_leaks):
         match=re.escape("The upper coordinates must be larger than the lower coordinates, but got lower=(2, 2) upper=(0, 0)"),
     ):
         data = np.array([0, 1, 2, 3], dtype=np.int32).reshape((2, 2))
-        nvmath.distributed.reshape.reshape(data, input_box=[(2, 2), (0, 0)], output_box=[(2, 2), (0, 0)])
+        nvmath.distributed.reshape.reshape(data, input_box=Box((2, 2), (0, 0)), output_box=Box((2, 2), (0, 0)))
 
 
 def test_inconsistent_layout(nvmath_distributed, check_symmetric_memory_leaks):
@@ -184,11 +185,11 @@ def test_reshape_matrix_2_processes(memory_order, dtype, nvmath_distributed, che
 
     if rank == 0:
         data = F(np.array([0, 1, 3, 4], dtype=dtype).reshape((2, 2)))
-        result = nvmath.distributed.reshape.reshape(data, input_box=[(0, 0), (2, 2)], output_box=[(0, 0), (2, 1)])
+        result = nvmath.distributed.reshape.reshape(data, input_box=Box((0, 0), (2, 2)), output_box=Box((0, 0), (2, 1)))
         expected = np.array([0, 3], dtype=dtype).reshape((2, 1))
     else:
         data = F(np.array([2, 5], dtype=dtype).reshape((2, 1)))
-        result = nvmath.distributed.reshape.reshape(data, input_box=[(0, 2), (2, 3)], output_box=[(0, 1), (2, 3)])
+        result = nvmath.distributed.reshape.reshape(data, input_box=Box((0, 2), (2, 3)), output_box=Box((0, 1), (2, 3)))
         expected = np.array([1, 2, 4, 5], dtype=dtype).reshape((2, 2))
     np.testing.assert_equal(result, expected)
 
@@ -223,19 +224,19 @@ def test_reshape_matrix_4_processes(memory_order, dtype, nvmath_distributed, che
 
     if rank == 0:
         data = F(np.array([(0, 1), (4, 5)], dtype=dtype))
-        result = nvmath.distributed.reshape.reshape(data, input_box=[(0, 0), (2, 2)], output_box=[(0, 0), (4, 1)])
+        result = nvmath.distributed.reshape.reshape(data, input_box=Box((0, 0), (2, 2)), output_box=Box((0, 0), (4, 1)))
         expected = np.array([0, 4, 8, 12], dtype=dtype).reshape((4, 1))
     elif rank == 1:
         data = F(np.array([(2, 3), (6, 7)], dtype=dtype))
-        result = nvmath.distributed.reshape.reshape(data, input_box=[(0, 2), (2, 4)], output_box=[(0, 1), (4, 2)])
+        result = nvmath.distributed.reshape.reshape(data, input_box=Box((0, 2), (2, 4)), output_box=Box((0, 1), (4, 2)))
         expected = np.array([1, 5, 9, 13], dtype=dtype).reshape((4, 1))
     elif rank == 2:
         data = F(np.array([(8, 9), (12, 13)], dtype=dtype))
-        result = nvmath.distributed.reshape.reshape(data, input_box=[(2, 0), (4, 2)], output_box=[(0, 2), (4, 3)])
+        result = nvmath.distributed.reshape.reshape(data, input_box=Box((2, 0), (4, 2)), output_box=Box((0, 2), (4, 3)))
         expected = np.array([2, 6, 10, 14], dtype=dtype).reshape((4, 1))
     else:
         data = F(np.array([(10, 11), (14, 15)], dtype=dtype))
-        result = nvmath.distributed.reshape.reshape(data, input_box=[(2, 2), (4, 4)], output_box=[(0, 3), (4, 4)])
+        result = nvmath.distributed.reshape.reshape(data, input_box=Box((2, 2), (4, 4)), output_box=Box((0, 3), (4, 4)))
         expected = np.array([3, 7, 11, 15], dtype=dtype).reshape((4, 1))
     np.testing.assert_equal(result, expected)
 
@@ -508,12 +509,12 @@ def test_distributed_reshape_1D(package, nvmath_distributed, check_symmetric_mem
     # Calculate output box.
     nelems_per_other_rank = (global_shape[0] - 80) // (nranks - 1)
     if rank == 0:
-        output_box = ([0], [80])
+        output_box = Box([0], [80])
     else:
         lower = 80
         for i in range(1, rank):
             lower += nelems_per_other_rank
-        output_box = [lower], [lower + nelems_per_other_rank]
+        output_box = Box([lower], [lower + nelems_per_other_rank])
 
     # Run distributed reshape.
     result = nvmath.distributed.reshape.reshape(data_in.tensor, input_box, output_box)

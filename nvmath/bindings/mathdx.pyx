@@ -1,4 +1,4 @@
-# This code was automatically generated with version 0.2.3. Do not modify it directly.
+# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -176,6 +176,8 @@ class CublasdxTensorTrait(_IntEnum):
     ALIGNMENT_BYTES = CUBLASDX_TENSOR_TRAIT_ALIGNMENT_BYTES
     UID = CUBLASDX_TENSOR_TRAIT_UID
     OPAQUE_NAME = CUBLASDX_TENSOR_TRAIT_OPAQUE_NAME
+    LOGICAL_SIZE = CUBLASDX_TENSOR_TRAIT_LOGICAL_SIZE
+    MEMORY_SPACE = CUBLASDX_TENSOR_TRAIT_MEMORY_SPACE
 
 class CublasdxDeviceFunctionTrait(_IntEnum):
     """See `cublasdxDeviceFunctionTrait`."""
@@ -192,6 +194,12 @@ class CublasdxDeviceFunctionType(_IntEnum):
     COPY_WAIT = CUBLASDX_DEVICE_FUNCTION_COPY_WAIT
     CLEAR = CUBLASDX_DEVICE_FUNCTION_CLEAR
     AXPBY = CUBLASDX_DEVICE_FUNCTION_AXPBY
+    MAP_IDX2CRD = CUBLASDX_DEVICE_FUNCTION_MAP_IDX2CRD
+    MAP_IDX2CRD_PARTITIONER = CUBLASDX_DEVICE_FUNCTION_MAP_IDX2CRD_PARTITIONER
+    MAP_CRD2IDX = CUBLASDX_DEVICE_FUNCTION_MAP_CRD2IDX
+    IS_THREAD_ACTIVE = CUBLASDX_DEVICE_FUNCTION_IS_THREAD_ACTIVE
+    IS_PREDICATED = CUBLASDX_DEVICE_FUNCTION_IS_PREDICATED
+    IS_INDEX_IN_BOUNDS = CUBLASDX_DEVICE_FUNCTION_IS_INDEX_IN_BOUNDS
 
 class CufftdxApi(_IntEnum):
     """See `cufftdxApi`."""
@@ -322,6 +330,12 @@ class CusolverdxTraitType(_IntEnum):
     SHARED_MEMORY_SIZE = CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE
     SYMBOL_NAME = CUSOLVERDX_TRAIT_SYMBOL_NAME
 
+class CublasdxMemorySpace(_IntEnum):
+    """See `cublasdxMemorySpace`."""
+    RMEM = CUBLASDX_MEMORY_SPACE_RMEM
+    SMEM = CUBLASDX_MEMORY_SPACE_SMEM
+    GMEM = CUBLASDX_MEMORY_SPACE_GMEM
+
 
 ###############################################################################
 # Error handling
@@ -365,8 +379,8 @@ cpdef long long int commondx_create_code() except? 0:
     """
     cdef commondxCode code
     with nogil:
-        status = commondxCreateCode(&code)
-    check_status(status)
+        __status__ = commondxCreateCode(&code)
+    check_status(__status__)
     return <long long int>code
 
 
@@ -381,8 +395,8 @@ cpdef commondx_set_code_option_int64(long long int code, int option, long long i
     .. seealso:: `commondxSetCodeOptionInt64`
     """
     with nogil:
-        status = commondxSetCodeOptionInt64(<commondxCode>code, <_CommondxOption>option, value)
-    check_status(status)
+        __status__ = commondxSetCodeOptionInt64(<commondxCode>code, <_CommondxOption>option, value)
+    check_status(__status__)
 
 
 cpdef commondx_set_code_option_str(long long int code, int option, value):
@@ -400,8 +414,8 @@ cpdef commondx_set_code_option_str(long long int code, int option, value):
     cdef bytes _temp_value_ = (<str>value).encode()
     cdef char* _value_ = _temp_value_
     with nogil:
-        status = commondxSetCodeOptionStr(<commondxCode>code, <_CommondxOption>option, <const char*>_value_)
-    check_status(status)
+        __status__ = commondxSetCodeOptionStr(<commondxCode>code, <_CommondxOption>option, <const char*>_value_)
+    check_status(__status__)
 
 
 cpdef long long int commondx_get_code_option_int64(long long int code, int option) except? 0:
@@ -418,8 +432,8 @@ cpdef long long int commondx_get_code_option_int64(long long int code, int optio
     """
     cdef long long int value
     with nogil:
-        status = commondxGetCodeOptionInt64(<commondxCode>code, <_CommondxOption>option, &value)
-    check_status(status)
+        __status__ = commondxGetCodeOptionInt64(<commondxCode>code, <_CommondxOption>option, &value)
+    check_status(__status__)
     return value
 
 
@@ -441,8 +455,8 @@ cpdef commondx_get_code_options_int64s(long long int code, int option, size_t si
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = commondxGetCodeOptionsInt64s(<commondxCode>code, <_CommondxOption>option, size, <long long int*>(_array_.data()))
-    check_status(status)
+        __status__ = commondxGetCodeOptionsInt64s(<commondxCode>code, <_CommondxOption>option, size, <long long int*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef size_t commondx_get_code_ltoir_size(long long int code) except? 0:
@@ -458,8 +472,8 @@ cpdef size_t commondx_get_code_ltoir_size(long long int code) except? 0:
     """
     cdef size_t size
     with nogil:
-        status = commondxGetCodeLTOIRSize(<commondxCode>code, &size)
-    check_status(status)
+        __status__ = commondxGetCodeLTOIRSize(<commondxCode>code, &size)
+    check_status(__status__)
     return size
 
 
@@ -475,8 +489,8 @@ cpdef commondx_get_code_ltoir(long long int code, size_t size, out):
     """
     cdef void* _out_ = get_buffer_pointer(out, size, readonly=False)
     with nogil:
-        status = commondxGetCodeLTOIR(<commondxCode>code, size, <void*>_out_)
-    check_status(status)
+        __status__ = commondxGetCodeLTOIR(<commondxCode>code, size, <void*>_out_)
+    check_status(__status__)
 
 
 cpdef size_t commondx_get_code_num_ltoirs(long long int code) except? 0:
@@ -492,8 +506,8 @@ cpdef size_t commondx_get_code_num_ltoirs(long long int code) except? 0:
     """
     cdef size_t size
     with nogil:
-        status = commondxGetCodeNumLTOIRs(<commondxCode>code, &size)
-    check_status(status)
+        __status__ = commondxGetCodeNumLTOIRs(<commondxCode>code, &size)
+    check_status(__status__)
     return size
 
 
@@ -514,8 +528,8 @@ cpdef commondx_get_code_ltoir_sizes(long long int code, size_t size, out):
     cdef nullable_unique_ptr[ vector[size_t] ] _out_
     get_resource_ptr[size_t](_out_, out, <size_t*>NULL)
     with nogil:
-        status = commondxGetCodeLTOIRSizes(<commondxCode>code, size, <size_t*>(_out_.data()))
-    check_status(status)
+        __status__ = commondxGetCodeLTOIRSizes(<commondxCode>code, size, <size_t*>(_out_.data()))
+    check_status(__status__)
 
 
 cpdef commondx_get_code_ltoirs(long long int code, size_t size, out):
@@ -535,8 +549,8 @@ cpdef commondx_get_code_ltoirs(long long int code, size_t size, out):
     cdef nullable_unique_ptr[ vector[void*] ] _out_
     get_resource_ptrs[void](_out_, out, <void*>NULL)
     with nogil:
-        status = commondxGetCodeLTOIRs(<commondxCode>code, size, <void**>(_out_.data()))
-    check_status(status)
+        __status__ = commondxGetCodeLTOIRs(<commondxCode>code, size, <void**>(_out_.data()))
+    check_status(__status__)
 
 
 cpdef commondx_destroy_code(long long int code):
@@ -548,8 +562,8 @@ cpdef commondx_destroy_code(long long int code):
     .. seealso:: `commondxDestroyCode`
     """
     with nogil:
-        status = commondxDestroyCode(<commondxCode>code)
-    check_status(status)
+        __status__ = commondxDestroyCode(<commondxCode>code)
+    check_status(__status__)
 
 
 cpdef str commondx_status_to_str(int status):
@@ -575,8 +589,8 @@ cpdef int get_version() except? 0:
     """
     cdef int version
     with nogil:
-        status = mathdxGetVersion(&version)
-    check_status(status)
+        __status__ = mathdxGetVersion(&version)
+    check_status(__status__)
     return version
 
 
@@ -596,8 +610,8 @@ cpdef tuple get_version_ex():
     cdef int minor
     cdef int patch
     with nogil:
-        status = mathdxGetVersionEx(&major, &minor, &patch)
-    check_status(status)
+        __status__ = mathdxGetVersionEx(&major, &minor, &patch)
+    check_status(__status__)
     return (major, minor, patch)
 
 
@@ -611,8 +625,8 @@ cpdef long long int cublasdx_create_descriptor() except? 0:
     """
     cdef cublasdxDescriptor handle
     with nogil:
-        status = cublasdxCreateDescriptor(&handle)
-    check_status(status)
+        __status__ = cublasdxCreateDescriptor(&handle)
+    check_status(__status__)
     return <long long int>handle
 
 
@@ -631,8 +645,8 @@ cpdef cublasdx_set_option_str(long long int handle, int option, value):
     cdef bytes _temp_value_ = (<str>value).encode()
     cdef char* _value_ = _temp_value_
     with nogil:
-        status = cublasdxSetOptionStr(<cublasdxDescriptor>handle, <_CommondxOption>option, <const char*>_value_)
-    check_status(status)
+        __status__ = cublasdxSetOptionStr(<cublasdxDescriptor>handle, <_CommondxOption>option, <const char*>_value_)
+    check_status(__status__)
 
 
 cpdef cublasdx_set_operator_int64(long long int handle, int op, long long int value):
@@ -646,8 +660,8 @@ cpdef cublasdx_set_operator_int64(long long int handle, int op, long long int va
     .. seealso:: `cublasdxSetOperatorInt64`
     """
     with nogil:
-        status = cublasdxSetOperatorInt64(<cublasdxDescriptor>handle, <_CublasdxOperatorType>op, value)
-    check_status(status)
+        __status__ = cublasdxSetOperatorInt64(<cublasdxDescriptor>handle, <_CublasdxOperatorType>op, value)
+    check_status(__status__)
 
 
 cpdef cublasdx_set_operator_int64s(long long int handle, int op, size_t count, array):
@@ -668,8 +682,8 @@ cpdef cublasdx_set_operator_int64s(long long int handle, int op, size_t count, a
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = cublasdxSetOperatorInt64s(<cublasdxDescriptor>handle, <_CublasdxOperatorType>op, count, <const long long int*>(_array_.data()))
-    check_status(status)
+        __status__ = cublasdxSetOperatorInt64s(<cublasdxDescriptor>handle, <_CublasdxOperatorType>op, count, <const long long int*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef long long int cublasdx_bind_tensor(long long int handle, int tensor_type) except? 0:
@@ -686,8 +700,8 @@ cpdef long long int cublasdx_bind_tensor(long long int handle, int tensor_type) 
     """
     cdef cublasdxTensor tensor
     with nogil:
-        status = cublasdxBindTensor(<cublasdxDescriptor>handle, <_CublasdxTensorType>tensor_type, &tensor)
-    check_status(status)
+        __status__ = cublasdxBindTensor(<cublasdxDescriptor>handle, <_CublasdxTensorType>tensor_type, &tensor)
+    check_status(__status__)
     return <long long int>tensor
 
 
@@ -695,43 +709,30 @@ cpdef cublasdx_set_tensor_option_int64(long long int tensor, int option, long lo
     """Set an option on a tensor. This must be called before the tensor is finalized.
 
     Args:
-        tensor (long long int): A cuBLASDx tensor, output of cublasdxBindTensor.
+        tensor (long long int): A cuBLASDx tensor, output of cublasdxCreateTensor.
         option (CublasdxTensorOption): The option to set on the tensor.
         value (long long int): A value for the option.
 
     .. seealso:: `cublasdxSetTensorOptionInt64`
     """
     with nogil:
-        status = cublasdxSetTensorOptionInt64(<cublasdxTensor>tensor, <_CublasdxTensorOption>option, value)
-    check_status(status)
+        __status__ = cublasdxSetTensorOptionInt64(<cublasdxTensor>tensor, <_CublasdxTensorOption>option, value)
+    check_status(__status__)
 
 
-cpdef cublasdx_finalize_tensors(long long int handle, size_t count, array):
-    """Finalize the tensors. This is required before traits can be queried.
-
-    Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        count (size_t): The number of tensors to finalized.
-        array (object): The array of tensors. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxTensor``.
-
-
-    .. seealso:: `cublasdxFinalizeTensors`
-    """
+cpdef cublasdx_finalize_tensors_new(size_t count, array):
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = cublasdxFinalizeTensors(<cublasdxDescriptor>handle, count, <const cublasdxTensor*>(_array_.data()))
-    check_status(status)
+        __status__ = cublasdxFinalizeTensorsNew(count, <const cublasdxTensor*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef long long int cublasdx_get_tensor_trait_int64(long long int tensor, int trait) except? 0:
     """Query an integer trait value from a finalized tensor.
 
     Args:
-        tensor (long long int): A finalized tensor handle, output of cublasdxBindTensor.
+        tensor (long long int): A finalized tensor handle, output of cublasdxCreateTensor.
         trait (CublasdxTensorTrait): The trait to query.
 
     Returns:
@@ -741,8 +742,8 @@ cpdef long long int cublasdx_get_tensor_trait_int64(long long int tensor, int tr
     """
     cdef long long int value
     with nogil:
-        status = cublasdxGetTensorTraitInt64(<cublasdxTensor>tensor, <_CublasdxTensorTrait>trait, &value)
-    check_status(status)
+        __status__ = cublasdxGetTensorTraitInt64(<cublasdxTensor>tensor, <_CublasdxTensorTrait>trait, &value)
+    check_status(__status__)
     return value
 
 
@@ -750,7 +751,7 @@ cpdef size_t cublasdx_get_tensor_trait_str_size(long long int tensor, int trait)
     """Query an C-string trait's size from a finalized tensor.
 
     Args:
-        tensor (long long int): A finalized tensor handle, output of cublasdxBindTensor.
+        tensor (long long int): A finalized tensor handle, output of cublasdxCreateTensor.
         trait (CublasdxTensorTrait): The trait to query.
 
     Returns:
@@ -760,8 +761,8 @@ cpdef size_t cublasdx_get_tensor_trait_str_size(long long int tensor, int trait)
     """
     cdef size_t size
     with nogil:
-        status = cublasdxGetTensorTraitStrSize(<cublasdxTensor>tensor, <_CublasdxTensorTrait>trait, &size)
-    check_status(status)
+        __status__ = cublasdxGetTensorTraitStrSize(<cublasdxTensor>tensor, <_CublasdxTensorTrait>trait, &size)
+    check_status(__status__)
     return size
 
 
@@ -769,7 +770,7 @@ cpdef cublasdx_get_tensor_trait_str(long long int tensor, int trait, size_t size
     """Query a C-string trait value from a finalized tensor.
 
     Args:
-        tensor (long long int): A finalized tensor handle, output of cublasdxBindTensor.
+        tensor (long long int): A finalized tensor handle, output of cublasdxCreateTensor.
         trait (CublasdxTensorTrait): The trait to query.
         size (size_t): The C-string size, as returned by cublasdxGetTensorTraitStrSize.
         value (bytes): The C-string trait value.
@@ -778,34 +779,17 @@ cpdef cublasdx_get_tensor_trait_str(long long int tensor, int trait, size_t size
     """
     cdef void* _value_ = get_buffer_pointer(value, size, readonly=False)
     with nogil:
-        status = cublasdxGetTensorTraitStr(<cublasdxTensor>tensor, <_CublasdxTensorTrait>trait, size, <char*>_value_)
-    check_status(status)
+        __status__ = cublasdxGetTensorTraitStr(<cublasdxTensor>tensor, <_CublasdxTensorTrait>trait, size, <char*>_value_)
+    check_status(__status__)
 
 
-cpdef long long int cublasdx_bind_device_function(long long int handle, int device_function_type, size_t count, array) except? 0:
-    """Binds (aka create) a device function from a set of tensor.
-
-    Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        device_function_type (CublasdxDeviceFunctionType): The device function to create.
-        count (size_t): The number of input & output tensors to the device function.
-        array (object): The array of input & output tensors. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxTensor``.
-
-
-    Returns:
-        long long int: The device function.
-
-    .. seealso:: `cublasdxBindDeviceFunction`
-    """
+cpdef long long int cublasdx_create_device_function_old(long long int handle, int device_function_type, size_t count, array) except? 0:
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     cdef cublasdxDeviceFunction device_function
     with nogil:
-        status = cublasdxBindDeviceFunction(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, count, <const cublasdxTensor*>(_array_.data()), &device_function)
-    check_status(status)
+        __status__ = cublasdxCreateDeviceFunctionOld(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, count, <const cublasdxTensor*>(_array_.data()), &device_function)
+    check_status(__status__)
     return <long long int>device_function
 
 
@@ -826,8 +810,8 @@ cpdef cublasdx_finalize_device_functions(long long int code, size_t count, array
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = cublasdxFinalizeDeviceFunctions(<commondxCode>code, count, <const cublasdxDeviceFunction*>(_array_.data()))
-    check_status(status)
+        __status__ = cublasdxFinalizeDeviceFunctions(<commondxCode>code, count, <const cublasdxDeviceFunction*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef size_t cublasdx_get_device_function_trait_str_size(long long int device_function, int trait) except? 0:
@@ -844,8 +828,8 @@ cpdef size_t cublasdx_get_device_function_trait_str_size(long long int device_fu
     """
     cdef size_t size
     with nogil:
-        status = cublasdxGetDeviceFunctionTraitStrSize(<cublasdxDeviceFunction>device_function, <_CublasdxDeviceFunctionTrait>trait, &size)
-    check_status(status)
+        __status__ = cublasdxGetDeviceFunctionTraitStrSize(<cublasdxDeviceFunction>device_function, <_CublasdxDeviceFunctionTrait>trait, &size)
+    check_status(__status__)
     return size
 
 
@@ -862,8 +846,8 @@ cpdef cublasdx_get_device_function_trait_str(long long int device_function, int 
     """
     cdef void* _value_ = get_buffer_pointer(value, size, readonly=False)
     with nogil:
-        status = cublasdxGetDeviceFunctionTraitStr(<cublasdxDeviceFunction>device_function, <_CublasdxDeviceFunctionTrait>trait, size, <char*>_value_)
-    check_status(status)
+        __status__ = cublasdxGetDeviceFunctionTraitStr(<cublasdxDeviceFunction>device_function, <_CublasdxDeviceFunctionTrait>trait, size, <char*>_value_)
+    check_status(__status__)
 
 
 cpdef size_t cublasdx_get_ltoir_size(long long int handle) except? 0:
@@ -879,8 +863,8 @@ cpdef size_t cublasdx_get_ltoir_size(long long int handle) except? 0:
     """
     cdef size_t lto_size
     with nogil:
-        status = cublasdxGetLTOIRSize(<cublasdxDescriptor>handle, &lto_size)
-    check_status(status)
+        __status__ = cublasdxGetLTOIRSize(<cublasdxDescriptor>handle, &lto_size)
+    check_status(__status__)
     return lto_size
 
 
@@ -896,8 +880,8 @@ cpdef cublasdx_get_ltoir(long long int handle, size_t size, lto):
     """
     cdef void* _lto_ = get_buffer_pointer(lto, size, readonly=False)
     with nogil:
-        status = cublasdxGetLTOIR(<cublasdxDescriptor>handle, size, <void*>_lto_)
-    check_status(status)
+        __status__ = cublasdxGetLTOIR(<cublasdxDescriptor>handle, size, <void*>_lto_)
+    check_status(__status__)
 
 
 cpdef size_t cublasdx_get_trait_str_size(long long int handle, int trait) except? 0:
@@ -914,8 +898,8 @@ cpdef size_t cublasdx_get_trait_str_size(long long int handle, int trait) except
     """
     cdef size_t size
     with nogil:
-        status = cublasdxGetTraitStrSize(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, &size)
-    check_status(status)
+        __status__ = cublasdxGetTraitStrSize(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, &size)
+    check_status(__status__)
     return size
 
 
@@ -932,8 +916,8 @@ cpdef cublasdx_get_trait_str(long long int handle, int trait, size_t size, value
     """
     cdef void* _value_ = get_buffer_pointer(value, size, readonly=False)
     with nogil:
-        status = cublasdxGetTraitStr(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, size, <char*>_value_)
-    check_status(status)
+        __status__ = cublasdxGetTraitStr(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, size, <char*>_value_)
+    check_status(__status__)
 
 
 cpdef long long int cublasdx_get_trait_int64(long long int handle, int trait) except? 0:
@@ -950,8 +934,8 @@ cpdef long long int cublasdx_get_trait_int64(long long int handle, int trait) ex
     """
     cdef long long int value
     with nogil:
-        status = cublasdxGetTraitInt64(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, &value)
-    check_status(status)
+        __status__ = cublasdxGetTraitInt64(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, &value)
+    check_status(__status__)
     return value
 
 
@@ -973,8 +957,8 @@ cpdef cublasdx_get_trait_int64s(long long int handle, int trait, size_t count, a
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = cublasdxGetTraitInt64s(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, count, <long long int*>(_array_.data()))
-    check_status(status)
+        __status__ = cublasdxGetTraitInt64s(<cublasdxDescriptor>handle, <_CublasdxTraitType>trait, count, <long long int*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef str cublasdx_operator_type_to_str(int op):
@@ -1013,8 +997,8 @@ cpdef cublasdx_finalize_code(long long int code, long long int handle):
     .. seealso:: `cublasdxFinalizeCode`
     """
     with nogil:
-        status = cublasdxFinalizeCode(<commondxCode>code, <cublasdxDescriptor>handle)
-    check_status(status)
+        __status__ = cublasdxFinalizeCode(<commondxCode>code, <cublasdxDescriptor>handle)
+    check_status(__status__)
 
 
 cpdef cublasdx_destroy_descriptor(long long int handle):
@@ -1026,8 +1010,8 @@ cpdef cublasdx_destroy_descriptor(long long int handle):
     .. seealso:: `cublasdxDestroyDescriptor`
     """
     with nogil:
-        status = cublasdxDestroyDescriptor(<cublasdxDescriptor>handle)
-    check_status(status)
+        __status__ = cublasdxDestroyDescriptor(<cublasdxDescriptor>handle)
+    check_status(__status__)
 
 
 cpdef long long int cufftdx_create_descriptor() except? 0:
@@ -1040,8 +1024,8 @@ cpdef long long int cufftdx_create_descriptor() except? 0:
     """
     cdef cufftdxDescriptor handle
     with nogil:
-        status = cufftdxCreateDescriptor(&handle)
-    check_status(status)
+        __status__ = cufftdxCreateDescriptor(&handle)
+    check_status(__status__)
     return <long long int>handle
 
 
@@ -1060,8 +1044,8 @@ cpdef cufftdx_set_option_str(long long int handle, int opt, value):
     cdef bytes _temp_value_ = (<str>value).encode()
     cdef char* _value_ = _temp_value_
     with nogil:
-        status = cufftdxSetOptionStr(<cufftdxDescriptor>handle, <_CommondxOption>opt, <const char*>_value_)
-    check_status(status)
+        __status__ = cufftdxSetOptionStr(<cufftdxDescriptor>handle, <_CommondxOption>opt, <const char*>_value_)
+    check_status(__status__)
 
 
 cpdef size_t cufftdx_get_knob_int64size(long long int handle, size_t num_knobs, knobs_ptr) except? 0:
@@ -1085,8 +1069,8 @@ cpdef size_t cufftdx_get_knob_int64size(long long int handle, size_t num_knobs, 
     get_resource_ptr[int](_knobs_ptr_, knobs_ptr, <int*>NULL)
     cdef size_t size
     with nogil:
-        status = cufftdxGetKnobInt64Size(<cufftdxDescriptor>handle, num_knobs, <_CufftdxKnobType*>(_knobs_ptr_.data()), &size)
-    check_status(status)
+        __status__ = cufftdxGetKnobInt64Size(<cufftdxDescriptor>handle, num_knobs, <_CufftdxKnobType*>(_knobs_ptr_.data()), &size)
+    check_status(__status__)
     return size
 
 
@@ -1109,8 +1093,8 @@ cpdef cufftdx_get_knob_int64s(long long int handle, size_t num_knobs, knobs_ptr,
     cdef nullable_unique_ptr[ vector[int] ] _knobs_ptr_
     get_resource_ptr[int](_knobs_ptr_, knobs_ptr, <int*>NULL)
     with nogil:
-        status = cufftdxGetKnobInt64s(<cufftdxDescriptor>handle, num_knobs, <_CufftdxKnobType*>(_knobs_ptr_.data()), size, <long long int*>values)
-    check_status(status)
+        __status__ = cufftdxGetKnobInt64s(<cufftdxDescriptor>handle, num_knobs, <_CufftdxKnobType*>(_knobs_ptr_.data()), size, <long long int*>values)
+    check_status(__status__)
 
 
 cpdef cufftdx_set_operator_int64(long long int handle, int op, long long int value):
@@ -1124,8 +1108,8 @@ cpdef cufftdx_set_operator_int64(long long int handle, int op, long long int val
     .. seealso:: `cufftdxSetOperatorInt64`
     """
     with nogil:
-        status = cufftdxSetOperatorInt64(<cufftdxDescriptor>handle, <_CufftdxOperatorType>op, value)
-    check_status(status)
+        __status__ = cufftdxSetOperatorInt64(<cufftdxDescriptor>handle, <_CufftdxOperatorType>op, value)
+    check_status(__status__)
 
 
 cpdef cufftdx_set_operator_int64s(long long int handle, int op, size_t count, array):
@@ -1146,8 +1130,8 @@ cpdef cufftdx_set_operator_int64s(long long int handle, int op, size_t count, ar
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = cufftdxSetOperatorInt64s(<cufftdxDescriptor>handle, <_CufftdxOperatorType>op, count, <const long long int*>(_array_.data()))
-    check_status(status)
+        __status__ = cufftdxSetOperatorInt64s(<cufftdxDescriptor>handle, <_CufftdxOperatorType>op, count, <const long long int*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef size_t cufftdx_get_ltoir_size(long long int handle) except? 0:
@@ -1163,8 +1147,8 @@ cpdef size_t cufftdx_get_ltoir_size(long long int handle) except? 0:
     """
     cdef size_t lto_size
     with nogil:
-        status = cufftdxGetLTOIRSize(<cufftdxDescriptor>handle, &lto_size)
-    check_status(status)
+        __status__ = cufftdxGetLTOIRSize(<cufftdxDescriptor>handle, &lto_size)
+    check_status(__status__)
     return lto_size
 
 
@@ -1180,8 +1164,8 @@ cpdef cufftdx_get_ltoir(long long int handle, size_t size, lto):
     """
     cdef void* _lto_ = get_buffer_pointer(lto, size, readonly=False)
     with nogil:
-        status = cufftdxGetLTOIR(<cufftdxDescriptor>handle, size, <void*>_lto_)
-    check_status(status)
+        __status__ = cufftdxGetLTOIR(<cufftdxDescriptor>handle, size, <void*>_lto_)
+    check_status(__status__)
 
 
 cpdef size_t cufftdx_get_trait_str_size(long long int handle, int trait) except? 0:
@@ -1198,8 +1182,8 @@ cpdef size_t cufftdx_get_trait_str_size(long long int handle, int trait) except?
     """
     cdef size_t size
     with nogil:
-        status = cufftdxGetTraitStrSize(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, &size)
-    check_status(status)
+        __status__ = cufftdxGetTraitStrSize(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, &size)
+    check_status(__status__)
     return size
 
 
@@ -1216,8 +1200,8 @@ cpdef cufftdx_get_trait_str(long long int handle, int trait, size_t size, value)
     """
     cdef void* _value_ = get_buffer_pointer(value, size, readonly=False)
     with nogil:
-        status = cufftdxGetTraitStr(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, size, <char*>_value_)
-    check_status(status)
+        __status__ = cufftdxGetTraitStr(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, size, <char*>_value_)
+    check_status(__status__)
 
 
 cpdef long long int cufftdx_get_trait_int64(long long int handle, int trait) except? 0:
@@ -1234,8 +1218,8 @@ cpdef long long int cufftdx_get_trait_int64(long long int handle, int trait) exc
     """
     cdef long long int value
     with nogil:
-        status = cufftdxGetTraitInt64(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, &value)
-    check_status(status)
+        __status__ = cufftdxGetTraitInt64(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, &value)
+    check_status(__status__)
     return value
 
 
@@ -1257,8 +1241,8 @@ cpdef cufftdx_get_trait_int64s(long long int handle, int trait, size_t count, ar
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = cufftdxGetTraitInt64s(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, count, <long long int*>(_array_.data()))
-    check_status(status)
+        __status__ = cufftdxGetTraitInt64s(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, count, <long long int*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef int cufftdx_get_trait_commondx_data_type(long long int handle, int trait) except? -1:
@@ -1275,8 +1259,8 @@ cpdef int cufftdx_get_trait_commondx_data_type(long long int handle, int trait) 
     """
     cdef _CommondxValueType value
     with nogil:
-        status = cufftdxGetTraitCommondxDataType(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, &value)
-    check_status(status)
+        __status__ = cufftdxGetTraitCommondxDataType(<cufftdxDescriptor>handle, <_CufftdxTraitType>trait, &value)
+    check_status(__status__)
     return <int>value
 
 
@@ -1290,8 +1274,8 @@ cpdef cufftdx_finalize_code(long long int code, long long int handle):
     .. seealso:: `cufftdxFinalizeCode`
     """
     with nogil:
-        status = cufftdxFinalizeCode(<commondxCode>code, <cufftdxDescriptor>handle)
-    check_status(status)
+        __status__ = cufftdxFinalizeCode(<commondxCode>code, <cufftdxDescriptor>handle)
+    check_status(__status__)
 
 
 cpdef cufftdx_destroy_descriptor(long long int handle):
@@ -1303,8 +1287,8 @@ cpdef cufftdx_destroy_descriptor(long long int handle):
     .. seealso:: `cufftdxDestroyDescriptor`
     """
     with nogil:
-        status = cufftdxDestroyDescriptor(<cufftdxDescriptor>handle)
-    check_status(status)
+        __status__ = cufftdxDestroyDescriptor(<cufftdxDescriptor>handle)
+    check_status(__status__)
 
 
 cpdef str cufftdx_operator_type_to_str(int op):
@@ -1343,8 +1327,8 @@ cpdef long long int cusolverdx_create_descriptor() except? 0:
     """
     cdef cusolverdxDescriptor handle
     with nogil:
-        status = cusolverdxCreateDescriptor(&handle)
-    check_status(status)
+        __status__ = cusolverdxCreateDescriptor(&handle)
+    check_status(__status__)
     return <long long int>handle
 
 
@@ -1363,8 +1347,8 @@ cpdef cusolverdx_set_option_str(long long int handle, int opt, value):
     cdef bytes _temp_value_ = (<str>value).encode()
     cdef char* _value_ = _temp_value_
     with nogil:
-        status = cusolverdxSetOptionStr(<cusolverdxDescriptor>handle, <_CommondxOption>opt, <const char*>_value_)
-    check_status(status)
+        __status__ = cusolverdxSetOptionStr(<cusolverdxDescriptor>handle, <_CommondxOption>opt, <const char*>_value_)
+    check_status(__status__)
 
 
 cpdef cusolverdx_set_operator_int64(long long int handle, int op, long long int value):
@@ -1378,8 +1362,8 @@ cpdef cusolverdx_set_operator_int64(long long int handle, int op, long long int 
     .. seealso:: `cusolverdxSetOperatorInt64`
     """
     with nogil:
-        status = cusolverdxSetOperatorInt64(<cusolverdxDescriptor>handle, <_CusolverdxOperatorType>op, value)
-    check_status(status)
+        __status__ = cusolverdxSetOperatorInt64(<cusolverdxDescriptor>handle, <_CusolverdxOperatorType>op, value)
+    check_status(__status__)
 
 
 cpdef cusolverdx_set_operator_int64s(long long int handle, int op, size_t count, array):
@@ -1400,8 +1384,8 @@ cpdef cusolverdx_set_operator_int64s(long long int handle, int op, size_t count,
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        status = cusolverdxSetOperatorInt64s(<cusolverdxDescriptor>handle, <_CusolverdxOperatorType>op, count, <const long long int*>(_array_.data()))
-    check_status(status)
+        __status__ = cusolverdxSetOperatorInt64s(<cusolverdxDescriptor>handle, <_CusolverdxOperatorType>op, count, <const long long int*>(_array_.data()))
+    check_status(__status__)
 
 
 cpdef size_t cusolverdx_get_ltoir_size(long long int handle) except? 0:
@@ -1417,8 +1401,8 @@ cpdef size_t cusolverdx_get_ltoir_size(long long int handle) except? 0:
     """
     cdef size_t lto_size
     with nogil:
-        status = cusolverdxGetLTOIRSize(<cusolverdxDescriptor>handle, &lto_size)
-    check_status(status)
+        __status__ = cusolverdxGetLTOIRSize(<cusolverdxDescriptor>handle, &lto_size)
+    check_status(__status__)
     return lto_size
 
 
@@ -1434,8 +1418,8 @@ cpdef cusolverdx_get_ltoir(long long int handle, size_t size, lto):
     """
     cdef void* _lto_ = get_buffer_pointer(lto, size, readonly=False)
     with nogil:
-        status = cusolverdxGetLTOIR(<cusolverdxDescriptor>handle, size, <void*>_lto_)
-    check_status(status)
+        __status__ = cusolverdxGetLTOIR(<cusolverdxDescriptor>handle, size, <void*>_lto_)
+    check_status(__status__)
 
 
 cpdef size_t cusolverdx_get_universal_fatbin_size(long long int handle) except? 0:
@@ -1451,8 +1435,8 @@ cpdef size_t cusolverdx_get_universal_fatbin_size(long long int handle) except? 
     """
     cdef size_t fatbin_size
     with nogil:
-        status = cusolverdxGetUniversalFATBINSize(<cusolverdxDescriptor>handle, &fatbin_size)
-    check_status(status)
+        __status__ = cusolverdxGetUniversalFATBINSize(<cusolverdxDescriptor>handle, &fatbin_size)
+    check_status(__status__)
     return fatbin_size
 
 
@@ -1468,8 +1452,8 @@ cpdef cusolverdx_get_universal_fatbin(long long int handle, size_t fatbin_size, 
     """
     cdef void* _fatbin_ = get_buffer_pointer(fatbin, fatbin_size, readonly=False)
     with nogil:
-        status = cusolverdxGetUniversalFATBIN(<cusolverdxDescriptor>handle, fatbin_size, <void*>_fatbin_)
-    check_status(status)
+        __status__ = cusolverdxGetUniversalFATBIN(<cusolverdxDescriptor>handle, fatbin_size, <void*>_fatbin_)
+    check_status(__status__)
 
 
 cpdef size_t cusolverdx_get_trait_str_size(long long int handle, int trait) except? 0:
@@ -1486,8 +1470,8 @@ cpdef size_t cusolverdx_get_trait_str_size(long long int handle, int trait) exce
     """
     cdef size_t size
     with nogil:
-        status = cusolverdxGetTraitStrSize(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, &size)
-    check_status(status)
+        __status__ = cusolverdxGetTraitStrSize(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, &size)
+    check_status(__status__)
     return size
 
 
@@ -1504,8 +1488,8 @@ cpdef cusolverdx_get_trait_str(long long int handle, int trait, size_t size, val
     """
     cdef void* _value_ = get_buffer_pointer(value, size, readonly=False)
     with nogil:
-        status = cusolverdxGetTraitStr(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, size, <char*>_value_)
-    check_status(status)
+        __status__ = cusolverdxGetTraitStr(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, size, <char*>_value_)
+    check_status(__status__)
 
 
 cpdef long long int cusolverdx_get_trait_int64(long long int handle, int trait) except? 0:
@@ -1522,8 +1506,8 @@ cpdef long long int cusolverdx_get_trait_int64(long long int handle, int trait) 
     """
     cdef long long int value
     with nogil:
-        status = cusolverdxGetTraitInt64(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, &value)
-    check_status(status)
+        __status__ = cusolverdxGetTraitInt64(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, &value)
+    check_status(__status__)
     return value
 
 
@@ -1537,8 +1521,8 @@ cpdef cusolverdx_finalize_code(long long int code, long long int handle):
     .. seealso:: `cusolverdxFinalizeCode`
     """
     with nogil:
-        status = cusolverdxFinalizeCode(<commondxCode>code, <cusolverdxDescriptor>handle)
-    check_status(status)
+        __status__ = cusolverdxFinalizeCode(<commondxCode>code, <cusolverdxDescriptor>handle)
+    check_status(__status__)
 
 
 cpdef cusolverdx_destroy_descriptor(long long int handle):
@@ -1550,8 +1534,8 @@ cpdef cusolverdx_destroy_descriptor(long long int handle):
     .. seealso:: `cusolverdxDestroyDescriptor`
     """
     with nogil:
-        status = cusolverdxDestroyDescriptor(<cusolverdxDescriptor>handle)
-    check_status(status)
+        __status__ = cusolverdxDestroyDescriptor(<cusolverdxDescriptor>handle)
+    check_status(__status__)
 
 
 cpdef str cusolverdx_operator_type_to_str(int op):
@@ -1578,3 +1562,146 @@ cpdef str cusolverdx_trait_type_to_str(int trait):
     cdef bytes _output_
     _output_ = cusolverdxTraitTypeToStr(<_CusolverdxTraitType>trait)
     return _output_.decode()
+
+
+cpdef long long int cublasdx_create_tensor_new(long long int handle, int tensor_type) except? 0:
+    cdef cublasdxTensor tensor
+    with nogil:
+        __status__ = cublasdxCreateTensorNew(<cublasdxDescriptor>handle, <_CublasdxTensorType>tensor_type, &tensor)
+    check_status(__status__)
+    return <long long int>tensor
+
+
+cpdef long long int cublasdx_make_tensor_like(long long int input, int value_type) except? 0:
+    """Create an opaque tensor with a identical layout (smem/gmem) or partitioner (rmem), but with a different datatype.
+
+    Args:
+        input (long long int): An opaque tensors.
+        value_type (CommondxValueType): The new datatype.
+
+    Returns:
+        long long int: The output tensor.
+
+    .. seealso:: `cublasdxMakeTensorLike`
+    """
+    cdef cublasdxTensor output
+    with nogil:
+        __status__ = cublasdxMakeTensorLike(<cublasdxTensor>input, <_CommondxValueType>value_type, &output)
+    check_status(__status__)
+    return <long long int>output
+
+
+cpdef cublasdx_destroy_tensor_new(long long int tensor):
+    with nogil:
+        __status__ = cublasdxDestroyTensorNew(<cublasdxTensor>tensor)
+    check_status(__status__)
+
+
+cpdef long long int cublasdx_create_device_function_new(long long int handle, int device_function_type, size_t count, array) except? 0:
+    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
+    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
+    cdef cublasdxDeviceFunction device_function
+    with nogil:
+        __status__ = cublasdxCreateDeviceFunctionNew(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, count, <const cublasdxTensor*>(_array_.data()), &device_function)
+    check_status(__status__)
+    return <long long int>device_function
+
+
+cpdef cublasdx_destroy_device_function_new(long long int device_function):
+    with nogil:
+        __status__ = cublasdxDestroyDeviceFunctionNew(<cublasdxDeviceFunction>device_function)
+    check_status(__status__)
+
+cpdef cublasdx_finalize_tensors203(long long int handle, size_t count, array):
+    """Finalize the tensors. This is required before traits can be queried.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
+        count (size_t): The number of tensors to finalized.
+        array (object): The array of tensors. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxTensor``.
+
+
+    .. seealso:: `cublasdxFinalizeTensors`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
+    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
+    with nogil:
+        __status__ = cublasdxFinalizeTensors203(<cublasdxDescriptor>handle, count, <const cublasdxTensor*>(_array_.data()))
+    check_status(__status__)
+
+cpdef cublasdx_finalize_tensors(long long int handle, size_t count, array):
+    """Finalize the tensors. This is required before traits can be queried.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
+        count (size_t): The number of tensors to finalized.
+        array (object): The array of tensors. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxTensor``.
+
+
+    .. seealso:: `cublasdxFinalizeTensors`
+    """
+    if get_version_ex() < (0, 3, 0):
+        return cublasdx_finalize_tensors203(handle, count, array)
+    else:
+        return cublasdx_finalize_tensors_new(count, array)
+
+cpdef long long int cublasdx_create_device_function(long long int handle, int device_function_type, size_t count, array) except? 0:
+    """Binds (aka create) a device function from a set of tensor.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
+        device_function_type (CublasdxDeviceFunctionType): The device function to create.
+        count (size_t): The number of input & output tensors to the device function.
+        array (object): The array of input & output tensors. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxTensor``.
+
+
+    Returns:
+        long long int: The device function.
+
+    .. seealso:: `cublasdxCreateDeviceFunction`
+    """
+    if get_version_ex() < (0, 3, 0):
+        return cublasdx_create_device_function_old(handle, device_function_type, count, array)
+    else:
+        return cublasdx_create_device_function_new(handle, device_function_type, count, array)
+
+cpdef cublasdx_destroy_device_function(long long int device_function):
+    if get_version_ex() >= (0, 3, 0):
+        cublasdx_destroy_device_function_new(device_function)
+
+cpdef cublasdx_destroy_tensor(long long int tensor):
+    """Destroys a tensor handle created using cublasdxCreateTensor or cublasdxMakeTensorLike.
+
+    Args:
+        tensor (long long int): The tensor to destroy.
+
+    .. seealso:: `cublasdxDestroyTensor`
+    """
+    if get_version_ex() >= (0, 3, 0):
+        cublasdx_destroy_tensor_new(tensor)
+
+cpdef long long int cublasdx_create_tensor(long long int handle, int tensor_type) except? 0:
+    """Create a tensor handle.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
+        tensor_type (CublasdxTensorType): The tensor type to bind to the handle.
+
+    Returns:
+        long long int: A valid tensor handle.
+
+    .. seealso:: `cublasdxCreateTensor`
+    """
+    if get_version_ex() < (0, 3, 0):
+        return cublasdx_bind_tensor(handle, tensor_type)
+    else:
+        return cublasdx_create_tensor_new(handle, tensor_type)

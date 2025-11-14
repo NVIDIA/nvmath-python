@@ -1,4 +1,4 @@
-# This code was automatically generated with version 0.2.3. Do not modify it directly.
+# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -152,6 +152,8 @@ ctypedef enum cublasdxTensorTrait "cublasdxTensorTrait":
     CUBLASDX_TENSOR_TRAIT_ALIGNMENT_BYTES "CUBLASDX_TENSOR_TRAIT_ALIGNMENT_BYTES" = 1
     CUBLASDX_TENSOR_TRAIT_UID "CUBLASDX_TENSOR_TRAIT_UID" = 2
     CUBLASDX_TENSOR_TRAIT_OPAQUE_NAME "CUBLASDX_TENSOR_TRAIT_OPAQUE_NAME" = 4
+    CUBLASDX_TENSOR_TRAIT_LOGICAL_SIZE "CUBLASDX_TENSOR_TRAIT_LOGICAL_SIZE" = 5
+    CUBLASDX_TENSOR_TRAIT_MEMORY_SPACE "CUBLASDX_TENSOR_TRAIT_MEMORY_SPACE" = 6
 
 ctypedef enum cublasdxDeviceFunctionTrait "cublasdxDeviceFunctionTrait":
     CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL "CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL" = 1
@@ -165,6 +167,12 @@ ctypedef enum cublasdxDeviceFunctionType "cublasdxDeviceFunctionType":
     CUBLASDX_DEVICE_FUNCTION_COPY_WAIT "CUBLASDX_DEVICE_FUNCTION_COPY_WAIT" = 2
     CUBLASDX_DEVICE_FUNCTION_CLEAR "CUBLASDX_DEVICE_FUNCTION_CLEAR" = 3
     CUBLASDX_DEVICE_FUNCTION_AXPBY "CUBLASDX_DEVICE_FUNCTION_AXPBY" = 4
+    CUBLASDX_DEVICE_FUNCTION_MAP_IDX2CRD "CUBLASDX_DEVICE_FUNCTION_MAP_IDX2CRD" = 5
+    CUBLASDX_DEVICE_FUNCTION_MAP_IDX2CRD_PARTITIONER "CUBLASDX_DEVICE_FUNCTION_MAP_IDX2CRD_PARTITIONER" = 6
+    CUBLASDX_DEVICE_FUNCTION_MAP_CRD2IDX "CUBLASDX_DEVICE_FUNCTION_MAP_CRD2IDX" = 7
+    CUBLASDX_DEVICE_FUNCTION_IS_THREAD_ACTIVE "CUBLASDX_DEVICE_FUNCTION_IS_THREAD_ACTIVE" = 8
+    CUBLASDX_DEVICE_FUNCTION_IS_PREDICATED "CUBLASDX_DEVICE_FUNCTION_IS_PREDICATED" = 9
+    CUBLASDX_DEVICE_FUNCTION_IS_INDEX_IN_BOUNDS "CUBLASDX_DEVICE_FUNCTION_IS_INDEX_IN_BOUNDS" = 10
 
 ctypedef enum cufftdxApi "cufftdxApi":
     CUFFTDX_API_LMEM "CUFFTDX_API_LMEM" = 0
@@ -277,6 +285,11 @@ ctypedef enum cusolverdxTraitType "cusolverdxTraitType":
     CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE "CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE" = 1
     CUSOLVERDX_TRAIT_SYMBOL_NAME "CUSOLVERDX_TRAIT_SYMBOL_NAME" = 2
 
+ctypedef enum cublasdxMemorySpace "cublasdxMemorySpace":
+    CUBLASDX_MEMORY_SPACE_RMEM "CUBLASDX_MEMORY_SPACE_RMEM" = 0
+    CUBLASDX_MEMORY_SPACE_SMEM "CUBLASDX_MEMORY_SPACE_SMEM" = 1
+    CUBLASDX_MEMORY_SPACE_GMEM "CUBLASDX_MEMORY_SPACE_GMEM" = 2
+
 # types
 ctypedef long long int commondxCode 'commondxCode'
 ctypedef long long int cublasdxDescriptor 'cublasdxDescriptor'
@@ -310,11 +323,11 @@ cdef commondxStatusType cublasdxSetOperatorInt64(cublasdxDescriptor handle, cubl
 cdef commondxStatusType cublasdxSetOperatorInt64s(cublasdxDescriptor handle, cublasdxOperatorType op, size_t count, const long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxBindTensor(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxSetTensorOptionInt64(cublasdxTensor tensor, cublasdxTensorOption option, long long int value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxFinalizeTensors(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxFinalizeTensorsNew(size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetTensorTraitInt64(cublasdxTensor tensor, cublasdxTensorTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetTensorTraitStrSize(cublasdxTensor tensor, cublasdxTensorTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetTensorTraitStr(cublasdxTensor tensor, cublasdxTensorTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxBindDeviceFunction(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateDeviceFunctionOld(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxFinalizeDeviceFunctions(commondxCode code, size_t count, const cublasdxDeviceFunction* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetDeviceFunctionTraitStrSize(cublasdxDeviceFunction device_function, cublasdxDeviceFunctionTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetDeviceFunctionTraitStr(cublasdxDeviceFunction device_function, cublasdxDeviceFunctionTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
@@ -360,3 +373,10 @@ cdef commondxStatusType cusolverdxFinalizeCode(commondxCode code, cusolverdxDesc
 cdef commondxStatusType cusolverdxDestroyDescriptor(cusolverdxDescriptor handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef const char* cusolverdxOperatorTypeToStr(cusolverdxOperatorType op) except?NULL nogil
 cdef const char* cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NULL nogil
+cdef commondxStatusType cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxDestroyTensorNew(cublasdxTensor tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+
+cdef commondxStatusType cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil

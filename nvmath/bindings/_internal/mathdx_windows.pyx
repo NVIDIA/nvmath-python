@@ -1,23 +1,80 @@
-# This code was automatically generated with version 0.2.3. Do not modify it directly.
+# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
 import os
 import site
-
-import win32api
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
 
+from libc.stddef cimport wchar_t
+from libc.stdint cimport uintptr_t
+from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
+
+# You must 'from .utils import NotSupportedError' before using this template
+
+cdef extern from "windows.h" nogil:
+    ctypedef void* HMODULE
+    ctypedef void* HANDLE
+    ctypedef void* FARPROC
+    ctypedef unsigned long DWORD
+    ctypedef const wchar_t *LPCWSTR
+    ctypedef const char *LPCSTR
+
+    cdef DWORD LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+    cdef DWORD LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+    cdef DWORD LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+
+    HMODULE _LoadLibraryExW "LoadLibraryExW"(
+        LPCWSTR lpLibFileName,
+        HANDLE hFile,
+        DWORD dwFlags
+    )
+
+    FARPROC _GetProcAddress "GetProcAddress"(HMODULE hModule, LPCSTR lpProcName)
+
+cdef inline uintptr_t LoadLibraryExW(str path, HANDLE hFile, DWORD dwFlags):
+    cdef uintptr_t result
+    cdef wchar_t* wpath = PyUnicode_AsWideCharString(path, NULL)
+    with nogil:
+        result = <uintptr_t>_LoadLibraryExW(
+            wpath,
+            hFile,
+            dwFlags
+        )
+    PyMem_Free(wpath)
+    return result
+
+cdef inline void *GetProcAddress(uintptr_t hModule, const char* lpProcName) nogil:
+    return _GetProcAddress(<HMODULE>hModule, lpProcName)
+
+cdef int get_cuda_version():
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = LoadLibraryExW("nvcuda.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)
+    if handle == 0:
+        raise NotSupportedError('CUDA driver is not found')
+    cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in nvcuda.dll')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
+
+
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
-LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_mathdx_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __commondxCreateCode = NULL
 cdef void* __commondxSetCodeOptionInt64 = NULL
@@ -89,6 +146,11 @@ cdef void* __cusolverdxFinalizeCode = NULL
 cdef void* __cusolverdxDestroyDescriptor = NULL
 cdef void* __cusolverdxOperatorTypeToStr = NULL
 cdef void* __cusolverdxTraitTypeToStr = NULL
+cdef void* __cublasdxCreateTensor = NULL
+cdef void* __cublasdxMakeTensorLike = NULL
+cdef void* __cublasdxDestroyTensor = NULL
+cdef void* __cublasdxCreateDeviceFunction = NULL
+cdef void* __cublasdxDestroyDeviceFunction = NULL
 
 
 cdef inline list get_site_packages():
@@ -105,448 +167,240 @@ cdef int _check_or_init_mathdx() except -1 nogil:
     if __py_mathdx_init:
         return 0
 
-    cdef int err, driver_ver
-    with gil:
-        # Load driver to check version
-        try:
-            handle = win32api.LoadLibraryEx("nvcuda.dll", 0, LOAD_LIBRARY_SEARCH_SYSTEM32)
-        except Exception as e:
-            raise NotSupportedError(f'CUDA driver is not found ({e})')
-        global __cuDriverGetVersion
-        if __cuDriverGetVersion == NULL:
-            __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
-            if __cuDriverGetVersion == NULL:
-                raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) nogil>__cuDriverGetVersion)(&driver_ver)
-        if err != 0:
-            raise RuntimeError('something went wrong')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
         # Load library
         handle = load_library(driver_ver)
 
         # Load function
         global __commondxCreateCode
-        try:
-            __commondxCreateCode = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxCreateCode')
-        except:
-            pass
+        __commondxCreateCode = GetProcAddress(handle, 'commondxCreateCode')
 
         global __commondxSetCodeOptionInt64
-        try:
-            __commondxSetCodeOptionInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxSetCodeOptionInt64')
-        except:
-            pass
+        __commondxSetCodeOptionInt64 = GetProcAddress(handle, 'commondxSetCodeOptionInt64')
 
         global __commondxSetCodeOptionStr
-        try:
-            __commondxSetCodeOptionStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxSetCodeOptionStr')
-        except:
-            pass
+        __commondxSetCodeOptionStr = GetProcAddress(handle, 'commondxSetCodeOptionStr')
 
         global __commondxGetCodeOptionInt64
-        try:
-            __commondxGetCodeOptionInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxGetCodeOptionInt64')
-        except:
-            pass
+        __commondxGetCodeOptionInt64 = GetProcAddress(handle, 'commondxGetCodeOptionInt64')
 
         global __commondxGetCodeOptionsInt64s
-        try:
-            __commondxGetCodeOptionsInt64s = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxGetCodeOptionsInt64s')
-        except:
-            pass
+        __commondxGetCodeOptionsInt64s = GetProcAddress(handle, 'commondxGetCodeOptionsInt64s')
 
         global __commondxGetCodeLTOIRSize
-        try:
-            __commondxGetCodeLTOIRSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxGetCodeLTOIRSize')
-        except:
-            pass
+        __commondxGetCodeLTOIRSize = GetProcAddress(handle, 'commondxGetCodeLTOIRSize')
 
         global __commondxGetCodeLTOIR
-        try:
-            __commondxGetCodeLTOIR = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxGetCodeLTOIR')
-        except:
-            pass
+        __commondxGetCodeLTOIR = GetProcAddress(handle, 'commondxGetCodeLTOIR')
 
         global __commondxGetCodeNumLTOIRs
-        try:
-            __commondxGetCodeNumLTOIRs = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxGetCodeNumLTOIRs')
-        except:
-            pass
+        __commondxGetCodeNumLTOIRs = GetProcAddress(handle, 'commondxGetCodeNumLTOIRs')
 
         global __commondxGetCodeLTOIRSizes
-        try:
-            __commondxGetCodeLTOIRSizes = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxGetCodeLTOIRSizes')
-        except:
-            pass
+        __commondxGetCodeLTOIRSizes = GetProcAddress(handle, 'commondxGetCodeLTOIRSizes')
 
         global __commondxGetCodeLTOIRs
-        try:
-            __commondxGetCodeLTOIRs = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxGetCodeLTOIRs')
-        except:
-            pass
+        __commondxGetCodeLTOIRs = GetProcAddress(handle, 'commondxGetCodeLTOIRs')
 
         global __commondxDestroyCode
-        try:
-            __commondxDestroyCode = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxDestroyCode')
-        except:
-            pass
+        __commondxDestroyCode = GetProcAddress(handle, 'commondxDestroyCode')
 
         global __commondxStatusToStr
-        try:
-            __commondxStatusToStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'commondxStatusToStr')
-        except:
-            pass
+        __commondxStatusToStr = GetProcAddress(handle, 'commondxStatusToStr')
 
         global __mathdxGetVersion
-        try:
-            __mathdxGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'mathdxGetVersion')
-        except:
-            pass
+        __mathdxGetVersion = GetProcAddress(handle, 'mathdxGetVersion')
 
         global __mathdxGetVersionEx
-        try:
-            __mathdxGetVersionEx = <void*><intptr_t>win32api.GetProcAddress(handle, 'mathdxGetVersionEx')
-        except:
-            pass
+        __mathdxGetVersionEx = GetProcAddress(handle, 'mathdxGetVersionEx')
 
         global __cublasdxCreateDescriptor
-        try:
-            __cublasdxCreateDescriptor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxCreateDescriptor')
-        except:
-            pass
+        __cublasdxCreateDescriptor = GetProcAddress(handle, 'cublasdxCreateDescriptor')
 
         global __cublasdxSetOptionStr
-        try:
-            __cublasdxSetOptionStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxSetOptionStr')
-        except:
-            pass
+        __cublasdxSetOptionStr = GetProcAddress(handle, 'cublasdxSetOptionStr')
 
         global __cublasdxSetOperatorInt64
-        try:
-            __cublasdxSetOperatorInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxSetOperatorInt64')
-        except:
-            pass
+        __cublasdxSetOperatorInt64 = GetProcAddress(handle, 'cublasdxSetOperatorInt64')
 
         global __cublasdxSetOperatorInt64s
-        try:
-            __cublasdxSetOperatorInt64s = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxSetOperatorInt64s')
-        except:
-            pass
+        __cublasdxSetOperatorInt64s = GetProcAddress(handle, 'cublasdxSetOperatorInt64s')
 
         global __cublasdxBindTensor
-        try:
-            __cublasdxBindTensor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxBindTensor')
-        except:
-            pass
+        __cublasdxBindTensor = GetProcAddress(handle, 'cublasdxBindTensor')
 
         global __cublasdxSetTensorOptionInt64
-        try:
-            __cublasdxSetTensorOptionInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxSetTensorOptionInt64')
-        except:
-            pass
+        __cublasdxSetTensorOptionInt64 = GetProcAddress(handle, 'cublasdxSetTensorOptionInt64')
 
         global __cublasdxFinalizeTensors
-        try:
-            __cublasdxFinalizeTensors = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxFinalizeTensors')
-        except:
-            pass
+        __cublasdxFinalizeTensors = GetProcAddress(handle, 'cublasdxFinalizeTensors')
 
         global __cublasdxGetTensorTraitInt64
-        try:
-            __cublasdxGetTensorTraitInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetTensorTraitInt64')
-        except:
-            pass
+        __cublasdxGetTensorTraitInt64 = GetProcAddress(handle, 'cublasdxGetTensorTraitInt64')
 
         global __cublasdxGetTensorTraitStrSize
-        try:
-            __cublasdxGetTensorTraitStrSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetTensorTraitStrSize')
-        except:
-            pass
+        __cublasdxGetTensorTraitStrSize = GetProcAddress(handle, 'cublasdxGetTensorTraitStrSize')
 
         global __cublasdxGetTensorTraitStr
-        try:
-            __cublasdxGetTensorTraitStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetTensorTraitStr')
-        except:
-            pass
+        __cublasdxGetTensorTraitStr = GetProcAddress(handle, 'cublasdxGetTensorTraitStr')
 
         global __cublasdxBindDeviceFunction
-        try:
-            __cublasdxBindDeviceFunction = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxBindDeviceFunction')
-        except:
-            pass
+        __cublasdxBindDeviceFunction = GetProcAddress(handle, 'cublasdxBindDeviceFunction')
 
         global __cublasdxFinalizeDeviceFunctions
-        try:
-            __cublasdxFinalizeDeviceFunctions = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxFinalizeDeviceFunctions')
-        except:
-            pass
+        __cublasdxFinalizeDeviceFunctions = GetProcAddress(handle, 'cublasdxFinalizeDeviceFunctions')
 
         global __cublasdxGetDeviceFunctionTraitStrSize
-        try:
-            __cublasdxGetDeviceFunctionTraitStrSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetDeviceFunctionTraitStrSize')
-        except:
-            pass
+        __cublasdxGetDeviceFunctionTraitStrSize = GetProcAddress(handle, 'cublasdxGetDeviceFunctionTraitStrSize')
 
         global __cublasdxGetDeviceFunctionTraitStr
-        try:
-            __cublasdxGetDeviceFunctionTraitStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetDeviceFunctionTraitStr')
-        except:
-            pass
+        __cublasdxGetDeviceFunctionTraitStr = GetProcAddress(handle, 'cublasdxGetDeviceFunctionTraitStr')
 
         global __cublasdxGetLTOIRSize
-        try:
-            __cublasdxGetLTOIRSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetLTOIRSize')
-        except:
-            pass
+        __cublasdxGetLTOIRSize = GetProcAddress(handle, 'cublasdxGetLTOIRSize')
 
         global __cublasdxGetLTOIR
-        try:
-            __cublasdxGetLTOIR = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetLTOIR')
-        except:
-            pass
+        __cublasdxGetLTOIR = GetProcAddress(handle, 'cublasdxGetLTOIR')
 
         global __cublasdxGetTraitStrSize
-        try:
-            __cublasdxGetTraitStrSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetTraitStrSize')
-        except:
-            pass
+        __cublasdxGetTraitStrSize = GetProcAddress(handle, 'cublasdxGetTraitStrSize')
 
         global __cublasdxGetTraitStr
-        try:
-            __cublasdxGetTraitStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetTraitStr')
-        except:
-            pass
+        __cublasdxGetTraitStr = GetProcAddress(handle, 'cublasdxGetTraitStr')
 
         global __cublasdxGetTraitInt64
-        try:
-            __cublasdxGetTraitInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetTraitInt64')
-        except:
-            pass
+        __cublasdxGetTraitInt64 = GetProcAddress(handle, 'cublasdxGetTraitInt64')
 
         global __cublasdxGetTraitInt64s
-        try:
-            __cublasdxGetTraitInt64s = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxGetTraitInt64s')
-        except:
-            pass
+        __cublasdxGetTraitInt64s = GetProcAddress(handle, 'cublasdxGetTraitInt64s')
 
         global __cublasdxOperatorTypeToStr
-        try:
-            __cublasdxOperatorTypeToStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxOperatorTypeToStr')
-        except:
-            pass
+        __cublasdxOperatorTypeToStr = GetProcAddress(handle, 'cublasdxOperatorTypeToStr')
 
         global __cublasdxTraitTypeToStr
-        try:
-            __cublasdxTraitTypeToStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxTraitTypeToStr')
-        except:
-            pass
+        __cublasdxTraitTypeToStr = GetProcAddress(handle, 'cublasdxTraitTypeToStr')
 
         global __cublasdxFinalizeCode
-        try:
-            __cublasdxFinalizeCode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxFinalizeCode')
-        except:
-            pass
+        __cublasdxFinalizeCode = GetProcAddress(handle, 'cublasdxFinalizeCode')
 
         global __cublasdxDestroyDescriptor
-        try:
-            __cublasdxDestroyDescriptor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasdxDestroyDescriptor')
-        except:
-            pass
+        __cublasdxDestroyDescriptor = GetProcAddress(handle, 'cublasdxDestroyDescriptor')
 
         global __cufftdxCreateDescriptor
-        try:
-            __cufftdxCreateDescriptor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxCreateDescriptor')
-        except:
-            pass
+        __cufftdxCreateDescriptor = GetProcAddress(handle, 'cufftdxCreateDescriptor')
 
         global __cufftdxSetOptionStr
-        try:
-            __cufftdxSetOptionStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxSetOptionStr')
-        except:
-            pass
+        __cufftdxSetOptionStr = GetProcAddress(handle, 'cufftdxSetOptionStr')
 
         global __cufftdxGetKnobInt64Size
-        try:
-            __cufftdxGetKnobInt64Size = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetKnobInt64Size')
-        except:
-            pass
+        __cufftdxGetKnobInt64Size = GetProcAddress(handle, 'cufftdxGetKnobInt64Size')
 
         global __cufftdxGetKnobInt64s
-        try:
-            __cufftdxGetKnobInt64s = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetKnobInt64s')
-        except:
-            pass
+        __cufftdxGetKnobInt64s = GetProcAddress(handle, 'cufftdxGetKnobInt64s')
 
         global __cufftdxSetOperatorInt64
-        try:
-            __cufftdxSetOperatorInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxSetOperatorInt64')
-        except:
-            pass
+        __cufftdxSetOperatorInt64 = GetProcAddress(handle, 'cufftdxSetOperatorInt64')
 
         global __cufftdxSetOperatorInt64s
-        try:
-            __cufftdxSetOperatorInt64s = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxSetOperatorInt64s')
-        except:
-            pass
+        __cufftdxSetOperatorInt64s = GetProcAddress(handle, 'cufftdxSetOperatorInt64s')
 
         global __cufftdxGetLTOIRSize
-        try:
-            __cufftdxGetLTOIRSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetLTOIRSize')
-        except:
-            pass
+        __cufftdxGetLTOIRSize = GetProcAddress(handle, 'cufftdxGetLTOIRSize')
 
         global __cufftdxGetLTOIR
-        try:
-            __cufftdxGetLTOIR = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetLTOIR')
-        except:
-            pass
+        __cufftdxGetLTOIR = GetProcAddress(handle, 'cufftdxGetLTOIR')
 
         global __cufftdxGetTraitStrSize
-        try:
-            __cufftdxGetTraitStrSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetTraitStrSize')
-        except:
-            pass
+        __cufftdxGetTraitStrSize = GetProcAddress(handle, 'cufftdxGetTraitStrSize')
 
         global __cufftdxGetTraitStr
-        try:
-            __cufftdxGetTraitStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetTraitStr')
-        except:
-            pass
+        __cufftdxGetTraitStr = GetProcAddress(handle, 'cufftdxGetTraitStr')
 
         global __cufftdxGetTraitInt64
-        try:
-            __cufftdxGetTraitInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetTraitInt64')
-        except:
-            pass
+        __cufftdxGetTraitInt64 = GetProcAddress(handle, 'cufftdxGetTraitInt64')
 
         global __cufftdxGetTraitInt64s
-        try:
-            __cufftdxGetTraitInt64s = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetTraitInt64s')
-        except:
-            pass
+        __cufftdxGetTraitInt64s = GetProcAddress(handle, 'cufftdxGetTraitInt64s')
 
         global __cufftdxGetTraitCommondxDataType
-        try:
-            __cufftdxGetTraitCommondxDataType = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxGetTraitCommondxDataType')
-        except:
-            pass
+        __cufftdxGetTraitCommondxDataType = GetProcAddress(handle, 'cufftdxGetTraitCommondxDataType')
 
         global __cufftdxFinalizeCode
-        try:
-            __cufftdxFinalizeCode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxFinalizeCode')
-        except:
-            pass
+        __cufftdxFinalizeCode = GetProcAddress(handle, 'cufftdxFinalizeCode')
 
         global __cufftdxDestroyDescriptor
-        try:
-            __cufftdxDestroyDescriptor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxDestroyDescriptor')
-        except:
-            pass
+        __cufftdxDestroyDescriptor = GetProcAddress(handle, 'cufftdxDestroyDescriptor')
 
         global __cufftdxOperatorTypeToStr
-        try:
-            __cufftdxOperatorTypeToStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxOperatorTypeToStr')
-        except:
-            pass
+        __cufftdxOperatorTypeToStr = GetProcAddress(handle, 'cufftdxOperatorTypeToStr')
 
         global __cufftdxTraitTypeToStr
-        try:
-            __cufftdxTraitTypeToStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cufftdxTraitTypeToStr')
-        except:
-            pass
+        __cufftdxTraitTypeToStr = GetProcAddress(handle, 'cufftdxTraitTypeToStr')
 
         global __cusolverdxCreateDescriptor
-        try:
-            __cusolverdxCreateDescriptor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxCreateDescriptor')
-        except:
-            pass
+        __cusolverdxCreateDescriptor = GetProcAddress(handle, 'cusolverdxCreateDescriptor')
 
         global __cusolverdxSetOptionStr
-        try:
-            __cusolverdxSetOptionStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxSetOptionStr')
-        except:
-            pass
+        __cusolverdxSetOptionStr = GetProcAddress(handle, 'cusolverdxSetOptionStr')
 
         global __cusolverdxSetOperatorInt64
-        try:
-            __cusolverdxSetOperatorInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxSetOperatorInt64')
-        except:
-            pass
+        __cusolverdxSetOperatorInt64 = GetProcAddress(handle, 'cusolverdxSetOperatorInt64')
 
         global __cusolverdxSetOperatorInt64s
-        try:
-            __cusolverdxSetOperatorInt64s = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxSetOperatorInt64s')
-        except:
-            pass
+        __cusolverdxSetOperatorInt64s = GetProcAddress(handle, 'cusolverdxSetOperatorInt64s')
 
         global __cusolverdxGetLTOIRSize
-        try:
-            __cusolverdxGetLTOIRSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxGetLTOIRSize')
-        except:
-            pass
+        __cusolverdxGetLTOIRSize = GetProcAddress(handle, 'cusolverdxGetLTOIRSize')
 
         global __cusolverdxGetLTOIR
-        try:
-            __cusolverdxGetLTOIR = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxGetLTOIR')
-        except:
-            pass
+        __cusolverdxGetLTOIR = GetProcAddress(handle, 'cusolverdxGetLTOIR')
 
         global __cusolverdxGetUniversalFATBINSize
-        try:
-            __cusolverdxGetUniversalFATBINSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxGetUniversalFATBINSize')
-        except:
-            pass
+        __cusolverdxGetUniversalFATBINSize = GetProcAddress(handle, 'cusolverdxGetUniversalFATBINSize')
 
         global __cusolverdxGetUniversalFATBIN
-        try:
-            __cusolverdxGetUniversalFATBIN = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxGetUniversalFATBIN')
-        except:
-            pass
+        __cusolverdxGetUniversalFATBIN = GetProcAddress(handle, 'cusolverdxGetUniversalFATBIN')
 
         global __cusolverdxGetTraitStrSize
-        try:
-            __cusolverdxGetTraitStrSize = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxGetTraitStrSize')
-        except:
-            pass
+        __cusolverdxGetTraitStrSize = GetProcAddress(handle, 'cusolverdxGetTraitStrSize')
 
         global __cusolverdxGetTraitStr
-        try:
-            __cusolverdxGetTraitStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxGetTraitStr')
-        except:
-            pass
+        __cusolverdxGetTraitStr = GetProcAddress(handle, 'cusolverdxGetTraitStr')
 
         global __cusolverdxGetTraitInt64
-        try:
-            __cusolverdxGetTraitInt64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxGetTraitInt64')
-        except:
-            pass
+        __cusolverdxGetTraitInt64 = GetProcAddress(handle, 'cusolverdxGetTraitInt64')
 
         global __cusolverdxFinalizeCode
-        try:
-            __cusolverdxFinalizeCode = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxFinalizeCode')
-        except:
-            pass
+        __cusolverdxFinalizeCode = GetProcAddress(handle, 'cusolverdxFinalizeCode')
 
         global __cusolverdxDestroyDescriptor
-        try:
-            __cusolverdxDestroyDescriptor = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxDestroyDescriptor')
-        except:
-            pass
+        __cusolverdxDestroyDescriptor = GetProcAddress(handle, 'cusolverdxDestroyDescriptor')
 
         global __cusolverdxOperatorTypeToStr
-        try:
-            __cusolverdxOperatorTypeToStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxOperatorTypeToStr')
-        except:
-            pass
+        __cusolverdxOperatorTypeToStr = GetProcAddress(handle, 'cusolverdxOperatorTypeToStr')
 
         global __cusolverdxTraitTypeToStr
-        try:
-            __cusolverdxTraitTypeToStr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cusolverdxTraitTypeToStr')
-        except:
-            pass
+        __cusolverdxTraitTypeToStr = GetProcAddress(handle, 'cusolverdxTraitTypeToStr')
 
-    __py_mathdx_init = True
-    return 0
+        global __cublasdxCreateTensor
+        __cublasdxCreateTensor = GetProcAddress(handle, 'cublasdxCreateTensor')
+
+        global __cublasdxMakeTensorLike
+        __cublasdxMakeTensorLike = GetProcAddress(handle, 'cublasdxMakeTensorLike')
+
+        global __cublasdxDestroyTensor
+        __cublasdxDestroyTensor = GetProcAddress(handle, 'cublasdxDestroyTensor')
+
+        global __cublasdxCreateDeviceFunction
+        __cublasdxCreateDeviceFunction = GetProcAddress(handle, 'cublasdxCreateDeviceFunction')
+
+        global __cublasdxDestroyDeviceFunction
+        __cublasdxDestroyDeviceFunction = GetProcAddress(handle, 'cublasdxDestroyDeviceFunction')
+
+        __py_mathdx_init = True
+        return 0
 
 
 cdef dict func_ptrs = None
@@ -770,6 +624,21 @@ cpdef dict _inspect_function_pointers():
     global __cusolverdxTraitTypeToStr
     data["__cusolverdxTraitTypeToStr"] = <intptr_t>__cusolverdxTraitTypeToStr
 
+    global __cublasdxCreateTensor
+    data["__cublasdxCreateTensor"] = <intptr_t>__cublasdxCreateTensor
+
+    global __cublasdxMakeTensorLike
+    data["__cublasdxMakeTensorLike"] = <intptr_t>__cublasdxMakeTensorLike
+
+    global __cublasdxDestroyTensor
+    data["__cublasdxDestroyTensor"] = <intptr_t>__cublasdxDestroyTensor
+
+    global __cublasdxCreateDeviceFunction
+    data["__cublasdxCreateDeviceFunction"] = <intptr_t>__cublasdxCreateDeviceFunction
+
+    global __cublasdxDestroyDeviceFunction
+    data["__cublasdxDestroyDeviceFunction"] = <intptr_t>__cublasdxDestroyDeviceFunction
+
     func_ptrs = data
     return data
 
@@ -985,14 +854,14 @@ cdef commondxStatusType _cublasdxSetTensorOptionInt64(cublasdxTensor tensor, cub
         tensor, option, value)
 
 
-cdef commondxStatusType _cublasdxFinalizeTensors(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+cdef commondxStatusType _cublasdxFinalizeTensorsNew(size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __cublasdxFinalizeTensors
     _check_or_init_mathdx()
     if __cublasdxFinalizeTensors == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasdxFinalizeTensors is not found")
-    return (<commondxStatusType (*)(cublasdxDescriptor, size_t, const cublasdxTensor*) noexcept nogil>__cublasdxFinalizeTensors)(
-        handle, count, array)
+    return (<commondxStatusType (*)(size_t, const cublasdxTensor*) noexcept nogil>__cublasdxFinalizeTensors)(
+        count, array)
 
 
 cdef commondxStatusType _cublasdxGetTensorTraitInt64(cublasdxTensor tensor, cublasdxTensorTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -1025,7 +894,7 @@ cdef commondxStatusType _cublasdxGetTensorTraitStr(cublasdxTensor tensor, cublas
         tensor, trait, size, value)
 
 
-cdef commondxStatusType _cublasdxBindDeviceFunction(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+cdef commondxStatusType _cublasdxCreateDeviceFunctionOld(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __cublasdxBindDeviceFunction
     _check_or_init_mathdx()
     if __cublasdxBindDeviceFunction == NULL:
@@ -1483,3 +1352,62 @@ cdef const char* _cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NUL
             raise FunctionNotFoundError("function cusolverdxTraitTypeToStr is not found")
     return (<const char* (*)(cusolverdxTraitType) noexcept nogil>__cusolverdxTraitTypeToStr)(
         trait)
+
+
+cdef commondxStatusType _cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateTensor
+    _check_or_init_mathdx()
+    if __cublasdxCreateTensor == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateTensor is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxTensorType, cublasdxTensor*) noexcept nogil>__cublasdxCreateTensor)(
+        handle, tensor_type, tensor)
+
+
+cdef commondxStatusType _cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxMakeTensorLike
+    _check_or_init_mathdx()
+    if __cublasdxMakeTensorLike == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxMakeTensorLike is not found")
+    return (<commondxStatusType (*)(cublasdxTensor, commondxValueType, cublasdxTensor*) noexcept nogil>__cublasdxMakeTensorLike)(
+        input, value_type, output)
+
+
+cdef commondxStatusType _cublasdxDestroyTensorNew(cublasdxTensor tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxDestroyTensor
+    _check_or_init_mathdx()
+    if __cublasdxDestroyTensor == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxDestroyTensor is not found")
+    return (<commondxStatusType (*)(cublasdxTensor) noexcept nogil>__cublasdxDestroyTensor)(
+        tensor)
+
+
+cdef commondxStatusType _cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateDeviceFunction
+    _check_or_init_mathdx()
+    if __cublasdxCreateDeviceFunction == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateDeviceFunction is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxDeviceFunctionType, size_t, const cublasdxTensor*, cublasdxDeviceFunction*) noexcept nogil>__cublasdxCreateDeviceFunction)(
+        handle, device_function_type, count, array, device_function)
+
+
+cdef commondxStatusType _cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxDestroyDeviceFunction
+    _check_or_init_mathdx()
+    if __cublasdxDestroyDeviceFunction == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxDestroyDeviceFunction is not found")
+    return (<commondxStatusType (*)(cublasdxDeviceFunction) noexcept nogil>__cublasdxDestroyDeviceFunction)(
+        device_function)
+
+cdef commondxStatusType _cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxFinalizeTensors
+    _check_or_init_mathdx()
+    if __cublasdxFinalizeTensors == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxFinalizeTensors is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, size_t, const cublasdxTensor*) noexcept nogil>__cublasdxFinalizeTensors)(
+        handle, count, array)

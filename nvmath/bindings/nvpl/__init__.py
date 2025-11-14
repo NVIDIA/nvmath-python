@@ -5,7 +5,9 @@
 # type: ignore
 
 from . import fft
+from . import blas
 
 __all__ = [
     "fft",
+    "blas",
 ]

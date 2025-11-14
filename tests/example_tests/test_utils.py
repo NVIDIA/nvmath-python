@@ -58,8 +58,17 @@ def run_sample(samples_path, filename, env=None, use_subprocess=False, use_mpi=F
             # Check if the filename indicates with how many processes to run, for example:
             # `example_something_4p.py` is to be run with 4 processes.
             m = re.search(r".*_(\d+)p.py$", filename)
+            uses_nccl = "distributed/linalg/advanced/matmul" in fullpath
             if m:
                 num_procs = m.group(1)
+                if uses_nccl and int(num_procs) > DEVICE_COUNT:
+                    pytest.skip(
+                        f"This test requires {num_procs} processes but NCCL only allows one "
+                        f"process per GPU and there are {DEVICE_COUNT} GPUs"
+                    )
+            elif uses_nccl:
+                # NCCL only allows one process per GPU.
+                num_procs = str(DEVICE_COUNT)
             else:
                 # Run with 2 processes by default.
                 num_procs = "2"

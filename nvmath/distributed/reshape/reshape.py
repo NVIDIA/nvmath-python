@@ -12,6 +12,7 @@ import math
 import numpy as np
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 from nvmath.internal import formatters, utils
 from nvmath.internal.package_wrapper import StreamHolder, AnyStream
 from nvmath.bindings import cufftMp  # type: ignore
@@ -29,10 +30,6 @@ class TensorLayout:
 
     shape: Sequence[int]
     strides: Sequence[int]
-
-
-# Box contains lower and upper coordinates, so it must be of length 2 in practice.
-Box = Sequence[Sequence[int]]
 
 
 @dataclass
@@ -55,13 +52,13 @@ class _ProblemSpec:
 
         blocking: Literal[True, "auto"]
 
-    shape: tuple[int]  # operand shape
+    shape: tuple[int, ...]  # operand shape
     is_F: bool  # Is Fortran memory layout
     is_C: bool  # Is C memory layout
     operand_dtype: str  # str because TensorHolder.dtype returns str
     package: Literal["numpy", "cupy", "torch"]  # operand package
     memory_space: Literal["cuda", "cpu"]  # operand memory space
-    boxes: Sequence[Box]  # Reshape input and output box
+    boxes: list[Box]  # Reshape input and output box
     options: Options  # Reshape options
 
     # Global number of elements in the operand (calculated as part of the reduction).
@@ -185,47 +182,29 @@ def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
         if not p1.is_F and not p1.is_C:
             return ValueError("The input memory layout is not C or Fortran, or is inconsistent across processes")
 
-        if len(p1.boxes) != 2 or len(p2.boxes) != 2:
-            return ValueError("Must provide input and output boxes on all processes")
-        input_box1, output_box1 = p1.boxes
-        input_box2, output_box2 = p2.boxes
-        for box in (input_box1, output_box1, input_box2, output_box2):
-            if len(box) != 2:
-                return ValueError(f"Box {box} must have lower and upper coordinates")
-            lower, upper = box
-            if len(lower) != len(p1.shape) or len(upper) != len(p1.shape):
-                return ValueError(
-                    f"The number of coordinates in each coordinate pair of box {box} must "
-                    f"match the number of operand dimensions {len(p1.shape)}."
-                )
-            if not all(upper[i] > lower[i] for i in range(len(p1.shape))):
-                return ValueError(
-                    f"The upper coordinates must be larger than the lower coordinates, but got lower={lower} upper={upper}"
-                )
-
         for p_spec in (p1, p2):
             if p_spec.is_leaf:
-                # Check that the input box shape of this process matches the shape of the
-                # input operand.
-                input_lower, input_upper = p_spec.boxes[0]
-                input_box_shape = tuple(input_upper[i] - input_lower[i] for i in range(len(p_spec.shape)))
-                if input_box_shape != tuple(p_spec.shape):
-                    return ValueError(f"The operand shape {p_spec.shape} does not match the input box shape {input_box_shape}")
+                for box in p_spec.boxes:
+                    if not isinstance(box, Box):
+                        return ValueError(f"{box} is not a Box distribution")
+                    if box.ndim != len(p_spec.shape):
+                        return ValueError(
+                            f"The dimensionality of {box} doesn't match the dimensionality of "
+                            f"the reshape operand ({len(p_spec.shape)})"
+                        )
 
         if p1 is not p2:  # with nranks=1 p1 is p2
             p1.global_size += p2.global_size
 
         def reduce_boxes(box1, box2):
             """This function returns the smallest box that encompasses `box1` and `box2`"""
-            lower1, upper1 = box1
-            lower2, upper2 = box2
-            lower = np.minimum(np.array(lower1), np.array(lower2)).tolist()
-            upper = np.maximum(np.array(upper1), np.array(upper2)).tolist()
-            return lower, upper
+            lower = np.minimum(np.array(box1.lower), np.array(box2.lower)).tolist()
+            upper = np.maximum(np.array(box1.upper), np.array(box2.upper)).tolist()
+            return Box(lower, upper)
 
         # Merge the boxes to get the global operand shape. Note that this is applied
         # progressively throughout the MPI reduction, starting with the local boxes.
-        p1.boxes = (reduce_boxes(input_box1, input_box2), reduce_boxes(output_box1, output_box2))
+        p1.boxes = [reduce_boxes(p1.boxes[0], p2.boxes[0]), reduce_boxes(p1.boxes[1], p2.boxes[1])]
 
     except Exception as e:
         return e
@@ -283,7 +262,7 @@ class Reshape:
 
         stream: {stream}
 
-    See Also:
+    .. seealso::
         :meth:`plan`, :meth:`reset_operand`, :meth:`execute`
 
     Examples:
@@ -321,10 +300,11 @@ class Reshape:
         NOTE: each process has its own input and output boxes which are different to those
         of other processes, as each holds a different section of the global array.
 
+        >>> from nvmath.distributed.distribution import Box
         >>> if comm.Get_rank() == 0:
         ...     input_lower = (0, 0, 0)
         ...     input_upper = (4, 4, 4)
-        ...     input_box = [input_lower, input_upper]
+        ...     input_box = Box(input_lower, input_upper)
         ...     output_box = ...
         ... else:
         ...     input_box = ...  # the input box depends on the process.
@@ -420,6 +400,8 @@ class Reshape:
                 "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
                 " for more information."
             )
+        if not distributed_ctx.nvshmem_available:
+            raise RuntimeError("nvmath.distributed wasn't initialized with NVSHMEM backend")
         self.communicator = distributed_ctx.communicator
         nranks = self.communicator.Get_size()
 
@@ -431,6 +413,9 @@ class Reshape:
 
         is_C = sorted(operand.strides, reverse=True) == list(operand.strides)
         is_F = sorted(operand.strides) == list(operand.strides)
+
+        input_box = cast(Box, input_box.copy())
+        output_box = cast(Box, output_box.copy())
 
         # Merge the problem specification across processes to make sure that there are no
         # inconsistencies and to calculate the global shape. Importantly, this also does
@@ -481,13 +466,17 @@ class Reshape:
         global_shape = tuple(int(upper[i] - lower[i]) for i in range(self.operand_dim))
         self.logger.info(f"The global shape of the operand is {global_shape}.")
 
+        # This can't throw error since the local operand shape was already checked
+        # against the box shape in the ProblemSpec reducer.
+        input_box._bind(global_shape, shape=operand.shape)
+
         # The global number of elements must be compatible with the global shape.
         if problem_spec.global_size != math.prod(global_shape):
             raise ValueError(f"The global number of elements is incompatible with the inferred global shape {global_shape}")
 
         # Store the local input and output box.
-        self.input_box = input_box
-        self.output_box = output_box
+        self.input_box: Box = input_box
+        self.output_box: Box = output_box
 
         self.operand_data_type = operand.dtype
         # TODO: change to `operand.dtype.itemsize` once operand is StridedMemoryView.
@@ -1163,7 +1152,7 @@ def reshape(
         A tensor that remains on the same device and belongs to the same package as
         the input operand, with shape according to output_box.
 
-    See Also:
+    .. seealso::
         :class:`Reshape`.
 
     Examples:
@@ -1201,10 +1190,11 @@ def reshape(
         NOTE: each process has its own input and output boxes which are different to those
         of other processes, as each holds a different section of the global array.
 
+        >>> from nvmath.distributed.distribution import Box
         >>> if comm.Get_rank() == 0:
         ...     input_lower = (0, 0, 0)
         ...     input_upper = (4, 4, 4)
-        ...     input_box = [input_lower, input_upper]
+        ...     input_box = Box(input_lower, input_upper)
         ...     output_box = ...
         ... else:
         ...     input_box = ...  # the input box depends on the process.

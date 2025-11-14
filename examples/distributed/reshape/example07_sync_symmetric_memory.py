@@ -15,13 +15,14 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Box, Slab
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D problem size is (256, 512, 512), initially partitioned on the Y
 # axes across processes.
@@ -41,10 +42,10 @@ with cp.cuda.Device(device_id):
 # Operand a is distributed according to Slab.Y distribution, so we need to re-distribute it
 # to Slab.X.
 y_offset = comm.scan(Y // nranks, op=MPI.SUM)
-input_box = [(0, y_offset - Y // nranks, 0), (X, y_offset, Z)]
+input_box = Box((0, y_offset - Y // nranks, 0), (X, y_offset, Z))
 
 x_offset = comm.scan(X // nranks, op=MPI.SUM)
-output_box = [(x_offset - X // nranks, 0, 0), (x_offset, Y, Z)]
+output_box = Box((x_offset - X // nranks, 0, 0), (x_offset, Y, Z))
 
 # Execute the Reshape.
 # Before the reshape executes, the local changes to the input operand must be visible
@@ -60,7 +61,7 @@ b = nvmath.distributed.reshape.reshape(a, input_box, output_box, sync_symmetric_
 # Create a stateful FFT object 'f' with Slab.X distribution.
 # Note that we could also specify the permuted boxes as distribution,
 # i.e. distribution=[output_box, input_box]
-with nvmath.distributed.fft.FFT(b, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False}) as f:
+with nvmath.distributed.fft.FFT(b, distribution=Slab.X, options={"reshape": False}) as f:
     # Plan the FFT.
     f.plan()
 

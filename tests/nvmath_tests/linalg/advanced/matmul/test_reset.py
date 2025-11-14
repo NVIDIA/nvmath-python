@@ -9,7 +9,7 @@ This set of tests checks reset_operands
 import nvmath
 import pytest
 
-from .utils import assert_tensors_equal, random_torch_complex, sample_matrix, skip_if_cublas_before
+from ...utils import assert_tensors_equal, random_torch_complex, sample_matrix, skip_if_cublas_before
 
 
 @pytest.mark.parametrize("framework", ("numpy/cupy", "torch"))

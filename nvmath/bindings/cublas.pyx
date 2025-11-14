@@ -172,6 +172,362 @@ cpdef inline check_status(int status):
 
 
 ###############################################################################
+# Convenience wrappers/adapters
+###############################################################################
+
+
+cpdef void zhemm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t beta,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuDoubleComplex*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<cuDoubleComplex*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<cuDoubleComplex*>c + batch_idx * stride_c)
+
+        zhemm(handle, side, uplo, m, n, alpha, a_batch, lda, b_batch, ldb, beta, c_batch, ldc)
+
+cpdef void chemm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t beta,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuComplex*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<cuComplex*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<cuComplex*>c + batch_idx * stride_c)
+
+        chemm(handle, side, uplo, m, n, alpha, a_batch, lda, b_batch, ldb, beta, c_batch, ldc)
+
+
+cpdef void ssymm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t beta,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<float*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<float*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<float*>c + batch_idx * stride_c)
+
+        ssymm(handle, side, uplo, m, n, alpha, a_batch, lda, b_batch, ldb, beta, c_batch, ldc)
+
+
+cpdef void dsymm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t beta,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<double*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<double*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<double*>c + batch_idx * stride_c)
+
+        dsymm(handle, side, uplo, m, n, alpha, a_batch, lda, b_batch, ldb, beta, c_batch, ldc)
+
+
+cpdef void csymm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t beta,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuComplex*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<cuComplex*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<cuComplex*>c + batch_idx * stride_c)
+
+        csymm(handle, side, uplo, m, n, alpha, a_batch, lda, b_batch, ldb, beta, c_batch, ldc)
+
+
+cpdef void zsymm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t beta,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuDoubleComplex*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<cuDoubleComplex*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<cuDoubleComplex*>c + batch_idx * stride_c)
+
+        zsymm(handle, side, uplo, m, n, alpha, a_batch, lda, b_batch, ldb, beta, c_batch, ldc)
+
+
+cpdef void strmm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int trans_a,
+    int diag,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<float*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<float*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<float*>c + batch_idx * stride_c)
+
+        strmm(handle, side, uplo, trans_a, diag, m, n, alpha, a_batch, lda, b_batch, ldb, c_batch, ldc)
+
+
+cpdef void dtrmm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int trans_a,
+    int diag,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<double*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<double*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<double*>c + batch_idx * stride_c)
+
+        dtrmm(handle, side, uplo, trans_a, diag, m, n, alpha, a_batch, lda, b_batch, ldb, c_batch, ldc)
+
+cpdef void ctrmm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int trans_a,
+    int diag,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuComplex*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<cuComplex*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<cuComplex*>c + batch_idx * stride_c)
+
+        ctrmm(handle, side, uplo, trans_a, diag, m, n, alpha, a_batch, lda, b_batch, ldb, c_batch, ldc)
+
+cpdef void ztrmm_strided_batched_64(
+    intptr_t handle,
+    int side,
+    int uplo,
+    int trans_a,
+    int diag,
+    int64_t m,
+    int64_t n,
+    intptr_t alpha,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t b, int64_t ldb, int64_t stride_b,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t b_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuDoubleComplex*>a + batch_idx * stride_a)
+        b_batch = <intptr_t>(<cuDoubleComplex*>b + batch_idx * stride_b)
+        c_batch = <intptr_t>(<cuDoubleComplex*>c + batch_idx * stride_c)
+
+        ztrmm(handle, side, uplo, trans_a, diag, m, n, alpha, a_batch, lda, b_batch, ldb, c_batch, ldc)
+
+
+cpdef void sdgmm_strided_batched_64(
+    intptr_t handle,
+    int mode,
+    int64_t m,
+    int64_t n,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t x, int64_t incx, int64_t stride_x,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t x_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<float*>a + batch_idx * stride_a)
+        x_batch = <intptr_t>(<float*>x + batch_idx * stride_x)
+        c_batch = <intptr_t>(<float*>c + batch_idx * stride_c)
+
+        sdgmm(handle, mode, m, n, a_batch, lda, x_batch, incx, c_batch, ldc)
+
+
+cpdef void ddgmm_strided_batched_64(
+    intptr_t handle,
+    int mode,
+    int64_t m,
+    int64_t n,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t x, int64_t incx, int64_t stride_x,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t x_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<double*>a + batch_idx * stride_a)
+        x_batch = <intptr_t>(<double*>x + batch_idx * stride_x)
+        c_batch = <intptr_t>(<double*>c + batch_idx * stride_c)
+
+        ddgmm(handle, mode, m, n, a_batch, lda, x_batch, incx, c_batch, ldc)
+
+cpdef void cdgmm_strided_batched_64(
+    intptr_t handle,
+    int mode,
+    int64_t m,
+    int64_t n,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t x, int64_t incx, int64_t stride_x,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t x_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuComplex*>a + batch_idx * stride_a)
+        x_batch = <intptr_t>(<cuComplex*>x + batch_idx * stride_x)
+        c_batch = <intptr_t>(<cuComplex*>c + batch_idx * stride_c)
+
+        cdgmm(handle, mode, m, n, a_batch, lda, x_batch, incx, c_batch, ldc)
+
+cpdef void zdgmm_strided_batched_64(
+    intptr_t handle,
+    int mode,
+    int64_t m,
+    int64_t n,
+    intptr_t a, int64_t lda, int64_t stride_a,
+    intptr_t x, int64_t incx, int64_t stride_x,
+    intptr_t c, int64_t ldc, int64_t stride_c,
+    int64_t batch_count) except*:
+
+    cdef intptr_t a_batch
+    cdef intptr_t x_batch
+    cdef intptr_t c_batch
+    cdef int64_t batch_idx
+
+    for batch_idx in range(batch_count):
+        a_batch = <intptr_t>(<cuDoubleComplex*>a + batch_idx * stride_a)
+        x_batch = <intptr_t>(<cuDoubleComplex*>x + batch_idx * stride_x)
+        c_batch = <intptr_t>(<cuDoubleComplex*>c + batch_idx * stride_c)
+
+        zdgmm(handle, mode, m, n, a_batch, lda, x_batch, incx, c_batch, ldc)
+
+
+###############################################################################
 # Wrapper functions
 ###############################################################################
 

@@ -9,6 +9,23 @@ if importlib.util.find_spec("mpi4py") is None:
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "need_4_procs: The test requires 4 processes")
+    config.addinivalue_line("markers", "uncollect_if(*, func): function to unselect tests from parametrization")
+
+
+def pytest_collection_modifyitems(config, items):
+    removed = []
+    kept = []
+    for item in items:
+        m = item.get_closest_marker("uncollect_if")
+        if m:
+            func = m.kwargs["func"]
+            if func(**item.callspec.params):
+                removed.append(item)
+                continue
+        kept.append(item)
+    if removed:
+        config.hook.pytest_deselected(items=removed)
+        items[:] = kept
 
 
 SYMMETRIC_MEMORY_LEAK_MESSAGE = "Symmetric heap memory needs to be deallocated explicitly"
@@ -37,7 +54,7 @@ def check_symmetric_memory_leaks(caplog):
     from mpi4py import MPI
 
     comm = MPI.COMM_WORLD
-    error = np.array([error], dtype=np.bool)
+    error = np.array([error], dtype=np.bool_)
     comm.Allreduce(MPI.IN_PLACE, error, MPI.LOR)
     if error:
         raise MemoryError(SYMMETRIC_MEMORY_LEAK_MESSAGE)

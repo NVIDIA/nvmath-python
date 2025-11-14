@@ -27,7 +27,7 @@ class ReshapeOptions:
             is on the CPU to ensure that the user doesn't inadvertently use the result
             before it becomes available. The default is ``"auto"``.
 
-    See Also:
+    .. seealso::
         :class:`Reshape` and :func:`reshape`.
     """
 

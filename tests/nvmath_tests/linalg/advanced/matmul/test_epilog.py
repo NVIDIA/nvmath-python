@@ -12,7 +12,7 @@ import pytest
 from nvmath.linalg.advanced import matmul, Matmul, MatmulEpilog as Epilog
 from nvmath.bindings import cublasLt as cublaslt
 
-from .utils import (
+from ...utils import (
     compare_tensors,
     get_absolute_tolerance,
     get_framework,

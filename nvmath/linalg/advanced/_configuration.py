@@ -95,7 +95,7 @@ class MatmulOptions:
             the library package will be used (:func:`torch.cuda.caching_allocator_alloc` for
             PyTorch operands, :func:`cupy.cuda.alloc` otherwise).
 
-    See Also:
+    .. seealso::
        :class:`Matmul`, :func:`matmul`
     """
 
@@ -140,7 +140,7 @@ class MatmulOptions:
             raise ValueError("The value specified for blocking must be either True or 'auto'.")
 
         if self.allocator is not None and not isinstance(self.allocator, BaseCUDAMemoryManager | BaseCUDAMemoryManagerAsync):
-            raise TypeError("The allocator must be an object of type that fulfils the BaseCUDAMemoryManager protocol.")
+            raise TypeError("The allocator must be an object of type that fulfills the BaseCUDAMemoryManager protocol.")
 
 
 matrix_qualifiers_dtype = _np.dtype([("structure", object), ("is_conjugate", "<i4")])
@@ -198,7 +198,7 @@ class MatmulEpilogPreferences:
             Only supported when ``aux_type`` option is set to a narrow-precision
             data type.
 
-    See Also:
+    .. seealso::
        :meth:`Matmul.plan`, :func:`matmul`, :class:`MatmulPlanPreferences`
     """
 
@@ -234,7 +234,7 @@ class MatmulPlanPreferences:
             Epilog preferences (as an object of class
             :class:`~nvmath.linalg.advanced.MatmulEpilogPreferences` or a `dict`).
 
-    See Also:
+    .. seealso::
        :meth:`Matmul.plan`, :func:`matmul`
     """
 
@@ -286,7 +286,7 @@ class MatmulQuantizationScales:
 
         d (float or Tensor) : Scale for matrix D.
 
-    See Also:
+    .. seealso::
        :class:`Matmul`, :func:`matmul`
     """
 

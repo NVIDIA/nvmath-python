@@ -8,20 +8,77 @@ from libc.stdint cimport intptr_t, uintptr_t
 
 import os
 import site
-
-import win32api
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
 
+from libc.stddef cimport wchar_t
+from libc.stdint cimport uintptr_t
+from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
+
+from .utils import NotSupportedError
+
+cdef extern from "windows.h" nogil:
+    ctypedef void* HMODULE
+    ctypedef void* HANDLE
+    ctypedef void* FARPROC
+    ctypedef unsigned long DWORD
+    ctypedef const wchar_t *LPCWSTR
+    ctypedef const char *LPCSTR
+
+    cdef DWORD LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+    cdef DWORD LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+    cdef DWORD LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+
+    HMODULE _LoadLibraryExW "LoadLibraryExW"(
+        LPCWSTR lpLibFileName,
+        HANDLE hFile,
+        DWORD dwFlags
+    )
+
+    FARPROC _GetProcAddress "GetProcAddress"(HMODULE hModule, LPCSTR lpProcName)
+
+cdef inline uintptr_t LoadLibraryExW(str path, HANDLE hFile, DWORD dwFlags):
+    cdef uintptr_t result
+    cdef wchar_t* wpath = PyUnicode_AsWideCharString(path, NULL)
+    with nogil:
+        result = <uintptr_t>_LoadLibraryExW(
+            wpath,
+            hFile,
+            dwFlags
+        )
+    PyMem_Free(wpath)
+    return result
+
+cdef inline void *GetProcAddress(uintptr_t hModule, const char* lpProcName) nogil:
+    return _GetProcAddress(<HMODULE>hModule, lpProcName)
+
+cdef int get_cuda_version():
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = LoadLibraryExW("nvcuda.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)
+    if handle == 0:
+        raise NotSupportedError('CUDA driver is not found')
+    cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('something went wrong')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError('something went wrong')
+
+    return driver_ver
+
+
+
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
-LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_curand_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __curandCreateGenerator = NULL
 cdef void* __curandCreateGeneratorHost = NULL
@@ -65,202 +122,102 @@ cdef int _check_or_init_curand() except -1 nogil:
     if __py_curand_init:
         return 0
 
-    cdef int err, driver_ver
-    with gil:
-        # Load driver to check version
-        try:
-            handle = win32api.LoadLibraryEx("nvcuda.dll", 0, LOAD_LIBRARY_SEARCH_SYSTEM32)
-        except Exception as e:
-            raise NotSupportedError(f'CUDA driver is not found ({e})')
-        global __cuDriverGetVersion
-        if __cuDriverGetVersion == NULL:
-            __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
-            if __cuDriverGetVersion == NULL:
-                raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-        if err != 0:
-            raise RuntimeError('something went wrong')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
         # Load library
         handle = load_library(driver_ver)
 
         # Load function
         global __curandCreateGenerator
-        try:
-            __curandCreateGenerator = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandCreateGenerator')
-        except:
-            pass
+        __curandCreateGenerator = GetProcAddress(handle, 'curandCreateGenerator')
 
         global __curandCreateGeneratorHost
-        try:
-            __curandCreateGeneratorHost = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandCreateGeneratorHost')
-        except:
-            pass
+        __curandCreateGeneratorHost = GetProcAddress(handle, 'curandCreateGeneratorHost')
 
         global __curandDestroyGenerator
-        try:
-            __curandDestroyGenerator = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandDestroyGenerator')
-        except:
-            pass
+        __curandDestroyGenerator = GetProcAddress(handle, 'curandDestroyGenerator')
 
         global __curandGetVersion
-        try:
-            __curandGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetVersion')
-        except:
-            pass
+        __curandGetVersion = GetProcAddress(handle, 'curandGetVersion')
 
         global __curandGetProperty
-        try:
-            __curandGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetProperty')
-        except:
-            pass
+        __curandGetProperty = GetProcAddress(handle, 'curandGetProperty')
 
         global __curandSetStream
-        try:
-            __curandSetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetStream')
-        except:
-            pass
+        __curandSetStream = GetProcAddress(handle, 'curandSetStream')
 
         global __curandSetPseudoRandomGeneratorSeed
-        try:
-            __curandSetPseudoRandomGeneratorSeed = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetPseudoRandomGeneratorSeed')
-        except:
-            pass
+        __curandSetPseudoRandomGeneratorSeed = GetProcAddress(handle, 'curandSetPseudoRandomGeneratorSeed')
 
         global __curandSetGeneratorOffset
-        try:
-            __curandSetGeneratorOffset = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetGeneratorOffset')
-        except:
-            pass
+        __curandSetGeneratorOffset = GetProcAddress(handle, 'curandSetGeneratorOffset')
 
         global __curandSetGeneratorOrdering
-        try:
-            __curandSetGeneratorOrdering = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetGeneratorOrdering')
-        except:
-            pass
+        __curandSetGeneratorOrdering = GetProcAddress(handle, 'curandSetGeneratorOrdering')
 
         global __curandSetQuasiRandomGeneratorDimensions
-        try:
-            __curandSetQuasiRandomGeneratorDimensions = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandSetQuasiRandomGeneratorDimensions')
-        except:
-            pass
+        __curandSetQuasiRandomGeneratorDimensions = GetProcAddress(handle, 'curandSetQuasiRandomGeneratorDimensions')
 
         global __curandGenerate
-        try:
-            __curandGenerate = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerate')
-        except:
-            pass
+        __curandGenerate = GetProcAddress(handle, 'curandGenerate')
 
         global __curandGenerateLongLong
-        try:
-            __curandGenerateLongLong = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateLongLong')
-        except:
-            pass
+        __curandGenerateLongLong = GetProcAddress(handle, 'curandGenerateLongLong')
 
         global __curandGenerateUniform
-        try:
-            __curandGenerateUniform = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateUniform')
-        except:
-            pass
+        __curandGenerateUniform = GetProcAddress(handle, 'curandGenerateUniform')
 
         global __curandGenerateUniformDouble
-        try:
-            __curandGenerateUniformDouble = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateUniformDouble')
-        except:
-            pass
+        __curandGenerateUniformDouble = GetProcAddress(handle, 'curandGenerateUniformDouble')
 
         global __curandGenerateNormal
-        try:
-            __curandGenerateNormal = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateNormal')
-        except:
-            pass
+        __curandGenerateNormal = GetProcAddress(handle, 'curandGenerateNormal')
 
         global __curandGenerateNormalDouble
-        try:
-            __curandGenerateNormalDouble = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateNormalDouble')
-        except:
-            pass
+        __curandGenerateNormalDouble = GetProcAddress(handle, 'curandGenerateNormalDouble')
 
         global __curandGenerateLogNormal
-        try:
-            __curandGenerateLogNormal = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateLogNormal')
-        except:
-            pass
+        __curandGenerateLogNormal = GetProcAddress(handle, 'curandGenerateLogNormal')
 
         global __curandGenerateLogNormalDouble
-        try:
-            __curandGenerateLogNormalDouble = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateLogNormalDouble')
-        except:
-            pass
+        __curandGenerateLogNormalDouble = GetProcAddress(handle, 'curandGenerateLogNormalDouble')
 
         global __curandCreatePoissonDistribution
-        try:
-            __curandCreatePoissonDistribution = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandCreatePoissonDistribution')
-        except:
-            pass
+        __curandCreatePoissonDistribution = GetProcAddress(handle, 'curandCreatePoissonDistribution')
 
         global __curandDestroyDistribution
-        try:
-            __curandDestroyDistribution = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandDestroyDistribution')
-        except:
-            pass
+        __curandDestroyDistribution = GetProcAddress(handle, 'curandDestroyDistribution')
 
         global __curandGeneratePoisson
-        try:
-            __curandGeneratePoisson = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGeneratePoisson')
-        except:
-            pass
+        __curandGeneratePoisson = GetProcAddress(handle, 'curandGeneratePoisson')
 
         global __curandGeneratePoissonMethod
-        try:
-            __curandGeneratePoissonMethod = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGeneratePoissonMethod')
-        except:
-            pass
+        __curandGeneratePoissonMethod = GetProcAddress(handle, 'curandGeneratePoissonMethod')
 
         global __curandGenerateBinomial
-        try:
-            __curandGenerateBinomial = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateBinomial')
-        except:
-            pass
+        __curandGenerateBinomial = GetProcAddress(handle, 'curandGenerateBinomial')
 
         global __curandGenerateBinomialMethod
-        try:
-            __curandGenerateBinomialMethod = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateBinomialMethod')
-        except:
-            pass
+        __curandGenerateBinomialMethod = GetProcAddress(handle, 'curandGenerateBinomialMethod')
 
         global __curandGenerateSeeds
-        try:
-            __curandGenerateSeeds = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGenerateSeeds')
-        except:
-            pass
+        __curandGenerateSeeds = GetProcAddress(handle, 'curandGenerateSeeds')
 
         global __curandGetDirectionVectors32
-        try:
-            __curandGetDirectionVectors32 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetDirectionVectors32')
-        except:
-            pass
+        __curandGetDirectionVectors32 = GetProcAddress(handle, 'curandGetDirectionVectors32')
 
         global __curandGetScrambleConstants32
-        try:
-            __curandGetScrambleConstants32 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetScrambleConstants32')
-        except:
-            pass
+        __curandGetScrambleConstants32 = GetProcAddress(handle, 'curandGetScrambleConstants32')
 
         global __curandGetDirectionVectors64
-        try:
-            __curandGetDirectionVectors64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetDirectionVectors64')
-        except:
-            pass
+        __curandGetDirectionVectors64 = GetProcAddress(handle, 'curandGetDirectionVectors64')
 
         global __curandGetScrambleConstants64
-        try:
-            __curandGetScrambleConstants64 = <void*><intptr_t>win32api.GetProcAddress(handle, 'curandGetScrambleConstants64')
-        except:
-            pass
+        __curandGetScrambleConstants64 = GetProcAddress(handle, 'curandGetScrambleConstants64')
 
-    __py_curand_init = True
-    return 0
+        __py_curand_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

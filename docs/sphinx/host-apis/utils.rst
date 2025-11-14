@@ -18,6 +18,7 @@ nvmath-python provides host-side APIs for managing device-side memory.
    :toctree: generated/
 
    BaseCUDAMemoryManager
+   BaseCUDAMemoryManagerAsync
    MemoryPointer
 
 Data types

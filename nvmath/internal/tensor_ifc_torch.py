@@ -120,3 +120,7 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         if copy is False:
             return self.__class__(self.tensor.view(shape))
         return self.__class__(self.tensor.reshape(shape))
+
+    @property
+    def is_conjugate(self) -> bool:
+        return self.tensor.is_conj()

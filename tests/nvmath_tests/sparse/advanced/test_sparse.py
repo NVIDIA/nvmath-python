@@ -28,7 +28,7 @@ from .utils.support_matrix import (
     supported_dtypes,
     supported_sparse_array_types,
     supported_exec_space_dense_rhs,
-    supported_index_dtype,
+    supported_index_dtypes,
     supported_sparse_type_dtype,
 )
 from .utils.common_axes import np, cp
@@ -175,18 +175,21 @@ def get_alg_matrix_type_and_view(sparse_type, sparse_view):
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
         "density",
     ),
     [
-        (framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k, Param("density", density))
+        (framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k, Param("density", density))
         for framework in Framework.enabled()
         if framework in sparse_supporting_frameworks
         for exec_space in ExecutionSpace
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in supported_index_dtypes
+        if index_type in framework2index_dtype[framework]
         for dtype in supported_dtypes
         if dtype in framework2dtype[framework]
         for n in [1, 10]
@@ -197,9 +200,11 @@ def get_alg_matrix_type_and_view(sparse_type, sparse_view):
     ],
     ids=idfn,
 )
-def test_matrix_solve(framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k, density):
+def test_matrix_solve(framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k, density):
     density = density.value
-    a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, density, dtype, seed=42)
+    a = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, density, dtype, seed=42, index_dtype=index_type
+    )
     tensor_framework = framework2tensor_framework[framework]
     b = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype)
     x = nvmath.sparse.advanced.direct_solver(a, b, execution=exec_space.nvname)
@@ -213,6 +218,7 @@ def test_matrix_solve(framework, exec_space, operand_placement, sparse_array_typ
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
@@ -225,6 +231,7 @@ def test_matrix_solve(framework, exec_space, operand_placement, sparse_array_typ
             exec_space,
             operand_placement,
             sparse_array_type,
+            index_type,
             dtype,
             n,
             rhs_k,
@@ -236,6 +243,9 @@ def test_matrix_solve(framework, exec_space, operand_placement, sparse_array_typ
         for exec_space in ExecutionSpace
         for operand_placement in [rng.choice(framework2operand_placement[framework])]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in [
+            rng.choice([index_type for index_type in supported_index_dtypes if index_type in framework2index_dtype[framework]])
+        ]
         for dtype in [rng.choice([dtype for dtype in supported_dtypes if dtype in framework2dtype[framework]])]
         for n in [16]
         for rhs_k in [RHSVector(n), RHSMatrix(n, 5)]
@@ -245,12 +255,16 @@ def test_matrix_solve(framework, exec_space, operand_placement, sparse_array_typ
     ids=idfn,
 )
 def test_matrix_unsupported_reset_density_change(
-    framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k, density_0, density_1
+    framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k, density_0, density_1
 ):
     density_0 = density_0.value
     density_1 = density_1.value
-    a_0 = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, density_0, dtype, seed=42)
-    a_1 = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, density_1, dtype, seed=44)
+    a_0 = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, density_0, dtype, seed=42, index_dtype=index_type
+    )
+    a_1 = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, density_1, dtype, seed=44, index_dtype=index_type
+    )
     tensor_framework = framework2tensor_framework[framework]
     b = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype)
     with nvmath.sparse.advanced.DirectSolver(a_0, b, execution=exec_space.nvname) as solver:
@@ -273,6 +287,7 @@ def test_matrix_unsupported_reset_density_change(
         "operand_placement",
         "device_id",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
@@ -284,6 +299,7 @@ def test_matrix_unsupported_reset_density_change(
             operand_placement,
             Param("device_id", 1),
             sparse_array_type,
+            index_type,
             dtype,
             n,
             rhs_k,
@@ -293,6 +309,8 @@ def test_matrix_unsupported_reset_density_change(
         for exec_space in ExecutionSpace
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in supported_index_dtypes
+        if index_type in framework2index_dtype[framework]
         for dtype in supported_dtypes
         if dtype in framework2dtype[framework]
         for n in [3, 12]
@@ -303,7 +321,7 @@ def test_matrix_unsupported_reset_density_change(
 )
 @multi_gpu_only
 def test_matrix_solve_non_default_device_id(
-    framework, exec_space, operand_placement, device_id, sparse_array_type, dtype, n, rhs_k
+    framework, exec_space, operand_placement, device_id, sparse_array_type, index_type, dtype, n, rhs_k
 ):
     density = 0.5
     device_id = device_id.value
@@ -313,7 +331,16 @@ def test_matrix_solve_non_default_device_id(
         device_id = "cpu"
     tensor_framework = framework2tensor_framework[framework]
     a_0 = create_random_sparse_matrix(
-        framework, operand_placement, sparse_array_type, n, n, density, dtype, seed=42, device_id=device_id
+        framework,
+        operand_placement,
+        sparse_array_type,
+        n,
+        n,
+        density,
+        dtype,
+        seed=42,
+        index_dtype=index_type,
+        device_id=device_id,
     )
     b = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype, device_id=device_id, start=1)
     with nvmath.sparse.advanced.DirectSolver(a_0, b, execution=options) as solver:
@@ -324,7 +351,16 @@ def test_matrix_solve_non_default_device_id(
         check(a_0, b, x)
         del a_0
         a_1 = create_random_sparse_matrix(
-            framework, operand_placement, sparse_array_type, n, n, density, dtype, seed=44, device_id=device_id
+            framework,
+            operand_placement,
+            sparse_array_type,
+            n,
+            n,
+            density,
+            dtype,
+            seed=44,
+            index_dtype=index_type,
+            device_id=device_id,
         )
         solver.reset_operands(a=a_1)
         solver.plan()
@@ -429,6 +465,7 @@ def test_matrix_solve_device_id(
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
@@ -443,6 +480,7 @@ def test_matrix_solve_device_id(
             exec_space,
             operand_placement,
             sparse_array_type,
+            index_type,
             dtype,
             n,
             rhs_k,
@@ -456,6 +494,9 @@ def test_matrix_solve_device_id(
         for exec_space in [ExecutionSpace.cudss_cuda]
         for operand_placement in [rng.choice(framework2operand_placement[framework])]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in [
+            rng.choice([index_type for index_type in supported_index_dtypes if index_type in framework2index_dtype[framework]])
+        ]
         for dtype in [rng.choice([dtype for dtype in supported_dtypes if dtype in framework2dtype[framework]])]
         for n in [15]
         for rhs_k in [rng.choice([RHSVector(n), RHSMatrix(n, 3)])]
@@ -471,6 +512,7 @@ def test_matrix_solve_cuda_options(
     exec_space,
     operand_placement,
     sparse_array_type,
+    index_type,
     dtype,
     n,
     rhs_k,
@@ -478,7 +520,9 @@ def test_matrix_solve_cuda_options(
     memory_mode_format,
 ):
     assert exec_space == ExecutionSpace.cudss_cuda
-    a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, 0.5, dtype, seed=42)
+    a = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, 0.5, dtype, seed=42, index_dtype=index_type
+    )
     tensor_framework = framework2tensor_framework[framework]
     b = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype)
     host_memory_estimates = []
@@ -516,6 +560,7 @@ def test_matrix_solve_cuda_options(
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
@@ -529,6 +574,7 @@ def test_matrix_solve_cuda_options(
             exec_space,
             operand_placement,
             sparse_array_type,
+            index_type,
             dtype,
             n,
             rhs_k,
@@ -541,6 +587,9 @@ def test_matrix_solve_cuda_options(
         for exec_space in ExecutionSpace
         for operand_placement in [rng.choice(framework2operand_placement[framework])]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in [
+            rng.choice([index_type for index_type in supported_index_dtypes if index_type in framework2index_dtype[framework]])
+        ]
         for dtype in [
             rng.choice([dtype for dtype in supported_sparse_type_dtype[sparse_type] if dtype in framework2dtype[framework]])
         ]
@@ -558,6 +607,7 @@ def test_solver_matrix_type_options(
     exec_space,
     operand_placement,
     sparse_array_type,
+    index_type,
     dtype,
     n,
     rhs_k,
@@ -576,6 +626,7 @@ def test_solver_matrix_type_options(
         None,
         dtype,
         seed=42,
+        index_dtype=index_type,
         alg_matrix_type=alg_matrix_type,
         alg_matrix_view=alg_matrix_view,
     )
@@ -640,6 +691,10 @@ def test_solver_matrix_options_external_handle(
                     continue
                 sparse_type = rng.choice(list(DirectSolverMatrixType))
                 sparse_view = rng.choice(list(DirectSolverMatrixViewType))
+                index_types = [
+                    index_type for index_type in supported_index_dtypes if index_type in framework2index_dtype[framework]
+                ]
+                index_type = rng.choice(index_types)
                 dtypes = [dtype for dtype in supported_sparse_type_dtype[sparse_type] if dtype in framework2dtype[framework]]
                 dtype = rng.choice(dtypes)
                 alg_matrix_type, alg_matrix_view = get_alg_matrix_type_and_view(sparse_type, sparse_view)
@@ -652,6 +707,7 @@ def test_solver_matrix_options_external_handle(
                     None,
                     dtype,
                     seed=42,
+                    index_dtype=index_type,
                     alg_matrix_type=alg_matrix_type,
                     alg_matrix_view=alg_matrix_view,
                 )
@@ -695,6 +751,7 @@ def test_solver_matrix_options_external_handle(
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
@@ -710,6 +767,7 @@ def test_solver_matrix_options_external_handle(
             exec_space,
             operand_placement,
             sparse_array_type,
+            index_type,
             dtype,
             n,
             rhs_k,
@@ -725,6 +783,9 @@ def test_solver_matrix_options_external_handle(
         for exec_space in [ExecutionSpace.cudss_cuda]
         for operand_placement in [rng.choice(framework2operand_placement[framework])]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in [
+            rng.choice([index_type for index_type in supported_index_dtypes if index_type in framework2index_dtype[framework]])
+        ]
         for dtype in [rng.choice([dtype for dtype in supported_dtypes if dtype in framework2dtype[framework]])]
         for n in [15]
         for rhs_k in [rng.choice([RHSVector(n), RHSMatrix(n, 3)])]
@@ -741,6 +802,7 @@ def test_matrix_solve_cuda_options_too_tight_limit(
     exec_space,
     operand_placement,
     sparse_array_type,
+    index_type,
     dtype,
     n,
     rhs_k,
@@ -748,7 +810,9 @@ def test_matrix_solve_cuda_options_too_tight_limit(
     memory_mode_format,
 ):
     assert exec_space == ExecutionSpace.cudss_cuda
-    a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42)
+    a = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42, index_dtype=index_type
+    )
     tensor_framework = framework2tensor_framework[framework]
     b = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype)
     execution = get_exec_cuda_options(
@@ -768,17 +832,21 @@ def test_matrix_solve_cuda_options_too_tight_limit(
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
     ),
     [
-        (framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k)
+        (framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k)
         for framework in Framework.enabled()
         if framework in sparse_supporting_frameworks
         for exec_space in [ExecutionSpace.cudss_hybrid]
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in [
+            rng.choice([index_type for index_type in supported_index_dtypes if index_type in framework2index_dtype[framework]])
+        ]
         for dtype in [rng.choice([dtype for dtype in supported_dtypes if dtype in framework2dtype[framework]])]
         for n in [11]
         for rhs_k in [RHSMatrix(n, 1), RHSMatrix(n, 11)]
@@ -786,10 +854,12 @@ def test_matrix_solve_cuda_options_too_tight_limit(
     ids=idfn,
 )
 def test_matrix_solve_hybrid_multiple_rhs_unsupported(
-    framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k
+    framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k
 ):
     assert rhs_k.type not in supported_exec_space_dense_rhs[exec_space]
-    a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42)
+    a = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42, index_dtype=index_type
+    )
     tensor_framework = framework2tensor_framework[framework]
     b = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype)
     with pytest.raises(TypeError, match="multiple RHS"):
@@ -847,7 +917,7 @@ def test_matrix_solve_unsupported_dtype(framework, exec_space, operand_placement
         for exec_space in ExecutionSpace
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
-        for index_types in [[dtype for dtype in framework2index_dtype[framework] if dtype not in supported_index_dtype]]
+        for index_types in [[dtype for dtype in framework2index_dtype[framework] if dtype not in supported_index_dtypes]]
         if index_types
         for index_type in [rng.choice(index_types)]
         for dtype in [rng.choice([dtype for dtype in supported_dtypes if dtype in framework2dtype[framework]])]
@@ -859,7 +929,7 @@ def test_matrix_solve_unsupported_dtype(framework, exec_space, operand_placement
 def test_matrix_solve_unsupported_index_dtype(
     framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k
 ):
-    assert index_type not in supported_index_dtype
+    assert index_type not in supported_index_dtypes
     a = create_random_sparse_matrix(
         framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42, index_dtype=index_type
     )
@@ -889,7 +959,16 @@ def _generate_rhs_k(batch_size, lhs_batching_mode, rhs_batching_mode, max_value)
 
 
 def _generate_lhs_batch(
-    lhs_batching_mode, batch_size, framework, exec_space, operand_placement, sparse_array_type, dtype, ns, seed=42
+    lhs_batching_mode,
+    batch_size,
+    framework,
+    exec_space,
+    operand_placement,
+    sparse_array_type,
+    dtype,
+    ns,
+    seed=42,
+    index_dtype=DType.int32,
 ):
     assert isinstance(ns, int) or len(ns) == batch_size
 
@@ -897,7 +976,9 @@ def _generate_lhs_batch(
         if isinstance(ns, int):
             ns = [ns] * batch_size
         a = [
-            create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, 0.5, dtype, seed=seed + i)
+            create_random_sparse_matrix(
+                framework, operand_placement, sparse_array_type, n, n, 0.5, dtype, seed=seed + i, index_dtype=index_dtype
+            )
             for i, n in enumerate(ns)
         ]
     else:
@@ -908,7 +989,16 @@ def _generate_lhs_batch(
             assert all(m == n for m in ns)
         assert framework == Framework.torch
         a = create_random_sparse_matrix(
-            framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42, batch_dims=batch_size
+            framework,
+            operand_placement,
+            sparse_array_type,
+            n,
+            n,
+            None,
+            dtype,
+            seed=42,
+            index_dtype=index_dtype,
+            batch_dims=batch_size,
         )
     return a
 
@@ -974,6 +1064,7 @@ def _check_batched_result(
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "batch_size",
         "lhs_batching_mode",
@@ -987,6 +1078,7 @@ def _check_batched_result(
             exec_space,
             operand_placement,
             sparse_array_type,
+            index_type,
             dtype,
             batch_size,
             lhs_batching_mode,
@@ -999,6 +1091,8 @@ def _check_batched_result(
         for exec_space in ExecutionSpace
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in [DType.int32]  # int64 is not supported with batching.
+        if index_type in framework2index_dtype[framework]
         for dtype in supported_dtypes
         if dtype in framework2dtype[framework]
         for lhs_batching_mode in (["sequence", "tensor"] if framework == Framework.torch else ["sequence"])
@@ -1015,6 +1109,7 @@ def test_batching(
     exec_space,
     operand_placement,
     sparse_array_type,
+    index_type,
     dtype,
     batch_size: int | tuple[int, int],
     lhs_batching_mode: typing.Literal["sequence", "tensor"],
@@ -1023,7 +1118,15 @@ def test_batching(
     rhs_ks,
 ):
     a = _generate_lhs_batch(
-        lhs_batching_mode, batch_size, framework, exec_space, operand_placement, sparse_array_type, dtype, ns
+        lhs_batching_mode,
+        batch_size,
+        framework,
+        exec_space,
+        operand_placement,
+        sparse_array_type,
+        dtype,
+        ns,
+        index_dtype=index_type,
     )
     b = _generate_rhs_batch(rhs_batching_mode, batch_size, framework, exec_space, operand_placement, dtype, ns, rhs_ks)
 
@@ -1043,17 +1146,20 @@ def test_batching(
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
     ),
     [
-        (framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k)
+        (framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k)
         for framework in Framework.enabled()
         if framework in sparse_supporting_frameworks
         for exec_space in ExecutionSpace
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in supported_index_dtypes
+        if index_type in framework2index_dtype[framework]
         for dtype in supported_dtypes
         if dtype in framework2dtype[framework]
         for n in [1, 10]
@@ -1072,12 +1178,18 @@ def test_batching(
         if not free or (lhs and rhs)  # both operands need to be set after freeing
     ],
 )
-def test_reset(framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k, reset_lhs, reset_rhs, free):
-    a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42)
+def test_reset(
+    framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k, reset_lhs, reset_rhs, free
+):
+    a = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42, index_dtype=index_type
+    )
     tensor_framework = framework2tensor_framework[framework]
     b = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype)
 
-    a2 = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42 + 1)
+    a2 = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42 + 1, index_dtype=index_type
+    )
     b2 = create_dense_rhs(tensor_framework, operand_placement, rhs_k, dtype, start=-100)
 
     with nvmath.sparse.advanced.DirectSolver(a, b, execution=exec_space.nvname) as solver:
@@ -1113,6 +1225,7 @@ def test_reset(framework, exec_space, operand_placement, sparse_array_type, dtyp
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "batch_size",
         "lhs_batching_mode",
@@ -1126,6 +1239,7 @@ def test_reset(framework, exec_space, operand_placement, sparse_array_type, dtyp
             exec_space,
             operand_placement,
             sparse_array_type,
+            index_type,
             dtype,
             batch_size,
             lhs_batching_mode,
@@ -1138,6 +1252,8 @@ def test_reset(framework, exec_space, operand_placement, sparse_array_type, dtyp
         for exec_space in ExecutionSpace
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
+        for index_type in [DType.int32]  # int64 is not supported with batching.
+        if index_type in framework2index_dtype[framework]
         for dtype in supported_dtypes
         if dtype in framework2dtype[framework]
         for lhs_batching_mode in (["sequence", "tensor"] if framework == Framework.torch else ["sequence"])
@@ -1157,6 +1273,7 @@ def test_reset_batched(
     exec_space,
     operand_placement,
     sparse_array_type,
+    index_type,
     dtype,
     batch_size: int | tuple[int, int],
     lhs_batching_mode: typing.Literal["sequence", "tensor"],
@@ -1167,12 +1284,30 @@ def test_reset_batched(
     reset_rhs,
 ):
     a = _generate_lhs_batch(
-        lhs_batching_mode, batch_size, framework, exec_space, operand_placement, sparse_array_type, dtype, ns, seed=42
+        lhs_batching_mode,
+        batch_size,
+        framework,
+        exec_space,
+        operand_placement,
+        sparse_array_type,
+        dtype,
+        ns,
+        seed=42,
+        index_dtype=index_type,
     )
     b = _generate_rhs_batch(rhs_batching_mode, batch_size, framework, exec_space, operand_placement, dtype, ns, rhs_ks)
 
     a2 = _generate_lhs_batch(
-        lhs_batching_mode, batch_size, framework, exec_space, operand_placement, sparse_array_type, dtype, ns, seed=42 + 1
+        lhs_batching_mode,
+        batch_size,
+        framework,
+        exec_space,
+        operand_placement,
+        sparse_array_type,
+        dtype,
+        ns,
+        seed=42 + 1,
+        index_dtype=index_type,
     )
     b2 = _generate_rhs_batch(
         rhs_batching_mode, batch_size, framework, exec_space, operand_placement, dtype, ns, rhs_ks, start=-100
@@ -1285,12 +1420,13 @@ def test_invalid_sparse_format(
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
     ),
     [
-        (framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k)
+        (framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k)
         for framework in Framework.enabled()
         if framework in sparse_supporting_frameworks
         for exec_space in ExecutionSpace
@@ -1299,6 +1435,8 @@ def test_invalid_sparse_format(
         # won't be visible to the solver.
         if exec_space != ExecutionSpace.cudss_cuda or operand_placement != OperandPlacement.host
         for sparse_array_type in supported_sparse_array_types
+        for index_type in supported_index_dtypes
+        if index_type in framework2index_dtype[framework]
         for dtype in [DType.float64, DType.complex128]
         if dtype in framework2dtype[framework]
         for n in [105, 333]
@@ -1307,11 +1445,15 @@ def test_invalid_sparse_format(
     ],
     ids=idfn,
 )
-def test_matrix_solve_inplace_reset_blocking_auto(framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k):
+def test_matrix_solve_inplace_reset_blocking_auto(
+    framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k
+):
     stream = get_custom_stream(framework) if operand_placement == OperandPlacement.device else None
 
     with use_stream_or_dummy_ctx(framework, stream):
-        a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42)
+        a = create_random_sparse_matrix(
+            framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42, index_dtype=index_type
+        )
         a_orig = a.copy() if framework != Framework.torch else a.clone()
         a_modifed = a.copy() if framework != Framework.torch else a.clone()
         b = create_dense_rhs(framework2tensor_framework[framework], operand_placement, rhs_k, dtype)
@@ -1350,12 +1492,13 @@ def test_matrix_solve_inplace_reset_blocking_auto(framework, exec_space, operand
         "exec_space",
         "operand_placement",
         "sparse_array_type",
+        "index_type",
         "dtype",
         "n",
         "rhs_k",
     ),
     [
-        (framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k)
+        (framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k)
         for framework in Framework.enabled()
         if framework in sparse_supporting_frameworks
         for exec_space in ExecutionSpace
@@ -1364,6 +1507,8 @@ def test_matrix_solve_inplace_reset_blocking_auto(framework, exec_space, operand
         # won't be visible to the solver.
         if exec_space != ExecutionSpace.cudss_cuda or operand_placement != OperandPlacement.host
         for sparse_array_type in supported_sparse_array_types
+        for index_type in supported_index_dtypes
+        if index_type in framework2index_dtype[framework]
         for dtype in [DType.float64, DType.complex128]
         if dtype in framework2dtype[framework]
         for n in [105, 333]
@@ -1372,11 +1517,13 @@ def test_matrix_solve_inplace_reset_blocking_auto(framework, exec_space, operand
     ],
     ids=idfn,
 )
-def test_matrix_solve_always_blocking(framework, exec_space, operand_placement, sparse_array_type, dtype, n, rhs_k):
+def test_matrix_solve_always_blocking(framework, exec_space, operand_placement, sparse_array_type, index_type, dtype, n, rhs_k):
     stream = get_custom_stream(framework) if operand_placement == OperandPlacement.device else None
     other_stream = get_custom_stream(framework) if operand_placement == OperandPlacement.device else None
 
-    a = create_random_sparse_matrix(framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42)
+    a = create_random_sparse_matrix(
+        framework, operand_placement, sparse_array_type, n, n, None, dtype, seed=42, index_dtype=index_type
+    )
     ref_a = a.copy() if framework != Framework.torch else a.clone()
     b = create_dense_rhs(framework2tensor_framework[framework], operand_placement, rhs_k, dtype)
     b_ref = b.copy() if framework != Framework.torch else b.clone()

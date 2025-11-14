@@ -16,13 +16,14 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Slab
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (512, 512, 512).
 # In this example, the input data is distributed across processes according to
@@ -36,7 +37,7 @@ with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
 # Create a stateful FFT object 'f'.
-with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False}) as f:
+with nvmath.distributed.fft.FFT(a, distribution=Slab.X, options={"reshape": False}) as f:
     # Plan the FFT.
     f.plan()
 
@@ -51,7 +52,7 @@ with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, o
     # original distribution was Slab.X, the reset operand is expected to have either a
     # Slab.X or Slab.Y distribution based on the same global shape, in this
     # case (512, 512, 512).
-    f.reset_operand(b, distribution=nvmath.distributed.fft.Slab.Y)
+    f.reset_operand(b, distribution=Slab.Y)
 
     # Execute the new inverse FFT.
     # The distribution of operand c will be Slab.X

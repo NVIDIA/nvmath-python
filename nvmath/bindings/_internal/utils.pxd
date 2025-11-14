@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from libc.stdint cimport int32_t, int64_t, intptr_t
+from libc.stdint cimport int32_t, int64_t, intptr_t, uint32_t
 from libcpp.vector cimport vector
 from libcpp cimport bool as cppbool
 from libcpp cimport nullptr_t, nullptr
@@ -151,6 +151,7 @@ ctypedef fused ResT:
     int
     int32_t
     int64_t
+    uint32_t
     float
     double
     size_t

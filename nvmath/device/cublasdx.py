@@ -2,40 +2,43 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["matmul", "TransposeMode", "BlasOptions"]
+__all__ = ["matmul", "TransposeMode", "Matmul", "SharedStorageCalc"]
 
 from functools import cached_property
 import itertools
 from collections.abc import Sequence
-import math
 import re
-from typing import overload
+from typing import Any, overload
 from warnings import warn
-import weakref
 
 from .common import (
     Layout,
-    make_binary_tempfile,
-    delete_binary_tempfiles,
+    Partitioner,
+    check_code_type,
     check_in,
     SHARED_DEVICE_DOCSTRINGS,
     pad_or_truncate,
+    parse_sm,
 )
 from .common_backend import MATHDX_TYPES_TO_NP, get_isa_version, get_lto
-from .common_cuda import MAX_SUPPORTED_CC, get_default_code_type, ComputeCapability, Code, CodeType, Dim3
-from .common_numba import NP_TYPES_TO_NUMBA_FE_TYPES
+from .common_cuda import (
+    Code,
+    CodeType,
+    Dim3,
+)
 from .cublasdx_backend import (
     Alignment,
     Arrangement,
     Precision,
     generate_MM,
     generate_code,
-    generate_code_tensors,
-    generate_copy_wait_lto,
+    generate_function_code,
+    generate_tensor,
     generate_tensors,
+    get_function_code,
     get_str_trait,
     get_int_traits,
-    get_tensor_int_traits,
+    get_tensor_traits,
     validate,
     LeadingDimension,
     TransposeMode,
@@ -154,12 +157,14 @@ class SharedStorageCalc:
 
 
 @docstring_decorator(CUBLASDX_DOCSTRING, skip_missing=False)
-class BlasOptions:
+class Matmul:
     """
-    A class that encapsulates a partial BLAS device function. A partial device function can
-    be queried for available or optimal values for some knobs (such as `leading_dimension`
-    or `block_dim`). It does not contain a compiled, ready-to-use, device function until
-    finalized using :meth:`create`.
+    A class that encapsulates a partial Matmul device function. A partial device function
+    can be queried for available or optimal values for some knobs (such as
+    `leading_dimension` or `block_dim`).
+
+    .. versionchanged:: 0.7.0
+        `Matmul` has replaced `BlasOptions` and `BlasOptionsComplete`.
 
     Args:
         size: {size}
@@ -168,7 +173,7 @@ class BlasOptions:
 
         data_type: {data_type}
 
-        code_type (CodeType): {code_type}
+        sm (ComputeCapability): {sm}
 
         block_size (int): {block_size}
 
@@ -186,17 +191,19 @@ class BlasOptions:
 
         execution (str): {execution}
 
-        execute_api:
-            .. versionchanged:: 0.5.0
-                execute_api is not part of the Blas type. Pass this argument to
-                :py:func:`nvmath.device.matmul` instead.
+        execute_api (str): {execute_api}
 
-        tensor_types:
             .. versionchanged:: 0.5.0
-                tensor_types is not part of the Blas type. Pass this argument to
-                :py:func:`nvmath.device.matmul` instead.
+                execute_api is not part of the Matmul (ex. Blas) type. Pass this
+                argument to :py:func:`nvmath.device.matmul` instead.
 
-    See Also:
+        tensor_types (Sequence[str]): {tensor_types}
+
+            .. versionchanged:: 0.5.0
+                tensor_types is not part of the Matmul (ex. Blas) type. Pass
+                this argument to :py:func:`nvmath.device.matmul` instead.
+
+    .. seealso::
         The attributes of this class provide a 1:1 mapping with the CUDA C++ cuBLASDx APIs.
         For further details, please refer to `cuBLASDx documentation
         <https://docs.nvidia.com/cuda/cublasdx/>`_.
@@ -208,7 +215,7 @@ class BlasOptions:
         precision,
         data_type,
         *,
-        code_type=None,
+        sm=None,
         block_size=None,
         block_dim=None,
         leading_dimension=None,
@@ -219,19 +226,7 @@ class BlasOptions:
         static_block_dim=False,
         execution="Block",
     ):
-        if not isinstance(code_type, Sequence) or len(code_type) != 2:
-            raise ValueError(f"code_type should be an instance of CodeType or a 2-tuple ; got code_type = {code_type}")
-        code_type = CodeType(code_type[0], ComputeCapability(*code_type[1]))
-        if code_type.cc.major < 7:
-            raise RuntimeError(
-                f"Minimal compute capability 7.0 is required by cuBLASDx, got {code_type.cc.major}.{code_type.cc.minor}"
-            )
-        if (code_type.cc.major, code_type.cc.minor) > MAX_SUPPORTED_CC:
-            raise RuntimeError(
-                "The maximum compute capability currently supported by device "
-                f"APIs is {MAX_SUPPORTED_CC}, "
-                f"got {code_type.cc.major}.{code_type.cc.minor}"
-            )
+        sm = parse_sm(sm)
 
         if transpose_mode is not None:
             warn(
@@ -302,7 +297,7 @@ class BlasOptions:
             transpose_mode=transpose_mode,
             arrangement=arrangement,
             alignment=alignment,
-            code_type=code_type,
+            sm=sm,
             leading_dimension=leading_dimension,
             block_dim=block_dim,
             function=function,
@@ -320,7 +315,7 @@ class BlasOptions:
         self._transpose_mode = transpose_mode
         self._arrangement = arrangement
         self._alignment = alignment
-        self._code_type = code_type
+        self._sm = sm
         self._block_dim = block_dim
         self._function = function
         self._execution = execution
@@ -336,6 +331,10 @@ class BlasOptions:
 
         if block_dim == "suggested":
             self._block_dim = self._suggested_block_dim
+
+    @cached_property
+    def _traits(self):
+        return _MatmulTraits(self)
 
     @property
     def precision(self) -> Precision:
@@ -364,11 +363,13 @@ class BlasOptions:
 
     @property
     def alignment(self) -> Alignment:
+        if self._alignment is None:
+            return self._traits.alignment
         return self._alignment
 
     @property
-    def code_type(self):
-        return self._code_type
+    def sm(self):
+        return self._sm
 
     @property
     def function(self) -> str:
@@ -376,10 +377,12 @@ class BlasOptions:
 
     @property
     def block_size(self) -> int:
-        return self._block_dim[0] * self._block_dim[1] * self._block_dim[2]
+        return self.block_dim[0] * self.block_dim[1] * self.block_dim[2]
 
     @property
     def block_dim(self) -> Dim3:
+        if self._block_dim is None:
+            return self._traits.block_dim
         return self._block_dim
 
     @property
@@ -388,6 +391,8 @@ class BlasOptions:
 
     @property
     def leading_dimension(self) -> LeadingDimension:
+        if self._leading_dimension is None:
+            return self._traits.leading_dimension
         return self._leading_dimension
 
     #
@@ -397,7 +402,11 @@ class BlasOptions:
     def valid(self, *knobs):
         return itertools.product(*[self._valid(knob) for knob in knobs])
 
+    @deprecated("definition is deprecated and may be removed in future versions")
     def definition(self):
+        """
+        .. deprecated:: 0.7.0
+        """
         dd = {
             "size": self.size,
             "precision": self.precision,
@@ -405,7 +414,7 @@ class BlasOptions:
             "transpose_mode": self.transpose_mode,
             "arrangement": self.arrangement,
             "alignment": self.alignment,
-            "code_type": self.code_type,
+            "sm": self.sm,
             "block_dim": self.block_dim,
             "static_block_dim": self.static_block_dim,
             "function": self.function,
@@ -414,10 +423,31 @@ class BlasOptions:
         }
         return dd
 
-    def create(self, **kwargs):
+    @deprecated("create is deprecated and may be removed in future versions. Use `functools.partial` instead")
+    def create(
+        self, code_type=None, compiler=None, execute_api=None, tensor_types=None, global_memory_alignment=None, **kwargs
+    ):
+        """
+        Creates a copy of the instance with provided arguments updated.
+
+        .. deprecated:: 0.7.0
+            Please use :py:func:`functools.partial` instead.
+        """
+        if code_type is not None:
+            DeprecationWarning("code_type is deprecated and will be removed in future releases. It is no longer needed.")
+        if compiler is not None:
+            DeprecationWarning("compiler is deprecated and will be removed in future releases. It is no longer needed.")
+        if execute_api is not None:
+            DeprecationWarning("execute_api is deprecated and will be removed in future releases. It is no longer needed.")
+        if tensor_types is not None:
+            DeprecationWarning("tensor_types is deprecated and will be removed in future releases. It is no longer needed.")
+        if global_memory_alignment is not None:
+            DeprecationWarning(
+                "global_memory_alignment is deprecated and will be removed in future releases. It is no longer needed."
+            )
         dd = self.definition()
         dd.update(**kwargs)
-        return matmul(**dd)
+        return Matmul(**dd)
 
     #
     # Private implementations
@@ -431,17 +461,13 @@ class BlasOptions:
 
     @cached_property
     def _suggested_leading_dimension(self):
-        if self.code_type is None:
-            raise ValueError("leading_dimension='suggested' require code_type to be set.")
-        if self.execution != "Block":
-            raise ValueError("leading_dimension='suggested' require execution to be 'Block'.")
         # Generate special PTX for suggested_leading_dimension_of
         descriptor = generate_MM(
             size=self.size,
             function=self.function,
             precision=self.precision,
             data_type=self.data_type,
-            code_type=self.code_type,
+            sm=self.sm,
             transpose_mode=self._transpose_mode,
             arrangement=self._arrangement,
             alignment=self._alignment,
@@ -455,17 +481,13 @@ class BlasOptions:
 
     @cached_property
     def _suggested_block_dim(self):
-        if self.code_type is None:
-            raise ValueError("block_dim='suggested' require code_type to be set.")
-        if self.execution != "Block":
-            raise ValueError("block_dim='suggested' require execution to be 'Block'.")
         # Generate full PTX
         descriptor = generate_MM(
             size=self.size,
             function=self.function,
             precision=self.precision,
             data_type=self.data_type,
-            code_type=self.code_type,
+            sm=self.sm,
             transpose_mode=self._transpose_mode,
             arrangement=self._arrangement,
             alignment=self._alignment,
@@ -477,85 +499,22 @@ class BlasOptions:
 
         return Dim3(*get_int_traits(descriptor.descriptor, mathdx.CublasdxTraitType.SUGGESTED_BLOCK_DIM, 3))
 
-
-#
-# A complete set of knobs, ie sufficient to generate a device functions and query all traits
-# Not exposed to end users
-#
-class BlasOptionsComplete(BlasOptions):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        if self.code_type is None:
-            raise NotImplementedError(f"code_type should be set, but got code_type = {self.code_type}")
-        if self.execution != "Block":
-            raise NotImplementedError(f"Only execution=Block is implemented ; got execution = {self.execution}")
-
-        (m, n, k) = self.size
-
-        h = generate_MM(
-            size=self.size,
-            function=self.function,
-            precision=self.precision,
-            data_type=self.data_type,
-            code_type=self.code_type,
-            transpose_mode=self._transpose_mode,
-            arrangement=self.arrangement,
-            alignment=self._alignment,
-            block_dim=self.block_dim,
-            static_block_dim=self._static_block_dim,
-            leading_dimension=self._leading_dimension,
-            execution=self.execution,
-        ).descriptor
-
-        self._value_types = tuple(MATHDX_TYPES_TO_NP[vt] for vt in get_int_traits(h, mathdx.CublasdxTraitType.VALUE_TYPE, 3))
-        self._leading_dimension = LeadingDimension(*get_int_traits(h, mathdx.CublasdxTraitType.LEADING_DIMENSION, 3))
-        self._block_dim = Dim3(*get_int_traits(h, mathdx.CublasdxTraitType.BLOCK_DIM, 3))
-        self._alignment = Alignment(*get_int_traits(h, mathdx.CublasdxTraitType.ALIGNMENT, 3))
-
-        self._a_dim = (m, k)
-        self._b_dim = (k, n)
-        self._c_dim = (m, n)
-
-        if self._transpose_mode is not None:
-            if self._transpose_mode.a in {"transposed", "conj_transposed"}:
-                self._a_dim = self._a_dim[::-1]
-            if self._transpose_mode.b in {"transposed", "conj_transposed"}:
-                self._b_dim = self._b_dim[::-1]
-
-        [self._a_size, self._b_size, self._c_size] = self._calculate_abc_sizes(self._leading_dimension)
-
-        self._max_threads_per_block = self._block_dim.x * self._block_dim.y * self._block_dim.z
-
-    def _calculate_abc_sizes(self, ld: LeadingDimension) -> tuple[int, int, int]:
-        assert isinstance(ld, LeadingDimension)
-        if self._transpose_mode:
-            non_ld = (self._a_dim[1], self._b_dim[1], self._c_dim[1])
-        elif self._arrangement:
-            non_ld = (
-                self._a_dim[1 if self._arrangement.a == "col_major" else 0],
-                self._b_dim[1 if self._arrangement.b == "col_major" else 0],
-                self._c_dim[1 if self._arrangement.c == "col_major" else 0],
-            )
-
-        return tuple(x * y for x, y in zip(ld, non_ld, strict=True))
-
     @property
     def a_value_type(self):
-        return self._value_types[0]
+        return self._traits.value_types[0]
 
     @property
     def b_value_type(self):
-        return self._value_types[1]
+        return self._traits.value_types[1]
 
     @property
     def c_value_type(self):
-        return self._value_types[2]
+        return self._traits.value_types[2]
 
     @property
     @deprecated("value_type trait is deprecated. Please use {a|b|c}_value_type instead")
     def value_type(self):
-        if not all(vt == self._value_types[0] for vt in self._value_types):
+        if not all(vt == self._traits.value_types[0] for vt in self._traits.value_types):
             raise RuntimeError("value_type may be used only if all {a|b|c}_value_type have the same type")
         return self.a_value_type
 
@@ -571,33 +530,58 @@ class BlasOptionsComplete(BlasOptions):
     def output_type(self):
         return self.c_value_type
 
-    @property
+    @cached_property
     def a_dim(self):
-        return self._a_dim
+        (m, _, k) = self.size
 
-    @property
+        dim = (m, k)
+        if self._transpose_mode is not None and self._transpose_mode.a in {"transposed", "conj_transposed"}:
+            dim = dim[::-1]
+
+        return dim
+
+    @cached_property
     def b_dim(self):
-        return self._b_dim
+        (_, n, k) = self.size
 
-    @property
+        dim = (k, n)
+        if self._transpose_mode is not None and self._transpose_mode.b in {"transposed", "conj_transposed"}:
+            dim = dim[::-1]
+
+        return dim
+
+    @cached_property
     def c_dim(self):
-        return self._c_dim
+        (m, n, _) = self.size
+        return (m, n)
 
-    @property
-    def leading_dimension(self):
-        return self._leading_dimension
+    def _calculate_abc_sizes(self, ld: LeadingDimension) -> tuple[int, int, int]:
+        if self._transpose_mode:
+            non_ld = (self.a_dim[1], self.b_dim[1], self.c_dim[1])
+        elif self._arrangement:
+            non_ld = (
+                self.a_dim[1 if self._arrangement.a == "col_major" else 0],
+                self.b_dim[1 if self._arrangement.b == "col_major" else 0],
+                self.c_dim[1 if self._arrangement.c == "col_major" else 0],
+            )
+
+        return tuple(x * y for x, y in zip(ld, non_ld, strict=True))
+
+    @cached_property
+    def _abc_sizes(self):
+        return self._calculate_abc_sizes(self.leading_dimension)
 
     @property
     def a_size(self):
-        return self._a_size
+        return self._abc_sizes[0]
 
     @property
     def b_size(self):
-        return self._b_size
+        return self._abc_sizes[1]
 
     @property
     def c_size(self):
-        return self._c_size
+        return self._abc_sizes[2]
 
     @property
     @deprecated(
@@ -611,18 +595,18 @@ class BlasOptionsComplete(BlasOptions):
 
     @property
     def max_threads_per_block(self):
-        return self._max_threads_per_block
+        return self.block_dim.x * self.block_dim.y * self.block_dim.z
 
     def _get_shared_storage_size(self, *args, ab=False) -> int | None:  # type: ignore
         # Complex will be over-aligned (eg: f32x2 complex is aligned on 8B) with
         # this logic (which is what we want - for performance and vectorization)
-        item_sizes = tuple(numpy.dtype(vt).itemsize for vt in self._value_types)
+        item_sizes = tuple(numpy.dtype(vt).itemsize for vt in self._traits.value_types)
 
         alignment = self.alignment
         sizes = None
 
         if len(args) == 0:
-            sizes = (self._a_size, self._b_size, self._c_size)
+            sizes = (self.a_size, self.b_size, self.c_size)
         elif all(isinstance(arg, int) for arg in args):
             sizes = self._calculate_abc_sizes(LeadingDimension(*pad_or_truncate(list(args), 3)))
         elif all(isinstance(arg, Layout) for arg in args):
@@ -710,181 +694,8 @@ class BlasOptionsComplete(BlasOptions):
     def suggest_layout_rmem_c(self) -> Layout:
         return _BlasLayout(self, "suggest_layout_rmem_c")
 
-
-#
-# A compiled BLAS device function, with knobs and device function
-#
-class BlasCompiled(BlasOptionsComplete):
-    def __init__(self, **kwargs):
-        execute_api = kwargs.pop("execute_api", "static_leading_dimensions")
-        tensor_types = kwargs.pop("tensor_types", None)
-        global_memory_alignment = kwargs.pop("global_memory_alignment", None)
-
-        # Build set of knobs
-        super().__init__(**kwargs)
-
-        if global_memory_alignment is not None:
-            if not isinstance(global_memory_alignment, Sequence) or len(global_memory_alignment) != 3:
-                raise ValueError(
-                    "global_memory_alignment should be an instance of Alignment"
-                    "or a 3-tuple ; "
-                    "got global_memory_alignment = {global_memory_alignment}"
-                )
-            global_memory_alignment = Alignment(*global_memory_alignment)
-
-            validate_alignment(
-                global_memory_alignment,
-                self.precision,
-                self.data_type,
-                gmem=True,
-            )
-
-        validate_execute_api(execute_api)
-        tensors_api = execute_api == "tensors"
-        if tensors_api:
-            validate_tensor_types(tensor_types)
-
-        self._execute_api = execute_api
-        self._tensor_types = tensor_types
-        self._global_memory_alignment = global_memory_alignment
-
-        handle = generate_MM(
-            size=self.size,
-            function=self.function,
-            precision=self.precision,
-            data_type=self.data_type,
-            code_type=self.code_type,
-            transpose_mode=self._transpose_mode,
-            arrangement=self.arrangement,
-            alignment=self._alignment,
-            block_dim=self.block_dim,
-            static_block_dim=self._static_block_dim,
-            # TODO: find better way to exclude ld operator for dynamic_leading_dimensions
-            leading_dimension=self._leading_dimension if self._execute_api == "static_leading_dimensions" else None,
-            execution=self._execution,
-            execute_api=self._execute_api,
-            tensor_types=self._tensor_types,
-        )
-
-        # TODO: remove once MM.files is deprecated
-        self._handle = handle
-
-        # Now compile the LTO device function
-        h = handle.descriptor
-
-        if tensors_api:
-            self._declare_tensors(h)
-
-            code, self._tensor_api_symbols = generate_code_tensors(
-                h, self.code_type.cc, self._gmem_tensors, self._target_tensors, rmem_c="rmem" in self._tensor_types[2]
-            )
-        else:
-            code = generate_code(h, self.code_type.cc)
-
-        # Compile
-        lto_fn = get_lto(code.descriptor)
-        isa_version = get_isa_version(code.descriptor)
-
-        self._ltos = [Code(self.code_type, isa_version, lto_fn)]
-        self._symbol = get_str_trait(h, mathdx.CublasdxTraitType.SYMBOL_NAME)
-
-        if self._tensor_types:
-            _, copy_wait_lto = generate_copy_wait_lto(self.code_type.cc)
-            self._ltos += [Code(self.code_type, isa_version, copy_wait_lto)]
-
-        self._finalizer = weakref.finalize(self, delete_binary_tempfiles, self.files)
-
-    def _declare_tensors(self, h):
-        # Complex will be over-aligned (eg: f32x2 complex is aligned on 8B) with
-        # this logic (which is what we want - for performance and vectorization)
-        item_sizes = tuple(numpy.dtype(vt).itemsize for vt in self._value_types)
-
-        self._gmem_tensors, self._target_tensors = generate_tensors(h, self._tensor_types, self._global_memory_alignment)
-        self._target_tensor_sizes = get_tensor_int_traits(self._target_tensors, mathdx.CublasdxTensorTrait.STORAGE_BYTES)
-        for ts, _is in zip(self._target_tensor_sizes, item_sizes, strict=True):
-            assert ts % _is == 0
-        self._target_tensor_sizes = tuple(ts // item_sizes[i] for i, ts in enumerate(self._target_tensor_sizes))
-        self._gmem_tensor_uids = get_tensor_int_traits(self._gmem_tensors, mathdx.CublasdxTensorTrait.UID)
-        self._target_tensor_uids = get_tensor_int_traits(self._target_tensors, mathdx.CublasdxTensorTrait.UID)
-
-    def definition(self):
-        dd = super().definition()
-        dd.update(execute_api=self.execute_api)
-        if self.execute_api == "tensors":
-            dd.update(tensor_types=self.tensor_types)
-        return dd
-
-    @cached_property
-    def _tempfiles(self):
-        """
-        Create temporary files for the LTO functions.
-        """
-        return [make_binary_tempfile(lto.data, ".ltoir") for lto in self._ltos]
-
-    @property
-    def files(self) -> list[str]:
-        """The list of binary files for the lto functions."""
-        return [v.name for v in self._tempfiles]
-
-    @property
-    def codes(self):
-        """A list of :class:`Code` objects for all lto functions."""
-        return self._ltos
-
-    @property
-    def symbol(self):
-        """The name of the device function."""
-        return self._symbol
-
-    @property
-    def execute_api(self) -> str:
-        """
-        The API used to execute the function. It defines the signature of the
-        LTO function.
-        """
-        return self._execute_api
-
-    @property
-    def tensor_types(self) -> tuple[str, str, str]:
-        """
-        The tensor types used in the function. Defines types of the tensors for
-        the tensors API.
-        """
-        if self.execute_api != "tensors":
-            raise RuntimeError("tensor_types is only available when execute_api is 'tensors'")
-        return self._tensor_types
-
-
-#
-# A compiled BLAS device function, with knobs and device function, to be used with Numba
-#
-class BlasNumba(BlasCompiled):
-    """
-    A class that encapsulates a compiled BLAS device function compatible with Numba.
-
-
-    """
-
-    def __init__(self, **kwargs):
-        if "code_type" not in kwargs:
-            kwargs["code_type"] = get_default_code_type()
-
-        # Build LTO device functions
-        super().__init__(**kwargs)
-
-        self._numba_value_types = tuple(NP_TYPES_TO_NUMBA_FE_TYPES[vt] for vt in self._value_types)
-
-    @property
-    def a_value_type(self):
-        return self._numba_value_types[0]
-
-    @property
-    def b_value_type(self):
-        return self._numba_value_types[1]
-
-    @property
-    def c_value_type(self):
-        return self._numba_value_types[2]
+    def suggest_partitioner(self) -> Partitioner:
+        raise RuntimeError("suggest_partitioner should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
     @deprecated("Calling MM(...) directly is deprecated, please use MM.execute(...) method instead.")
     def __call__(self, *args):
@@ -893,24 +704,146 @@ class BlasNumba(BlasCompiled):
     def execute(self, *args):
         raise RuntimeError("execute should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
-    @cached_property
-    def _copy_symbols_map(self):
-        if self.execute_api != "tensors":
-            return {}
+    @property
+    @deprecated("files is deprecated and is no longer required and will be removed in future releases.")
+    def files(self) -> list[str]:
+        """The list of binary files for the lto functions."""
+        return []
 
-        return {
-            (self._gmem_tensor_uids[0], self._target_tensor_uids[0]): self._tensor_api_symbols.copy_a,
-            (self._gmem_tensor_uids[1], self._target_tensor_uids[1]): self._tensor_api_symbols.copy_b,
-            (self._gmem_tensor_uids[2], self._target_tensor_uids[2]): self._tensor_api_symbols.copy_c,
-            (self._target_tensor_uids[2], self._gmem_tensor_uids[2]): self._tensor_api_symbols.copy_c_back,
-        }
+    @property
+    @deprecated("codes is deprecated and is no longer required and will be removed in future releases.")
+    def codes(self) -> list[Code]:
+        """A list of :class:`Code` objects for all lto functions."""
+        return []
+
+
+class _MatmulTraits:
+    def __init__(self, mm: Matmul):
+        h = generate_MM(
+            size=mm._size,
+            function=mm._function,
+            precision=mm._precision,
+            data_type=mm._data_type,
+            sm=mm._sm,
+            transpose_mode=mm._transpose_mode,
+            arrangement=mm._arrangement,
+            alignment=mm._alignment,
+            block_dim=mm._block_dim,
+            static_block_dim=mm._static_block_dim,
+            leading_dimension=mm._leading_dimension,
+            execution=mm._execution,
+        ).descriptor
+
+        self.value_types = tuple(MATHDX_TYPES_TO_NP[vt] for vt in get_int_traits(h, mathdx.CublasdxTraitType.VALUE_TYPE, 3))
+        self.leading_dimension = LeadingDimension(*get_int_traits(h, mathdx.CublasdxTraitType.LEADING_DIMENSION, 3))
+        self.block_dim = Dim3(*get_int_traits(h, mathdx.CublasdxTraitType.BLOCK_DIM, 3))
+        self.alignment = Alignment(*get_int_traits(h, mathdx.CublasdxTraitType.ALIGNMENT, 3))
+
+
+#
+# A compiled BLAS device function, with knobs and device function
+#
+
+
+def compile_blas_execute(
+    blas: Matmul,
+    code_type: Any,
+    execute_api: str | None = None,
+    tensor_types: Sequence[str] | None = None,
+    global_memory_alignment: Sequence[int] | None = None,
+) -> tuple[Code, str]:
+    if global_memory_alignment is not None:
+        if not isinstance(global_memory_alignment, Sequence) or len(global_memory_alignment) != 3:
+            raise ValueError(
+                "global_memory_alignment should be an instance of Alignment"
+                "or a 3-tuple ; "
+                "got global_memory_alignment = {global_memory_alignment}"
+            )
+        global_memory_alignment = Alignment(*global_memory_alignment)
+
+    check_code_type(code_type, "cuBLASDx")
+    validate_execute_api(execute_api)
+    tensors_api = execute_api == "tensors"
+    if tensors_api:
+        validate_tensor_types(tensor_types)
+
+    if global_memory_alignment is not None:
+        # Perform validation only after initialization since we need to
+        # know precision and data_type
+        validate_alignment(
+            global_memory_alignment,
+            blas.precision,
+            blas.data_type,
+            gmem=True,
+        )
+
+    handle = generate_MM(
+        size=blas.size,
+        function=blas.function,
+        precision=blas.precision,
+        data_type=blas.data_type,
+        sm=blas.sm,
+        transpose_mode=blas.transpose_mode,
+        arrangement=blas.arrangement,
+        alignment=blas.alignment,
+        block_dim=blas.block_dim,
+        static_block_dim=blas._static_block_dim,
+        # TODO: find better way to exclude ld operator for dynamic_leading_dimensions
+        leading_dimension=blas._leading_dimension if execute_api == "static_leading_dimensions" else None,
+        execution=blas._execution,
+        execute_api=execute_api,
+        tensor_types=tensor_types,
+    )
+
+    # Now compile the LTO device function
+    h = handle.descriptor
+
+    if tensors_api:
+        resp = generate_tensors(h, tensor_types, global_memory_alignment)
+        _, target_tensors = resp.gmem, resp.target
+        code, symbol = generate_function_code(h, mathdx.CublasdxDeviceFunctionType.EXECUTE, target_tensors, code_type.cc)
+    else:
+        code = generate_code(h, code_type.cc)
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    ltos = [Code(code_type, isa_version, lto_fn)]
+
+    if tensor_types:
+        symbol = symbol
+    else:
+        symbol = get_str_trait(h, mathdx.CublasdxTraitType.SYMBOL_NAME)
+
+    return ltos[0], symbol
+
+
+def _blas_tensors_handle(MM: Matmul):
+    handle = generate_MM(
+        size=MM.size,
+        function=MM.function,
+        precision=MM.precision,
+        data_type=MM.data_type,
+        sm=MM.sm,
+        transpose_mode=MM.transpose_mode,
+        arrangement=MM.arrangement,
+        alignment=MM.alignment,
+        block_dim=MM.block_dim,
+        static_block_dim=MM._static_block_dim,
+        execution=MM._execution,
+        execute_api="tensors",
+    )
+    return handle.descriptor
 
 
 @docstring_decorator(CUBLASDX_DOCSTRING, skip_missing=False)
-def matmul(*, compiler=None, **kwargs):
+def matmul(*, compiler=None, code_type=None, execute_api=None, tensor_types=None, global_memory_alignment=None, **kwargs):
     """
-    Create an :class:`BlasOptions` object that encapsulates a compiled and ready-to-use
+    Create an :class:`Matmul` object that encapsulates a compiled and ready-to-use
     device function for matrix multiplication.
+
+    .. deprecated:: 0.7.0
 
     Args:
         size: {size}
@@ -921,7 +854,17 @@ def matmul(*, compiler=None, **kwargs):
 
         compiler: {compiler}
 
+            .. versionchanged:: 0.7.0
+                compiler is no longer needed and does not take effect. Use
+                :py:func:`nvmath.device.compile_blas_execute` to get device
+                function code.
+
         code_type (CodeType): {code_type}
+
+            .. versionchanged:: 0.7.0
+                code_type should be used by
+                :py:func:`nvmath.device.compile_blas_execute` and no longer
+                needed for numba-cuda usage.
 
         block_size (int): {block_size}
 
@@ -941,12 +884,28 @@ def matmul(*, compiler=None, **kwargs):
 
         execute_api (str): {execute_api}
 
+            .. versionchanged:: 0.7.0
+                execute_api should be used by
+                :py:func:`nvmath.device.compile_blas_execute` and no longer
+                needed for numba-cuda usage.
+
         tensor_types (str): {tensor_types}
+
+            .. versionchanged:: 0.7.0
+                tensor_types should be used by
+                :py:func:`nvmath.device.compile_blas_execute` and no longer
+                needed for numba-cuda usage.
 
         global_memory_alignment (Alignment): {global_memory_alignment}
 
-    See Also:
-        The attributes of :class:`BlasOptions` provide a 1:1 mapping with the CUDA C++
+            .. versionchanged:: 0.7.0
+                alignment should be set at :py:func:`nvmath.device.copy`
+                global_memory_alignment should be used by
+                :py:func:`nvmath.device.compile_blas_execute` for non numba-cuda
+                usage. Alignment should be set
+
+    .. seealso::
+        The attributes of :class:`Matmul` provide a 1:1 mapping with the CUDA C++
         cuBLASDx APIs. For further details, please refer to `cuBLASDx documentation
         <https://docs.nvidia.com/cuda/cublasdx/>`_.
 
@@ -996,11 +955,22 @@ def matmul(*, compiler=None, **kwargs):
         Further examples can be found in the `nvmath/examples/device
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/device>`_ directory.
     """
-    check_in("compiler", compiler, [None, "numba"])
-    if compiler is None:
-        return BlasCompiled(**kwargs)
-    elif compiler == "numba":
-        return BlasNumba(**kwargs)
+    DeprecationWarning("matmul is deprecated and will be removed in future releases. Please use Matmul class directly.")
+    if code_type is not None:
+        DeprecationWarning("code_type is deprecated and will be removed in future releases. It is no longer needed.")
+    if compiler is not None:
+        DeprecationWarning("compiler is deprecated and will be removed in future releases. It is no longer needed.")
+    if execute_api is not None:
+        DeprecationWarning("execute_api is deprecated and will be removed in future releases. It is no longer needed.")
+    if tensor_types is not None:
+        DeprecationWarning("tensor_types is deprecated and will be removed in future releases. It is no longer needed.")
+    if global_memory_alignment is not None:
+        DeprecationWarning(
+            "global_memory_alignment is deprecated and will be removed in "
+            "future releases. It is no longer needed. Please set alignment "
+            "at copy()"
+        )
+    return Matmul(**kwargs)
 
 
 def _parse_layout(layout: str) -> tuple[bool, str, str]:
@@ -1034,51 +1004,50 @@ class _BlasLayout(Layout):
     _leading_dimension: int | None
 
     # Internal fields to recreate the numba layout type
-    _MM: BlasNumba | None
+    _MM: Matmul | None
     _layout: str
 
     # Cached fields to avoid recomputing
-    _is_register: bool
     _tensor_index: int
 
-    def __init__(self, MM: BlasOptionsComplete, layout: str, leading_dimension: int | None = None):
-        if not isinstance(MM, BlasCompiled):
-            raise ValueError("MM should be an instance of BlasCompiled, support for BlasOptionsComplete is in progress")
-        if MM.execute_api != "tensors":
-            raise ValueError(f"{layout} is only available for execute_api='tensors'")
-
-        assert MM._tensor_types is not None
+    def __init__(self, MM: Matmul, layout: str, leading_dimension: int | None = None):
+        if not isinstance(MM, Matmul):
+            raise ValueError("MM should be an instance of Matmul")
 
         suggested, memory, tensor = _parse_layout(layout)
         self._tensor_index = ["a", "b", "c"].index(tensor)
 
-        self._size = math.prod((MM.a_dim, MM.b_dim, MM.c_dim)[self._tensor_index])
+        tensor_type = f"{memory}mem_{tensor}"
+
+        if suggested:
+            tensor_type = "suggested_" + tensor_type
+
+        self._dtype = MM._traits.value_types[self._tensor_index]
+        itemsize = numpy.dtype(self._dtype).itemsize
 
         if memory == "g":
-            self._uid = MM._gmem_tensor_uids[self._tensor_index]
-            self._cosize = self._size
+            self._uid = -1  # gmem tensors at this stage do not have a uid
+            self._size = (MM.a_size, MM.b_size, MM.c_size)[self._tensor_index]
+            storage_size = self._size * itemsize
         else:
-            tensor_type = f"{memory}mem_{tensor}"
+            th = generate_tensor(_blas_tensors_handle(MM), tensor_type)
+            self._uid, self._size, storage_size = get_tensor_traits(th.descriptor)
+        assert storage_size % itemsize == 0
+        self._cosize = storage_size // itemsize
+        if mathdx.get_version_ex() < (0, 3, 0):
+            self._size = (MM.a_size, MM.b_size, MM.c_size)[self._tensor_index]
+            if memory == "r":
+                self._size = self._cosize
 
-            if suggested:
-                tensor_type = "suggested_" + tensor_type
-
-            if tensor_type not in set(MM._tensor_types):
-                raise ValueError(f"Invalid layout {layout} for tensor {tensor_type}. Available layouts are {MM._tensor_types}")
-            self._uid = MM._target_tensor_uids[self._tensor_index]
-            self._cosize = MM._target_tensor_sizes[self._tensor_index]
-
-        if memory == "r":
-            # for register memory, we are using fragment so it does not have
-            # any gaps and contain only small chank, so dimension production
-            # does not apply
-            self._size = self._cosize
-
-        self._is_register = memory == "r"
         self._dynamic_ld = memory == "g"  # dynamic ld only global memory
-        self._MM = MM if isinstance(MM, BlasNumba) else None
+        self._MM = MM
         self._layout = layout
+        self._tensor_type = tensor_type
         self._leading_dimension = leading_dimension
+
+    @property
+    def dtype(self):
+        return self._dtype
 
     @property
     def size(self) -> int:
@@ -1087,3 +1056,120 @@ class _BlasLayout(Layout):
     @property
     def cosize(self) -> int:
         return self._cosize
+
+
+def compile_blas_copy(
+    src_tensor: _BlasLayout,
+    dst_tensor: _BlasLayout,
+    code_type: CodeType,
+    alignment: int | None = None,
+):
+    check_code_type(code_type, "cuBLASDx")
+    assert src_tensor._MM == dst_tensor._MM
+    assert src_tensor._MM is not None
+
+    MM = src_tensor._MM
+
+    handle = _blas_tensors_handle(MM)
+    src_handler = generate_tensor(
+        handle, src_tensor._tensor_type, gmem_alignment=alignment if "gmem" in src_tensor._tensor_type else None
+    )
+    dst_handler = generate_tensor(
+        handle, dst_tensor._tensor_type, gmem_alignment=alignment if "gmem" in dst_tensor._tensor_type else None
+    )
+
+    return get_function_code(
+        handle, mathdx.CublasdxDeviceFunctionType.COPY, [src_handler.descriptor, dst_handler.descriptor], code_type
+    )
+
+
+def compile_blas_clear(
+    tensor: _BlasLayout,
+    code_type: CodeType,
+):
+    check_code_type(code_type, "cuBLASDx")
+    assert tensor._MM is not None
+
+    MM = tensor._MM
+
+    handle = _blas_tensors_handle(MM)
+    tensor_handler = generate_tensor(handle, tensor._tensor_type)
+
+    return get_function_code(handle, mathdx.CublasdxDeviceFunctionType.CLEAR, [tensor_handler.descriptor], code_type)
+
+
+def compile_blas_axpby(
+    x_tensor: _BlasLayout,
+    y_tensor: _BlasLayout,
+    code_type: CodeType,
+):
+    check_code_type(code_type, "cuBLASDx")
+    assert x_tensor._MM == y_tensor._MM
+    assert x_tensor._MM is not None
+
+    MM = x_tensor._MM
+
+    handle = _blas_tensors_handle(MM)
+    x_handler = generate_tensor(handle, x_tensor._tensor_type)
+    y_handler = generate_tensor(handle, y_tensor._tensor_type)
+
+    return get_function_code(
+        handle, mathdx.CublasdxDeviceFunctionType.AXPBY, [x_handler.descriptor, y_handler.descriptor], code_type
+    )
+
+
+def _compile_blas_partitioner_function(
+    MM: Matmul,
+    code_type: CodeType,
+    function: mathdx.CublasdxDeviceFunctionType,
+):
+    check_code_type(code_type, "cuBLASDx")
+
+    handle = _blas_tensors_handle(MM)
+    tensor_handle = generate_tensor(handle, "suggested_rmem_c")
+
+    return get_function_code(handle, function, [tensor_handle.descriptor], code_type)
+
+
+def compile_blas_map_idx2crd_partitioner(
+    MM: Matmul,
+    code_type: CodeType,
+):
+    return _compile_blas_partitioner_function(
+        MM,
+        code_type,
+        mathdx.CublasdxDeviceFunctionType.MAP_IDX2CRD_PARTITIONER,
+    )
+
+
+def compile_blas_is_thread_active(
+    MM: Matmul,
+    code_type: CodeType,
+):
+    return _compile_blas_partitioner_function(
+        MM,
+        code_type,
+        mathdx.CublasdxDeviceFunctionType.IS_THREAD_ACTIVE,
+    )
+
+
+def compile_blas_is_predicated(
+    MM: Matmul,
+    code_type: CodeType,
+):
+    return _compile_blas_partitioner_function(
+        MM,
+        code_type,
+        mathdx.CublasdxDeviceFunctionType.IS_PREDICATED,
+    )
+
+
+def compile_blas_is_index_in_bounds(
+    MM: Matmul,
+    code_type: CodeType,
+):
+    return _compile_blas_partitioner_function(
+        MM,
+        code_type,
+        mathdx.CublasdxDeviceFunctionType.IS_INDEX_IN_BOUNDS,
+    )

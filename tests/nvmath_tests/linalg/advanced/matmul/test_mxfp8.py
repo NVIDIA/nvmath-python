@@ -8,7 +8,7 @@ try:
 except ImportError:
     torch = None
 import pytest
-from .utils import sample_matrix
+from ...utils import sample_matrix
 from .fp8_utils import assert_fp8_equal
 from nvmath.linalg.advanced import Matmul, matmul, MatmulEpilog as Epilog
 from nvmath.linalg.advanced.helpers import matmul as matmul_helpers
@@ -17,7 +17,7 @@ from nvmath.bindings import cublasLt as cublaslt
 from nvmath.internal.utils import check_or_create_options
 from nvmath.linalg.advanced import _configuration
 from contextlib import nullcontext
-from .utils import allow_cublas_unsupported
+from ...utils import allow_cublas_unsupported
 
 if torch is None:
     pytest.skip("Torch is required for MXFP8 tests", allow_module_level=True)

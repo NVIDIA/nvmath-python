@@ -12,10 +12,11 @@ from nvmath.device import (
     matmul,
     TransposeMode,
     LeadingDimension,
-    BlasOptions,
+    Matmul,
 )
-from nvmath.device.common_cuda import MAX_SUPPORTED_CC, get_default_code_type
-from nvmath.device.cublasdx import BlasCompiled, BlasOptionsComplete, SharedStorageCalc
+from nvmath.device.types import complex32, complex64, complex128
+from nvmath.device.common_cuda import MAX_SUPPORTED_CC
+from nvmath.device.cublasdx import SharedStorageCalc, compile_blas_execute
 import functools
 import pytest
 import itertools
@@ -59,12 +60,13 @@ def test_third_party_symbol(execute_api):
         data_type="real",
         precision=np.float64,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM75,
+        sm=SM75.cc,
         execution="Block",
-        execute_api=execute_api,
     )
 
-    assert len(MM.symbol) > 0
+    _, symbol = compile_blas_execute(MM, code_type=SM75, execute_api=execute_api)
+
+    assert len(symbol) > 0
 
 
 def test_third_party_code():
@@ -73,23 +75,21 @@ def test_third_party_code():
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM75,
+        sm=SM75.cc,
         execution="Block",
     )
 
-    assert len(MM.codes) > 0
-    for code in MM.codes:
-        print(code.code_type, code.isa_version)
-    assert isinstance(MM, BlasCompiled)
+    code, _ = compile_blas_execute(MM, code_type=SM75, execute_api="static_leading_dimensions")
+
+    assert isinstance(MM, Matmul)
     assert MM.size == (16, 8, 16)
-    assert all(f.endswith(".ltoir") for f in MM.files)
-    assert all(code.isa_version.major >= 12 for code in MM.codes)
-    assert all(code.isa_version.minor >= 0 for code in MM.codes)
-    assert all(code.code_type.cc.major == 7 for code in MM.codes)
-    assert all(code.code_type.cc.minor == 5 for code in MM.codes)
-    assert all(code.code_type.kind == "lto" for code in MM.codes)
-    assert all(isinstance(code.data, bytes) for code in MM.codes)
-    assert all(len(code.data) > 0 for code in MM.codes)
+    assert code.isa_version.major >= 12
+    assert code.isa_version.minor >= 0
+    assert code.code_type.cc.major == 7
+    assert code.code_type.cc.minor == 5
+    assert code.code_type.kind == "lto"
+    assert isinstance(code.data, bytes)
+    assert len(code.data) > 0
     assert MM.max_threads_per_block <= 1024
 
 
@@ -125,47 +125,36 @@ def test_transpose_mode(ta, tb):
 
 
 def test_suggested_block_dim():
-    BO = BlasOptions(
+    MM = Matmul(
         size=(16, 8, 16),
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM75,
+        sm=SM75.cc,
         execution="Block",
         block_dim="suggested",
     )  # leading_dimension = None implicit
 
-    # block_dim = suggested    --> Dim3
-    # leading_dimension = None --> None
-    assert isinstance(BO, BlasOptions)
-    assert isinstance(BO.block_dim, Dim3)
-    assert BO.leading_dimension is None
-    assert BO.size == (16, 8, 16)
-    assert BO.block_dim[0] * BO.block_dim[1] * BO.block_dim[2] >= 1
-
-    MM = BO.create()
-
-    # block_dim         --> Dim3 (same as above)
-    # leading_dimension --> LeadingDimension (takes a default value)
-    assert isinstance(MM, BlasCompiled)
+    assert isinstance(MM, Matmul)
     assert isinstance(MM.block_dim, Dim3)
-    assert MM.block_dim == BO.block_dim
+    assert MM.size == (16, 8, 16)
+    assert MM.block_dim[0] * MM.block_dim[1] * MM.block_dim[2] >= 1
     assert isinstance(MM.leading_dimension, LeadingDimension)
 
 
 def test_suggested_leading_dimension():
-    BO = BlasOptions(
+    BO = Matmul(
         size=(16, 8, 16),
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM89,
+        sm=SM89.cc,
         block_size=64,
         execution="Block",
         leading_dimension="suggested",
     )
 
-    assert isinstance(BO, BlasOptions)
+    assert isinstance(BO, Matmul)
     assert isinstance(BO.leading_dimension, LeadingDimension)
     assert isinstance(BO.block_dim, Dim3)
 
@@ -175,7 +164,7 @@ def test_suggested_leading_dimension():
     assert BO.leading_dimension.c >= 1
 
     MM = BO.create()
-    assert isinstance(MM, BlasCompiled)
+    assert isinstance(MM, Matmul)
     assert isinstance(MM.leading_dimension, LeadingDimension)
     assert isinstance(MM.block_dim, Dim3)
 
@@ -185,26 +174,26 @@ def test_suggested_leading_dimension():
 
 
 def test_valid_finalize():
-    BO = BlasOptions(
+    BO = Matmul(
         size=(16, 8, 16),
         data_type="real",
         precision=np.float32,
         transpose_mode=TransposeMode("non_transposed", "transposed"),
-        code_type=SM75,
+        sm=SM75.cc,
         execution="Block",
     )
 
-    assert isinstance(BO, BlasOptions)
+    assert isinstance(BO, Matmul)
     valids = BO.valid("block_dim")
 
     count = 0
     for (block_dim,) in valids:
         count += 1
-        MM = BO.create(block_dim=block_dim, code_type=SM80)
-        assert isinstance(MM, BlasCompiled)
+        MM = BO.create(block_dim=block_dim)
+        assert isinstance(MM, Matmul)
         assert MM.block_dim == block_dim
         assert MM.size == (16, 8, 16)
-        assert MM.code_type == SM80
+        assert MM.sm == SM75.cc
     assert count > 0
 
 
@@ -302,7 +291,7 @@ def test_unsupported_sm():
             data_type="real",
             arrangement=("col_major", "col_major", "col_major"),
             precision=np.float32,
-            code_type=code_type,
+            sm=code_type.cc,
             execution="Block",
         )
 
@@ -332,11 +321,11 @@ def test_sm_type(code_type):
         ("real", np.float64, np.float64),
         ("real", (np.float16, np.float16, np.float16), np.float16),
         ("real", (np.float32, np.float32, np.float32), np.float32),
-        ("complex", np.float16, np.dtype([("x", np.float16), ("y", np.float16)], align=True)),
-        ("complex", np.float32, np.complex64),
-        ("complex", np.float64, np.complex128),
-        ("complex", (np.float32, np.float32, np.float32), np.complex64),
-        ("complex", (np.float64, np.float64, np.float64), np.complex128),
+        ("complex", np.float16, complex32),
+        ("complex", np.float32, complex64),
+        ("complex", np.float64, complex128),
+        ("complex", (np.float32, np.float32, np.float32), complex64),
+        ("complex", (np.float64, np.float64, np.float64), complex128),
     ],
 )
 def test_value_type(data_type, precision, value_type):
@@ -359,11 +348,11 @@ def test_value_type(data_type, precision, value_type):
     [
         ("real", (np.float16, np.float16, np.float32), (np.float16, np.float16, np.float32)),
         ("real", (np.float32, np.float32, np.float64), (np.float32, np.float32, np.float64)),
-        ("complex", (np.float32, np.float32, np.float64), (np.complex64, np.complex64, np.complex128)),
+        ("complex", (np.float32, np.float32, np.float64), (complex64, complex64, complex128)),
         (
             "complex",
             (np.float64, np.float64, np.float16),
-            (np.complex128, np.complex128, np.dtype([("x", np.float16), ("y", np.float16)], align=True)),
+            (complex128, complex128, complex32),
         ),
     ],
 )
@@ -449,17 +438,15 @@ class TestGetSharedStorageSize(NamedTuple):
 
 
 @pytest.mark.parametrize(
-    "MM_kwargs, compiled, t, t_ab",
+    "MM_kwargs, t, t_ab",
     [
         (
             {"size": (1, 1, 1), "precision": np.float16},
-            False,
             TestGetSharedStorageSize(expected_size=6),
             TestGetSharedStorageSize(expected_size=4),
         ),
         (
             {"size": (1, 1, 1), "precision": np.float16, "alignment": (8, 8, 8)},
-            False,
             TestGetSharedStorageSize(expected_size=18),
             TestGetSharedStorageSize(expected_size=10),
         ),
@@ -468,7 +455,6 @@ class TestGetSharedStorageSize(NamedTuple):
                 "size": (1, 1, 1),
                 "precision": (np.float16, np.float64, np.float16),
             },
-            False,
             TestGetSharedStorageSize(expected_size=18),
             TestGetSharedStorageSize(expected_size=16),
         ),
@@ -478,26 +464,22 @@ class TestGetSharedStorageSize(NamedTuple):
                 "precision": (np.float16, np.float64, np.float16),
                 "alignment": (8, 8, 8),
             },
-            False,
             TestGetSharedStorageSize(expected_size=18),
             TestGetSharedStorageSize(expected_size=16),
         ),
         (
             {"size": (4, 4, 4), "precision": np.float16},
-            False,
             TestGetSharedStorageSize(expected_size=96),
             TestGetSharedStorageSize(expected_size=64),
         ),
         (
             {"size": (4, 4, 4), "precision": np.float16, "alignment": (8, 8, 8)},
-            False,
             TestGetSharedStorageSize(expected_size=96),
             TestGetSharedStorageSize(expected_size=64),
         ),
         # Test wrong number of arguments
         (
             {"size": (1, 2, 3), "precision": np.float16, "alignment": (2, 4, 8)},
-            False,
             TestGetSharedStorageSize(
                 args=(1, 2),
                 expected_error=r"get_shared_storage_size\(\) takes either 0 or "
@@ -511,7 +493,6 @@ class TestGetSharedStorageSize(NamedTuple):
         ),
         (
             {"size": (1, 2, 3), "precision": np.float16, "alignment": (2, 4, 8)},
-            False,
             TestGetSharedStorageSize(
                 args=(1, 2, 3, 4),
                 expected_error=r"get_shared_storage_size\(\) takes either 0 or "
@@ -526,7 +507,6 @@ class TestGetSharedStorageSize(NamedTuple):
         # Test wrong types of arguments
         (
             {"size": (1, 2, 3), "precision": np.float16, "alignment": (2, 4, 8)},
-            False,
             TestGetSharedStorageSize(
                 args=(1, 2, "3"),
                 expected_error=r"get_shared_storage_size\(\) takes either 0 or "
@@ -543,10 +523,7 @@ class TestGetSharedStorageSize(NamedTuple):
                 "size": (1, 2, 3),
                 "precision": np.float16,
                 "alignment": (2, 4, 8),
-                "execute_api": "tensors",
-                "tensor_types": ("smem_a", "smem_b", "smem_c"),
             },
-            True,
             TestGetSharedStorageSize(
                 args=(1, 2, lambda MM: MM.get_layout_smem_c()),  # wrong type
                 expected_error=r"get_shared_storage_size\(\) takes either 0 or "
@@ -563,10 +540,7 @@ class TestGetSharedStorageSize(NamedTuple):
                 "size": (1, 2, 3),
                 "precision": np.float16,
                 "alignment": (2, 4, 8),
-                "execute_api": "tensors",
-                "tensor_types": ("smem_a", "smem_b", "smem_c"),
             },
-            True,
             TestGetSharedStorageSize(
                 args=(
                     lambda MM: MM.get_layout_smem_a(),
@@ -592,7 +566,6 @@ class TestGetSharedStorageSize(NamedTuple):
                 "precision": np.float16,
                 "alignment": (2, 4, 8),
             },
-            True,
             TestGetSharedStorageSize(
                 args=(5, 5, 5),
                 expected_size=76,
@@ -607,10 +580,7 @@ class TestGetSharedStorageSize(NamedTuple):
                 "size": (1, 2, 3),  # matrix sizes 3, 6, 2
                 "precision": np.float16,
                 "alignment": (2, 4, 8),
-                "execute_api": "tensors",
-                "tensor_types": ("smem_a", "smem_b", "smem_c"),
             },
-            True,
             TestGetSharedStorageSize(
                 args=(
                     lambda MM: MM.get_layout_smem_a(),
@@ -631,20 +601,18 @@ class TestGetSharedStorageSize(NamedTuple):
 )
 def test_cublasdx_get_shared_storage_size_args(
     MM_kwargs: dict,
-    compiled: bool,
     t: TestGetSharedStorageSize,
     t_ab: TestGetSharedStorageSize,
 ):
-    if compiled:
-        skip_nvbug_5218000(MM_kwargs["precision"], size=MM_kwargs["size"])
+    ct = SM80  # CodeType object
     MM_kwargs |= {
         "data_type": "real",
         "arrangement": ("col_major", "col_major", "col_major"),
         "block_size": 128,
-        "code_type": get_default_code_type(),
+        "sm": ct.cc,
     }
 
-    MM = BlasCompiled(**MM_kwargs) if compiled else BlasOptionsComplete(**MM_kwargs)
+    MM = Matmul(**MM_kwargs)
     # remove callables from args
     args = tuple(a(MM) if callable(a) else a for a in t.args)
     args_ab = tuple(a(MM) if callable(a) else a for a in t_ab.args)
@@ -681,41 +649,39 @@ def test_static_block_dim():
     MM2 = matmul_base()
     MM3 = matmul_base(static_block_dim=True)
 
-    # if input is the same handle will be cached and the same
-    assert MM1._handle == MM2._handle
-    # here since input is different, handle is different
-    assert MM1._handle != MM3._handle
+    assert MM1.static_block_dim == MM2.static_block_dim
+    assert MM1.static_block_dim != MM3.static_block_dim
 
 
 @pytest.mark.parametrize(
-    "dtype, alignment, expected, complete, expected_error",
+    "dtype, alignment, expected, expected_error",
     [
-        ("real", (8, 8, 8), Alignment(8, 8, 8), False, None),
-        ("real", [8, 8, 8], Alignment(8, 8, 8), False, None),
-        ("real", Alignment(8, 8, 8), Alignment(8, 8, 8), False, None),
-        ("real", (4, 8, 16), Alignment(4, 8, 16), False, None),
-        ("real", (4, 8, 16), Alignment(4, 8, 16), True, None),
-        ("real", MAX_ALIGNMENT, Alignment(16, 16, 16), False, None),
-        ("real", (8, 2, 8), None, False, "alignment.b must be a multiple of input value type 4. Got 2"),
-        ("real", (8, 8, 4), None, False, "alignment.c must be a multiple of input value type 8. Got 4"),
-        ("real", (32, 8, 8), None, False, "alignment.a must be less than maximum alignment 16. Got 32"),
-        ("real", (-1, 8, 8), None, False, "alignment.a must be > 0. Got -1"),
-        ("real", (8, 0, 8), None, False, "alignment.b must be > 0. Got 0"),
-        ("real", None, None, False, None),
-        ("real", None, Alignment(2, 4, 8), True, None),
-        ("real", (4, 8, 16), Alignment(4, 8, 16), True, None),
-        ("complex", (4, 8, 16), Alignment(4, 8, 16), False, None),
-        ("complex", (4, 8, 16), Alignment(4, 8, 16), True, None),
-        ("complex", (8, 8, 8), None, False, "alignment.c must be a multiple of input value type 16. Got 8"),
+        ("real", (8, 8, 8), Alignment(8, 8, 8), None),
+        ("real", [8, 8, 8], Alignment(8, 8, 8), None),
+        ("real", Alignment(8, 8, 8), Alignment(8, 8, 8), None),
+        ("real", (4, 8, 16), Alignment(4, 8, 16), None),
+        ("real", (4, 8, 16), Alignment(4, 8, 16), None),
+        ("real", MAX_ALIGNMENT, Alignment(16, 16, 16), None),
+        ("real", (8, 2, 8), None, "alignment.b must be a multiple of input value type 4. Got 2"),
+        ("real", (8, 8, 4), None, "alignment.c must be a multiple of input value type 8. Got 4"),
+        ("real", (32, 8, 8), None, "alignment.a must be less than maximum alignment 16. Got 32"),
+        ("real", (-1, 8, 8), None, "alignment.a must be > 0. Got -1"),
+        ("real", (8, 0, 8), None, "alignment.b must be > 0. Got 0"),
+        ("real", None, Alignment(a=2, b=4, c=8), None),
+        ("real", None, Alignment(2, 4, 8), None),
+        ("real", (4, 8, 16), Alignment(4, 8, 16), None),
+        ("complex", (4, 8, 16), Alignment(4, 8, 16), None),
+        ("complex", (4, 8, 16), Alignment(4, 8, 16), None),
+        ("complex", (8, 8, 8), None, "alignment.c must be a multiple of input value type 16. Got 8"),
     ],
 )
-def test_alignment(dtype, alignment, expected, complete, expected_error):
+def test_alignment(dtype, alignment, expected, expected_error):
     matmul = functools.partial(
-        BlasOptionsComplete if complete else BlasOptions,
+        Matmul,
         size=(64, 64, 64),
         precision=(np.float16, np.float32, np.float64),
         data_type=dtype,
-        code_type=get_default_code_type(),
+        sm=SM80.cc,
         arrangement=("col_major", "col_major", "col_major"),
         alignment=alignment,
     )
@@ -740,14 +706,14 @@ def test_alignment(dtype, alignment, expected, complete, expected_error):
         ("block_size", "suggested", "block_size_suggested"),
     ],
 )
-def test_blas_options_parameter_validation(param_name, param_value, special_case):
-    """Test BlasOptions parameter validation"""
+def test_matmul_parameter_validation(param_name, param_value, special_case):
+    """Test Matmul parameter validation"""
     base_kwargs = {
         "size": (16, 8, 16),
         "data_type": "real",
         "precision": np.float32,
         "transpose_mode": TransposeMode("non_transposed", "transposed"),
-        "code_type": SM75,
+        "sm": SM75.cc,
         "execution": "Block",
     }
 
@@ -755,13 +721,13 @@ def test_blas_options_parameter_validation(param_name, param_value, special_case
         base_kwargs["block_size"] = param_value
         base_kwargs["block_dim"] = (64, 1, 1)
         with pytest.raises(ValueError):
-            BlasOptions(**base_kwargs)
+            Matmul(**base_kwargs)
     elif special_case == "block_size_suggested":
         base_kwargs["block_size"] = param_value
-        BO = BlasOptions(**base_kwargs)
+        BO = Matmul(**base_kwargs)
         assert isinstance(BO.block_dim, Dim3)
         assert BO.block_dim[0] * BO.block_dim[1] * BO.block_dim[2] >= 1
     else:
         base_kwargs[param_name] = param_value
         with pytest.raises(ValueError):
-            BlasOptions(**base_kwargs)
+            Matmul(**base_kwargs)

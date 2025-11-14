@@ -4,7 +4,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import random_real
 from nvmath.device.common import copy, copy_fragment, clear, copy_wait, make_tensor, axpby
 
@@ -13,23 +13,20 @@ def main():
     m, n, k = 128, 128, 32
     block_size = 256
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=(np.float16, np.float16, np.float32),
         data_type="real",
         arrangement=("col_major", "row_major", "row_major"),
         execution="Block",
         block_size=block_size,
-        compiler="numba",
-        tensor_types=("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
-        execute_api="tensors",
     )
 
     a_layout = MM.suggest_layout_smem_a()
     b_layout = MM.suggest_layout_smem_b()
     c_layout = MM.suggest_layout_rmem_c()
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(alpha, a, b, beta, c, output):
         smem = cuda.shared.array(shape=(0,), dtype=np.float16, alignment=16)
 

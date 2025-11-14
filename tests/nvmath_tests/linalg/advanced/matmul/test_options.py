@@ -9,7 +9,7 @@ import logging
 import nvmath
 import pytest
 
-from .utils import assert_tensors_equal, sample_matrix, is_torch_available
+from ...utils import assert_tensors_equal, sample_matrix, is_torch_available
 
 try:
     import cupy_backends.cuda

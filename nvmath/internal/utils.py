@@ -638,7 +638,7 @@ def docstring_decorator(doc_map, skip_missing=False):
             # update the docstring of all public methods with docstrings
             static_methods = []  # staticmethods appear to require special handling
             for name, method in vars(func_or_class).items():
-                if isinstance(method, staticmethod):
+                if isinstance(method, (staticmethod, classmethod)):
                     static_methods.append(name)
                     continue
                 if callable(method) and (not name.startswith("_")) and method.__doc__:
@@ -646,8 +646,8 @@ def docstring_decorator(doc_map, skip_missing=False):
             # update the docstring of the constructor
             func_or_class.__doc__ = _format_doc(func_or_class.__doc__)
             for name in static_methods:
-                method = getattr(func_or_class, name)
-                method.__doc__ = _format_doc(method.__doc__)
+                method = func_or_class.__dict__[name]
+                method.__func__.__doc__ = _format_doc(method.__func__.__doc__)
             return func_or_class
         else:  # function decorator
             func_or_class.__doc__ = _format_doc(func_or_class.__doc__)

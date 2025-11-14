@@ -8,49 +8,38 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import fft
+from nvmath.device import FFT
 
 
 def main():
-    size = 64
+    fft = FFT(fft_type="c2c", size=64, precision=np.float32, direction="forward", execution="Block")
 
-    FFT = fft(fft_type="c2c", size=size, precision=np.float32, direction="forward", execution="Block", compiler="numba")
-
-    size = FFT.size
-    value_type = FFT.value_type
-    storage_size = FFT.storage_size
-    shared_memory_size = FFT.shared_memory_size
-    stride = FFT.stride
-    block_dim = FFT.block_dim
-    ffts_per_block = FFT.ffts_per_block
-    elements_per_thread = FFT.elements_per_thread
-
-    @cuda.jit(link=FFT.files)
+    @cuda.jit
     def f(data):
-        thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft.storage_size,), dtype=fft.value_type)
 
         local_fft_id = cuda.threadIdx.y
-        fft_id = cuda.blockIdx.x * ffts_per_block + local_fft_id
+        fft_id = cuda.blockIdx.x * fft.ffts_per_block + local_fft_id
 
         index = cuda.threadIdx.x
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             thread_data[i] = data[fft_id, index]
-            index += stride
+            index += fft.stride
 
-        shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
-        FFT(thread_data, shared_mem)
+        shared_mem = cuda.shared.array(shape=(0,), dtype=fft.value_type)
+        fft.execute(thread_data, shared_mem)
 
         index = cuda.threadIdx.x
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             data[fft_id, index] = thread_data[i]
-            index += stride
+            index += fft.stride
 
-    data = np.ones((ffts_per_block, size), dtype=np.complex64)
+    data = np.ones((fft.ffts_per_block, fft.size), dtype=np.complex64)
     data_d = cuda.to_device(data)
 
     print("input [1st FFT]:", data[0, :])
 
-    f[1, block_dim, 0, shared_memory_size](data_d)
+    f[1, fft.block_dim, 0, fft.shared_memory_size](data_d)
     cuda.synchronize()
 
     data_test = data_d.copy_to_host()

@@ -1,4 +1,4 @@
-# This code was automatically generated with version 0.2.3. Do not modify it directly.
+# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -53,6 +53,7 @@ ctypedef cusolverdxSide _CusolverdxSide
 ctypedef cusolverdxDiag _CusolverdxDiag
 ctypedef cusolverdxOperatorType _CusolverdxOperatorType
 ctypedef cusolverdxTraitType _CusolverdxTraitType
+ctypedef cublasdxMemorySpace _CublasdxMemorySpace
 
 
 ###############################################################################
@@ -79,11 +80,11 @@ cpdef cublasdx_set_operator_int64(long long int handle, int op, long long int va
 cpdef cublasdx_set_operator_int64s(long long int handle, int op, size_t count, array)
 cpdef long long int cublasdx_bind_tensor(long long int handle, int tensor_type) except? 0
 cpdef cublasdx_set_tensor_option_int64(long long int tensor, int option, long long int value)
-cpdef cublasdx_finalize_tensors(long long int handle, size_t count, array)
+cpdef cublasdx_finalize_tensors_new(size_t count, array)
 cpdef long long int cublasdx_get_tensor_trait_int64(long long int tensor, int trait) except? 0
 cpdef size_t cublasdx_get_tensor_trait_str_size(long long int tensor, int trait) except? 0
 cpdef cublasdx_get_tensor_trait_str(long long int tensor, int trait, size_t size, value)
-cpdef long long int cublasdx_bind_device_function(long long int handle, int device_function_type, size_t count, array) except? 0
+cpdef long long int cublasdx_create_device_function_old(long long int handle, int device_function_type, size_t count, array) except? 0
 cpdef cublasdx_finalize_device_functions(long long int code, size_t count, array)
 cpdef size_t cublasdx_get_device_function_trait_str_size(long long int device_function, int trait) except? 0
 cpdef cublasdx_get_device_function_trait_str(long long int device_function, int trait, size_t size, value)
@@ -129,3 +130,15 @@ cpdef cusolverdx_finalize_code(long long int code, long long int handle)
 cpdef cusolverdx_destroy_descriptor(long long int handle)
 cpdef str cusolverdx_operator_type_to_str(int op)
 cpdef str cusolverdx_trait_type_to_str(int trait)
+cpdef long long int cublasdx_create_tensor_new(long long int handle, int tensor_type) except? 0
+cpdef long long int cublasdx_make_tensor_like(long long int input, int value_type) except? 0
+cpdef cublasdx_destroy_tensor_new(long long int tensor)
+cpdef long long int cublasdx_create_device_function_new(long long int handle, int device_function_type, size_t count, array) except? 0
+cpdef cublasdx_destroy_device_function_new(long long int device_function)
+
+# 0.2 - 0.3 compatibility layer
+cpdef cublasdx_finalize_tensors203(long long int handle, size_t count, array)
+cpdef long long int cublasdx_create_device_function(long long int handle, int device_function_type, size_t count, array) except? 0
+cpdef cublasdx_destroy_device_function(long long int device_function)
+cpdef cublasdx_destroy_tensor(long long int tensor)
+cpdef long long int cublasdx_create_tensor(long long int handle, int tensor_type) except? 0

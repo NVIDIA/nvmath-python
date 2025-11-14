@@ -92,11 +92,8 @@ def get_tolerance(a, shape_kind=None):
     framework = get_framework_from_array(a)
     mem_backend = get_array_backend(a)
     rtol, atol = get_default_tolerance(dtype, shape_kind, exec_backend=ExecBackend.cufft)
-    # LTO EA was observed to have slightly off outputs for float32
     # The torch CPU fft has bigger difference as well
-    if (nvmath.bindings.cufft.get_version() < 11300 and dtype in [DType.float32, DType.complex64]) or (
-        framework == Framework.torch and mem_backend == MemBackend.cpu
-    ):
+    if framework == Framework.torch and mem_backend == MemBackend.cpu:
         rtol *= 1.2
     return {"rtol": rtol, "atol": atol}
 
@@ -127,25 +124,13 @@ def assert_norm_close_check_constant(a, a_ref, rtol=None, atol=None, axes=None, 
             raise AssertionError(f"The outputs differ by a constant factor of {factor}") from e
 
 
-def allow_to_fail_lto_ea_3d(e, shape, axes):
-    if isinstance(e, ValueError) and "3D FFT with the last extent equal 1" in str(e):
-        assert nvmath.bindings.cufft.get_version() < 11300
-        fft_dim = len(axes) if axes is not None else len(shape)
-        assert fft_dim == 3
-        axes = axes or list(range(fft_dim))
-        assert shape[axes[-1]] == 1
-        assert sum(shape[a] == 1 for a in axes) == 1
-        raise pytest.skip("cuFFT LTO EA 3D last extent 1 is not supported")
-
-
 def allow_to_fail_compund_shape(e, shape, axes):
-    if not has_only_small_factors(shape, axes):
-        if nvmath.bindings.cufft.get_version() < 11300:
-            if isinstance(e, ValueError) and "cuFFT LTO EA does not" in str(e):
-                raise pytest.skip(f"NVMATH CHECK: Unsupported {shape} comprising primes larger than 127")
-        else:
-            if isinstance(e, nvmath.bindings.cufft.cuFFTError) and "CUFFT_NOT_SUPPORTED" in str(e):
-                raise pytest.skip(f"CUFFT_UNSUPPORTED: Unsupported {shape} comprising primes larger than 127")
+    if (
+        isinstance(e, nvmath.bindings.cufft.cuFFTError)
+        and "CUFFT_NOT_SUPPORTED" in str(e)
+        and not has_only_small_factors(shape, axes)
+    ):
+        raise pytest.skip(f"CUFFT_NOT_SUPPORTED: Unsupported {shape} comprising primes larger than 127")
     raise
 
 
@@ -1232,7 +1217,6 @@ def _operand_filter_dtype_shape_fft_ifft_case(
                 },
             )
         except (nvmath.bindings.cufft.cuFFTError, ValueError) as e:
-            allow_to_fail_lto_ea_3d(e, shape, axes)
             if not allow_to_fail:
                 raise
             allow_to_fail_compund_shape(e, shape, axes=axes)
@@ -2315,3 +2299,42 @@ def test_prolog_epilog_unsupported_exec(framework, exec_backend, mem_backend, ca
         match="The 'prolog' and 'epilog' are not supported with CPU 'execution'",
     ):
         fn(signal, execution=exec_backend.nvname, **cb_kwargs)
+
+
+def test_device_callable_validation():
+    """Test DeviceCallable class validation logic."""
+    # Test case 1: ltoir type validation - must be bytes or int
+    with pytest.raises(ValueError, match="The LTO-IR code must be provided as a bytes object or as a Python int"):
+        nvmath.fft.DeviceCallable(ltoir="test")  # string is invalid
+
+    # Test case 2: size is required when ltoir is int pointer
+    with pytest.raises(ValueError, match="The size of the LTO-IR code specified as a pointer must be explicitly provided"):
+        nvmath.fft.DeviceCallable(ltoir=1000, size=None)  # int pointer without size
+
+    # Test case 3: size validation - must be integer type
+    with pytest.raises(ValueError, match="Invalid size value"):
+        nvmath.fft.DeviceCallable(ltoir=1000, size=3.14)  # float is invalid
+
+    # Test case 4: data default value when None
+    dc = nvmath.fft.DeviceCallable(ltoir=b"test", data=None)
+    assert dc.data == 0  # should default to 0
+
+    # Test case 5: data type validation - must be integer type
+    with pytest.raises(ValueError, match="The 'data' attribute must be a Python int"):
+        nvmath.fft.DeviceCallable(ltoir=b"test", data="invalid_data")  # string is invalid
+
+    # Test case 6: valid cases with bytes ltoir
+    dc = nvmath.fft.DeviceCallable(ltoir=b"test", data=42)
+    assert dc.size == 4  # len(b"test") = 4
+    assert dc.data == 42
+
+    # Test case 7: valid cases with int pointer ltoir
+    dc = nvmath.fft.DeviceCallable(ltoir=12345, size=100, data=42)
+    assert dc.size == 100  # explicitly specified
+    assert dc.data == 42
+
+    # Test case 8: default values when ltoir is None
+    dc = nvmath.fft.DeviceCallable()
+    assert dc.ltoir is None
+    assert dc.size is None
+    assert dc.data is None

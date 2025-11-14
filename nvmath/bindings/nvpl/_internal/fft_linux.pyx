@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.3.0. Do not modify it directly.
+# This code was automatically generated with version 0.4.2. Do not modify it directly.
 
 cimport cython
 from libc.stdint cimport intptr_t
 
 from ..._internal.utils import FunctionNotFoundError, NotSupportedError
 
+import threading
 
 ###############################################################################
 # Extern
@@ -33,6 +34,7 @@ cdef extern from "<dlfcn.h>" nogil:
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_nvpl_fft_init = False
 cdef str __current_so_name = ""
 cdef tuple __lib_so_names = ("libnvpl_fftw.so.0", "libmkl_rt.so.2",)
@@ -89,171 +91,173 @@ cdef int _check_or_init_nvpl_fft() except -1 nogil:
     if __py_nvpl_fft_init:
         return 0
 
-    # Load function
     cdef void* handle = NULL
-    global __nvpl_fft_get_version
-    __nvpl_fft_get_version = dlsym(RTLD_DEFAULT, 'nvpl_fft_get_version')
-    if __nvpl_fft_get_version == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvpl_fft_get_version = dlsym(handle, 'nvpl_fft_get_version')
 
-    global __fftw_plan_many_dft
-    __fftw_plan_many_dft = dlsym(RTLD_DEFAULT, 'fftw_plan_many_dft')
-    if __fftw_plan_many_dft == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_plan_many_dft = dlsym(handle, 'fftw_plan_many_dft')
+    with gil, __symbol_lock:
+        # Load function
+        global __nvpl_fft_get_version
+        __nvpl_fft_get_version = dlsym(RTLD_DEFAULT, 'nvpl_fft_get_version')
+        if __nvpl_fft_get_version == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvpl_fft_get_version = dlsym(handle, 'nvpl_fft_get_version')
 
-    global __fftw_plan_many_dft_r2c
-    __fftw_plan_many_dft_r2c = dlsym(RTLD_DEFAULT, 'fftw_plan_many_dft_r2c')
-    if __fftw_plan_many_dft_r2c == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_plan_many_dft_r2c = dlsym(handle, 'fftw_plan_many_dft_r2c')
+        global __fftw_plan_many_dft
+        __fftw_plan_many_dft = dlsym(RTLD_DEFAULT, 'fftw_plan_many_dft')
+        if __fftw_plan_many_dft == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_plan_many_dft = dlsym(handle, 'fftw_plan_many_dft')
 
-    global __fftw_plan_many_dft_c2r
-    __fftw_plan_many_dft_c2r = dlsym(RTLD_DEFAULT, 'fftw_plan_many_dft_c2r')
-    if __fftw_plan_many_dft_c2r == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_plan_many_dft_c2r = dlsym(handle, 'fftw_plan_many_dft_c2r')
+        global __fftw_plan_many_dft_r2c
+        __fftw_plan_many_dft_r2c = dlsym(RTLD_DEFAULT, 'fftw_plan_many_dft_r2c')
+        if __fftw_plan_many_dft_r2c == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_plan_many_dft_r2c = dlsym(handle, 'fftw_plan_many_dft_r2c')
 
-    global __fftw_execute_dft
-    __fftw_execute_dft = dlsym(RTLD_DEFAULT, 'fftw_execute_dft')
-    if __fftw_execute_dft == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_execute_dft = dlsym(handle, 'fftw_execute_dft')
+        global __fftw_plan_many_dft_c2r
+        __fftw_plan_many_dft_c2r = dlsym(RTLD_DEFAULT, 'fftw_plan_many_dft_c2r')
+        if __fftw_plan_many_dft_c2r == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_plan_many_dft_c2r = dlsym(handle, 'fftw_plan_many_dft_c2r')
 
-    global __fftw_execute_dft_r2c
-    __fftw_execute_dft_r2c = dlsym(RTLD_DEFAULT, 'fftw_execute_dft_r2c')
-    if __fftw_execute_dft_r2c == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_execute_dft_r2c = dlsym(handle, 'fftw_execute_dft_r2c')
+        global __fftw_execute_dft
+        __fftw_execute_dft = dlsym(RTLD_DEFAULT, 'fftw_execute_dft')
+        if __fftw_execute_dft == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_execute_dft = dlsym(handle, 'fftw_execute_dft')
 
-    global __fftw_execute_dft_c2r
-    __fftw_execute_dft_c2r = dlsym(RTLD_DEFAULT, 'fftw_execute_dft_c2r')
-    if __fftw_execute_dft_c2r == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_execute_dft_c2r = dlsym(handle, 'fftw_execute_dft_c2r')
+        global __fftw_execute_dft_r2c
+        __fftw_execute_dft_r2c = dlsym(RTLD_DEFAULT, 'fftw_execute_dft_r2c')
+        if __fftw_execute_dft_r2c == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_execute_dft_r2c = dlsym(handle, 'fftw_execute_dft_r2c')
 
-    global __fftwf_plan_many_dft
-    __fftwf_plan_many_dft = dlsym(RTLD_DEFAULT, 'fftwf_plan_many_dft')
-    if __fftwf_plan_many_dft == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_plan_many_dft = dlsym(handle, 'fftwf_plan_many_dft')
+        global __fftw_execute_dft_c2r
+        __fftw_execute_dft_c2r = dlsym(RTLD_DEFAULT, 'fftw_execute_dft_c2r')
+        if __fftw_execute_dft_c2r == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_execute_dft_c2r = dlsym(handle, 'fftw_execute_dft_c2r')
 
-    global __fftwf_plan_many_dft_r2c
-    __fftwf_plan_many_dft_r2c = dlsym(RTLD_DEFAULT, 'fftwf_plan_many_dft_r2c')
-    if __fftwf_plan_many_dft_r2c == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_plan_many_dft_r2c = dlsym(handle, 'fftwf_plan_many_dft_r2c')
+        global __fftwf_plan_many_dft
+        __fftwf_plan_many_dft = dlsym(RTLD_DEFAULT, 'fftwf_plan_many_dft')
+        if __fftwf_plan_many_dft == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_plan_many_dft = dlsym(handle, 'fftwf_plan_many_dft')
 
-    global __fftwf_plan_many_dft_c2r
-    __fftwf_plan_many_dft_c2r = dlsym(RTLD_DEFAULT, 'fftwf_plan_many_dft_c2r')
-    if __fftwf_plan_many_dft_c2r == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_plan_many_dft_c2r = dlsym(handle, 'fftwf_plan_many_dft_c2r')
+        global __fftwf_plan_many_dft_r2c
+        __fftwf_plan_many_dft_r2c = dlsym(RTLD_DEFAULT, 'fftwf_plan_many_dft_r2c')
+        if __fftwf_plan_many_dft_r2c == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_plan_many_dft_r2c = dlsym(handle, 'fftwf_plan_many_dft_r2c')
 
-    global __fftwf_execute_dft
-    __fftwf_execute_dft = dlsym(RTLD_DEFAULT, 'fftwf_execute_dft')
-    if __fftwf_execute_dft == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_execute_dft = dlsym(handle, 'fftwf_execute_dft')
+        global __fftwf_plan_many_dft_c2r
+        __fftwf_plan_many_dft_c2r = dlsym(RTLD_DEFAULT, 'fftwf_plan_many_dft_c2r')
+        if __fftwf_plan_many_dft_c2r == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_plan_many_dft_c2r = dlsym(handle, 'fftwf_plan_many_dft_c2r')
 
-    global __fftwf_execute_dft_r2c
-    __fftwf_execute_dft_r2c = dlsym(RTLD_DEFAULT, 'fftwf_execute_dft_r2c')
-    if __fftwf_execute_dft_r2c == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_execute_dft_r2c = dlsym(handle, 'fftwf_execute_dft_r2c')
+        global __fftwf_execute_dft
+        __fftwf_execute_dft = dlsym(RTLD_DEFAULT, 'fftwf_execute_dft')
+        if __fftwf_execute_dft == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_execute_dft = dlsym(handle, 'fftwf_execute_dft')
 
-    global __fftwf_execute_dft_c2r
-    __fftwf_execute_dft_c2r = dlsym(RTLD_DEFAULT, 'fftwf_execute_dft_c2r')
-    if __fftwf_execute_dft_c2r == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_execute_dft_c2r = dlsym(handle, 'fftwf_execute_dft_c2r')
+        global __fftwf_execute_dft_r2c
+        __fftwf_execute_dft_r2c = dlsym(RTLD_DEFAULT, 'fftwf_execute_dft_r2c')
+        if __fftwf_execute_dft_r2c == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_execute_dft_r2c = dlsym(handle, 'fftwf_execute_dft_r2c')
 
-    global __fftw_init_threads
-    __fftw_init_threads = dlsym(RTLD_DEFAULT, 'fftw_init_threads')
-    if __fftw_init_threads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_init_threads = dlsym(handle, 'fftw_init_threads')
+        global __fftwf_execute_dft_c2r
+        __fftwf_execute_dft_c2r = dlsym(RTLD_DEFAULT, 'fftwf_execute_dft_c2r')
+        if __fftwf_execute_dft_c2r == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_execute_dft_c2r = dlsym(handle, 'fftwf_execute_dft_c2r')
 
-    global __fftwf_init_threads
-    __fftwf_init_threads = dlsym(RTLD_DEFAULT, 'fftwf_init_threads')
-    if __fftwf_init_threads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_init_threads = dlsym(handle, 'fftwf_init_threads')
+        global __fftw_init_threads
+        __fftw_init_threads = dlsym(RTLD_DEFAULT, 'fftw_init_threads')
+        if __fftw_init_threads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_init_threads = dlsym(handle, 'fftw_init_threads')
 
-    global __fftw_plan_with_nthreads
-    __fftw_plan_with_nthreads = dlsym(RTLD_DEFAULT, 'fftw_plan_with_nthreads')
-    if __fftw_plan_with_nthreads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_plan_with_nthreads = dlsym(handle, 'fftw_plan_with_nthreads')
+        global __fftwf_init_threads
+        __fftwf_init_threads = dlsym(RTLD_DEFAULT, 'fftwf_init_threads')
+        if __fftwf_init_threads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_init_threads = dlsym(handle, 'fftwf_init_threads')
 
-    global __fftwf_plan_with_nthreads
-    __fftwf_plan_with_nthreads = dlsym(RTLD_DEFAULT, 'fftwf_plan_with_nthreads')
-    if __fftwf_plan_with_nthreads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_plan_with_nthreads = dlsym(handle, 'fftwf_plan_with_nthreads')
+        global __fftw_plan_with_nthreads
+        __fftw_plan_with_nthreads = dlsym(RTLD_DEFAULT, 'fftw_plan_with_nthreads')
+        if __fftw_plan_with_nthreads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_plan_with_nthreads = dlsym(handle, 'fftw_plan_with_nthreads')
 
-    global __fftw_planner_nthreads
-    __fftw_planner_nthreads = dlsym(RTLD_DEFAULT, 'fftw_planner_nthreads')
-    if __fftw_planner_nthreads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_planner_nthreads = dlsym(handle, 'fftw_planner_nthreads')
+        global __fftwf_plan_with_nthreads
+        __fftwf_plan_with_nthreads = dlsym(RTLD_DEFAULT, 'fftwf_plan_with_nthreads')
+        if __fftwf_plan_with_nthreads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_plan_with_nthreads = dlsym(handle, 'fftwf_plan_with_nthreads')
 
-    global __fftwf_planner_nthreads
-    __fftwf_planner_nthreads = dlsym(RTLD_DEFAULT, 'fftwf_planner_nthreads')
-    if __fftwf_planner_nthreads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_planner_nthreads = dlsym(handle, 'fftwf_planner_nthreads')
+        global __fftw_planner_nthreads
+        __fftw_planner_nthreads = dlsym(RTLD_DEFAULT, 'fftw_planner_nthreads')
+        if __fftw_planner_nthreads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_planner_nthreads = dlsym(handle, 'fftw_planner_nthreads')
 
-    global __fftw_cleanup_threads
-    __fftw_cleanup_threads = dlsym(RTLD_DEFAULT, 'fftw_cleanup_threads')
-    if __fftw_cleanup_threads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_cleanup_threads = dlsym(handle, 'fftw_cleanup_threads')
+        global __fftwf_planner_nthreads
+        __fftwf_planner_nthreads = dlsym(RTLD_DEFAULT, 'fftwf_planner_nthreads')
+        if __fftwf_planner_nthreads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_planner_nthreads = dlsym(handle, 'fftwf_planner_nthreads')
 
-    global __fftwf_cleanup_threads
-    __fftwf_cleanup_threads = dlsym(RTLD_DEFAULT, 'fftwf_cleanup_threads')
-    if __fftwf_cleanup_threads == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_cleanup_threads = dlsym(handle, 'fftwf_cleanup_threads')
+        global __fftw_cleanup_threads
+        __fftw_cleanup_threads = dlsym(RTLD_DEFAULT, 'fftw_cleanup_threads')
+        if __fftw_cleanup_threads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_cleanup_threads = dlsym(handle, 'fftw_cleanup_threads')
 
-    global __fftw_destroy_plan
-    __fftw_destroy_plan = dlsym(RTLD_DEFAULT, 'fftw_destroy_plan')
-    if __fftw_destroy_plan == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftw_destroy_plan = dlsym(handle, 'fftw_destroy_plan')
+        global __fftwf_cleanup_threads
+        __fftwf_cleanup_threads = dlsym(RTLD_DEFAULT, 'fftwf_cleanup_threads')
+        if __fftwf_cleanup_threads == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_cleanup_threads = dlsym(handle, 'fftwf_cleanup_threads')
 
-    global __fftwf_destroy_plan
-    __fftwf_destroy_plan = dlsym(RTLD_DEFAULT, 'fftwf_destroy_plan')
-    if __fftwf_destroy_plan == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __fftwf_destroy_plan = dlsym(handle, 'fftwf_destroy_plan')
+        global __fftw_destroy_plan
+        __fftw_destroy_plan = dlsym(RTLD_DEFAULT, 'fftw_destroy_plan')
+        if __fftw_destroy_plan == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftw_destroy_plan = dlsym(handle, 'fftw_destroy_plan')
 
-    __py_nvpl_fft_init = True
-    return 0
+        global __fftwf_destroy_plan
+        __fftwf_destroy_plan = dlsym(RTLD_DEFAULT, 'fftwf_destroy_plan')
+        if __fftwf_destroy_plan == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __fftwf_destroy_plan = dlsym(handle, 'fftwf_destroy_plan')
+
+        __py_nvpl_fft_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

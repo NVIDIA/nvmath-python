@@ -15,13 +15,14 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Slab
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (512, 256, 256).
 # In this example, the input data is distributed across processes according to
@@ -39,7 +40,7 @@ with cp.cuda.Device(device_id):
     s1 = cp.cuda.Stream()
 
 # Create a stateful FFT object 'f' on stream s1.
-with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"blocking": "auto"}, stream=s1) as f:
+with nvmath.distributed.fft.FFT(a, distribution=Slab.X, options={"blocking": "auto"}, stream=s1) as f:
     # Plan the FFT on stream s1.
     f.plan(stream=s1)
 
@@ -53,7 +54,7 @@ with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, o
 
     # We're using the output of the previous forward transform as input for the
     # inverse transform.
-    f.reset_operand(b, distribution=nvmath.distributed.fft.Slab.X)
+    f.reset_operand(b, distribution=Slab.X)
 
     # Execute the inverse FFT on stream s1.
     # Since cuFFTMp issued a symmetric memory synchronization on stream s1 after
@@ -80,7 +81,7 @@ with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, o
         s2.wait_event(e1)
 
     # Set a new operand d on stream s2.
-    f.reset_operand(d, distribution=nvmath.distributed.fft.Slab.X, stream=s2)
+    f.reset_operand(d, distribution=Slab.X, stream=s2)
 
     # Execute the new FFT on stream s2.
     # Operand d was filled on stream s1, and the GPUs have not synchronized on these

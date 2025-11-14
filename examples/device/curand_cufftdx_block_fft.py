@@ -10,7 +10,7 @@ an FFT.
 
 import numpy as np
 from numba import cuda
-from nvmath.device import fft, random, float32x2
+from nvmath.device import FFT, random, float32x2
 
 # Compile the random device APIs for the current device.
 compiled_random_apis = random.Compile(cc=None)
@@ -19,16 +19,7 @@ compiled_random_apis = random.Compile(cc=None)
 def main():
     size = 64
 
-    FFT = fft(fft_type="c2c", size=size, precision=np.float32, direction="forward", execution="Block", compiler="numba")
-
-    size = FFT.size
-    value_type = FFT.value_type
-    storage_size = FFT.storage_size
-    shared_memory_size = FFT.shared_memory_size
-    stride = FFT.stride
-    block_dim = FFT.block_dim
-    ffts_per_block = FFT.ffts_per_block
-    elements_per_thread = FFT.elements_per_thread
+    fft = FFT(fft_type="c2c", size=size, precision=np.float32, direction="forward", execution="Block")
 
     # Kernel for initializing the RNG state.
     @cuda.jit(link=compiled_random_apis.files, extensions=compiled_random_apis.extension)
@@ -37,39 +28,39 @@ def main():
         random.init(1234, index_in_block, 0, states[index_in_block])
 
     # Kernel with threads generating local data and performing an FFT.
-    @cuda.jit(link=FFT.files + compiled_random_apis.files, extensions=compiled_random_apis.extension)
+    @cuda.jit(link=compiled_random_apis.files, extensions=compiled_random_apis.extension)
     def f(data, result, states):
-        thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft.storage_size,), dtype=fft.value_type)
 
         local_fft_id = cuda.threadIdx.y
-        fft_id = cuda.blockIdx.x * ffts_per_block + local_fft_id
+        fft_id = cuda.blockIdx.x * fft.ffts_per_block + local_fft_id
 
         index = cuda.threadIdx.x
         index_in_block = cuda.threadIdx.x + cuda.blockDim.x * cuda.threadIdx.y
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             v1 = random.normal(states[index_in_block])
             v2 = random.normal(states[index_in_block])
             data[fft_id, index] = thread_data[i] = float32x2(v1, v2)
-            index += stride
+            index += fft.stride
 
-        shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
-        FFT(thread_data, shared_mem)
+        shared_mem = cuda.shared.array(shape=(0,), dtype=fft.value_type)
+        fft.execute(thread_data, shared_mem)
 
         index = cuda.threadIdx.x
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             result[fft_id, index] = thread_data[i]
-            index += stride
+            index += fft.stride
 
     # Create host and device buffers to hold the input data and result, respectively.
-    data = np.empty((ffts_per_block, size), dtype=np.complex64)
+    data = np.empty((fft.ffts_per_block, fft.size), dtype=np.complex64)
     data_d = cuda.to_device(data)
-    result = np.empty((ffts_per_block, size), dtype=np.complex64)
+    result = np.empty((fft.ffts_per_block, fft.size), dtype=np.complex64)
     result_d = cuda.to_device(result)
 
-    states = random.StatesXORWOW(block_dim.x * block_dim.y)
-    setup_random[1, block_dim](states)
+    states = random.StatesXORWOW(fft.block_dim.x * fft.block_dim.y)
+    setup_random[1, fft.block_dim](states)
 
-    f[1, block_dim, 0, shared_memory_size](data_d, result_d, states)
+    f[1, fft.block_dim, 0, fft.shared_memory_size](data_d, result_d, states)
     cuda.synchronize()
 
     data = data_d.copy_to_host()

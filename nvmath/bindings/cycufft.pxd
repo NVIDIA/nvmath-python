@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.1. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 ###############################################################################
@@ -25,14 +25,18 @@ ctypedef enum cufftResult "cufftResult":
     CUFFT_SETUP_FAILED "CUFFT_SETUP_FAILED" = 0x7
     CUFFT_INVALID_SIZE "CUFFT_INVALID_SIZE" = 0x8
     CUFFT_UNALIGNED_DATA "CUFFT_UNALIGNED_DATA" = 0x9
-    CUFFT_INCOMPLETE_PARAMETER_LIST "CUFFT_INCOMPLETE_PARAMETER_LIST" = 0xA
     CUFFT_INVALID_DEVICE "CUFFT_INVALID_DEVICE" = 0xB
-    CUFFT_PARSE_ERROR "CUFFT_PARSE_ERROR" = 0xC
     CUFFT_NO_WORKSPACE "CUFFT_NO_WORKSPACE" = 0xD
     CUFFT_NOT_IMPLEMENTED "CUFFT_NOT_IMPLEMENTED" = 0xE
-    CUFFT_LICENSE_ERROR "CUFFT_LICENSE_ERROR" = 0x0F
     CUFFT_NOT_SUPPORTED "CUFFT_NOT_SUPPORTED" = 0x10
+    CUFFT_MISSING_DEPENDENCY "CUFFT_MISSING_DEPENDENCY" = 0x11
+    CUFFT_NVRTC_FAILURE "CUFFT_NVRTC_FAILURE" = 0x12
+    CUFFT_NVJITLINK_FAILURE "CUFFT_NVJITLINK_FAILURE" = 0x13
+    CUFFT_NVSHMEM_FAILURE "CUFFT_NVSHMEM_FAILURE" = 0x14
     _CUFFTRESULT_INTERNAL_LOADING_ERROR "_CUFFTRESULT_INTERNAL_LOADING_ERROR" = -42
+    CUFFT_INCOMPLETE_PARAMETER_LIST "CUFFT_INCOMPLETE_PARAMETER_LIST" = 0xA
+    CUFFT_PARSE_ERROR "CUFFT_PARSE_ERROR" = 0xC
+    CUFFT_LICENSE_ERROR "CUFFT_LICENSE_ERROR" = 0x0F
 
 ctypedef enum cufftType "cufftType":
     CUFFT_R2C "CUFFT_R2C" = 0x2a
@@ -313,8 +317,9 @@ cdef cufftResult cufftXtGetSizeMany(cufftHandle plan, int rank, long long int* n
 cdef cufftResult cufftXtExec(cufftHandle plan, void* input, void* output, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
 cdef cufftResult cufftXtExecDescriptor(cufftHandle plan, cudaLibXtDesc* input, cudaLibXtDesc* output, int direction) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
 cdef cufftResult cufftXtSetWorkAreaPolicy(cufftHandle plan, cufftXtWorkAreaPolicy policy, size_t* workSize) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
-cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const char* lto_callback_symbol_name, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
 cdef cufftResult cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat subformat_forward, cufftXtSubFormat subformat_inverse) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
 cdef cufftResult cufftSetPlanPropertyInt64(cufftHandle plan, cufftProperty property, const long long int inputValueInt) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
 cdef cufftResult cufftGetPlanPropertyInt64(cufftHandle plan, cufftProperty property, long long int* returnPtrValue) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
 cdef cufftResult cufftResetPlanProperty(cufftHandle plan, cufftProperty property) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil
+cdef cufftResult __cufftXtSetJITCallback_12_7(cufftHandle plan, const char* lto_callback_symbol_name, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil

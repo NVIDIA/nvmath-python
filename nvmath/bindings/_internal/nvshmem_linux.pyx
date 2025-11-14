@@ -7,9 +7,12 @@
 cimport cython
 from libc.stdint cimport intptr_t, uintptr_t
 
+import threading
+
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -29,11 +32,30 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_nvshmem_init = False
 
 cdef void* __nvshmemx_init_status = NULL
@@ -64,122 +86,123 @@ cdef int _check_or_init_nvshmem() except -1 nogil:
     if __py_nvshmem_init:
         return 0
 
-    # Load function
     cdef void* handle = NULL
-    global __nvshmemx_init_status
-    __nvshmemx_init_status = dlsym(RTLD_DEFAULT, 'nvshmemx_init_status')
-    if __nvshmemx_init_status == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmemx_init_status = dlsym(handle, 'nvshmemx_init_status')
 
-    global __nvshmem_my_pe
-    __nvshmem_my_pe = dlsym(RTLD_DEFAULT, 'nvshmem_my_pe')
-    if __nvshmem_my_pe == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_my_pe = dlsym(handle, 'nvshmem_my_pe')
+    with gil, __symbol_lock:
+        # Load function
+        global __nvshmemx_init_status
+        __nvshmemx_init_status = dlsym(RTLD_DEFAULT, 'nvshmemx_init_status')
+        if __nvshmemx_init_status == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmemx_init_status = dlsym(handle, 'nvshmemx_init_status')
 
-    global __nvshmem_n_pes
-    __nvshmem_n_pes = dlsym(RTLD_DEFAULT, 'nvshmem_n_pes')
-    if __nvshmem_n_pes == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_n_pes = dlsym(handle, 'nvshmem_n_pes')
+        global __nvshmem_my_pe
+        __nvshmem_my_pe = dlsym(RTLD_DEFAULT, 'nvshmem_my_pe')
+        if __nvshmem_my_pe == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_my_pe = dlsym(handle, 'nvshmem_my_pe')
 
-    global __nvshmem_malloc
-    __nvshmem_malloc = dlsym(RTLD_DEFAULT, 'nvshmem_malloc')
-    if __nvshmem_malloc == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_malloc = dlsym(handle, 'nvshmem_malloc')
+        global __nvshmem_n_pes
+        __nvshmem_n_pes = dlsym(RTLD_DEFAULT, 'nvshmem_n_pes')
+        if __nvshmem_n_pes == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_n_pes = dlsym(handle, 'nvshmem_n_pes')
 
-    global __nvshmem_calloc
-    __nvshmem_calloc = dlsym(RTLD_DEFAULT, 'nvshmem_calloc')
-    if __nvshmem_calloc == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_calloc = dlsym(handle, 'nvshmem_calloc')
+        global __nvshmem_malloc
+        __nvshmem_malloc = dlsym(RTLD_DEFAULT, 'nvshmem_malloc')
+        if __nvshmem_malloc == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_malloc = dlsym(handle, 'nvshmem_malloc')
 
-    global __nvshmem_align
-    __nvshmem_align = dlsym(RTLD_DEFAULT, 'nvshmem_align')
-    if __nvshmem_align == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_align = dlsym(handle, 'nvshmem_align')
+        global __nvshmem_calloc
+        __nvshmem_calloc = dlsym(RTLD_DEFAULT, 'nvshmem_calloc')
+        if __nvshmem_calloc == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_calloc = dlsym(handle, 'nvshmem_calloc')
 
-    global __nvshmem_free
-    __nvshmem_free = dlsym(RTLD_DEFAULT, 'nvshmem_free')
-    if __nvshmem_free == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_free = dlsym(handle, 'nvshmem_free')
+        global __nvshmem_align
+        __nvshmem_align = dlsym(RTLD_DEFAULT, 'nvshmem_align')
+        if __nvshmem_align == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_align = dlsym(handle, 'nvshmem_align')
 
-    global __nvshmem_ptr
-    __nvshmem_ptr = dlsym(RTLD_DEFAULT, 'nvshmem_ptr')
-    if __nvshmem_ptr == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_ptr = dlsym(handle, 'nvshmem_ptr')
+        global __nvshmem_free
+        __nvshmem_free = dlsym(RTLD_DEFAULT, 'nvshmem_free')
+        if __nvshmem_free == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_free = dlsym(handle, 'nvshmem_free')
 
-    global __nvshmem_int_p
-    __nvshmem_int_p = dlsym(RTLD_DEFAULT, 'nvshmem_int_p')
-    if __nvshmem_int_p == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_int_p = dlsym(handle, 'nvshmem_int_p')
+        global __nvshmem_ptr
+        __nvshmem_ptr = dlsym(RTLD_DEFAULT, 'nvshmem_ptr')
+        if __nvshmem_ptr == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_ptr = dlsym(handle, 'nvshmem_ptr')
 
-    global __nvshmem_team_my_pe
-    __nvshmem_team_my_pe = dlsym(RTLD_DEFAULT, 'nvshmem_team_my_pe')
-    if __nvshmem_team_my_pe == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmem_team_my_pe = dlsym(handle, 'nvshmem_team_my_pe')
+        global __nvshmem_int_p
+        __nvshmem_int_p = dlsym(RTLD_DEFAULT, 'nvshmem_int_p')
+        if __nvshmem_int_p == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_int_p = dlsym(handle, 'nvshmem_int_p')
 
-    global __nvshmemx_barrier_all_on_stream
-    __nvshmemx_barrier_all_on_stream = dlsym(RTLD_DEFAULT, 'nvshmemx_barrier_all_on_stream')
-    if __nvshmemx_barrier_all_on_stream == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmemx_barrier_all_on_stream = dlsym(handle, 'nvshmemx_barrier_all_on_stream')
+        global __nvshmem_team_my_pe
+        __nvshmem_team_my_pe = dlsym(RTLD_DEFAULT, 'nvshmem_team_my_pe')
+        if __nvshmem_team_my_pe == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmem_team_my_pe = dlsym(handle, 'nvshmem_team_my_pe')
 
-    global __nvshmemx_sync_all_on_stream
-    __nvshmemx_sync_all_on_stream = dlsym(RTLD_DEFAULT, 'nvshmemx_sync_all_on_stream')
-    if __nvshmemx_sync_all_on_stream == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmemx_sync_all_on_stream = dlsym(handle, 'nvshmemx_sync_all_on_stream')
+        global __nvshmemx_barrier_all_on_stream
+        __nvshmemx_barrier_all_on_stream = dlsym(RTLD_DEFAULT, 'nvshmemx_barrier_all_on_stream')
+        if __nvshmemx_barrier_all_on_stream == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmemx_barrier_all_on_stream = dlsym(handle, 'nvshmemx_barrier_all_on_stream')
 
-    global __nvshmemx_hostlib_init_attr
-    __nvshmemx_hostlib_init_attr = dlsym(RTLD_DEFAULT, 'nvshmemx_hostlib_init_attr')
-    if __nvshmemx_hostlib_init_attr == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmemx_hostlib_init_attr = dlsym(handle, 'nvshmemx_hostlib_init_attr')
+        global __nvshmemx_sync_all_on_stream
+        __nvshmemx_sync_all_on_stream = dlsym(RTLD_DEFAULT, 'nvshmemx_sync_all_on_stream')
+        if __nvshmemx_sync_all_on_stream == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmemx_sync_all_on_stream = dlsym(handle, 'nvshmemx_sync_all_on_stream')
 
-    global __nvshmemx_hostlib_finalize
-    __nvshmemx_hostlib_finalize = dlsym(RTLD_DEFAULT, 'nvshmemx_hostlib_finalize')
-    if __nvshmemx_hostlib_finalize == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmemx_hostlib_finalize = dlsym(handle, 'nvshmemx_hostlib_finalize')
+        global __nvshmemx_hostlib_init_attr
+        __nvshmemx_hostlib_init_attr = dlsym(RTLD_DEFAULT, 'nvshmemx_hostlib_init_attr')
+        if __nvshmemx_hostlib_init_attr == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmemx_hostlib_init_attr = dlsym(handle, 'nvshmemx_hostlib_init_attr')
 
-    global __nvshmemx_set_attr_uniqueid_args
-    __nvshmemx_set_attr_uniqueid_args = dlsym(RTLD_DEFAULT, 'nvshmemx_set_attr_uniqueid_args')
-    if __nvshmemx_set_attr_uniqueid_args == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmemx_set_attr_uniqueid_args = dlsym(handle, 'nvshmemx_set_attr_uniqueid_args')
+        global __nvshmemx_hostlib_finalize
+        __nvshmemx_hostlib_finalize = dlsym(RTLD_DEFAULT, 'nvshmemx_hostlib_finalize')
+        if __nvshmemx_hostlib_finalize == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmemx_hostlib_finalize = dlsym(handle, 'nvshmemx_hostlib_finalize')
 
-    global __nvshmemx_get_uniqueid
-    __nvshmemx_get_uniqueid = dlsym(RTLD_DEFAULT, 'nvshmemx_get_uniqueid')
-    if __nvshmemx_get_uniqueid == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __nvshmemx_get_uniqueid = dlsym(handle, 'nvshmemx_get_uniqueid')
+        global __nvshmemx_set_attr_uniqueid_args
+        __nvshmemx_set_attr_uniqueid_args = dlsym(RTLD_DEFAULT, 'nvshmemx_set_attr_uniqueid_args')
+        if __nvshmemx_set_attr_uniqueid_args == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmemx_set_attr_uniqueid_args = dlsym(handle, 'nvshmemx_set_attr_uniqueid_args')
 
-    __py_nvshmem_init = True
-    return 0
+        global __nvshmemx_get_uniqueid
+        __nvshmemx_get_uniqueid = dlsym(RTLD_DEFAULT, 'nvshmemx_get_uniqueid')
+        if __nvshmemx_get_uniqueid == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __nvshmemx_get_uniqueid = dlsym(handle, 'nvshmemx_get_uniqueid')
+        __py_nvshmem_init = True
+        return 0
 
 
 cdef dict func_ptrs = None
