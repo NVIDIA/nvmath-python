@@ -15,13 +15,14 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Slab
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (512, 512, 512).
 # In this example, the input data is distributed across processes according to
@@ -35,7 +36,7 @@ with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dtype=cp.float32)
 
 # Create a stateful FFT object 'f'.
-with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False}) as f:
+with nvmath.distributed.fft.FFT(a, distribution=Slab.X, options={"reshape": False}) as f:
     # Plan the FFT.
     f.plan()
 
@@ -50,7 +51,7 @@ with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, o
     # Reset the operand to the values in the frequency domain.
     # Note that because the FFT object is configured with reshape=False, the
     # distribution of operand b is Slab.Y
-    f.reset_operand(b, distribution=nvmath.distributed.fft.Slab.Y)
+    f.reset_operand(b, distribution=Slab.Y)
 
     # Execute the new inverse FFT.
     # After cuFFTMp performs a transform, it issues a symmetric memory synchronization

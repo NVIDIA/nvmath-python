@@ -89,6 +89,10 @@ class OpaqueTensorType(types.Type):
     def dtype(self):
         return self.buffer_type.dtype
 
+    @cached_property
+    def _capi_type(self):
+        return OpaqueTensorCType(self)
+
 
 @register_model(OpaqueTensorType)
 class OpaqueTensorModel(models.StructModel):
@@ -102,6 +106,23 @@ class OpaqueTensorModel(models.StructModel):
 
 make_attribute_wrapper(OpaqueTensorType, "buffer", "buffer")
 make_attribute_wrapper(OpaqueTensorType, "layout", "layout")
+
+
+class OpaqueTensorCType(types.Type):
+    def __init__(self, tensor: OpaqueTensorType):
+        super().__init__(f"OpaqueTensorC(tensor={tensor})")
+        self._tensor = tensor
+
+
+@register_model(OpaqueTensorCType)
+class OpaqueTensorCModel(models.StructModel):
+    def __init__(self, dmm, fe_type: OpaqueTensorCType):
+        members = [
+            ("ptr", types.voidptr),
+        ]
+        if fe_type._tensor.layout.dynamic_ld:
+            members += [("ld", types.int64)]
+        models.StructModel.__init__(self, dmm, fe_type, members)
 
 
 @type_callable(OpaqueTensor)
@@ -126,3 +147,47 @@ def impl_interval(context: BaseContext, builder: IRBuilder, sig, args):
     opaque_tensor.layout = layout
 
     return opaque_tensor._getvalue()
+
+
+class PartitionerType(types.Type):
+    """
+    Type class associated with partitioners.
+    """
+
+
+class PartitionType(types.Type):
+    """
+    Type class associated with partitions.
+    """
+
+    def __init__(self, partitioner: PartitionerType, tensor: OpaqueTensorType):
+        assert isinstance(partitioner, PartitionerType)
+        assert isinstance(tensor, OpaqueTensorType)
+
+        super().__init__(f"PartitionType(partitioner={partitioner}, tensor={tensor})")
+        self._partitioner = partitioner
+        self._tensor = tensor
+
+    @property
+    def tensor(self) -> OpaqueTensorType:
+        return self._tensor
+
+    @property
+    def partitioner(self) -> PartitionerType:
+        return self._partitioner
+
+
+@register_model(PartitionerType)
+class PartitionerModel(models.StructModel):
+    def __init__(self, dmm, fe_type: PartitionerType):
+        models.StructModel.__init__(self, dmm, fe_type, [])
+
+
+@register_model(PartitionType)
+class PartitionModel(models.StructModel):
+    def __init__(self, dmm, fe_type: PartitionType):
+        members = [
+            ("partitioner", fe_type.partitioner),
+            ("tensor", fe_type.tensor),
+        ]
+        models.StructModel.__init__(self, dmm, fe_type, members)

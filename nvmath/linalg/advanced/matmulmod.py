@@ -507,7 +507,8 @@ using :class:`MatmulEpilog.RELU_AUX`. """.replace("\n", " "),
         "qualifiers": """\
 If desired, specify the matrix qualifiers as a :class:`numpy.ndarray` of
 :class:`~nvmath.linalg.advanced.matrix_qualifiers_dtype` objects of length 3 corresponding to the operands `a`, `b`, and
-`c`.""".replace("\n", " "),
+`c`. See :ref:`matrix-tensor-qualifiers` for the motivation behind
+qualifiers.""".replace("\n", " "),
         #
         "options": """\
 Specify options for the matrix multiplication as a :class:`~nvmath.linalg.advanced.MatmulOptions` object. Alternatively,
@@ -521,7 +522,7 @@ specified, the value will be set to the default-constructed :class:`MatmulPlanPr
 """.replace("\n", " "),
         #
         "result": """\
-The result of the specified matrix multiplication (epilog applied), which remains on the same device and belong to the
+The result of the specified matrix multiplication (epilog applied), which remains on the same device and belongs to the
 same package as the input operands. If an epilog (like :attr:`nvmath.linalg.advanced.MatmulEpilog.RELU_AUX`) that
 results in extra output is used, or an extra output is requested (for example by setting
 :attr:`~nvmath.linalg.advanced.MatmulOptions.result_amax` option in ``options`` argument),
@@ -661,7 +662,7 @@ class Matmul:
     Narrow-precision support:
         {narrow_precision}
 
-    See Also:
+    .. seealso::
         :meth:`autotune`, :meth:`plan`, :meth:`reset_operands`, :meth:`execute`
 
     Examples:
@@ -700,7 +701,7 @@ class Matmul:
 
         >>> r1 = mm.execute()
 
-        Finally, free the object's resources. To avoid having to explicitly making this
+        Finally, free the object's resources. To avoid having to explicitly make this
         call, it's recommended to use the Matmul object as a context manager as shown below,
         if possible.
 
@@ -711,8 +712,6 @@ class Matmul:
         stream.
 
         Let's now look at the same problem with CuPy ndarrays on the GPU.
-
-        Create a 3-D complex128 CuPy ndarray on the GPU:
 
         >>> import cupy as cp
         >>> a = cp.random.rand(M, K)
@@ -838,17 +837,14 @@ class Matmul:
                 "The qualifiers must be specified as a NumPy array of length 3 corresponding to the operands A, B, and "
                 "C of type 'matrix_qualifiers_dtype'."
             )
+        # Set qualifiers based on torch lazy conjugation flag if not provided.
+        self.qualifiers[0]["is_conjugate"] = self.qualifiers[0]["is_conjugate"] ^ self.operands[0].is_conjugate
+        self.qualifiers[1]["is_conjugate"] = self.qualifiers[1]["is_conjugate"] ^ self.operands[1].is_conjugate
+        self.lazy_conjugation = (self.operands[0].is_conjugate, self.operands[1].is_conjugate, False)
+        if self.num_operands == 3:
+            self.qualifiers[2]["is_conjugate"] = self.qualifiers[2]["is_conjugate"] ^ self.operands[2].is_conjugate
         if self.qualifiers[2]["is_conjugate"]:
             raise ValueError("The conjugate flag is currently not supported for operand C.")
-        # Set qualifiers based on torch lazy conjugation flag if not provided.
-        if self.package == "torch" and qualifiers is None:
-            self.qualifiers[0]["is_conjugate"] = self.operands[0].tensor.is_conj()
-            self.qualifiers[1]["is_conjugate"] = self.operands[1].tensor.is_conj()
-            if len(self.operands) > 2 and self.operands[2].tensor.is_conj():
-                raise ValueError("The conjugate flag is currently not supported for operand C.")
-            self.lazy_conjugation = True
-        else:
-            self.lazy_conjugation = False
 
         # Set blocking or non-blocking behavior.
         self.blocking = self.options.blocking is True or self.memory_space == "cpu"
@@ -1968,6 +1964,7 @@ class Matmul:
         updating, and update it.
         """
         assert (operand_index is None) ^ (epilog_name is None), "Internal Error."
+        assert self.operands is not None, "Internal Error."
 
         # Make sure that the data type and extents match.
         utils.check_attribute_match(dtype, operand.dtype, "data type")
@@ -1976,12 +1973,7 @@ class Matmul:
         package = utils.infer_object_package(operand.tensor)
 
         # Conjugate flag of the provided operands must match the original qualifiers
-        if (
-            operand_index is not None
-            and package == "torch"
-            and self.lazy_conjugation
-            and self.qualifiers[operand_index]["is_conjugate"] != operand.tensor.is_conj()
-        ):
+        if operand_index is not None and self.lazy_conjugation[operand_index] != operand.is_conjugate:
             raise ValueError(f"The provided operand {operand_name} has different conjugate flag than the original operand")
 
         device_id = operand.device_id
@@ -2764,7 +2756,7 @@ def matmul(
     Narrow-precision support:
         {narrow_precision}
 
-    See Also:
+    .. seealso::
         :class:`Matmul`, :class:`MatmulOptions`, :class:`MatmulEpilog`,
         :class:`MatmulPlanPreferences`
 
@@ -2781,7 +2773,7 @@ def matmul(
         >>> c = cp.random.rand(M, N, dtype=cp.float32)
 
         Perform the operation :math:`\\alpha A @ B + \\beta C` using :func:`matmul`. The
-        result `r` is also a CuPy float64 ndarray:
+        result `r` is also a CuPy float32 ndarray:
 
         >>> r = nvmath.linalg.advanced.matmul(a, b, c, alpha=1.23, beta=0.74)
 

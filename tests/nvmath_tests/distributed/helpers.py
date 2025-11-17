@@ -11,23 +11,24 @@ from nvmath.internal.utils import device_ctx
 from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand, _TENSOR_TYPES as _DIST_TENSOR_TYPES
 from nvmath.distributed._internal.tensor_ifc import DistributedTensor
 from nvmath.internal.tensor_ifc_ndbuffer import NDBufferTensor
+from nvmath.internal.typemaps import NAME_TO_DATA_WIDTH
 
 
-def to_gpu(data_cpu, device_id, stream):
+def to_gpu(data_cpu, device_id, stream, symmetric_memory):
     """
     Move host tensor to GPU. For numpy tensor, we explicitly
     use cupy as a counterpart.
     """
     match data_cpu.name:
         case "numpy":
-            return numpy2cupy(data_cpu, device_id, stream)
+            return numpy2cupy(data_cpu, device_id, stream, symmetric_memory)
         case "torch":
-            return data_cpu.to(device_id, stream, symmetric_memory=True)
+            return data_cpu.to(device_id, stream, symmetric_memory=symmetric_memory)
         case _:
             raise AssertionError(f"Unsupported tensor type: {data_cpu.name}")
 
 
-def numpy2cupy(data_cpu, device_id, stream):
+def numpy2cupy(data_cpu, device_id, stream, symmetric_memory):
     """
     Convert numpy tensor to cupy tensor. While we use cupy wrapper
     to allocate the nvshmem-based tensor, we use cupy to copy the
@@ -44,8 +45,8 @@ def numpy2cupy(data_cpu, device_id, stream):
             dtype=data_cpu.dtype,
             device_id=device_id,
             strides=data_cpu.strides,
-            make_symmetric=True,
-            symmetric_memory=True,
+            make_symmetric=symmetric_memory,
+            symmetric_memory=symmetric_memory,
             stream_holder=stream,
         )
         with stream.ctx:
@@ -125,10 +126,17 @@ def calculate_strides(shape, axis_order):
     return strides
 
 
-def generate_random_data(package, memory_space, shape, dtype, stream, memory_layout="C"):
+def generate_random_data(package, memory_space, shape, dtype, stream, memory_layout="C", symmetric_memory=True):
     """Generate random data of the given shape and dtype.
     Returns instance of data on CPU, and a copy on the specified memory_space ("cpu", "gpu")
     wrapped around distributed TensorHolder.
+
+    Args:
+        package: numpy or torch. For numpy package with memory_space="gpu", uses cupy.
+
+        memory_space: "cpu" or "gpu"
+
+        dtype: numpy dtype
     """
     if np.issubdtype(dtype, np.complexfloating):
         data_cpu = (np.random.rand(*shape) + 1j * np.random.rand(*shape)).astype(dtype)
@@ -147,8 +155,9 @@ def generate_random_data(package, memory_space, shape, dtype, stream, memory_lay
     assert isinstance(data_cpu, DistributedTensor)
     if memory_space == "gpu":
         device_id = nvmath.distributed.get_context().device_id
-        data_gpu = to_gpu(data_cpu, device_id, stream)
+        data_gpu = to_gpu(data_cpu, device_id, stream, symmetric_memory)
         assert isinstance(data_gpu, DistributedTensor)
+        assert data_gpu.is_symmetric_memory == symmetric_memory
         return data_cpu, data_gpu
     else:
         data_cpu_copy = data_cpu.__class__.empty(shape, dtype=data_cpu.dtype, strides=data_cpu.strides)
@@ -179,6 +188,10 @@ def is_close(a, b, rtol=1e-07, atol=0, allow_ndbuffer=False):
             import cupy as cp
 
             module = cp
+    if NAME_TO_DATA_WIDTH[a.dtype] == 8 and "float" in a.dtype:
+        a_tensor = a_tensor.to(module.float32)
+    if NAME_TO_DATA_WIDTH[b.dtype] == 8 and "float" in a.dtype:
+        b_tensor = b_tensor.to(module.float32)
     if device_id != "cpu":
         with device_ctx(device_id):
             return module.allclose(a_tensor, b_tensor, rtol=rtol, atol=atol)
@@ -192,6 +205,7 @@ def gather_array(arr, partition_dim, comm, rank):
 
     assert isinstance(arr, DistributedTensor)
     assert arr.device == "cpu"
+    dtype_name = arr.dtype
     package = arr.module
     assert package.__name__ in ("numpy", "torch"), f"package: {package}"
 
@@ -235,11 +249,20 @@ def gather_array(arr, partition_dim, comm, rank):
     recv_counts = comm.gather(math.prod(arr.shape))
     if rank == 0:
         global_arr = package.empty(global_shape, dtype=arr.dtype)
-        comm.Gatherv(sendbuf=arr, recvbuf=(global_arr, recv_counts), root=0)
+
+        sendbuf = arr
+        recvbuf = (global_arr, recv_counts)
+        if NAME_TO_DATA_WIDTH[dtype_name] <= 16:
+            # WAR for MPI not having narrow-precision types.
+            sendbuf = arr.view(dtype=package.int8)
+            recv_counts = [x * (NAME_TO_DATA_WIDTH[dtype_name] // 8) for x in recv_counts]
+            recvbuf = (global_arr.view(dtype=package.int8), recv_counts)
+
+        comm.Gatherv(sendbuf=sendbuf, recvbuf=recvbuf, root=0)
         if transposed:
             # Undo the transpose.
             global_arr = transpose(global_arr, 1, 0, make_contiguous=True)
         # Note that this is not a distributed tensor any longer.
         return wrap_operand(global_arr)
     else:
-        comm.Gatherv(arr, None)
+        comm.Gatherv(arr if NAME_TO_DATA_WIDTH[dtype_name] > 16 else arr.view(dtype=package.int8), None)

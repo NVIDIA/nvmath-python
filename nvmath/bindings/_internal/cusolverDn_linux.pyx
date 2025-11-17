@@ -6,9 +6,12 @@
 
 from libc.stdint cimport intptr_t, uintptr_t
 
+import threading
+
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -28,13 +31,31 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cusolverDn_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cusolverDnCreate = NULL
 cdef void* __cusolverDnDestroy = NULL
@@ -421,2641 +442,2625 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
     if __py_cusolverDn_init:
         return 0
 
-    # Load driver to check version
     cdef void* handle = NULL
-    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
-    global __cuDriverGetVersion
-    if __cuDriverGetVersion == NULL:
-        __cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
-    if __cuDriverGetVersion == NULL:
-        with gil:
-            raise RuntimeError('something went wrong')
-    cdef int err, driver_ver
-    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-    if err != 0:
-        with gil:
-            raise RuntimeError('something went wrong')
-    #dlclose(handle)
-    handle = NULL
-
-    # Load function
-    global __cusolverDnCreate
-    __cusolverDnCreate = dlsym(RTLD_DEFAULT, 'cusolverDnCreate')
-    if __cusolverDnCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCreate = dlsym(handle, 'cusolverDnCreate')
-
-    global __cusolverDnDestroy
-    __cusolverDnDestroy = dlsym(RTLD_DEFAULT, 'cusolverDnDestroy')
-    if __cusolverDnDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDestroy = dlsym(handle, 'cusolverDnDestroy')
-
-    global __cusolverDnSetStream
-    __cusolverDnSetStream = dlsym(RTLD_DEFAULT, 'cusolverDnSetStream')
-    if __cusolverDnSetStream == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSetStream = dlsym(handle, 'cusolverDnSetStream')
-
-    global __cusolverDnGetStream
-    __cusolverDnGetStream = dlsym(RTLD_DEFAULT, 'cusolverDnGetStream')
-    if __cusolverDnGetStream == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnGetStream = dlsym(handle, 'cusolverDnGetStream')
-
-    global __cusolverDnIRSParamsCreate
-    __cusolverDnIRSParamsCreate = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsCreate')
-    if __cusolverDnIRSParamsCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsCreate = dlsym(handle, 'cusolverDnIRSParamsCreate')
-
-    global __cusolverDnIRSParamsDestroy
-    __cusolverDnIRSParamsDestroy = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsDestroy')
-    if __cusolverDnIRSParamsDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsDestroy = dlsym(handle, 'cusolverDnIRSParamsDestroy')
-
-    global __cusolverDnIRSParamsSetRefinementSolver
-    __cusolverDnIRSParamsSetRefinementSolver = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetRefinementSolver')
-    if __cusolverDnIRSParamsSetRefinementSolver == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetRefinementSolver = dlsym(handle, 'cusolverDnIRSParamsSetRefinementSolver')
-
-    global __cusolverDnIRSParamsSetSolverMainPrecision
-    __cusolverDnIRSParamsSetSolverMainPrecision = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetSolverMainPrecision')
-    if __cusolverDnIRSParamsSetSolverMainPrecision == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetSolverMainPrecision = dlsym(handle, 'cusolverDnIRSParamsSetSolverMainPrecision')
-
-    global __cusolverDnIRSParamsSetSolverLowestPrecision
-    __cusolverDnIRSParamsSetSolverLowestPrecision = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetSolverLowestPrecision')
-    if __cusolverDnIRSParamsSetSolverLowestPrecision == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetSolverLowestPrecision = dlsym(handle, 'cusolverDnIRSParamsSetSolverLowestPrecision')
-
-    global __cusolverDnIRSParamsSetSolverPrecisions
-    __cusolverDnIRSParamsSetSolverPrecisions = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetSolverPrecisions')
-    if __cusolverDnIRSParamsSetSolverPrecisions == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetSolverPrecisions = dlsym(handle, 'cusolverDnIRSParamsSetSolverPrecisions')
-
-    global __cusolverDnIRSParamsSetTol
-    __cusolverDnIRSParamsSetTol = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetTol')
-    if __cusolverDnIRSParamsSetTol == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetTol = dlsym(handle, 'cusolverDnIRSParamsSetTol')
-
-    global __cusolverDnIRSParamsSetTolInner
-    __cusolverDnIRSParamsSetTolInner = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetTolInner')
-    if __cusolverDnIRSParamsSetTolInner == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetTolInner = dlsym(handle, 'cusolverDnIRSParamsSetTolInner')
-
-    global __cusolverDnIRSParamsSetMaxIters
-    __cusolverDnIRSParamsSetMaxIters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetMaxIters')
-    if __cusolverDnIRSParamsSetMaxIters == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetMaxIters = dlsym(handle, 'cusolverDnIRSParamsSetMaxIters')
-
-    global __cusolverDnIRSParamsSetMaxItersInner
-    __cusolverDnIRSParamsSetMaxItersInner = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetMaxItersInner')
-    if __cusolverDnIRSParamsSetMaxItersInner == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsSetMaxItersInner = dlsym(handle, 'cusolverDnIRSParamsSetMaxItersInner')
-
-    global __cusolverDnIRSParamsGetMaxIters
-    __cusolverDnIRSParamsGetMaxIters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsGetMaxIters')
-    if __cusolverDnIRSParamsGetMaxIters == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsGetMaxIters = dlsym(handle, 'cusolverDnIRSParamsGetMaxIters')
-
-    global __cusolverDnIRSParamsEnableFallback
-    __cusolverDnIRSParamsEnableFallback = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsEnableFallback')
-    if __cusolverDnIRSParamsEnableFallback == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsEnableFallback = dlsym(handle, 'cusolverDnIRSParamsEnableFallback')
-
-    global __cusolverDnIRSParamsDisableFallback
-    __cusolverDnIRSParamsDisableFallback = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsDisableFallback')
-    if __cusolverDnIRSParamsDisableFallback == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSParamsDisableFallback = dlsym(handle, 'cusolverDnIRSParamsDisableFallback')
-
-    global __cusolverDnIRSInfosDestroy
-    __cusolverDnIRSInfosDestroy = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosDestroy')
-    if __cusolverDnIRSInfosDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSInfosDestroy = dlsym(handle, 'cusolverDnIRSInfosDestroy')
-
-    global __cusolverDnIRSInfosCreate
-    __cusolverDnIRSInfosCreate = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosCreate')
-    if __cusolverDnIRSInfosCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSInfosCreate = dlsym(handle, 'cusolverDnIRSInfosCreate')
-
-    global __cusolverDnIRSInfosGetNiters
-    __cusolverDnIRSInfosGetNiters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetNiters')
-    if __cusolverDnIRSInfosGetNiters == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSInfosGetNiters = dlsym(handle, 'cusolverDnIRSInfosGetNiters')
-
-    global __cusolverDnIRSInfosGetOuterNiters
-    __cusolverDnIRSInfosGetOuterNiters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetOuterNiters')
-    if __cusolverDnIRSInfosGetOuterNiters == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSInfosGetOuterNiters = dlsym(handle, 'cusolverDnIRSInfosGetOuterNiters')
-
-    global __cusolverDnIRSInfosRequestResidual
-    __cusolverDnIRSInfosRequestResidual = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosRequestResidual')
-    if __cusolverDnIRSInfosRequestResidual == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSInfosRequestResidual = dlsym(handle, 'cusolverDnIRSInfosRequestResidual')
-
-    global __cusolverDnIRSInfosGetResidualHistory
-    __cusolverDnIRSInfosGetResidualHistory = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetResidualHistory')
-    if __cusolverDnIRSInfosGetResidualHistory == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSInfosGetResidualHistory = dlsym(handle, 'cusolverDnIRSInfosGetResidualHistory')
-
-    global __cusolverDnIRSInfosGetMaxIters
-    __cusolverDnIRSInfosGetMaxIters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetMaxIters')
-    if __cusolverDnIRSInfosGetMaxIters == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSInfosGetMaxIters = dlsym(handle, 'cusolverDnIRSInfosGetMaxIters')
-
-    global __cusolverDnZZgesv
-    __cusolverDnZZgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZZgesv')
-    if __cusolverDnZZgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZZgesv = dlsym(handle, 'cusolverDnZZgesv')
-
-    global __cusolverDnZCgesv
-    __cusolverDnZCgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZCgesv')
-    if __cusolverDnZCgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZCgesv = dlsym(handle, 'cusolverDnZCgesv')
-
-    global __cusolverDnZKgesv
-    __cusolverDnZKgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZKgesv')
-    if __cusolverDnZKgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZKgesv = dlsym(handle, 'cusolverDnZKgesv')
-
-    global __cusolverDnZEgesv
-    __cusolverDnZEgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZEgesv')
-    if __cusolverDnZEgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZEgesv = dlsym(handle, 'cusolverDnZEgesv')
-
-    global __cusolverDnZYgesv
-    __cusolverDnZYgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZYgesv')
-    if __cusolverDnZYgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZYgesv = dlsym(handle, 'cusolverDnZYgesv')
-
-    global __cusolverDnCCgesv
-    __cusolverDnCCgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCCgesv')
-    if __cusolverDnCCgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCCgesv = dlsym(handle, 'cusolverDnCCgesv')
-
-    global __cusolverDnCEgesv
-    __cusolverDnCEgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCEgesv')
-    if __cusolverDnCEgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCEgesv = dlsym(handle, 'cusolverDnCEgesv')
-
-    global __cusolverDnCKgesv
-    __cusolverDnCKgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCKgesv')
-    if __cusolverDnCKgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCKgesv = dlsym(handle, 'cusolverDnCKgesv')
-
-    global __cusolverDnCYgesv
-    __cusolverDnCYgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCYgesv')
-    if __cusolverDnCYgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCYgesv = dlsym(handle, 'cusolverDnCYgesv')
-
-    global __cusolverDnDDgesv
-    __cusolverDnDDgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDDgesv')
-    if __cusolverDnDDgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDDgesv = dlsym(handle, 'cusolverDnDDgesv')
-
-    global __cusolverDnDSgesv
-    __cusolverDnDSgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDSgesv')
-    if __cusolverDnDSgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDSgesv = dlsym(handle, 'cusolverDnDSgesv')
-
-    global __cusolverDnDHgesv
-    __cusolverDnDHgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDHgesv')
-    if __cusolverDnDHgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDHgesv = dlsym(handle, 'cusolverDnDHgesv')
-
-    global __cusolverDnDBgesv
-    __cusolverDnDBgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDBgesv')
-    if __cusolverDnDBgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDBgesv = dlsym(handle, 'cusolverDnDBgesv')
-
-    global __cusolverDnDXgesv
-    __cusolverDnDXgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDXgesv')
-    if __cusolverDnDXgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDXgesv = dlsym(handle, 'cusolverDnDXgesv')
-
-    global __cusolverDnSSgesv
-    __cusolverDnSSgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSSgesv')
-    if __cusolverDnSSgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSSgesv = dlsym(handle, 'cusolverDnSSgesv')
-
-    global __cusolverDnSHgesv
-    __cusolverDnSHgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSHgesv')
-    if __cusolverDnSHgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSHgesv = dlsym(handle, 'cusolverDnSHgesv')
-
-    global __cusolverDnSBgesv
-    __cusolverDnSBgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSBgesv')
-    if __cusolverDnSBgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSBgesv = dlsym(handle, 'cusolverDnSBgesv')
-
-    global __cusolverDnSXgesv
-    __cusolverDnSXgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSXgesv')
-    if __cusolverDnSXgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSXgesv = dlsym(handle, 'cusolverDnSXgesv')
-
-    global __cusolverDnZZgesv_bufferSize
-    __cusolverDnZZgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZZgesv_bufferSize')
-    if __cusolverDnZZgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZZgesv_bufferSize = dlsym(handle, 'cusolverDnZZgesv_bufferSize')
-
-    global __cusolverDnZCgesv_bufferSize
-    __cusolverDnZCgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZCgesv_bufferSize')
-    if __cusolverDnZCgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZCgesv_bufferSize = dlsym(handle, 'cusolverDnZCgesv_bufferSize')
-
-    global __cusolverDnZKgesv_bufferSize
-    __cusolverDnZKgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZKgesv_bufferSize')
-    if __cusolverDnZKgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZKgesv_bufferSize = dlsym(handle, 'cusolverDnZKgesv_bufferSize')
-
-    global __cusolverDnZEgesv_bufferSize
-    __cusolverDnZEgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZEgesv_bufferSize')
-    if __cusolverDnZEgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZEgesv_bufferSize = dlsym(handle, 'cusolverDnZEgesv_bufferSize')
-
-    global __cusolverDnZYgesv_bufferSize
-    __cusolverDnZYgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZYgesv_bufferSize')
-    if __cusolverDnZYgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZYgesv_bufferSize = dlsym(handle, 'cusolverDnZYgesv_bufferSize')
-
-    global __cusolverDnCCgesv_bufferSize
-    __cusolverDnCCgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCCgesv_bufferSize')
-    if __cusolverDnCCgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCCgesv_bufferSize = dlsym(handle, 'cusolverDnCCgesv_bufferSize')
-
-    global __cusolverDnCKgesv_bufferSize
-    __cusolverDnCKgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCKgesv_bufferSize')
-    if __cusolverDnCKgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCKgesv_bufferSize = dlsym(handle, 'cusolverDnCKgesv_bufferSize')
-
-    global __cusolverDnCEgesv_bufferSize
-    __cusolverDnCEgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCEgesv_bufferSize')
-    if __cusolverDnCEgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCEgesv_bufferSize = dlsym(handle, 'cusolverDnCEgesv_bufferSize')
-
-    global __cusolverDnCYgesv_bufferSize
-    __cusolverDnCYgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCYgesv_bufferSize')
-    if __cusolverDnCYgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCYgesv_bufferSize = dlsym(handle, 'cusolverDnCYgesv_bufferSize')
-
-    global __cusolverDnDDgesv_bufferSize
-    __cusolverDnDDgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDDgesv_bufferSize')
-    if __cusolverDnDDgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDDgesv_bufferSize = dlsym(handle, 'cusolverDnDDgesv_bufferSize')
-
-    global __cusolverDnDSgesv_bufferSize
-    __cusolverDnDSgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDSgesv_bufferSize')
-    if __cusolverDnDSgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDSgesv_bufferSize = dlsym(handle, 'cusolverDnDSgesv_bufferSize')
-
-    global __cusolverDnDHgesv_bufferSize
-    __cusolverDnDHgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDHgesv_bufferSize')
-    if __cusolverDnDHgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDHgesv_bufferSize = dlsym(handle, 'cusolverDnDHgesv_bufferSize')
-
-    global __cusolverDnDBgesv_bufferSize
-    __cusolverDnDBgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDBgesv_bufferSize')
-    if __cusolverDnDBgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDBgesv_bufferSize = dlsym(handle, 'cusolverDnDBgesv_bufferSize')
-
-    global __cusolverDnDXgesv_bufferSize
-    __cusolverDnDXgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDXgesv_bufferSize')
-    if __cusolverDnDXgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDXgesv_bufferSize = dlsym(handle, 'cusolverDnDXgesv_bufferSize')
-
-    global __cusolverDnSSgesv_bufferSize
-    __cusolverDnSSgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSSgesv_bufferSize')
-    if __cusolverDnSSgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSSgesv_bufferSize = dlsym(handle, 'cusolverDnSSgesv_bufferSize')
-
-    global __cusolverDnSHgesv_bufferSize
-    __cusolverDnSHgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSHgesv_bufferSize')
-    if __cusolverDnSHgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSHgesv_bufferSize = dlsym(handle, 'cusolverDnSHgesv_bufferSize')
-
-    global __cusolverDnSBgesv_bufferSize
-    __cusolverDnSBgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSBgesv_bufferSize')
-    if __cusolverDnSBgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSBgesv_bufferSize = dlsym(handle, 'cusolverDnSBgesv_bufferSize')
-
-    global __cusolverDnSXgesv_bufferSize
-    __cusolverDnSXgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSXgesv_bufferSize')
-    if __cusolverDnSXgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSXgesv_bufferSize = dlsym(handle, 'cusolverDnSXgesv_bufferSize')
-
-    global __cusolverDnZZgels
-    __cusolverDnZZgels = dlsym(RTLD_DEFAULT, 'cusolverDnZZgels')
-    if __cusolverDnZZgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZZgels = dlsym(handle, 'cusolverDnZZgels')
-
-    global __cusolverDnZCgels
-    __cusolverDnZCgels = dlsym(RTLD_DEFAULT, 'cusolverDnZCgels')
-    if __cusolverDnZCgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZCgels = dlsym(handle, 'cusolverDnZCgels')
-
-    global __cusolverDnZKgels
-    __cusolverDnZKgels = dlsym(RTLD_DEFAULT, 'cusolverDnZKgels')
-    if __cusolverDnZKgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZKgels = dlsym(handle, 'cusolverDnZKgels')
-
-    global __cusolverDnZEgels
-    __cusolverDnZEgels = dlsym(RTLD_DEFAULT, 'cusolverDnZEgels')
-    if __cusolverDnZEgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZEgels = dlsym(handle, 'cusolverDnZEgels')
-
-    global __cusolverDnZYgels
-    __cusolverDnZYgels = dlsym(RTLD_DEFAULT, 'cusolverDnZYgels')
-    if __cusolverDnZYgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZYgels = dlsym(handle, 'cusolverDnZYgels')
-
-    global __cusolverDnCCgels
-    __cusolverDnCCgels = dlsym(RTLD_DEFAULT, 'cusolverDnCCgels')
-    if __cusolverDnCCgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCCgels = dlsym(handle, 'cusolverDnCCgels')
-
-    global __cusolverDnCKgels
-    __cusolverDnCKgels = dlsym(RTLD_DEFAULT, 'cusolverDnCKgels')
-    if __cusolverDnCKgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCKgels = dlsym(handle, 'cusolverDnCKgels')
-
-    global __cusolverDnCEgels
-    __cusolverDnCEgels = dlsym(RTLD_DEFAULT, 'cusolverDnCEgels')
-    if __cusolverDnCEgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCEgels = dlsym(handle, 'cusolverDnCEgels')
-
-    global __cusolverDnCYgels
-    __cusolverDnCYgels = dlsym(RTLD_DEFAULT, 'cusolverDnCYgels')
-    if __cusolverDnCYgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCYgels = dlsym(handle, 'cusolverDnCYgels')
-
-    global __cusolverDnDDgels
-    __cusolverDnDDgels = dlsym(RTLD_DEFAULT, 'cusolverDnDDgels')
-    if __cusolverDnDDgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDDgels = dlsym(handle, 'cusolverDnDDgels')
-
-    global __cusolverDnDSgels
-    __cusolverDnDSgels = dlsym(RTLD_DEFAULT, 'cusolverDnDSgels')
-    if __cusolverDnDSgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDSgels = dlsym(handle, 'cusolverDnDSgels')
-
-    global __cusolverDnDHgels
-    __cusolverDnDHgels = dlsym(RTLD_DEFAULT, 'cusolverDnDHgels')
-    if __cusolverDnDHgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDHgels = dlsym(handle, 'cusolverDnDHgels')
-
-    global __cusolverDnDBgels
-    __cusolverDnDBgels = dlsym(RTLD_DEFAULT, 'cusolverDnDBgels')
-    if __cusolverDnDBgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDBgels = dlsym(handle, 'cusolverDnDBgels')
-
-    global __cusolverDnDXgels
-    __cusolverDnDXgels = dlsym(RTLD_DEFAULT, 'cusolverDnDXgels')
-    if __cusolverDnDXgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDXgels = dlsym(handle, 'cusolverDnDXgels')
-
-    global __cusolverDnSSgels
-    __cusolverDnSSgels = dlsym(RTLD_DEFAULT, 'cusolverDnSSgels')
-    if __cusolverDnSSgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSSgels = dlsym(handle, 'cusolverDnSSgels')
-
-    global __cusolverDnSHgels
-    __cusolverDnSHgels = dlsym(RTLD_DEFAULT, 'cusolverDnSHgels')
-    if __cusolverDnSHgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSHgels = dlsym(handle, 'cusolverDnSHgels')
-
-    global __cusolverDnSBgels
-    __cusolverDnSBgels = dlsym(RTLD_DEFAULT, 'cusolverDnSBgels')
-    if __cusolverDnSBgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSBgels = dlsym(handle, 'cusolverDnSBgels')
-
-    global __cusolverDnSXgels
-    __cusolverDnSXgels = dlsym(RTLD_DEFAULT, 'cusolverDnSXgels')
-    if __cusolverDnSXgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSXgels = dlsym(handle, 'cusolverDnSXgels')
-
-    global __cusolverDnZZgels_bufferSize
-    __cusolverDnZZgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZZgels_bufferSize')
-    if __cusolverDnZZgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZZgels_bufferSize = dlsym(handle, 'cusolverDnZZgels_bufferSize')
-
-    global __cusolverDnZCgels_bufferSize
-    __cusolverDnZCgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZCgels_bufferSize')
-    if __cusolverDnZCgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZCgels_bufferSize = dlsym(handle, 'cusolverDnZCgels_bufferSize')
-
-    global __cusolverDnZKgels_bufferSize
-    __cusolverDnZKgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZKgels_bufferSize')
-    if __cusolverDnZKgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZKgels_bufferSize = dlsym(handle, 'cusolverDnZKgels_bufferSize')
-
-    global __cusolverDnZEgels_bufferSize
-    __cusolverDnZEgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZEgels_bufferSize')
-    if __cusolverDnZEgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZEgels_bufferSize = dlsym(handle, 'cusolverDnZEgels_bufferSize')
-
-    global __cusolverDnZYgels_bufferSize
-    __cusolverDnZYgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZYgels_bufferSize')
-    if __cusolverDnZYgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZYgels_bufferSize = dlsym(handle, 'cusolverDnZYgels_bufferSize')
-
-    global __cusolverDnCCgels_bufferSize
-    __cusolverDnCCgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCCgels_bufferSize')
-    if __cusolverDnCCgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCCgels_bufferSize = dlsym(handle, 'cusolverDnCCgels_bufferSize')
-
-    global __cusolverDnCKgels_bufferSize
-    __cusolverDnCKgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCKgels_bufferSize')
-    if __cusolverDnCKgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCKgels_bufferSize = dlsym(handle, 'cusolverDnCKgels_bufferSize')
-
-    global __cusolverDnCEgels_bufferSize
-    __cusolverDnCEgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCEgels_bufferSize')
-    if __cusolverDnCEgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCEgels_bufferSize = dlsym(handle, 'cusolverDnCEgels_bufferSize')
-
-    global __cusolverDnCYgels_bufferSize
-    __cusolverDnCYgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCYgels_bufferSize')
-    if __cusolverDnCYgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCYgels_bufferSize = dlsym(handle, 'cusolverDnCYgels_bufferSize')
-
-    global __cusolverDnDDgels_bufferSize
-    __cusolverDnDDgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDDgels_bufferSize')
-    if __cusolverDnDDgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDDgels_bufferSize = dlsym(handle, 'cusolverDnDDgels_bufferSize')
-
-    global __cusolverDnDSgels_bufferSize
-    __cusolverDnDSgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDSgels_bufferSize')
-    if __cusolverDnDSgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDSgels_bufferSize = dlsym(handle, 'cusolverDnDSgels_bufferSize')
-
-    global __cusolverDnDHgels_bufferSize
-    __cusolverDnDHgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDHgels_bufferSize')
-    if __cusolverDnDHgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDHgels_bufferSize = dlsym(handle, 'cusolverDnDHgels_bufferSize')
-
-    global __cusolverDnDBgels_bufferSize
-    __cusolverDnDBgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDBgels_bufferSize')
-    if __cusolverDnDBgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDBgels_bufferSize = dlsym(handle, 'cusolverDnDBgels_bufferSize')
-
-    global __cusolverDnDXgels_bufferSize
-    __cusolverDnDXgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDXgels_bufferSize')
-    if __cusolverDnDXgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDXgels_bufferSize = dlsym(handle, 'cusolverDnDXgels_bufferSize')
-
-    global __cusolverDnSSgels_bufferSize
-    __cusolverDnSSgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSSgels_bufferSize')
-    if __cusolverDnSSgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSSgels_bufferSize = dlsym(handle, 'cusolverDnSSgels_bufferSize')
-
-    global __cusolverDnSHgels_bufferSize
-    __cusolverDnSHgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSHgels_bufferSize')
-    if __cusolverDnSHgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSHgels_bufferSize = dlsym(handle, 'cusolverDnSHgels_bufferSize')
-
-    global __cusolverDnSBgels_bufferSize
-    __cusolverDnSBgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSBgels_bufferSize')
-    if __cusolverDnSBgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSBgels_bufferSize = dlsym(handle, 'cusolverDnSBgels_bufferSize')
-
-    global __cusolverDnSXgels_bufferSize
-    __cusolverDnSXgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSXgels_bufferSize')
-    if __cusolverDnSXgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSXgels_bufferSize = dlsym(handle, 'cusolverDnSXgels_bufferSize')
-
-    global __cusolverDnIRSXgesv
-    __cusolverDnIRSXgesv = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgesv')
-    if __cusolverDnIRSXgesv == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSXgesv = dlsym(handle, 'cusolverDnIRSXgesv')
-
-    global __cusolverDnIRSXgesv_bufferSize
-    __cusolverDnIRSXgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgesv_bufferSize')
-    if __cusolverDnIRSXgesv_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSXgesv_bufferSize = dlsym(handle, 'cusolverDnIRSXgesv_bufferSize')
-
-    global __cusolverDnIRSXgels
-    __cusolverDnIRSXgels = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgels')
-    if __cusolverDnIRSXgels == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSXgels = dlsym(handle, 'cusolverDnIRSXgels')
-
-    global __cusolverDnIRSXgels_bufferSize
-    __cusolverDnIRSXgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgels_bufferSize')
-    if __cusolverDnIRSXgels_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnIRSXgels_bufferSize = dlsym(handle, 'cusolverDnIRSXgels_bufferSize')
-
-    global __cusolverDnSpotrf_bufferSize
-    __cusolverDnSpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrf_bufferSize')
-    if __cusolverDnSpotrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSpotrf_bufferSize = dlsym(handle, 'cusolverDnSpotrf_bufferSize')
-
-    global __cusolverDnDpotrf_bufferSize
-    __cusolverDnDpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrf_bufferSize')
-    if __cusolverDnDpotrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDpotrf_bufferSize = dlsym(handle, 'cusolverDnDpotrf_bufferSize')
-
-    global __cusolverDnCpotrf_bufferSize
-    __cusolverDnCpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrf_bufferSize')
-    if __cusolverDnCpotrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCpotrf_bufferSize = dlsym(handle, 'cusolverDnCpotrf_bufferSize')
-
-    global __cusolverDnZpotrf_bufferSize
-    __cusolverDnZpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrf_bufferSize')
-    if __cusolverDnZpotrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZpotrf_bufferSize = dlsym(handle, 'cusolverDnZpotrf_bufferSize')
-
-    global __cusolverDnSpotrf
-    __cusolverDnSpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrf')
-    if __cusolverDnSpotrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSpotrf = dlsym(handle, 'cusolverDnSpotrf')
-
-    global __cusolverDnDpotrf
-    __cusolverDnDpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrf')
-    if __cusolverDnDpotrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDpotrf = dlsym(handle, 'cusolverDnDpotrf')
-
-    global __cusolverDnCpotrf
-    __cusolverDnCpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrf')
-    if __cusolverDnCpotrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCpotrf = dlsym(handle, 'cusolverDnCpotrf')
-
-    global __cusolverDnZpotrf
-    __cusolverDnZpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrf')
-    if __cusolverDnZpotrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZpotrf = dlsym(handle, 'cusolverDnZpotrf')
-
-    global __cusolverDnSpotrs
-    __cusolverDnSpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrs')
-    if __cusolverDnSpotrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSpotrs = dlsym(handle, 'cusolverDnSpotrs')
-
-    global __cusolverDnDpotrs
-    __cusolverDnDpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrs')
-    if __cusolverDnDpotrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDpotrs = dlsym(handle, 'cusolverDnDpotrs')
-
-    global __cusolverDnCpotrs
-    __cusolverDnCpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrs')
-    if __cusolverDnCpotrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCpotrs = dlsym(handle, 'cusolverDnCpotrs')
-
-    global __cusolverDnZpotrs
-    __cusolverDnZpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrs')
-    if __cusolverDnZpotrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZpotrs = dlsym(handle, 'cusolverDnZpotrs')
-
-    global __cusolverDnSpotrfBatched
-    __cusolverDnSpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrfBatched')
-    if __cusolverDnSpotrfBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSpotrfBatched = dlsym(handle, 'cusolverDnSpotrfBatched')
-
-    global __cusolverDnDpotrfBatched
-    __cusolverDnDpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrfBatched')
-    if __cusolverDnDpotrfBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDpotrfBatched = dlsym(handle, 'cusolverDnDpotrfBatched')
-
-    global __cusolverDnCpotrfBatched
-    __cusolverDnCpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrfBatched')
-    if __cusolverDnCpotrfBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCpotrfBatched = dlsym(handle, 'cusolverDnCpotrfBatched')
-
-    global __cusolverDnZpotrfBatched
-    __cusolverDnZpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrfBatched')
-    if __cusolverDnZpotrfBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZpotrfBatched = dlsym(handle, 'cusolverDnZpotrfBatched')
-
-    global __cusolverDnSpotrsBatched
-    __cusolverDnSpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrsBatched')
-    if __cusolverDnSpotrsBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSpotrsBatched = dlsym(handle, 'cusolverDnSpotrsBatched')
-
-    global __cusolverDnDpotrsBatched
-    __cusolverDnDpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrsBatched')
-    if __cusolverDnDpotrsBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDpotrsBatched = dlsym(handle, 'cusolverDnDpotrsBatched')
-
-    global __cusolverDnCpotrsBatched
-    __cusolverDnCpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrsBatched')
-    if __cusolverDnCpotrsBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCpotrsBatched = dlsym(handle, 'cusolverDnCpotrsBatched')
-
-    global __cusolverDnZpotrsBatched
-    __cusolverDnZpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrsBatched')
-    if __cusolverDnZpotrsBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZpotrsBatched = dlsym(handle, 'cusolverDnZpotrsBatched')
-
-    global __cusolverDnSpotri_bufferSize
-    __cusolverDnSpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSpotri_bufferSize')
-    if __cusolverDnSpotri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSpotri_bufferSize = dlsym(handle, 'cusolverDnSpotri_bufferSize')
-
-    global __cusolverDnDpotri_bufferSize
-    __cusolverDnDpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDpotri_bufferSize')
-    if __cusolverDnDpotri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDpotri_bufferSize = dlsym(handle, 'cusolverDnDpotri_bufferSize')
-
-    global __cusolverDnCpotri_bufferSize
-    __cusolverDnCpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCpotri_bufferSize')
-    if __cusolverDnCpotri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCpotri_bufferSize = dlsym(handle, 'cusolverDnCpotri_bufferSize')
-
-    global __cusolverDnZpotri_bufferSize
-    __cusolverDnZpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZpotri_bufferSize')
-    if __cusolverDnZpotri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZpotri_bufferSize = dlsym(handle, 'cusolverDnZpotri_bufferSize')
-
-    global __cusolverDnSpotri
-    __cusolverDnSpotri = dlsym(RTLD_DEFAULT, 'cusolverDnSpotri')
-    if __cusolverDnSpotri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSpotri = dlsym(handle, 'cusolverDnSpotri')
-
-    global __cusolverDnDpotri
-    __cusolverDnDpotri = dlsym(RTLD_DEFAULT, 'cusolverDnDpotri')
-    if __cusolverDnDpotri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDpotri = dlsym(handle, 'cusolverDnDpotri')
-
-    global __cusolverDnCpotri
-    __cusolverDnCpotri = dlsym(RTLD_DEFAULT, 'cusolverDnCpotri')
-    if __cusolverDnCpotri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCpotri = dlsym(handle, 'cusolverDnCpotri')
-
-    global __cusolverDnZpotri
-    __cusolverDnZpotri = dlsym(RTLD_DEFAULT, 'cusolverDnZpotri')
-    if __cusolverDnZpotri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZpotri = dlsym(handle, 'cusolverDnZpotri')
-
-    global __cusolverDnSlauum_bufferSize
-    __cusolverDnSlauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSlauum_bufferSize')
-    if __cusolverDnSlauum_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSlauum_bufferSize = dlsym(handle, 'cusolverDnSlauum_bufferSize')
-
-    global __cusolverDnDlauum_bufferSize
-    __cusolverDnDlauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDlauum_bufferSize')
-    if __cusolverDnDlauum_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDlauum_bufferSize = dlsym(handle, 'cusolverDnDlauum_bufferSize')
-
-    global __cusolverDnClauum_bufferSize
-    __cusolverDnClauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnClauum_bufferSize')
-    if __cusolverDnClauum_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnClauum_bufferSize = dlsym(handle, 'cusolverDnClauum_bufferSize')
-
-    global __cusolverDnZlauum_bufferSize
-    __cusolverDnZlauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZlauum_bufferSize')
-    if __cusolverDnZlauum_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZlauum_bufferSize = dlsym(handle, 'cusolverDnZlauum_bufferSize')
-
-    global __cusolverDnSlauum
-    __cusolverDnSlauum = dlsym(RTLD_DEFAULT, 'cusolverDnSlauum')
-    if __cusolverDnSlauum == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSlauum = dlsym(handle, 'cusolverDnSlauum')
-
-    global __cusolverDnDlauum
-    __cusolverDnDlauum = dlsym(RTLD_DEFAULT, 'cusolverDnDlauum')
-    if __cusolverDnDlauum == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDlauum = dlsym(handle, 'cusolverDnDlauum')
-
-    global __cusolverDnClauum
-    __cusolverDnClauum = dlsym(RTLD_DEFAULT, 'cusolverDnClauum')
-    if __cusolverDnClauum == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnClauum = dlsym(handle, 'cusolverDnClauum')
-
-    global __cusolverDnZlauum
-    __cusolverDnZlauum = dlsym(RTLD_DEFAULT, 'cusolverDnZlauum')
-    if __cusolverDnZlauum == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZlauum = dlsym(handle, 'cusolverDnZlauum')
-
-    global __cusolverDnSgetrf_bufferSize
-    __cusolverDnSgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgetrf_bufferSize')
-    if __cusolverDnSgetrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgetrf_bufferSize = dlsym(handle, 'cusolverDnSgetrf_bufferSize')
-
-    global __cusolverDnDgetrf_bufferSize
-    __cusolverDnDgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgetrf_bufferSize')
-    if __cusolverDnDgetrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgetrf_bufferSize = dlsym(handle, 'cusolverDnDgetrf_bufferSize')
-
-    global __cusolverDnCgetrf_bufferSize
-    __cusolverDnCgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgetrf_bufferSize')
-    if __cusolverDnCgetrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgetrf_bufferSize = dlsym(handle, 'cusolverDnCgetrf_bufferSize')
-
-    global __cusolverDnZgetrf_bufferSize
-    __cusolverDnZgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgetrf_bufferSize')
-    if __cusolverDnZgetrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgetrf_bufferSize = dlsym(handle, 'cusolverDnZgetrf_bufferSize')
-
-    global __cusolverDnSgetrf
-    __cusolverDnSgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnSgetrf')
-    if __cusolverDnSgetrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgetrf = dlsym(handle, 'cusolverDnSgetrf')
-
-    global __cusolverDnDgetrf
-    __cusolverDnDgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnDgetrf')
-    if __cusolverDnDgetrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgetrf = dlsym(handle, 'cusolverDnDgetrf')
-
-    global __cusolverDnCgetrf
-    __cusolverDnCgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnCgetrf')
-    if __cusolverDnCgetrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgetrf = dlsym(handle, 'cusolverDnCgetrf')
-
-    global __cusolverDnZgetrf
-    __cusolverDnZgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnZgetrf')
-    if __cusolverDnZgetrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgetrf = dlsym(handle, 'cusolverDnZgetrf')
-
-    global __cusolverDnSlaswp
-    __cusolverDnSlaswp = dlsym(RTLD_DEFAULT, 'cusolverDnSlaswp')
-    if __cusolverDnSlaswp == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSlaswp = dlsym(handle, 'cusolverDnSlaswp')
-
-    global __cusolverDnDlaswp
-    __cusolverDnDlaswp = dlsym(RTLD_DEFAULT, 'cusolverDnDlaswp')
-    if __cusolverDnDlaswp == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDlaswp = dlsym(handle, 'cusolverDnDlaswp')
-
-    global __cusolverDnClaswp
-    __cusolverDnClaswp = dlsym(RTLD_DEFAULT, 'cusolverDnClaswp')
-    if __cusolverDnClaswp == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnClaswp = dlsym(handle, 'cusolverDnClaswp')
-
-    global __cusolverDnZlaswp
-    __cusolverDnZlaswp = dlsym(RTLD_DEFAULT, 'cusolverDnZlaswp')
-    if __cusolverDnZlaswp == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZlaswp = dlsym(handle, 'cusolverDnZlaswp')
-
-    global __cusolverDnSgetrs
-    __cusolverDnSgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnSgetrs')
-    if __cusolverDnSgetrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgetrs = dlsym(handle, 'cusolverDnSgetrs')
-
-    global __cusolverDnDgetrs
-    __cusolverDnDgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnDgetrs')
-    if __cusolverDnDgetrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgetrs = dlsym(handle, 'cusolverDnDgetrs')
-
-    global __cusolverDnCgetrs
-    __cusolverDnCgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnCgetrs')
-    if __cusolverDnCgetrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgetrs = dlsym(handle, 'cusolverDnCgetrs')
-
-    global __cusolverDnZgetrs
-    __cusolverDnZgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnZgetrs')
-    if __cusolverDnZgetrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgetrs = dlsym(handle, 'cusolverDnZgetrs')
-
-    global __cusolverDnSgeqrf_bufferSize
-    __cusolverDnSgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgeqrf_bufferSize')
-    if __cusolverDnSgeqrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgeqrf_bufferSize = dlsym(handle, 'cusolverDnSgeqrf_bufferSize')
-
-    global __cusolverDnDgeqrf_bufferSize
-    __cusolverDnDgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgeqrf_bufferSize')
-    if __cusolverDnDgeqrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgeqrf_bufferSize = dlsym(handle, 'cusolverDnDgeqrf_bufferSize')
-
-    global __cusolverDnCgeqrf_bufferSize
-    __cusolverDnCgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgeqrf_bufferSize')
-    if __cusolverDnCgeqrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgeqrf_bufferSize = dlsym(handle, 'cusolverDnCgeqrf_bufferSize')
-
-    global __cusolverDnZgeqrf_bufferSize
-    __cusolverDnZgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgeqrf_bufferSize')
-    if __cusolverDnZgeqrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgeqrf_bufferSize = dlsym(handle, 'cusolverDnZgeqrf_bufferSize')
-
-    global __cusolverDnSgeqrf
-    __cusolverDnSgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnSgeqrf')
-    if __cusolverDnSgeqrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgeqrf = dlsym(handle, 'cusolverDnSgeqrf')
-
-    global __cusolverDnDgeqrf
-    __cusolverDnDgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnDgeqrf')
-    if __cusolverDnDgeqrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgeqrf = dlsym(handle, 'cusolverDnDgeqrf')
-
-    global __cusolverDnCgeqrf
-    __cusolverDnCgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnCgeqrf')
-    if __cusolverDnCgeqrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgeqrf = dlsym(handle, 'cusolverDnCgeqrf')
-
-    global __cusolverDnZgeqrf
-    __cusolverDnZgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnZgeqrf')
-    if __cusolverDnZgeqrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgeqrf = dlsym(handle, 'cusolverDnZgeqrf')
-
-    global __cusolverDnSorgqr_bufferSize
-    __cusolverDnSorgqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSorgqr_bufferSize')
-    if __cusolverDnSorgqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSorgqr_bufferSize = dlsym(handle, 'cusolverDnSorgqr_bufferSize')
-
-    global __cusolverDnDorgqr_bufferSize
-    __cusolverDnDorgqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDorgqr_bufferSize')
-    if __cusolverDnDorgqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDorgqr_bufferSize = dlsym(handle, 'cusolverDnDorgqr_bufferSize')
-
-    global __cusolverDnCungqr_bufferSize
-    __cusolverDnCungqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCungqr_bufferSize')
-    if __cusolverDnCungqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCungqr_bufferSize = dlsym(handle, 'cusolverDnCungqr_bufferSize')
-
-    global __cusolverDnZungqr_bufferSize
-    __cusolverDnZungqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZungqr_bufferSize')
-    if __cusolverDnZungqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZungqr_bufferSize = dlsym(handle, 'cusolverDnZungqr_bufferSize')
-
-    global __cusolverDnSorgqr
-    __cusolverDnSorgqr = dlsym(RTLD_DEFAULT, 'cusolverDnSorgqr')
-    if __cusolverDnSorgqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSorgqr = dlsym(handle, 'cusolverDnSorgqr')
-
-    global __cusolverDnDorgqr
-    __cusolverDnDorgqr = dlsym(RTLD_DEFAULT, 'cusolverDnDorgqr')
-    if __cusolverDnDorgqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDorgqr = dlsym(handle, 'cusolverDnDorgqr')
-
-    global __cusolverDnCungqr
-    __cusolverDnCungqr = dlsym(RTLD_DEFAULT, 'cusolverDnCungqr')
-    if __cusolverDnCungqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCungqr = dlsym(handle, 'cusolverDnCungqr')
-
-    global __cusolverDnZungqr
-    __cusolverDnZungqr = dlsym(RTLD_DEFAULT, 'cusolverDnZungqr')
-    if __cusolverDnZungqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZungqr = dlsym(handle, 'cusolverDnZungqr')
-
-    global __cusolverDnSormqr_bufferSize
-    __cusolverDnSormqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSormqr_bufferSize')
-    if __cusolverDnSormqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSormqr_bufferSize = dlsym(handle, 'cusolverDnSormqr_bufferSize')
-
-    global __cusolverDnDormqr_bufferSize
-    __cusolverDnDormqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDormqr_bufferSize')
-    if __cusolverDnDormqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDormqr_bufferSize = dlsym(handle, 'cusolverDnDormqr_bufferSize')
-
-    global __cusolverDnCunmqr_bufferSize
-    __cusolverDnCunmqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCunmqr_bufferSize')
-    if __cusolverDnCunmqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCunmqr_bufferSize = dlsym(handle, 'cusolverDnCunmqr_bufferSize')
-
-    global __cusolverDnZunmqr_bufferSize
-    __cusolverDnZunmqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZunmqr_bufferSize')
-    if __cusolverDnZunmqr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZunmqr_bufferSize = dlsym(handle, 'cusolverDnZunmqr_bufferSize')
-
-    global __cusolverDnSormqr
-    __cusolverDnSormqr = dlsym(RTLD_DEFAULT, 'cusolverDnSormqr')
-    if __cusolverDnSormqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSormqr = dlsym(handle, 'cusolverDnSormqr')
-
-    global __cusolverDnDormqr
-    __cusolverDnDormqr = dlsym(RTLD_DEFAULT, 'cusolverDnDormqr')
-    if __cusolverDnDormqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDormqr = dlsym(handle, 'cusolverDnDormqr')
-
-    global __cusolverDnCunmqr
-    __cusolverDnCunmqr = dlsym(RTLD_DEFAULT, 'cusolverDnCunmqr')
-    if __cusolverDnCunmqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCunmqr = dlsym(handle, 'cusolverDnCunmqr')
-
-    global __cusolverDnZunmqr
-    __cusolverDnZunmqr = dlsym(RTLD_DEFAULT, 'cusolverDnZunmqr')
-    if __cusolverDnZunmqr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZunmqr = dlsym(handle, 'cusolverDnZunmqr')
-
-    global __cusolverDnSsytrf_bufferSize
-    __cusolverDnSsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrf_bufferSize')
-    if __cusolverDnSsytrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsytrf_bufferSize = dlsym(handle, 'cusolverDnSsytrf_bufferSize')
-
-    global __cusolverDnDsytrf_bufferSize
-    __cusolverDnDsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrf_bufferSize')
-    if __cusolverDnDsytrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsytrf_bufferSize = dlsym(handle, 'cusolverDnDsytrf_bufferSize')
-
-    global __cusolverDnCsytrf_bufferSize
-    __cusolverDnCsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCsytrf_bufferSize')
-    if __cusolverDnCsytrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCsytrf_bufferSize = dlsym(handle, 'cusolverDnCsytrf_bufferSize')
-
-    global __cusolverDnZsytrf_bufferSize
-    __cusolverDnZsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZsytrf_bufferSize')
-    if __cusolverDnZsytrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZsytrf_bufferSize = dlsym(handle, 'cusolverDnZsytrf_bufferSize')
-
-    global __cusolverDnSsytrf
-    __cusolverDnSsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrf')
-    if __cusolverDnSsytrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsytrf = dlsym(handle, 'cusolverDnSsytrf')
-
-    global __cusolverDnDsytrf
-    __cusolverDnDsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrf')
-    if __cusolverDnDsytrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsytrf = dlsym(handle, 'cusolverDnDsytrf')
-
-    global __cusolverDnCsytrf
-    __cusolverDnCsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnCsytrf')
-    if __cusolverDnCsytrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCsytrf = dlsym(handle, 'cusolverDnCsytrf')
-
-    global __cusolverDnZsytrf
-    __cusolverDnZsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnZsytrf')
-    if __cusolverDnZsytrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZsytrf = dlsym(handle, 'cusolverDnZsytrf')
-
-    global __cusolverDnSsytri_bufferSize
-    __cusolverDnSsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsytri_bufferSize')
-    if __cusolverDnSsytri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsytri_bufferSize = dlsym(handle, 'cusolverDnSsytri_bufferSize')
-
-    global __cusolverDnDsytri_bufferSize
-    __cusolverDnDsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsytri_bufferSize')
-    if __cusolverDnDsytri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsytri_bufferSize = dlsym(handle, 'cusolverDnDsytri_bufferSize')
-
-    global __cusolverDnCsytri_bufferSize
-    __cusolverDnCsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCsytri_bufferSize')
-    if __cusolverDnCsytri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCsytri_bufferSize = dlsym(handle, 'cusolverDnCsytri_bufferSize')
-
-    global __cusolverDnZsytri_bufferSize
-    __cusolverDnZsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZsytri_bufferSize')
-    if __cusolverDnZsytri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZsytri_bufferSize = dlsym(handle, 'cusolverDnZsytri_bufferSize')
-
-    global __cusolverDnSsytri
-    __cusolverDnSsytri = dlsym(RTLD_DEFAULT, 'cusolverDnSsytri')
-    if __cusolverDnSsytri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsytri = dlsym(handle, 'cusolverDnSsytri')
-
-    global __cusolverDnDsytri
-    __cusolverDnDsytri = dlsym(RTLD_DEFAULT, 'cusolverDnDsytri')
-    if __cusolverDnDsytri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsytri = dlsym(handle, 'cusolverDnDsytri')
-
-    global __cusolverDnCsytri
-    __cusolverDnCsytri = dlsym(RTLD_DEFAULT, 'cusolverDnCsytri')
-    if __cusolverDnCsytri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCsytri = dlsym(handle, 'cusolverDnCsytri')
-
-    global __cusolverDnZsytri
-    __cusolverDnZsytri = dlsym(RTLD_DEFAULT, 'cusolverDnZsytri')
-    if __cusolverDnZsytri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZsytri = dlsym(handle, 'cusolverDnZsytri')
-
-    global __cusolverDnSgebrd_bufferSize
-    __cusolverDnSgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgebrd_bufferSize')
-    if __cusolverDnSgebrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgebrd_bufferSize = dlsym(handle, 'cusolverDnSgebrd_bufferSize')
-
-    global __cusolverDnDgebrd_bufferSize
-    __cusolverDnDgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgebrd_bufferSize')
-    if __cusolverDnDgebrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgebrd_bufferSize = dlsym(handle, 'cusolverDnDgebrd_bufferSize')
-
-    global __cusolverDnCgebrd_bufferSize
-    __cusolverDnCgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgebrd_bufferSize')
-    if __cusolverDnCgebrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgebrd_bufferSize = dlsym(handle, 'cusolverDnCgebrd_bufferSize')
-
-    global __cusolverDnZgebrd_bufferSize
-    __cusolverDnZgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgebrd_bufferSize')
-    if __cusolverDnZgebrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgebrd_bufferSize = dlsym(handle, 'cusolverDnZgebrd_bufferSize')
-
-    global __cusolverDnSgebrd
-    __cusolverDnSgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnSgebrd')
-    if __cusolverDnSgebrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgebrd = dlsym(handle, 'cusolverDnSgebrd')
-
-    global __cusolverDnDgebrd
-    __cusolverDnDgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnDgebrd')
-    if __cusolverDnDgebrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgebrd = dlsym(handle, 'cusolverDnDgebrd')
-
-    global __cusolverDnCgebrd
-    __cusolverDnCgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnCgebrd')
-    if __cusolverDnCgebrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgebrd = dlsym(handle, 'cusolverDnCgebrd')
-
-    global __cusolverDnZgebrd
-    __cusolverDnZgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnZgebrd')
-    if __cusolverDnZgebrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgebrd = dlsym(handle, 'cusolverDnZgebrd')
-
-    global __cusolverDnSorgbr_bufferSize
-    __cusolverDnSorgbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSorgbr_bufferSize')
-    if __cusolverDnSorgbr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSorgbr_bufferSize = dlsym(handle, 'cusolverDnSorgbr_bufferSize')
-
-    global __cusolverDnDorgbr_bufferSize
-    __cusolverDnDorgbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDorgbr_bufferSize')
-    if __cusolverDnDorgbr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDorgbr_bufferSize = dlsym(handle, 'cusolverDnDorgbr_bufferSize')
-
-    global __cusolverDnCungbr_bufferSize
-    __cusolverDnCungbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCungbr_bufferSize')
-    if __cusolverDnCungbr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCungbr_bufferSize = dlsym(handle, 'cusolverDnCungbr_bufferSize')
-
-    global __cusolverDnZungbr_bufferSize
-    __cusolverDnZungbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZungbr_bufferSize')
-    if __cusolverDnZungbr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZungbr_bufferSize = dlsym(handle, 'cusolverDnZungbr_bufferSize')
-
-    global __cusolverDnSorgbr
-    __cusolverDnSorgbr = dlsym(RTLD_DEFAULT, 'cusolverDnSorgbr')
-    if __cusolverDnSorgbr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSorgbr = dlsym(handle, 'cusolverDnSorgbr')
-
-    global __cusolverDnDorgbr
-    __cusolverDnDorgbr = dlsym(RTLD_DEFAULT, 'cusolverDnDorgbr')
-    if __cusolverDnDorgbr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDorgbr = dlsym(handle, 'cusolverDnDorgbr')
-
-    global __cusolverDnCungbr
-    __cusolverDnCungbr = dlsym(RTLD_DEFAULT, 'cusolverDnCungbr')
-    if __cusolverDnCungbr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCungbr = dlsym(handle, 'cusolverDnCungbr')
-
-    global __cusolverDnZungbr
-    __cusolverDnZungbr = dlsym(RTLD_DEFAULT, 'cusolverDnZungbr')
-    if __cusolverDnZungbr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZungbr = dlsym(handle, 'cusolverDnZungbr')
-
-    global __cusolverDnSsytrd_bufferSize
-    __cusolverDnSsytrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrd_bufferSize')
-    if __cusolverDnSsytrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsytrd_bufferSize = dlsym(handle, 'cusolverDnSsytrd_bufferSize')
-
-    global __cusolverDnDsytrd_bufferSize
-    __cusolverDnDsytrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrd_bufferSize')
-    if __cusolverDnDsytrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsytrd_bufferSize = dlsym(handle, 'cusolverDnDsytrd_bufferSize')
-
-    global __cusolverDnChetrd_bufferSize
-    __cusolverDnChetrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChetrd_bufferSize')
-    if __cusolverDnChetrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChetrd_bufferSize = dlsym(handle, 'cusolverDnChetrd_bufferSize')
-
-    global __cusolverDnZhetrd_bufferSize
-    __cusolverDnZhetrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhetrd_bufferSize')
-    if __cusolverDnZhetrd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhetrd_bufferSize = dlsym(handle, 'cusolverDnZhetrd_bufferSize')
-
-    global __cusolverDnSsytrd
-    __cusolverDnSsytrd = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrd')
-    if __cusolverDnSsytrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsytrd = dlsym(handle, 'cusolverDnSsytrd')
-
-    global __cusolverDnDsytrd
-    __cusolverDnDsytrd = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrd')
-    if __cusolverDnDsytrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsytrd = dlsym(handle, 'cusolverDnDsytrd')
-
-    global __cusolverDnChetrd
-    __cusolverDnChetrd = dlsym(RTLD_DEFAULT, 'cusolverDnChetrd')
-    if __cusolverDnChetrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChetrd = dlsym(handle, 'cusolverDnChetrd')
-
-    global __cusolverDnZhetrd
-    __cusolverDnZhetrd = dlsym(RTLD_DEFAULT, 'cusolverDnZhetrd')
-    if __cusolverDnZhetrd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhetrd = dlsym(handle, 'cusolverDnZhetrd')
-
-    global __cusolverDnSorgtr_bufferSize
-    __cusolverDnSorgtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSorgtr_bufferSize')
-    if __cusolverDnSorgtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSorgtr_bufferSize = dlsym(handle, 'cusolverDnSorgtr_bufferSize')
-
-    global __cusolverDnDorgtr_bufferSize
-    __cusolverDnDorgtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDorgtr_bufferSize')
-    if __cusolverDnDorgtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDorgtr_bufferSize = dlsym(handle, 'cusolverDnDorgtr_bufferSize')
-
-    global __cusolverDnCungtr_bufferSize
-    __cusolverDnCungtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCungtr_bufferSize')
-    if __cusolverDnCungtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCungtr_bufferSize = dlsym(handle, 'cusolverDnCungtr_bufferSize')
-
-    global __cusolverDnZungtr_bufferSize
-    __cusolverDnZungtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZungtr_bufferSize')
-    if __cusolverDnZungtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZungtr_bufferSize = dlsym(handle, 'cusolverDnZungtr_bufferSize')
-
-    global __cusolverDnSorgtr
-    __cusolverDnSorgtr = dlsym(RTLD_DEFAULT, 'cusolverDnSorgtr')
-    if __cusolverDnSorgtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSorgtr = dlsym(handle, 'cusolverDnSorgtr')
-
-    global __cusolverDnDorgtr
-    __cusolverDnDorgtr = dlsym(RTLD_DEFAULT, 'cusolverDnDorgtr')
-    if __cusolverDnDorgtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDorgtr = dlsym(handle, 'cusolverDnDorgtr')
-
-    global __cusolverDnCungtr
-    __cusolverDnCungtr = dlsym(RTLD_DEFAULT, 'cusolverDnCungtr')
-    if __cusolverDnCungtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCungtr = dlsym(handle, 'cusolverDnCungtr')
-
-    global __cusolverDnZungtr
-    __cusolverDnZungtr = dlsym(RTLD_DEFAULT, 'cusolverDnZungtr')
-    if __cusolverDnZungtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZungtr = dlsym(handle, 'cusolverDnZungtr')
-
-    global __cusolverDnSormtr_bufferSize
-    __cusolverDnSormtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSormtr_bufferSize')
-    if __cusolverDnSormtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSormtr_bufferSize = dlsym(handle, 'cusolverDnSormtr_bufferSize')
-
-    global __cusolverDnDormtr_bufferSize
-    __cusolverDnDormtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDormtr_bufferSize')
-    if __cusolverDnDormtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDormtr_bufferSize = dlsym(handle, 'cusolverDnDormtr_bufferSize')
-
-    global __cusolverDnCunmtr_bufferSize
-    __cusolverDnCunmtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCunmtr_bufferSize')
-    if __cusolverDnCunmtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCunmtr_bufferSize = dlsym(handle, 'cusolverDnCunmtr_bufferSize')
-
-    global __cusolverDnZunmtr_bufferSize
-    __cusolverDnZunmtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZunmtr_bufferSize')
-    if __cusolverDnZunmtr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZunmtr_bufferSize = dlsym(handle, 'cusolverDnZunmtr_bufferSize')
-
-    global __cusolverDnSormtr
-    __cusolverDnSormtr = dlsym(RTLD_DEFAULT, 'cusolverDnSormtr')
-    if __cusolverDnSormtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSormtr = dlsym(handle, 'cusolverDnSormtr')
-
-    global __cusolverDnDormtr
-    __cusolverDnDormtr = dlsym(RTLD_DEFAULT, 'cusolverDnDormtr')
-    if __cusolverDnDormtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDormtr = dlsym(handle, 'cusolverDnDormtr')
-
-    global __cusolverDnCunmtr
-    __cusolverDnCunmtr = dlsym(RTLD_DEFAULT, 'cusolverDnCunmtr')
-    if __cusolverDnCunmtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCunmtr = dlsym(handle, 'cusolverDnCunmtr')
-
-    global __cusolverDnZunmtr
-    __cusolverDnZunmtr = dlsym(RTLD_DEFAULT, 'cusolverDnZunmtr')
-    if __cusolverDnZunmtr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZunmtr = dlsym(handle, 'cusolverDnZunmtr')
-
-    global __cusolverDnSgesvd_bufferSize
-    __cusolverDnSgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvd_bufferSize')
-    if __cusolverDnSgesvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvd_bufferSize = dlsym(handle, 'cusolverDnSgesvd_bufferSize')
-
-    global __cusolverDnDgesvd_bufferSize
-    __cusolverDnDgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvd_bufferSize')
-    if __cusolverDnDgesvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvd_bufferSize = dlsym(handle, 'cusolverDnDgesvd_bufferSize')
-
-    global __cusolverDnCgesvd_bufferSize
-    __cusolverDnCgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvd_bufferSize')
-    if __cusolverDnCgesvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvd_bufferSize = dlsym(handle, 'cusolverDnCgesvd_bufferSize')
-
-    global __cusolverDnZgesvd_bufferSize
-    __cusolverDnZgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvd_bufferSize')
-    if __cusolverDnZgesvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvd_bufferSize = dlsym(handle, 'cusolverDnZgesvd_bufferSize')
-
-    global __cusolverDnSgesvd
-    __cusolverDnSgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvd')
-    if __cusolverDnSgesvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvd = dlsym(handle, 'cusolverDnSgesvd')
-
-    global __cusolverDnDgesvd
-    __cusolverDnDgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvd')
-    if __cusolverDnDgesvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvd = dlsym(handle, 'cusolverDnDgesvd')
-
-    global __cusolverDnCgesvd
-    __cusolverDnCgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvd')
-    if __cusolverDnCgesvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvd = dlsym(handle, 'cusolverDnCgesvd')
-
-    global __cusolverDnZgesvd
-    __cusolverDnZgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvd')
-    if __cusolverDnZgesvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvd = dlsym(handle, 'cusolverDnZgesvd')
-
-    global __cusolverDnSsyevd_bufferSize
-    __cusolverDnSsyevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevd_bufferSize')
-    if __cusolverDnSsyevd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevd_bufferSize = dlsym(handle, 'cusolverDnSsyevd_bufferSize')
-
-    global __cusolverDnDsyevd_bufferSize
-    __cusolverDnDsyevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevd_bufferSize')
-    if __cusolverDnDsyevd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevd_bufferSize = dlsym(handle, 'cusolverDnDsyevd_bufferSize')
-
-    global __cusolverDnCheevd_bufferSize
-    __cusolverDnCheevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevd_bufferSize')
-    if __cusolverDnCheevd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevd_bufferSize = dlsym(handle, 'cusolverDnCheevd_bufferSize')
-
-    global __cusolverDnZheevd_bufferSize
-    __cusolverDnZheevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevd_bufferSize')
-    if __cusolverDnZheevd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevd_bufferSize = dlsym(handle, 'cusolverDnZheevd_bufferSize')
-
-    global __cusolverDnSsyevd
-    __cusolverDnSsyevd = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevd')
-    if __cusolverDnSsyevd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevd = dlsym(handle, 'cusolverDnSsyevd')
-
-    global __cusolverDnDsyevd
-    __cusolverDnDsyevd = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevd')
-    if __cusolverDnDsyevd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevd = dlsym(handle, 'cusolverDnDsyevd')
-
-    global __cusolverDnCheevd
-    __cusolverDnCheevd = dlsym(RTLD_DEFAULT, 'cusolverDnCheevd')
-    if __cusolverDnCheevd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevd = dlsym(handle, 'cusolverDnCheevd')
-
-    global __cusolverDnZheevd
-    __cusolverDnZheevd = dlsym(RTLD_DEFAULT, 'cusolverDnZheevd')
-    if __cusolverDnZheevd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevd = dlsym(handle, 'cusolverDnZheevd')
-
-    global __cusolverDnSsyevdx_bufferSize
-    __cusolverDnSsyevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevdx_bufferSize')
-    if __cusolverDnSsyevdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevdx_bufferSize = dlsym(handle, 'cusolverDnSsyevdx_bufferSize')
-
-    global __cusolverDnDsyevdx_bufferSize
-    __cusolverDnDsyevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevdx_bufferSize')
-    if __cusolverDnDsyevdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevdx_bufferSize = dlsym(handle, 'cusolverDnDsyevdx_bufferSize')
-
-    global __cusolverDnCheevdx_bufferSize
-    __cusolverDnCheevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevdx_bufferSize')
-    if __cusolverDnCheevdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevdx_bufferSize = dlsym(handle, 'cusolverDnCheevdx_bufferSize')
-
-    global __cusolverDnZheevdx_bufferSize
-    __cusolverDnZheevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevdx_bufferSize')
-    if __cusolverDnZheevdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevdx_bufferSize = dlsym(handle, 'cusolverDnZheevdx_bufferSize')
-
-    global __cusolverDnSsyevdx
-    __cusolverDnSsyevdx = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevdx')
-    if __cusolverDnSsyevdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevdx = dlsym(handle, 'cusolverDnSsyevdx')
-
-    global __cusolverDnDsyevdx
-    __cusolverDnDsyevdx = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevdx')
-    if __cusolverDnDsyevdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevdx = dlsym(handle, 'cusolverDnDsyevdx')
-
-    global __cusolverDnCheevdx
-    __cusolverDnCheevdx = dlsym(RTLD_DEFAULT, 'cusolverDnCheevdx')
-    if __cusolverDnCheevdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevdx = dlsym(handle, 'cusolverDnCheevdx')
-
-    global __cusolverDnZheevdx
-    __cusolverDnZheevdx = dlsym(RTLD_DEFAULT, 'cusolverDnZheevdx')
-    if __cusolverDnZheevdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevdx = dlsym(handle, 'cusolverDnZheevdx')
-
-    global __cusolverDnSsygvdx_bufferSize
-    __cusolverDnSsygvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvdx_bufferSize')
-    if __cusolverDnSsygvdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsygvdx_bufferSize = dlsym(handle, 'cusolverDnSsygvdx_bufferSize')
-
-    global __cusolverDnDsygvdx_bufferSize
-    __cusolverDnDsygvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvdx_bufferSize')
-    if __cusolverDnDsygvdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsygvdx_bufferSize = dlsym(handle, 'cusolverDnDsygvdx_bufferSize')
-
-    global __cusolverDnChegvdx_bufferSize
-    __cusolverDnChegvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChegvdx_bufferSize')
-    if __cusolverDnChegvdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChegvdx_bufferSize = dlsym(handle, 'cusolverDnChegvdx_bufferSize')
-
-    global __cusolverDnZhegvdx_bufferSize
-    __cusolverDnZhegvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvdx_bufferSize')
-    if __cusolverDnZhegvdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhegvdx_bufferSize = dlsym(handle, 'cusolverDnZhegvdx_bufferSize')
-
-    global __cusolverDnSsygvdx
-    __cusolverDnSsygvdx = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvdx')
-    if __cusolverDnSsygvdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsygvdx = dlsym(handle, 'cusolverDnSsygvdx')
-
-    global __cusolverDnDsygvdx
-    __cusolverDnDsygvdx = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvdx')
-    if __cusolverDnDsygvdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsygvdx = dlsym(handle, 'cusolverDnDsygvdx')
-
-    global __cusolverDnChegvdx
-    __cusolverDnChegvdx = dlsym(RTLD_DEFAULT, 'cusolverDnChegvdx')
-    if __cusolverDnChegvdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChegvdx = dlsym(handle, 'cusolverDnChegvdx')
-
-    global __cusolverDnZhegvdx
-    __cusolverDnZhegvdx = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvdx')
-    if __cusolverDnZhegvdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhegvdx = dlsym(handle, 'cusolverDnZhegvdx')
-
-    global __cusolverDnSsygvd_bufferSize
-    __cusolverDnSsygvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvd_bufferSize')
-    if __cusolverDnSsygvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsygvd_bufferSize = dlsym(handle, 'cusolverDnSsygvd_bufferSize')
-
-    global __cusolverDnDsygvd_bufferSize
-    __cusolverDnDsygvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvd_bufferSize')
-    if __cusolverDnDsygvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsygvd_bufferSize = dlsym(handle, 'cusolverDnDsygvd_bufferSize')
-
-    global __cusolverDnChegvd_bufferSize
-    __cusolverDnChegvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChegvd_bufferSize')
-    if __cusolverDnChegvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChegvd_bufferSize = dlsym(handle, 'cusolverDnChegvd_bufferSize')
-
-    global __cusolverDnZhegvd_bufferSize
-    __cusolverDnZhegvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvd_bufferSize')
-    if __cusolverDnZhegvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhegvd_bufferSize = dlsym(handle, 'cusolverDnZhegvd_bufferSize')
-
-    global __cusolverDnSsygvd
-    __cusolverDnSsygvd = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvd')
-    if __cusolverDnSsygvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsygvd = dlsym(handle, 'cusolverDnSsygvd')
-
-    global __cusolverDnDsygvd
-    __cusolverDnDsygvd = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvd')
-    if __cusolverDnDsygvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsygvd = dlsym(handle, 'cusolverDnDsygvd')
-
-    global __cusolverDnChegvd
-    __cusolverDnChegvd = dlsym(RTLD_DEFAULT, 'cusolverDnChegvd')
-    if __cusolverDnChegvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChegvd = dlsym(handle, 'cusolverDnChegvd')
-
-    global __cusolverDnZhegvd
-    __cusolverDnZhegvd = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvd')
-    if __cusolverDnZhegvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhegvd = dlsym(handle, 'cusolverDnZhegvd')
-
-    global __cusolverDnCreateSyevjInfo
-    __cusolverDnCreateSyevjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnCreateSyevjInfo')
-    if __cusolverDnCreateSyevjInfo == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCreateSyevjInfo = dlsym(handle, 'cusolverDnCreateSyevjInfo')
-
-    global __cusolverDnDestroySyevjInfo
-    __cusolverDnDestroySyevjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnDestroySyevjInfo')
-    if __cusolverDnDestroySyevjInfo == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDestroySyevjInfo = dlsym(handle, 'cusolverDnDestroySyevjInfo')
-
-    global __cusolverDnXsyevjSetTolerance
-    __cusolverDnXsyevjSetTolerance = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjSetTolerance')
-    if __cusolverDnXsyevjSetTolerance == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevjSetTolerance = dlsym(handle, 'cusolverDnXsyevjSetTolerance')
-
-    global __cusolverDnXsyevjSetMaxSweeps
-    __cusolverDnXsyevjSetMaxSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjSetMaxSweeps')
-    if __cusolverDnXsyevjSetMaxSweeps == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevjSetMaxSweeps = dlsym(handle, 'cusolverDnXsyevjSetMaxSweeps')
-
-    global __cusolverDnXsyevjSetSortEig
-    __cusolverDnXsyevjSetSortEig = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjSetSortEig')
-    if __cusolverDnXsyevjSetSortEig == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevjSetSortEig = dlsym(handle, 'cusolverDnXsyevjSetSortEig')
-
-    global __cusolverDnXsyevjGetResidual
-    __cusolverDnXsyevjGetResidual = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjGetResidual')
-    if __cusolverDnXsyevjGetResidual == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevjGetResidual = dlsym(handle, 'cusolverDnXsyevjGetResidual')
-
-    global __cusolverDnXsyevjGetSweeps
-    __cusolverDnXsyevjGetSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjGetSweeps')
-    if __cusolverDnXsyevjGetSweeps == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevjGetSweeps = dlsym(handle, 'cusolverDnXsyevjGetSweeps')
-
-    global __cusolverDnSsyevjBatched_bufferSize
-    __cusolverDnSsyevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevjBatched_bufferSize')
-    if __cusolverDnSsyevjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevjBatched_bufferSize = dlsym(handle, 'cusolverDnSsyevjBatched_bufferSize')
-
-    global __cusolverDnDsyevjBatched_bufferSize
-    __cusolverDnDsyevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevjBatched_bufferSize')
-    if __cusolverDnDsyevjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevjBatched_bufferSize = dlsym(handle, 'cusolverDnDsyevjBatched_bufferSize')
-
-    global __cusolverDnCheevjBatched_bufferSize
-    __cusolverDnCheevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevjBatched_bufferSize')
-    if __cusolverDnCheevjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevjBatched_bufferSize = dlsym(handle, 'cusolverDnCheevjBatched_bufferSize')
-
-    global __cusolverDnZheevjBatched_bufferSize
-    __cusolverDnZheevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevjBatched_bufferSize')
-    if __cusolverDnZheevjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevjBatched_bufferSize = dlsym(handle, 'cusolverDnZheevjBatched_bufferSize')
-
-    global __cusolverDnSsyevjBatched
-    __cusolverDnSsyevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevjBatched')
-    if __cusolverDnSsyevjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevjBatched = dlsym(handle, 'cusolverDnSsyevjBatched')
-
-    global __cusolverDnDsyevjBatched
-    __cusolverDnDsyevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevjBatched')
-    if __cusolverDnDsyevjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevjBatched = dlsym(handle, 'cusolverDnDsyevjBatched')
-
-    global __cusolverDnCheevjBatched
-    __cusolverDnCheevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCheevjBatched')
-    if __cusolverDnCheevjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevjBatched = dlsym(handle, 'cusolverDnCheevjBatched')
-
-    global __cusolverDnZheevjBatched
-    __cusolverDnZheevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZheevjBatched')
-    if __cusolverDnZheevjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevjBatched = dlsym(handle, 'cusolverDnZheevjBatched')
-
-    global __cusolverDnSsyevj_bufferSize
-    __cusolverDnSsyevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevj_bufferSize')
-    if __cusolverDnSsyevj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevj_bufferSize = dlsym(handle, 'cusolverDnSsyevj_bufferSize')
-
-    global __cusolverDnDsyevj_bufferSize
-    __cusolverDnDsyevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevj_bufferSize')
-    if __cusolverDnDsyevj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevj_bufferSize = dlsym(handle, 'cusolverDnDsyevj_bufferSize')
-
-    global __cusolverDnCheevj_bufferSize
-    __cusolverDnCheevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevj_bufferSize')
-    if __cusolverDnCheevj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevj_bufferSize = dlsym(handle, 'cusolverDnCheevj_bufferSize')
-
-    global __cusolverDnZheevj_bufferSize
-    __cusolverDnZheevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevj_bufferSize')
-    if __cusolverDnZheevj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevj_bufferSize = dlsym(handle, 'cusolverDnZheevj_bufferSize')
-
-    global __cusolverDnSsyevj
-    __cusolverDnSsyevj = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevj')
-    if __cusolverDnSsyevj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsyevj = dlsym(handle, 'cusolverDnSsyevj')
-
-    global __cusolverDnDsyevj
-    __cusolverDnDsyevj = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevj')
-    if __cusolverDnDsyevj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsyevj = dlsym(handle, 'cusolverDnDsyevj')
-
-    global __cusolverDnCheevj
-    __cusolverDnCheevj = dlsym(RTLD_DEFAULT, 'cusolverDnCheevj')
-    if __cusolverDnCheevj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCheevj = dlsym(handle, 'cusolverDnCheevj')
-
-    global __cusolverDnZheevj
-    __cusolverDnZheevj = dlsym(RTLD_DEFAULT, 'cusolverDnZheevj')
-    if __cusolverDnZheevj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZheevj = dlsym(handle, 'cusolverDnZheevj')
-
-    global __cusolverDnSsygvj_bufferSize
-    __cusolverDnSsygvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvj_bufferSize')
-    if __cusolverDnSsygvj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsygvj_bufferSize = dlsym(handle, 'cusolverDnSsygvj_bufferSize')
-
-    global __cusolverDnDsygvj_bufferSize
-    __cusolverDnDsygvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvj_bufferSize')
-    if __cusolverDnDsygvj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsygvj_bufferSize = dlsym(handle, 'cusolverDnDsygvj_bufferSize')
-
-    global __cusolverDnChegvj_bufferSize
-    __cusolverDnChegvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChegvj_bufferSize')
-    if __cusolverDnChegvj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChegvj_bufferSize = dlsym(handle, 'cusolverDnChegvj_bufferSize')
-
-    global __cusolverDnZhegvj_bufferSize
-    __cusolverDnZhegvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvj_bufferSize')
-    if __cusolverDnZhegvj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhegvj_bufferSize = dlsym(handle, 'cusolverDnZhegvj_bufferSize')
-
-    global __cusolverDnSsygvj
-    __cusolverDnSsygvj = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvj')
-    if __cusolverDnSsygvj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSsygvj = dlsym(handle, 'cusolverDnSsygvj')
-
-    global __cusolverDnDsygvj
-    __cusolverDnDsygvj = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvj')
-    if __cusolverDnDsygvj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDsygvj = dlsym(handle, 'cusolverDnDsygvj')
-
-    global __cusolverDnChegvj
-    __cusolverDnChegvj = dlsym(RTLD_DEFAULT, 'cusolverDnChegvj')
-    if __cusolverDnChegvj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnChegvj = dlsym(handle, 'cusolverDnChegvj')
-
-    global __cusolverDnZhegvj
-    __cusolverDnZhegvj = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvj')
-    if __cusolverDnZhegvj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZhegvj = dlsym(handle, 'cusolverDnZhegvj')
-
-    global __cusolverDnCreateGesvdjInfo
-    __cusolverDnCreateGesvdjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnCreateGesvdjInfo')
-    if __cusolverDnCreateGesvdjInfo == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCreateGesvdjInfo = dlsym(handle, 'cusolverDnCreateGesvdjInfo')
-
-    global __cusolverDnDestroyGesvdjInfo
-    __cusolverDnDestroyGesvdjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnDestroyGesvdjInfo')
-    if __cusolverDnDestroyGesvdjInfo == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDestroyGesvdjInfo = dlsym(handle, 'cusolverDnDestroyGesvdjInfo')
-
-    global __cusolverDnXgesvdjSetTolerance
-    __cusolverDnXgesvdjSetTolerance = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjSetTolerance')
-    if __cusolverDnXgesvdjSetTolerance == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdjSetTolerance = dlsym(handle, 'cusolverDnXgesvdjSetTolerance')
-
-    global __cusolverDnXgesvdjSetMaxSweeps
-    __cusolverDnXgesvdjSetMaxSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjSetMaxSweeps')
-    if __cusolverDnXgesvdjSetMaxSweeps == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdjSetMaxSweeps = dlsym(handle, 'cusolverDnXgesvdjSetMaxSweeps')
-
-    global __cusolverDnXgesvdjSetSortEig
-    __cusolverDnXgesvdjSetSortEig = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjSetSortEig')
-    if __cusolverDnXgesvdjSetSortEig == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdjSetSortEig = dlsym(handle, 'cusolverDnXgesvdjSetSortEig')
-
-    global __cusolverDnXgesvdjGetResidual
-    __cusolverDnXgesvdjGetResidual = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjGetResidual')
-    if __cusolverDnXgesvdjGetResidual == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdjGetResidual = dlsym(handle, 'cusolverDnXgesvdjGetResidual')
-
-    global __cusolverDnXgesvdjGetSweeps
-    __cusolverDnXgesvdjGetSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjGetSweeps')
-    if __cusolverDnXgesvdjGetSweeps == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdjGetSweeps = dlsym(handle, 'cusolverDnXgesvdjGetSweeps')
-
-    global __cusolverDnSgesvdjBatched_bufferSize
-    __cusolverDnSgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdjBatched_bufferSize')
-    if __cusolverDnSgesvdjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnSgesvdjBatched_bufferSize')
-
-    global __cusolverDnDgesvdjBatched_bufferSize
-    __cusolverDnDgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdjBatched_bufferSize')
-    if __cusolverDnDgesvdjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnDgesvdjBatched_bufferSize')
-
-    global __cusolverDnCgesvdjBatched_bufferSize
-    __cusolverDnCgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdjBatched_bufferSize')
-    if __cusolverDnCgesvdjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnCgesvdjBatched_bufferSize')
-
-    global __cusolverDnZgesvdjBatched_bufferSize
-    __cusolverDnZgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdjBatched_bufferSize')
-    if __cusolverDnZgesvdjBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnZgesvdjBatched_bufferSize')
-
-    global __cusolverDnSgesvdjBatched
-    __cusolverDnSgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdjBatched')
-    if __cusolverDnSgesvdjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvdjBatched = dlsym(handle, 'cusolverDnSgesvdjBatched')
-
-    global __cusolverDnDgesvdjBatched
-    __cusolverDnDgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdjBatched')
-    if __cusolverDnDgesvdjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvdjBatched = dlsym(handle, 'cusolverDnDgesvdjBatched')
-
-    global __cusolverDnCgesvdjBatched
-    __cusolverDnCgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdjBatched')
-    if __cusolverDnCgesvdjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvdjBatched = dlsym(handle, 'cusolverDnCgesvdjBatched')
-
-    global __cusolverDnZgesvdjBatched
-    __cusolverDnZgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdjBatched')
-    if __cusolverDnZgesvdjBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvdjBatched = dlsym(handle, 'cusolverDnZgesvdjBatched')
-
-    global __cusolverDnSgesvdj_bufferSize
-    __cusolverDnSgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdj_bufferSize')
-    if __cusolverDnSgesvdj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvdj_bufferSize = dlsym(handle, 'cusolverDnSgesvdj_bufferSize')
-
-    global __cusolverDnDgesvdj_bufferSize
-    __cusolverDnDgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdj_bufferSize')
-    if __cusolverDnDgesvdj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvdj_bufferSize = dlsym(handle, 'cusolverDnDgesvdj_bufferSize')
-
-    global __cusolverDnCgesvdj_bufferSize
-    __cusolverDnCgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdj_bufferSize')
-    if __cusolverDnCgesvdj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvdj_bufferSize = dlsym(handle, 'cusolverDnCgesvdj_bufferSize')
-
-    global __cusolverDnZgesvdj_bufferSize
-    __cusolverDnZgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdj_bufferSize')
-    if __cusolverDnZgesvdj_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvdj_bufferSize = dlsym(handle, 'cusolverDnZgesvdj_bufferSize')
-
-    global __cusolverDnSgesvdj
-    __cusolverDnSgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdj')
-    if __cusolverDnSgesvdj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvdj = dlsym(handle, 'cusolverDnSgesvdj')
-
-    global __cusolverDnDgesvdj
-    __cusolverDnDgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdj')
-    if __cusolverDnDgesvdj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvdj = dlsym(handle, 'cusolverDnDgesvdj')
-
-    global __cusolverDnCgesvdj
-    __cusolverDnCgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdj')
-    if __cusolverDnCgesvdj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvdj = dlsym(handle, 'cusolverDnCgesvdj')
-
-    global __cusolverDnZgesvdj
-    __cusolverDnZgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdj')
-    if __cusolverDnZgesvdj == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvdj = dlsym(handle, 'cusolverDnZgesvdj')
-
-    global __cusolverDnSgesvdaStridedBatched_bufferSize
-    __cusolverDnSgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdaStridedBatched_bufferSize')
-    if __cusolverDnSgesvdaStridedBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnSgesvdaStridedBatched_bufferSize')
-
-    global __cusolverDnDgesvdaStridedBatched_bufferSize
-    __cusolverDnDgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdaStridedBatched_bufferSize')
-    if __cusolverDnDgesvdaStridedBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnDgesvdaStridedBatched_bufferSize')
-
-    global __cusolverDnCgesvdaStridedBatched_bufferSize
-    __cusolverDnCgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdaStridedBatched_bufferSize')
-    if __cusolverDnCgesvdaStridedBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnCgesvdaStridedBatched_bufferSize')
-
-    global __cusolverDnZgesvdaStridedBatched_bufferSize
-    __cusolverDnZgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdaStridedBatched_bufferSize')
-    if __cusolverDnZgesvdaStridedBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnZgesvdaStridedBatched_bufferSize')
-
-    global __cusolverDnSgesvdaStridedBatched
-    __cusolverDnSgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdaStridedBatched')
-    if __cusolverDnSgesvdaStridedBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSgesvdaStridedBatched = dlsym(handle, 'cusolverDnSgesvdaStridedBatched')
-
-    global __cusolverDnDgesvdaStridedBatched
-    __cusolverDnDgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdaStridedBatched')
-    if __cusolverDnDgesvdaStridedBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDgesvdaStridedBatched = dlsym(handle, 'cusolverDnDgesvdaStridedBatched')
-
-    global __cusolverDnCgesvdaStridedBatched
-    __cusolverDnCgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdaStridedBatched')
-    if __cusolverDnCgesvdaStridedBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCgesvdaStridedBatched = dlsym(handle, 'cusolverDnCgesvdaStridedBatched')
-
-    global __cusolverDnZgesvdaStridedBatched
-    __cusolverDnZgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdaStridedBatched')
-    if __cusolverDnZgesvdaStridedBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnZgesvdaStridedBatched = dlsym(handle, 'cusolverDnZgesvdaStridedBatched')
-
-    global __cusolverDnCreateParams
-    __cusolverDnCreateParams = dlsym(RTLD_DEFAULT, 'cusolverDnCreateParams')
-    if __cusolverDnCreateParams == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnCreateParams = dlsym(handle, 'cusolverDnCreateParams')
-
-    global __cusolverDnDestroyParams
-    __cusolverDnDestroyParams = dlsym(RTLD_DEFAULT, 'cusolverDnDestroyParams')
-    if __cusolverDnDestroyParams == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnDestroyParams = dlsym(handle, 'cusolverDnDestroyParams')
-
-    global __cusolverDnSetAdvOptions
-    __cusolverDnSetAdvOptions = dlsym(RTLD_DEFAULT, 'cusolverDnSetAdvOptions')
-    if __cusolverDnSetAdvOptions == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSetAdvOptions = dlsym(handle, 'cusolverDnSetAdvOptions')
-
-    global __cusolverDnXpotrf_bufferSize
-    __cusolverDnXpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXpotrf_bufferSize')
-    if __cusolverDnXpotrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXpotrf_bufferSize = dlsym(handle, 'cusolverDnXpotrf_bufferSize')
-
-    global __cusolverDnXpotrf
-    __cusolverDnXpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnXpotrf')
-    if __cusolverDnXpotrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXpotrf = dlsym(handle, 'cusolverDnXpotrf')
-
-    global __cusolverDnXpotrs
-    __cusolverDnXpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnXpotrs')
-    if __cusolverDnXpotrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXpotrs = dlsym(handle, 'cusolverDnXpotrs')
-
-    global __cusolverDnXgeqrf_bufferSize
-    __cusolverDnXgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgeqrf_bufferSize')
-    if __cusolverDnXgeqrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgeqrf_bufferSize = dlsym(handle, 'cusolverDnXgeqrf_bufferSize')
-
-    global __cusolverDnXgeqrf
-    __cusolverDnXgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnXgeqrf')
-    if __cusolverDnXgeqrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgeqrf = dlsym(handle, 'cusolverDnXgeqrf')
-
-    global __cusolverDnXgetrf_bufferSize
-    __cusolverDnXgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgetrf_bufferSize')
-    if __cusolverDnXgetrf_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgetrf_bufferSize = dlsym(handle, 'cusolverDnXgetrf_bufferSize')
-
-    global __cusolverDnXgetrf
-    __cusolverDnXgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnXgetrf')
-    if __cusolverDnXgetrf == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgetrf = dlsym(handle, 'cusolverDnXgetrf')
-
-    global __cusolverDnXgetrs
-    __cusolverDnXgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnXgetrs')
-    if __cusolverDnXgetrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgetrs = dlsym(handle, 'cusolverDnXgetrs')
-
-    global __cusolverDnXsyevd_bufferSize
-    __cusolverDnXsyevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevd_bufferSize')
-    if __cusolverDnXsyevd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevd_bufferSize = dlsym(handle, 'cusolverDnXsyevd_bufferSize')
-
-    global __cusolverDnXsyevd
-    __cusolverDnXsyevd = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevd')
-    if __cusolverDnXsyevd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevd = dlsym(handle, 'cusolverDnXsyevd')
-
-    global __cusolverDnXsyevdx_bufferSize
-    __cusolverDnXsyevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevdx_bufferSize')
-    if __cusolverDnXsyevdx_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevdx_bufferSize = dlsym(handle, 'cusolverDnXsyevdx_bufferSize')
-
-    global __cusolverDnXsyevdx
-    __cusolverDnXsyevdx = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevdx')
-    if __cusolverDnXsyevdx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevdx = dlsym(handle, 'cusolverDnXsyevdx')
-
-    global __cusolverDnXgesvd_bufferSize
-    __cusolverDnXgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvd_bufferSize')
-    if __cusolverDnXgesvd_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvd_bufferSize = dlsym(handle, 'cusolverDnXgesvd_bufferSize')
-
-    global __cusolverDnXgesvd
-    __cusolverDnXgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvd')
-    if __cusolverDnXgesvd == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvd = dlsym(handle, 'cusolverDnXgesvd')
-
-    global __cusolverDnXgesvdp_bufferSize
-    __cusolverDnXgesvdp_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdp_bufferSize')
-    if __cusolverDnXgesvdp_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdp_bufferSize = dlsym(handle, 'cusolverDnXgesvdp_bufferSize')
-
-    global __cusolverDnXgesvdp
-    __cusolverDnXgesvdp = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdp')
-    if __cusolverDnXgesvdp == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdp = dlsym(handle, 'cusolverDnXgesvdp')
-
-    global __cusolverDnXgesvdr_bufferSize
-    __cusolverDnXgesvdr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdr_bufferSize')
-    if __cusolverDnXgesvdr_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdr_bufferSize = dlsym(handle, 'cusolverDnXgesvdr_bufferSize')
-
-    global __cusolverDnXgesvdr
-    __cusolverDnXgesvdr = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdr')
-    if __cusolverDnXgesvdr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgesvdr = dlsym(handle, 'cusolverDnXgesvdr')
-
-    global __cusolverDnXsytrs_bufferSize
-    __cusolverDnXsytrs_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsytrs_bufferSize')
-    if __cusolverDnXsytrs_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsytrs_bufferSize = dlsym(handle, 'cusolverDnXsytrs_bufferSize')
-
-    global __cusolverDnXsytrs
-    __cusolverDnXsytrs = dlsym(RTLD_DEFAULT, 'cusolverDnXsytrs')
-    if __cusolverDnXsytrs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsytrs = dlsym(handle, 'cusolverDnXsytrs')
-
-    global __cusolverDnXtrtri_bufferSize
-    __cusolverDnXtrtri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXtrtri_bufferSize')
-    if __cusolverDnXtrtri_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXtrtri_bufferSize = dlsym(handle, 'cusolverDnXtrtri_bufferSize')
-
-    global __cusolverDnXtrtri
-    __cusolverDnXtrtri = dlsym(RTLD_DEFAULT, 'cusolverDnXtrtri')
-    if __cusolverDnXtrtri == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXtrtri = dlsym(handle, 'cusolverDnXtrtri')
-
-    global __cusolverDnLoggerSetCallback
-    __cusolverDnLoggerSetCallback = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetCallback')
-    if __cusolverDnLoggerSetCallback == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnLoggerSetCallback = dlsym(handle, 'cusolverDnLoggerSetCallback')
-
-    global __cusolverDnLoggerSetFile
-    __cusolverDnLoggerSetFile = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetFile')
-    if __cusolverDnLoggerSetFile == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnLoggerSetFile = dlsym(handle, 'cusolverDnLoggerSetFile')
-
-    global __cusolverDnLoggerOpenFile
-    __cusolverDnLoggerOpenFile = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerOpenFile')
-    if __cusolverDnLoggerOpenFile == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnLoggerOpenFile = dlsym(handle, 'cusolverDnLoggerOpenFile')
-
-    global __cusolverDnLoggerSetLevel
-    __cusolverDnLoggerSetLevel = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetLevel')
-    if __cusolverDnLoggerSetLevel == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnLoggerSetLevel = dlsym(handle, 'cusolverDnLoggerSetLevel')
-
-    global __cusolverDnLoggerSetMask
-    __cusolverDnLoggerSetMask = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetMask')
-    if __cusolverDnLoggerSetMask == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnLoggerSetMask = dlsym(handle, 'cusolverDnLoggerSetMask')
-
-    global __cusolverDnLoggerForceDisable
-    __cusolverDnLoggerForceDisable = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerForceDisable')
-    if __cusolverDnLoggerForceDisable == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnLoggerForceDisable = dlsym(handle, 'cusolverDnLoggerForceDisable')
-
-    global __cusolverDnSetDeterministicMode
-    __cusolverDnSetDeterministicMode = dlsym(RTLD_DEFAULT, 'cusolverDnSetDeterministicMode')
-    if __cusolverDnSetDeterministicMode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnSetDeterministicMode = dlsym(handle, 'cusolverDnSetDeterministicMode')
-
-    global __cusolverDnGetDeterministicMode
-    __cusolverDnGetDeterministicMode = dlsym(RTLD_DEFAULT, 'cusolverDnGetDeterministicMode')
-    if __cusolverDnGetDeterministicMode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnGetDeterministicMode = dlsym(handle, 'cusolverDnGetDeterministicMode')
-
-    global __cusolverDnXlarft_bufferSize
-    __cusolverDnXlarft_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXlarft_bufferSize')
-    if __cusolverDnXlarft_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXlarft_bufferSize = dlsym(handle, 'cusolverDnXlarft_bufferSize')
-
-    global __cusolverDnXlarft
-    __cusolverDnXlarft = dlsym(RTLD_DEFAULT, 'cusolverDnXlarft')
-    if __cusolverDnXlarft == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXlarft = dlsym(handle, 'cusolverDnXlarft')
-
-    global __cusolverDnXsyevBatched_bufferSize
-    __cusolverDnXsyevBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevBatched_bufferSize')
-    if __cusolverDnXsyevBatched_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevBatched_bufferSize = dlsym(handle, 'cusolverDnXsyevBatched_bufferSize')
-
-    global __cusolverDnXsyevBatched
-    __cusolverDnXsyevBatched = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevBatched')
-    if __cusolverDnXsyevBatched == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXsyevBatched = dlsym(handle, 'cusolverDnXsyevBatched')
-
-    global __cusolverDnXgeev_bufferSize
-    __cusolverDnXgeev_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgeev_bufferSize')
-    if __cusolverDnXgeev_bufferSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgeev_bufferSize = dlsym(handle, 'cusolverDnXgeev_bufferSize')
-
-    global __cusolverDnXgeev
-    __cusolverDnXgeev = dlsym(RTLD_DEFAULT, 'cusolverDnXgeev')
-    if __cusolverDnXgeev == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverDnXgeev = dlsym(handle, 'cusolverDnXgeev')
-
-    __py_cusolverDn_init = True
-    return 0
+
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
+
+        # Load function
+        global __cusolverDnCreate
+        __cusolverDnCreate = dlsym(RTLD_DEFAULT, 'cusolverDnCreate')
+        if __cusolverDnCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCreate = dlsym(handle, 'cusolverDnCreate')
+
+        global __cusolverDnDestroy
+        __cusolverDnDestroy = dlsym(RTLD_DEFAULT, 'cusolverDnDestroy')
+        if __cusolverDnDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDestroy = dlsym(handle, 'cusolverDnDestroy')
+
+        global __cusolverDnSetStream
+        __cusolverDnSetStream = dlsym(RTLD_DEFAULT, 'cusolverDnSetStream')
+        if __cusolverDnSetStream == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSetStream = dlsym(handle, 'cusolverDnSetStream')
+
+        global __cusolverDnGetStream
+        __cusolverDnGetStream = dlsym(RTLD_DEFAULT, 'cusolverDnGetStream')
+        if __cusolverDnGetStream == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnGetStream = dlsym(handle, 'cusolverDnGetStream')
+
+        global __cusolverDnIRSParamsCreate
+        __cusolverDnIRSParamsCreate = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsCreate')
+        if __cusolverDnIRSParamsCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsCreate = dlsym(handle, 'cusolverDnIRSParamsCreate')
+
+        global __cusolverDnIRSParamsDestroy
+        __cusolverDnIRSParamsDestroy = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsDestroy')
+        if __cusolverDnIRSParamsDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsDestroy = dlsym(handle, 'cusolverDnIRSParamsDestroy')
+
+        global __cusolverDnIRSParamsSetRefinementSolver
+        __cusolverDnIRSParamsSetRefinementSolver = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetRefinementSolver')
+        if __cusolverDnIRSParamsSetRefinementSolver == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetRefinementSolver = dlsym(handle, 'cusolverDnIRSParamsSetRefinementSolver')
+
+        global __cusolverDnIRSParamsSetSolverMainPrecision
+        __cusolverDnIRSParamsSetSolverMainPrecision = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetSolverMainPrecision')
+        if __cusolverDnIRSParamsSetSolverMainPrecision == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetSolverMainPrecision = dlsym(handle, 'cusolverDnIRSParamsSetSolverMainPrecision')
+
+        global __cusolverDnIRSParamsSetSolverLowestPrecision
+        __cusolverDnIRSParamsSetSolverLowestPrecision = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetSolverLowestPrecision')
+        if __cusolverDnIRSParamsSetSolverLowestPrecision == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetSolverLowestPrecision = dlsym(handle, 'cusolverDnIRSParamsSetSolverLowestPrecision')
+
+        global __cusolverDnIRSParamsSetSolverPrecisions
+        __cusolverDnIRSParamsSetSolverPrecisions = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetSolverPrecisions')
+        if __cusolverDnIRSParamsSetSolverPrecisions == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetSolverPrecisions = dlsym(handle, 'cusolverDnIRSParamsSetSolverPrecisions')
+
+        global __cusolverDnIRSParamsSetTol
+        __cusolverDnIRSParamsSetTol = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetTol')
+        if __cusolverDnIRSParamsSetTol == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetTol = dlsym(handle, 'cusolverDnIRSParamsSetTol')
+
+        global __cusolverDnIRSParamsSetTolInner
+        __cusolverDnIRSParamsSetTolInner = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetTolInner')
+        if __cusolverDnIRSParamsSetTolInner == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetTolInner = dlsym(handle, 'cusolverDnIRSParamsSetTolInner')
+
+        global __cusolverDnIRSParamsSetMaxIters
+        __cusolverDnIRSParamsSetMaxIters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetMaxIters')
+        if __cusolverDnIRSParamsSetMaxIters == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetMaxIters = dlsym(handle, 'cusolverDnIRSParamsSetMaxIters')
+
+        global __cusolverDnIRSParamsSetMaxItersInner
+        __cusolverDnIRSParamsSetMaxItersInner = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsSetMaxItersInner')
+        if __cusolverDnIRSParamsSetMaxItersInner == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsSetMaxItersInner = dlsym(handle, 'cusolverDnIRSParamsSetMaxItersInner')
+
+        global __cusolverDnIRSParamsGetMaxIters
+        __cusolverDnIRSParamsGetMaxIters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsGetMaxIters')
+        if __cusolverDnIRSParamsGetMaxIters == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsGetMaxIters = dlsym(handle, 'cusolverDnIRSParamsGetMaxIters')
+
+        global __cusolverDnIRSParamsEnableFallback
+        __cusolverDnIRSParamsEnableFallback = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsEnableFallback')
+        if __cusolverDnIRSParamsEnableFallback == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsEnableFallback = dlsym(handle, 'cusolverDnIRSParamsEnableFallback')
+
+        global __cusolverDnIRSParamsDisableFallback
+        __cusolverDnIRSParamsDisableFallback = dlsym(RTLD_DEFAULT, 'cusolverDnIRSParamsDisableFallback')
+        if __cusolverDnIRSParamsDisableFallback == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSParamsDisableFallback = dlsym(handle, 'cusolverDnIRSParamsDisableFallback')
+
+        global __cusolverDnIRSInfosDestroy
+        __cusolverDnIRSInfosDestroy = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosDestroy')
+        if __cusolverDnIRSInfosDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSInfosDestroy = dlsym(handle, 'cusolverDnIRSInfosDestroy')
+
+        global __cusolverDnIRSInfosCreate
+        __cusolverDnIRSInfosCreate = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosCreate')
+        if __cusolverDnIRSInfosCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSInfosCreate = dlsym(handle, 'cusolverDnIRSInfosCreate')
+
+        global __cusolverDnIRSInfosGetNiters
+        __cusolverDnIRSInfosGetNiters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetNiters')
+        if __cusolverDnIRSInfosGetNiters == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSInfosGetNiters = dlsym(handle, 'cusolverDnIRSInfosGetNiters')
+
+        global __cusolverDnIRSInfosGetOuterNiters
+        __cusolverDnIRSInfosGetOuterNiters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetOuterNiters')
+        if __cusolverDnIRSInfosGetOuterNiters == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSInfosGetOuterNiters = dlsym(handle, 'cusolverDnIRSInfosGetOuterNiters')
+
+        global __cusolverDnIRSInfosRequestResidual
+        __cusolverDnIRSInfosRequestResidual = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosRequestResidual')
+        if __cusolverDnIRSInfosRequestResidual == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSInfosRequestResidual = dlsym(handle, 'cusolverDnIRSInfosRequestResidual')
+
+        global __cusolverDnIRSInfosGetResidualHistory
+        __cusolverDnIRSInfosGetResidualHistory = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetResidualHistory')
+        if __cusolverDnIRSInfosGetResidualHistory == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSInfosGetResidualHistory = dlsym(handle, 'cusolverDnIRSInfosGetResidualHistory')
+
+        global __cusolverDnIRSInfosGetMaxIters
+        __cusolverDnIRSInfosGetMaxIters = dlsym(RTLD_DEFAULT, 'cusolverDnIRSInfosGetMaxIters')
+        if __cusolverDnIRSInfosGetMaxIters == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSInfosGetMaxIters = dlsym(handle, 'cusolverDnIRSInfosGetMaxIters')
+
+        global __cusolverDnZZgesv
+        __cusolverDnZZgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZZgesv')
+        if __cusolverDnZZgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZZgesv = dlsym(handle, 'cusolverDnZZgesv')
+
+        global __cusolverDnZCgesv
+        __cusolverDnZCgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZCgesv')
+        if __cusolverDnZCgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZCgesv = dlsym(handle, 'cusolverDnZCgesv')
+
+        global __cusolverDnZKgesv
+        __cusolverDnZKgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZKgesv')
+        if __cusolverDnZKgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZKgesv = dlsym(handle, 'cusolverDnZKgesv')
+
+        global __cusolverDnZEgesv
+        __cusolverDnZEgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZEgesv')
+        if __cusolverDnZEgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZEgesv = dlsym(handle, 'cusolverDnZEgesv')
+
+        global __cusolverDnZYgesv
+        __cusolverDnZYgesv = dlsym(RTLD_DEFAULT, 'cusolverDnZYgesv')
+        if __cusolverDnZYgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZYgesv = dlsym(handle, 'cusolverDnZYgesv')
+
+        global __cusolverDnCCgesv
+        __cusolverDnCCgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCCgesv')
+        if __cusolverDnCCgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCCgesv = dlsym(handle, 'cusolverDnCCgesv')
+
+        global __cusolverDnCEgesv
+        __cusolverDnCEgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCEgesv')
+        if __cusolverDnCEgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCEgesv = dlsym(handle, 'cusolverDnCEgesv')
+
+        global __cusolverDnCKgesv
+        __cusolverDnCKgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCKgesv')
+        if __cusolverDnCKgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCKgesv = dlsym(handle, 'cusolverDnCKgesv')
+
+        global __cusolverDnCYgesv
+        __cusolverDnCYgesv = dlsym(RTLD_DEFAULT, 'cusolverDnCYgesv')
+        if __cusolverDnCYgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCYgesv = dlsym(handle, 'cusolverDnCYgesv')
+
+        global __cusolverDnDDgesv
+        __cusolverDnDDgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDDgesv')
+        if __cusolverDnDDgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDDgesv = dlsym(handle, 'cusolverDnDDgesv')
+
+        global __cusolverDnDSgesv
+        __cusolverDnDSgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDSgesv')
+        if __cusolverDnDSgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDSgesv = dlsym(handle, 'cusolverDnDSgesv')
+
+        global __cusolverDnDHgesv
+        __cusolverDnDHgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDHgesv')
+        if __cusolverDnDHgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDHgesv = dlsym(handle, 'cusolverDnDHgesv')
+
+        global __cusolverDnDBgesv
+        __cusolverDnDBgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDBgesv')
+        if __cusolverDnDBgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDBgesv = dlsym(handle, 'cusolverDnDBgesv')
+
+        global __cusolverDnDXgesv
+        __cusolverDnDXgesv = dlsym(RTLD_DEFAULT, 'cusolverDnDXgesv')
+        if __cusolverDnDXgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDXgesv = dlsym(handle, 'cusolverDnDXgesv')
+
+        global __cusolverDnSSgesv
+        __cusolverDnSSgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSSgesv')
+        if __cusolverDnSSgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSSgesv = dlsym(handle, 'cusolverDnSSgesv')
+
+        global __cusolverDnSHgesv
+        __cusolverDnSHgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSHgesv')
+        if __cusolverDnSHgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSHgesv = dlsym(handle, 'cusolverDnSHgesv')
+
+        global __cusolverDnSBgesv
+        __cusolverDnSBgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSBgesv')
+        if __cusolverDnSBgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSBgesv = dlsym(handle, 'cusolverDnSBgesv')
+
+        global __cusolverDnSXgesv
+        __cusolverDnSXgesv = dlsym(RTLD_DEFAULT, 'cusolverDnSXgesv')
+        if __cusolverDnSXgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSXgesv = dlsym(handle, 'cusolverDnSXgesv')
+
+        global __cusolverDnZZgesv_bufferSize
+        __cusolverDnZZgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZZgesv_bufferSize')
+        if __cusolverDnZZgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZZgesv_bufferSize = dlsym(handle, 'cusolverDnZZgesv_bufferSize')
+
+        global __cusolverDnZCgesv_bufferSize
+        __cusolverDnZCgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZCgesv_bufferSize')
+        if __cusolverDnZCgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZCgesv_bufferSize = dlsym(handle, 'cusolverDnZCgesv_bufferSize')
+
+        global __cusolverDnZKgesv_bufferSize
+        __cusolverDnZKgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZKgesv_bufferSize')
+        if __cusolverDnZKgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZKgesv_bufferSize = dlsym(handle, 'cusolverDnZKgesv_bufferSize')
+
+        global __cusolverDnZEgesv_bufferSize
+        __cusolverDnZEgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZEgesv_bufferSize')
+        if __cusolverDnZEgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZEgesv_bufferSize = dlsym(handle, 'cusolverDnZEgesv_bufferSize')
+
+        global __cusolverDnZYgesv_bufferSize
+        __cusolverDnZYgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZYgesv_bufferSize')
+        if __cusolverDnZYgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZYgesv_bufferSize = dlsym(handle, 'cusolverDnZYgesv_bufferSize')
+
+        global __cusolverDnCCgesv_bufferSize
+        __cusolverDnCCgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCCgesv_bufferSize')
+        if __cusolverDnCCgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCCgesv_bufferSize = dlsym(handle, 'cusolverDnCCgesv_bufferSize')
+
+        global __cusolverDnCKgesv_bufferSize
+        __cusolverDnCKgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCKgesv_bufferSize')
+        if __cusolverDnCKgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCKgesv_bufferSize = dlsym(handle, 'cusolverDnCKgesv_bufferSize')
+
+        global __cusolverDnCEgesv_bufferSize
+        __cusolverDnCEgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCEgesv_bufferSize')
+        if __cusolverDnCEgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCEgesv_bufferSize = dlsym(handle, 'cusolverDnCEgesv_bufferSize')
+
+        global __cusolverDnCYgesv_bufferSize
+        __cusolverDnCYgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCYgesv_bufferSize')
+        if __cusolverDnCYgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCYgesv_bufferSize = dlsym(handle, 'cusolverDnCYgesv_bufferSize')
+
+        global __cusolverDnDDgesv_bufferSize
+        __cusolverDnDDgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDDgesv_bufferSize')
+        if __cusolverDnDDgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDDgesv_bufferSize = dlsym(handle, 'cusolverDnDDgesv_bufferSize')
+
+        global __cusolverDnDSgesv_bufferSize
+        __cusolverDnDSgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDSgesv_bufferSize')
+        if __cusolverDnDSgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDSgesv_bufferSize = dlsym(handle, 'cusolverDnDSgesv_bufferSize')
+
+        global __cusolverDnDHgesv_bufferSize
+        __cusolverDnDHgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDHgesv_bufferSize')
+        if __cusolverDnDHgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDHgesv_bufferSize = dlsym(handle, 'cusolverDnDHgesv_bufferSize')
+
+        global __cusolverDnDBgesv_bufferSize
+        __cusolverDnDBgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDBgesv_bufferSize')
+        if __cusolverDnDBgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDBgesv_bufferSize = dlsym(handle, 'cusolverDnDBgesv_bufferSize')
+
+        global __cusolverDnDXgesv_bufferSize
+        __cusolverDnDXgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDXgesv_bufferSize')
+        if __cusolverDnDXgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDXgesv_bufferSize = dlsym(handle, 'cusolverDnDXgesv_bufferSize')
+
+        global __cusolverDnSSgesv_bufferSize
+        __cusolverDnSSgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSSgesv_bufferSize')
+        if __cusolverDnSSgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSSgesv_bufferSize = dlsym(handle, 'cusolverDnSSgesv_bufferSize')
+
+        global __cusolverDnSHgesv_bufferSize
+        __cusolverDnSHgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSHgesv_bufferSize')
+        if __cusolverDnSHgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSHgesv_bufferSize = dlsym(handle, 'cusolverDnSHgesv_bufferSize')
+
+        global __cusolverDnSBgesv_bufferSize
+        __cusolverDnSBgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSBgesv_bufferSize')
+        if __cusolverDnSBgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSBgesv_bufferSize = dlsym(handle, 'cusolverDnSBgesv_bufferSize')
+
+        global __cusolverDnSXgesv_bufferSize
+        __cusolverDnSXgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSXgesv_bufferSize')
+        if __cusolverDnSXgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSXgesv_bufferSize = dlsym(handle, 'cusolverDnSXgesv_bufferSize')
+
+        global __cusolverDnZZgels
+        __cusolverDnZZgels = dlsym(RTLD_DEFAULT, 'cusolverDnZZgels')
+        if __cusolverDnZZgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZZgels = dlsym(handle, 'cusolverDnZZgels')
+
+        global __cusolverDnZCgels
+        __cusolverDnZCgels = dlsym(RTLD_DEFAULT, 'cusolverDnZCgels')
+        if __cusolverDnZCgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZCgels = dlsym(handle, 'cusolverDnZCgels')
+
+        global __cusolverDnZKgels
+        __cusolverDnZKgels = dlsym(RTLD_DEFAULT, 'cusolverDnZKgels')
+        if __cusolverDnZKgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZKgels = dlsym(handle, 'cusolverDnZKgels')
+
+        global __cusolverDnZEgels
+        __cusolverDnZEgels = dlsym(RTLD_DEFAULT, 'cusolverDnZEgels')
+        if __cusolverDnZEgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZEgels = dlsym(handle, 'cusolverDnZEgels')
+
+        global __cusolverDnZYgels
+        __cusolverDnZYgels = dlsym(RTLD_DEFAULT, 'cusolverDnZYgels')
+        if __cusolverDnZYgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZYgels = dlsym(handle, 'cusolverDnZYgels')
+
+        global __cusolverDnCCgels
+        __cusolverDnCCgels = dlsym(RTLD_DEFAULT, 'cusolverDnCCgels')
+        if __cusolverDnCCgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCCgels = dlsym(handle, 'cusolverDnCCgels')
+
+        global __cusolverDnCKgels
+        __cusolverDnCKgels = dlsym(RTLD_DEFAULT, 'cusolverDnCKgels')
+        if __cusolverDnCKgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCKgels = dlsym(handle, 'cusolverDnCKgels')
+
+        global __cusolverDnCEgels
+        __cusolverDnCEgels = dlsym(RTLD_DEFAULT, 'cusolverDnCEgels')
+        if __cusolverDnCEgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCEgels = dlsym(handle, 'cusolverDnCEgels')
+
+        global __cusolverDnCYgels
+        __cusolverDnCYgels = dlsym(RTLD_DEFAULT, 'cusolverDnCYgels')
+        if __cusolverDnCYgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCYgels = dlsym(handle, 'cusolverDnCYgels')
+
+        global __cusolverDnDDgels
+        __cusolverDnDDgels = dlsym(RTLD_DEFAULT, 'cusolverDnDDgels')
+        if __cusolverDnDDgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDDgels = dlsym(handle, 'cusolverDnDDgels')
+
+        global __cusolverDnDSgels
+        __cusolverDnDSgels = dlsym(RTLD_DEFAULT, 'cusolverDnDSgels')
+        if __cusolverDnDSgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDSgels = dlsym(handle, 'cusolverDnDSgels')
+
+        global __cusolverDnDHgels
+        __cusolverDnDHgels = dlsym(RTLD_DEFAULT, 'cusolverDnDHgels')
+        if __cusolverDnDHgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDHgels = dlsym(handle, 'cusolverDnDHgels')
+
+        global __cusolverDnDBgels
+        __cusolverDnDBgels = dlsym(RTLD_DEFAULT, 'cusolverDnDBgels')
+        if __cusolverDnDBgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDBgels = dlsym(handle, 'cusolverDnDBgels')
+
+        global __cusolverDnDXgels
+        __cusolverDnDXgels = dlsym(RTLD_DEFAULT, 'cusolverDnDXgels')
+        if __cusolverDnDXgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDXgels = dlsym(handle, 'cusolverDnDXgels')
+
+        global __cusolverDnSSgels
+        __cusolverDnSSgels = dlsym(RTLD_DEFAULT, 'cusolverDnSSgels')
+        if __cusolverDnSSgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSSgels = dlsym(handle, 'cusolverDnSSgels')
+
+        global __cusolverDnSHgels
+        __cusolverDnSHgels = dlsym(RTLD_DEFAULT, 'cusolverDnSHgels')
+        if __cusolverDnSHgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSHgels = dlsym(handle, 'cusolverDnSHgels')
+
+        global __cusolverDnSBgels
+        __cusolverDnSBgels = dlsym(RTLD_DEFAULT, 'cusolverDnSBgels')
+        if __cusolverDnSBgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSBgels = dlsym(handle, 'cusolverDnSBgels')
+
+        global __cusolverDnSXgels
+        __cusolverDnSXgels = dlsym(RTLD_DEFAULT, 'cusolverDnSXgels')
+        if __cusolverDnSXgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSXgels = dlsym(handle, 'cusolverDnSXgels')
+
+        global __cusolverDnZZgels_bufferSize
+        __cusolverDnZZgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZZgels_bufferSize')
+        if __cusolverDnZZgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZZgels_bufferSize = dlsym(handle, 'cusolverDnZZgels_bufferSize')
+
+        global __cusolverDnZCgels_bufferSize
+        __cusolverDnZCgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZCgels_bufferSize')
+        if __cusolverDnZCgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZCgels_bufferSize = dlsym(handle, 'cusolverDnZCgels_bufferSize')
+
+        global __cusolverDnZKgels_bufferSize
+        __cusolverDnZKgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZKgels_bufferSize')
+        if __cusolverDnZKgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZKgels_bufferSize = dlsym(handle, 'cusolverDnZKgels_bufferSize')
+
+        global __cusolverDnZEgels_bufferSize
+        __cusolverDnZEgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZEgels_bufferSize')
+        if __cusolverDnZEgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZEgels_bufferSize = dlsym(handle, 'cusolverDnZEgels_bufferSize')
+
+        global __cusolverDnZYgels_bufferSize
+        __cusolverDnZYgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZYgels_bufferSize')
+        if __cusolverDnZYgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZYgels_bufferSize = dlsym(handle, 'cusolverDnZYgels_bufferSize')
+
+        global __cusolverDnCCgels_bufferSize
+        __cusolverDnCCgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCCgels_bufferSize')
+        if __cusolverDnCCgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCCgels_bufferSize = dlsym(handle, 'cusolverDnCCgels_bufferSize')
+
+        global __cusolverDnCKgels_bufferSize
+        __cusolverDnCKgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCKgels_bufferSize')
+        if __cusolverDnCKgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCKgels_bufferSize = dlsym(handle, 'cusolverDnCKgels_bufferSize')
+
+        global __cusolverDnCEgels_bufferSize
+        __cusolverDnCEgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCEgels_bufferSize')
+        if __cusolverDnCEgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCEgels_bufferSize = dlsym(handle, 'cusolverDnCEgels_bufferSize')
+
+        global __cusolverDnCYgels_bufferSize
+        __cusolverDnCYgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCYgels_bufferSize')
+        if __cusolverDnCYgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCYgels_bufferSize = dlsym(handle, 'cusolverDnCYgels_bufferSize')
+
+        global __cusolverDnDDgels_bufferSize
+        __cusolverDnDDgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDDgels_bufferSize')
+        if __cusolverDnDDgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDDgels_bufferSize = dlsym(handle, 'cusolverDnDDgels_bufferSize')
+
+        global __cusolverDnDSgels_bufferSize
+        __cusolverDnDSgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDSgels_bufferSize')
+        if __cusolverDnDSgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDSgels_bufferSize = dlsym(handle, 'cusolverDnDSgels_bufferSize')
+
+        global __cusolverDnDHgels_bufferSize
+        __cusolverDnDHgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDHgels_bufferSize')
+        if __cusolverDnDHgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDHgels_bufferSize = dlsym(handle, 'cusolverDnDHgels_bufferSize')
+
+        global __cusolverDnDBgels_bufferSize
+        __cusolverDnDBgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDBgels_bufferSize')
+        if __cusolverDnDBgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDBgels_bufferSize = dlsym(handle, 'cusolverDnDBgels_bufferSize')
+
+        global __cusolverDnDXgels_bufferSize
+        __cusolverDnDXgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDXgels_bufferSize')
+        if __cusolverDnDXgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDXgels_bufferSize = dlsym(handle, 'cusolverDnDXgels_bufferSize')
+
+        global __cusolverDnSSgels_bufferSize
+        __cusolverDnSSgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSSgels_bufferSize')
+        if __cusolverDnSSgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSSgels_bufferSize = dlsym(handle, 'cusolverDnSSgels_bufferSize')
+
+        global __cusolverDnSHgels_bufferSize
+        __cusolverDnSHgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSHgels_bufferSize')
+        if __cusolverDnSHgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSHgels_bufferSize = dlsym(handle, 'cusolverDnSHgels_bufferSize')
+
+        global __cusolverDnSBgels_bufferSize
+        __cusolverDnSBgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSBgels_bufferSize')
+        if __cusolverDnSBgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSBgels_bufferSize = dlsym(handle, 'cusolverDnSBgels_bufferSize')
+
+        global __cusolverDnSXgels_bufferSize
+        __cusolverDnSXgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSXgels_bufferSize')
+        if __cusolverDnSXgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSXgels_bufferSize = dlsym(handle, 'cusolverDnSXgels_bufferSize')
+
+        global __cusolverDnIRSXgesv
+        __cusolverDnIRSXgesv = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgesv')
+        if __cusolverDnIRSXgesv == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSXgesv = dlsym(handle, 'cusolverDnIRSXgesv')
+
+        global __cusolverDnIRSXgesv_bufferSize
+        __cusolverDnIRSXgesv_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgesv_bufferSize')
+        if __cusolverDnIRSXgesv_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSXgesv_bufferSize = dlsym(handle, 'cusolverDnIRSXgesv_bufferSize')
+
+        global __cusolverDnIRSXgels
+        __cusolverDnIRSXgels = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgels')
+        if __cusolverDnIRSXgels == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSXgels = dlsym(handle, 'cusolverDnIRSXgels')
+
+        global __cusolverDnIRSXgels_bufferSize
+        __cusolverDnIRSXgels_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnIRSXgels_bufferSize')
+        if __cusolverDnIRSXgels_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnIRSXgels_bufferSize = dlsym(handle, 'cusolverDnIRSXgels_bufferSize')
+
+        global __cusolverDnSpotrf_bufferSize
+        __cusolverDnSpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrf_bufferSize')
+        if __cusolverDnSpotrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSpotrf_bufferSize = dlsym(handle, 'cusolverDnSpotrf_bufferSize')
+
+        global __cusolverDnDpotrf_bufferSize
+        __cusolverDnDpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrf_bufferSize')
+        if __cusolverDnDpotrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDpotrf_bufferSize = dlsym(handle, 'cusolverDnDpotrf_bufferSize')
+
+        global __cusolverDnCpotrf_bufferSize
+        __cusolverDnCpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrf_bufferSize')
+        if __cusolverDnCpotrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCpotrf_bufferSize = dlsym(handle, 'cusolverDnCpotrf_bufferSize')
+
+        global __cusolverDnZpotrf_bufferSize
+        __cusolverDnZpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrf_bufferSize')
+        if __cusolverDnZpotrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZpotrf_bufferSize = dlsym(handle, 'cusolverDnZpotrf_bufferSize')
+
+        global __cusolverDnSpotrf
+        __cusolverDnSpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrf')
+        if __cusolverDnSpotrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSpotrf = dlsym(handle, 'cusolverDnSpotrf')
+
+        global __cusolverDnDpotrf
+        __cusolverDnDpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrf')
+        if __cusolverDnDpotrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDpotrf = dlsym(handle, 'cusolverDnDpotrf')
+
+        global __cusolverDnCpotrf
+        __cusolverDnCpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrf')
+        if __cusolverDnCpotrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCpotrf = dlsym(handle, 'cusolverDnCpotrf')
+
+        global __cusolverDnZpotrf
+        __cusolverDnZpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrf')
+        if __cusolverDnZpotrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZpotrf = dlsym(handle, 'cusolverDnZpotrf')
+
+        global __cusolverDnSpotrs
+        __cusolverDnSpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrs')
+        if __cusolverDnSpotrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSpotrs = dlsym(handle, 'cusolverDnSpotrs')
+
+        global __cusolverDnDpotrs
+        __cusolverDnDpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrs')
+        if __cusolverDnDpotrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDpotrs = dlsym(handle, 'cusolverDnDpotrs')
+
+        global __cusolverDnCpotrs
+        __cusolverDnCpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrs')
+        if __cusolverDnCpotrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCpotrs = dlsym(handle, 'cusolverDnCpotrs')
+
+        global __cusolverDnZpotrs
+        __cusolverDnZpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrs')
+        if __cusolverDnZpotrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZpotrs = dlsym(handle, 'cusolverDnZpotrs')
+
+        global __cusolverDnSpotrfBatched
+        __cusolverDnSpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrfBatched')
+        if __cusolverDnSpotrfBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSpotrfBatched = dlsym(handle, 'cusolverDnSpotrfBatched')
+
+        global __cusolverDnDpotrfBatched
+        __cusolverDnDpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrfBatched')
+        if __cusolverDnDpotrfBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDpotrfBatched = dlsym(handle, 'cusolverDnDpotrfBatched')
+
+        global __cusolverDnCpotrfBatched
+        __cusolverDnCpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrfBatched')
+        if __cusolverDnCpotrfBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCpotrfBatched = dlsym(handle, 'cusolverDnCpotrfBatched')
+
+        global __cusolverDnZpotrfBatched
+        __cusolverDnZpotrfBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrfBatched')
+        if __cusolverDnZpotrfBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZpotrfBatched = dlsym(handle, 'cusolverDnZpotrfBatched')
+
+        global __cusolverDnSpotrsBatched
+        __cusolverDnSpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSpotrsBatched')
+        if __cusolverDnSpotrsBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSpotrsBatched = dlsym(handle, 'cusolverDnSpotrsBatched')
+
+        global __cusolverDnDpotrsBatched
+        __cusolverDnDpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDpotrsBatched')
+        if __cusolverDnDpotrsBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDpotrsBatched = dlsym(handle, 'cusolverDnDpotrsBatched')
+
+        global __cusolverDnCpotrsBatched
+        __cusolverDnCpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCpotrsBatched')
+        if __cusolverDnCpotrsBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCpotrsBatched = dlsym(handle, 'cusolverDnCpotrsBatched')
+
+        global __cusolverDnZpotrsBatched
+        __cusolverDnZpotrsBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZpotrsBatched')
+        if __cusolverDnZpotrsBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZpotrsBatched = dlsym(handle, 'cusolverDnZpotrsBatched')
+
+        global __cusolverDnSpotri_bufferSize
+        __cusolverDnSpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSpotri_bufferSize')
+        if __cusolverDnSpotri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSpotri_bufferSize = dlsym(handle, 'cusolverDnSpotri_bufferSize')
+
+        global __cusolverDnDpotri_bufferSize
+        __cusolverDnDpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDpotri_bufferSize')
+        if __cusolverDnDpotri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDpotri_bufferSize = dlsym(handle, 'cusolverDnDpotri_bufferSize')
+
+        global __cusolverDnCpotri_bufferSize
+        __cusolverDnCpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCpotri_bufferSize')
+        if __cusolverDnCpotri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCpotri_bufferSize = dlsym(handle, 'cusolverDnCpotri_bufferSize')
+
+        global __cusolverDnZpotri_bufferSize
+        __cusolverDnZpotri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZpotri_bufferSize')
+        if __cusolverDnZpotri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZpotri_bufferSize = dlsym(handle, 'cusolverDnZpotri_bufferSize')
+
+        global __cusolverDnSpotri
+        __cusolverDnSpotri = dlsym(RTLD_DEFAULT, 'cusolverDnSpotri')
+        if __cusolverDnSpotri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSpotri = dlsym(handle, 'cusolverDnSpotri')
+
+        global __cusolverDnDpotri
+        __cusolverDnDpotri = dlsym(RTLD_DEFAULT, 'cusolverDnDpotri')
+        if __cusolverDnDpotri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDpotri = dlsym(handle, 'cusolverDnDpotri')
+
+        global __cusolverDnCpotri
+        __cusolverDnCpotri = dlsym(RTLD_DEFAULT, 'cusolverDnCpotri')
+        if __cusolverDnCpotri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCpotri = dlsym(handle, 'cusolverDnCpotri')
+
+        global __cusolverDnZpotri
+        __cusolverDnZpotri = dlsym(RTLD_DEFAULT, 'cusolverDnZpotri')
+        if __cusolverDnZpotri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZpotri = dlsym(handle, 'cusolverDnZpotri')
+
+        global __cusolverDnSlauum_bufferSize
+        __cusolverDnSlauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSlauum_bufferSize')
+        if __cusolverDnSlauum_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSlauum_bufferSize = dlsym(handle, 'cusolverDnSlauum_bufferSize')
+
+        global __cusolverDnDlauum_bufferSize
+        __cusolverDnDlauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDlauum_bufferSize')
+        if __cusolverDnDlauum_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDlauum_bufferSize = dlsym(handle, 'cusolverDnDlauum_bufferSize')
+
+        global __cusolverDnClauum_bufferSize
+        __cusolverDnClauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnClauum_bufferSize')
+        if __cusolverDnClauum_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnClauum_bufferSize = dlsym(handle, 'cusolverDnClauum_bufferSize')
+
+        global __cusolverDnZlauum_bufferSize
+        __cusolverDnZlauum_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZlauum_bufferSize')
+        if __cusolverDnZlauum_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZlauum_bufferSize = dlsym(handle, 'cusolverDnZlauum_bufferSize')
+
+        global __cusolverDnSlauum
+        __cusolverDnSlauum = dlsym(RTLD_DEFAULT, 'cusolverDnSlauum')
+        if __cusolverDnSlauum == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSlauum = dlsym(handle, 'cusolverDnSlauum')
+
+        global __cusolverDnDlauum
+        __cusolverDnDlauum = dlsym(RTLD_DEFAULT, 'cusolverDnDlauum')
+        if __cusolverDnDlauum == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDlauum = dlsym(handle, 'cusolverDnDlauum')
+
+        global __cusolverDnClauum
+        __cusolverDnClauum = dlsym(RTLD_DEFAULT, 'cusolverDnClauum')
+        if __cusolverDnClauum == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnClauum = dlsym(handle, 'cusolverDnClauum')
+
+        global __cusolverDnZlauum
+        __cusolverDnZlauum = dlsym(RTLD_DEFAULT, 'cusolverDnZlauum')
+        if __cusolverDnZlauum == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZlauum = dlsym(handle, 'cusolverDnZlauum')
+
+        global __cusolverDnSgetrf_bufferSize
+        __cusolverDnSgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgetrf_bufferSize')
+        if __cusolverDnSgetrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgetrf_bufferSize = dlsym(handle, 'cusolverDnSgetrf_bufferSize')
+
+        global __cusolverDnDgetrf_bufferSize
+        __cusolverDnDgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgetrf_bufferSize')
+        if __cusolverDnDgetrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgetrf_bufferSize = dlsym(handle, 'cusolverDnDgetrf_bufferSize')
+
+        global __cusolverDnCgetrf_bufferSize
+        __cusolverDnCgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgetrf_bufferSize')
+        if __cusolverDnCgetrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgetrf_bufferSize = dlsym(handle, 'cusolverDnCgetrf_bufferSize')
+
+        global __cusolverDnZgetrf_bufferSize
+        __cusolverDnZgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgetrf_bufferSize')
+        if __cusolverDnZgetrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgetrf_bufferSize = dlsym(handle, 'cusolverDnZgetrf_bufferSize')
+
+        global __cusolverDnSgetrf
+        __cusolverDnSgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnSgetrf')
+        if __cusolverDnSgetrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgetrf = dlsym(handle, 'cusolverDnSgetrf')
+
+        global __cusolverDnDgetrf
+        __cusolverDnDgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnDgetrf')
+        if __cusolverDnDgetrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgetrf = dlsym(handle, 'cusolverDnDgetrf')
+
+        global __cusolverDnCgetrf
+        __cusolverDnCgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnCgetrf')
+        if __cusolverDnCgetrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgetrf = dlsym(handle, 'cusolverDnCgetrf')
+
+        global __cusolverDnZgetrf
+        __cusolverDnZgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnZgetrf')
+        if __cusolverDnZgetrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgetrf = dlsym(handle, 'cusolverDnZgetrf')
+
+        global __cusolverDnSlaswp
+        __cusolverDnSlaswp = dlsym(RTLD_DEFAULT, 'cusolverDnSlaswp')
+        if __cusolverDnSlaswp == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSlaswp = dlsym(handle, 'cusolverDnSlaswp')
+
+        global __cusolverDnDlaswp
+        __cusolverDnDlaswp = dlsym(RTLD_DEFAULT, 'cusolverDnDlaswp')
+        if __cusolverDnDlaswp == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDlaswp = dlsym(handle, 'cusolverDnDlaswp')
+
+        global __cusolverDnClaswp
+        __cusolverDnClaswp = dlsym(RTLD_DEFAULT, 'cusolverDnClaswp')
+        if __cusolverDnClaswp == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnClaswp = dlsym(handle, 'cusolverDnClaswp')
+
+        global __cusolverDnZlaswp
+        __cusolverDnZlaswp = dlsym(RTLD_DEFAULT, 'cusolverDnZlaswp')
+        if __cusolverDnZlaswp == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZlaswp = dlsym(handle, 'cusolverDnZlaswp')
+
+        global __cusolverDnSgetrs
+        __cusolverDnSgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnSgetrs')
+        if __cusolverDnSgetrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgetrs = dlsym(handle, 'cusolverDnSgetrs')
+
+        global __cusolverDnDgetrs
+        __cusolverDnDgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnDgetrs')
+        if __cusolverDnDgetrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgetrs = dlsym(handle, 'cusolverDnDgetrs')
+
+        global __cusolverDnCgetrs
+        __cusolverDnCgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnCgetrs')
+        if __cusolverDnCgetrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgetrs = dlsym(handle, 'cusolverDnCgetrs')
+
+        global __cusolverDnZgetrs
+        __cusolverDnZgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnZgetrs')
+        if __cusolverDnZgetrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgetrs = dlsym(handle, 'cusolverDnZgetrs')
+
+        global __cusolverDnSgeqrf_bufferSize
+        __cusolverDnSgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgeqrf_bufferSize')
+        if __cusolverDnSgeqrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgeqrf_bufferSize = dlsym(handle, 'cusolverDnSgeqrf_bufferSize')
+
+        global __cusolverDnDgeqrf_bufferSize
+        __cusolverDnDgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgeqrf_bufferSize')
+        if __cusolverDnDgeqrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgeqrf_bufferSize = dlsym(handle, 'cusolverDnDgeqrf_bufferSize')
+
+        global __cusolverDnCgeqrf_bufferSize
+        __cusolverDnCgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgeqrf_bufferSize')
+        if __cusolverDnCgeqrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgeqrf_bufferSize = dlsym(handle, 'cusolverDnCgeqrf_bufferSize')
+
+        global __cusolverDnZgeqrf_bufferSize
+        __cusolverDnZgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgeqrf_bufferSize')
+        if __cusolverDnZgeqrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgeqrf_bufferSize = dlsym(handle, 'cusolverDnZgeqrf_bufferSize')
+
+        global __cusolverDnSgeqrf
+        __cusolverDnSgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnSgeqrf')
+        if __cusolverDnSgeqrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgeqrf = dlsym(handle, 'cusolverDnSgeqrf')
+
+        global __cusolverDnDgeqrf
+        __cusolverDnDgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnDgeqrf')
+        if __cusolverDnDgeqrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgeqrf = dlsym(handle, 'cusolverDnDgeqrf')
+
+        global __cusolverDnCgeqrf
+        __cusolverDnCgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnCgeqrf')
+        if __cusolverDnCgeqrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgeqrf = dlsym(handle, 'cusolverDnCgeqrf')
+
+        global __cusolverDnZgeqrf
+        __cusolverDnZgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnZgeqrf')
+        if __cusolverDnZgeqrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgeqrf = dlsym(handle, 'cusolverDnZgeqrf')
+
+        global __cusolverDnSorgqr_bufferSize
+        __cusolverDnSorgqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSorgqr_bufferSize')
+        if __cusolverDnSorgqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSorgqr_bufferSize = dlsym(handle, 'cusolverDnSorgqr_bufferSize')
+
+        global __cusolverDnDorgqr_bufferSize
+        __cusolverDnDorgqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDorgqr_bufferSize')
+        if __cusolverDnDorgqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDorgqr_bufferSize = dlsym(handle, 'cusolverDnDorgqr_bufferSize')
+
+        global __cusolverDnCungqr_bufferSize
+        __cusolverDnCungqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCungqr_bufferSize')
+        if __cusolverDnCungqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCungqr_bufferSize = dlsym(handle, 'cusolverDnCungqr_bufferSize')
+
+        global __cusolverDnZungqr_bufferSize
+        __cusolverDnZungqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZungqr_bufferSize')
+        if __cusolverDnZungqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZungqr_bufferSize = dlsym(handle, 'cusolverDnZungqr_bufferSize')
+
+        global __cusolverDnSorgqr
+        __cusolverDnSorgqr = dlsym(RTLD_DEFAULT, 'cusolverDnSorgqr')
+        if __cusolverDnSorgqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSorgqr = dlsym(handle, 'cusolverDnSorgqr')
+
+        global __cusolverDnDorgqr
+        __cusolverDnDorgqr = dlsym(RTLD_DEFAULT, 'cusolverDnDorgqr')
+        if __cusolverDnDorgqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDorgqr = dlsym(handle, 'cusolverDnDorgqr')
+
+        global __cusolverDnCungqr
+        __cusolverDnCungqr = dlsym(RTLD_DEFAULT, 'cusolverDnCungqr')
+        if __cusolverDnCungqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCungqr = dlsym(handle, 'cusolverDnCungqr')
+
+        global __cusolverDnZungqr
+        __cusolverDnZungqr = dlsym(RTLD_DEFAULT, 'cusolverDnZungqr')
+        if __cusolverDnZungqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZungqr = dlsym(handle, 'cusolverDnZungqr')
+
+        global __cusolverDnSormqr_bufferSize
+        __cusolverDnSormqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSormqr_bufferSize')
+        if __cusolverDnSormqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSormqr_bufferSize = dlsym(handle, 'cusolverDnSormqr_bufferSize')
+
+        global __cusolverDnDormqr_bufferSize
+        __cusolverDnDormqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDormqr_bufferSize')
+        if __cusolverDnDormqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDormqr_bufferSize = dlsym(handle, 'cusolverDnDormqr_bufferSize')
+
+        global __cusolverDnCunmqr_bufferSize
+        __cusolverDnCunmqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCunmqr_bufferSize')
+        if __cusolverDnCunmqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCunmqr_bufferSize = dlsym(handle, 'cusolverDnCunmqr_bufferSize')
+
+        global __cusolverDnZunmqr_bufferSize
+        __cusolverDnZunmqr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZunmqr_bufferSize')
+        if __cusolverDnZunmqr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZunmqr_bufferSize = dlsym(handle, 'cusolverDnZunmqr_bufferSize')
+
+        global __cusolverDnSormqr
+        __cusolverDnSormqr = dlsym(RTLD_DEFAULT, 'cusolverDnSormqr')
+        if __cusolverDnSormqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSormqr = dlsym(handle, 'cusolverDnSormqr')
+
+        global __cusolverDnDormqr
+        __cusolverDnDormqr = dlsym(RTLD_DEFAULT, 'cusolverDnDormqr')
+        if __cusolverDnDormqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDormqr = dlsym(handle, 'cusolverDnDormqr')
+
+        global __cusolverDnCunmqr
+        __cusolverDnCunmqr = dlsym(RTLD_DEFAULT, 'cusolverDnCunmqr')
+        if __cusolverDnCunmqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCunmqr = dlsym(handle, 'cusolverDnCunmqr')
+
+        global __cusolverDnZunmqr
+        __cusolverDnZunmqr = dlsym(RTLD_DEFAULT, 'cusolverDnZunmqr')
+        if __cusolverDnZunmqr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZunmqr = dlsym(handle, 'cusolverDnZunmqr')
+
+        global __cusolverDnSsytrf_bufferSize
+        __cusolverDnSsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrf_bufferSize')
+        if __cusolverDnSsytrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsytrf_bufferSize = dlsym(handle, 'cusolverDnSsytrf_bufferSize')
+
+        global __cusolverDnDsytrf_bufferSize
+        __cusolverDnDsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrf_bufferSize')
+        if __cusolverDnDsytrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsytrf_bufferSize = dlsym(handle, 'cusolverDnDsytrf_bufferSize')
+
+        global __cusolverDnCsytrf_bufferSize
+        __cusolverDnCsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCsytrf_bufferSize')
+        if __cusolverDnCsytrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCsytrf_bufferSize = dlsym(handle, 'cusolverDnCsytrf_bufferSize')
+
+        global __cusolverDnZsytrf_bufferSize
+        __cusolverDnZsytrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZsytrf_bufferSize')
+        if __cusolverDnZsytrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZsytrf_bufferSize = dlsym(handle, 'cusolverDnZsytrf_bufferSize')
+
+        global __cusolverDnSsytrf
+        __cusolverDnSsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrf')
+        if __cusolverDnSsytrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsytrf = dlsym(handle, 'cusolverDnSsytrf')
+
+        global __cusolverDnDsytrf
+        __cusolverDnDsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrf')
+        if __cusolverDnDsytrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsytrf = dlsym(handle, 'cusolverDnDsytrf')
+
+        global __cusolverDnCsytrf
+        __cusolverDnCsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnCsytrf')
+        if __cusolverDnCsytrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCsytrf = dlsym(handle, 'cusolverDnCsytrf')
+
+        global __cusolverDnZsytrf
+        __cusolverDnZsytrf = dlsym(RTLD_DEFAULT, 'cusolverDnZsytrf')
+        if __cusolverDnZsytrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZsytrf = dlsym(handle, 'cusolverDnZsytrf')
+
+        global __cusolverDnSsytri_bufferSize
+        __cusolverDnSsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsytri_bufferSize')
+        if __cusolverDnSsytri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsytri_bufferSize = dlsym(handle, 'cusolverDnSsytri_bufferSize')
+
+        global __cusolverDnDsytri_bufferSize
+        __cusolverDnDsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsytri_bufferSize')
+        if __cusolverDnDsytri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsytri_bufferSize = dlsym(handle, 'cusolverDnDsytri_bufferSize')
+
+        global __cusolverDnCsytri_bufferSize
+        __cusolverDnCsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCsytri_bufferSize')
+        if __cusolverDnCsytri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCsytri_bufferSize = dlsym(handle, 'cusolverDnCsytri_bufferSize')
+
+        global __cusolverDnZsytri_bufferSize
+        __cusolverDnZsytri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZsytri_bufferSize')
+        if __cusolverDnZsytri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZsytri_bufferSize = dlsym(handle, 'cusolverDnZsytri_bufferSize')
+
+        global __cusolverDnSsytri
+        __cusolverDnSsytri = dlsym(RTLD_DEFAULT, 'cusolverDnSsytri')
+        if __cusolverDnSsytri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsytri = dlsym(handle, 'cusolverDnSsytri')
+
+        global __cusolverDnDsytri
+        __cusolverDnDsytri = dlsym(RTLD_DEFAULT, 'cusolverDnDsytri')
+        if __cusolverDnDsytri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsytri = dlsym(handle, 'cusolverDnDsytri')
+
+        global __cusolverDnCsytri
+        __cusolverDnCsytri = dlsym(RTLD_DEFAULT, 'cusolverDnCsytri')
+        if __cusolverDnCsytri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCsytri = dlsym(handle, 'cusolverDnCsytri')
+
+        global __cusolverDnZsytri
+        __cusolverDnZsytri = dlsym(RTLD_DEFAULT, 'cusolverDnZsytri')
+        if __cusolverDnZsytri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZsytri = dlsym(handle, 'cusolverDnZsytri')
+
+        global __cusolverDnSgebrd_bufferSize
+        __cusolverDnSgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgebrd_bufferSize')
+        if __cusolverDnSgebrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgebrd_bufferSize = dlsym(handle, 'cusolverDnSgebrd_bufferSize')
+
+        global __cusolverDnDgebrd_bufferSize
+        __cusolverDnDgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgebrd_bufferSize')
+        if __cusolverDnDgebrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgebrd_bufferSize = dlsym(handle, 'cusolverDnDgebrd_bufferSize')
+
+        global __cusolverDnCgebrd_bufferSize
+        __cusolverDnCgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgebrd_bufferSize')
+        if __cusolverDnCgebrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgebrd_bufferSize = dlsym(handle, 'cusolverDnCgebrd_bufferSize')
+
+        global __cusolverDnZgebrd_bufferSize
+        __cusolverDnZgebrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgebrd_bufferSize')
+        if __cusolverDnZgebrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgebrd_bufferSize = dlsym(handle, 'cusolverDnZgebrd_bufferSize')
+
+        global __cusolverDnSgebrd
+        __cusolverDnSgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnSgebrd')
+        if __cusolverDnSgebrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgebrd = dlsym(handle, 'cusolverDnSgebrd')
+
+        global __cusolverDnDgebrd
+        __cusolverDnDgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnDgebrd')
+        if __cusolverDnDgebrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgebrd = dlsym(handle, 'cusolverDnDgebrd')
+
+        global __cusolverDnCgebrd
+        __cusolverDnCgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnCgebrd')
+        if __cusolverDnCgebrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgebrd = dlsym(handle, 'cusolverDnCgebrd')
+
+        global __cusolverDnZgebrd
+        __cusolverDnZgebrd = dlsym(RTLD_DEFAULT, 'cusolverDnZgebrd')
+        if __cusolverDnZgebrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgebrd = dlsym(handle, 'cusolverDnZgebrd')
+
+        global __cusolverDnSorgbr_bufferSize
+        __cusolverDnSorgbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSorgbr_bufferSize')
+        if __cusolverDnSorgbr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSorgbr_bufferSize = dlsym(handle, 'cusolverDnSorgbr_bufferSize')
+
+        global __cusolverDnDorgbr_bufferSize
+        __cusolverDnDorgbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDorgbr_bufferSize')
+        if __cusolverDnDorgbr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDorgbr_bufferSize = dlsym(handle, 'cusolverDnDorgbr_bufferSize')
+
+        global __cusolverDnCungbr_bufferSize
+        __cusolverDnCungbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCungbr_bufferSize')
+        if __cusolverDnCungbr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCungbr_bufferSize = dlsym(handle, 'cusolverDnCungbr_bufferSize')
+
+        global __cusolverDnZungbr_bufferSize
+        __cusolverDnZungbr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZungbr_bufferSize')
+        if __cusolverDnZungbr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZungbr_bufferSize = dlsym(handle, 'cusolverDnZungbr_bufferSize')
+
+        global __cusolverDnSorgbr
+        __cusolverDnSorgbr = dlsym(RTLD_DEFAULT, 'cusolverDnSorgbr')
+        if __cusolverDnSorgbr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSorgbr = dlsym(handle, 'cusolverDnSorgbr')
+
+        global __cusolverDnDorgbr
+        __cusolverDnDorgbr = dlsym(RTLD_DEFAULT, 'cusolverDnDorgbr')
+        if __cusolverDnDorgbr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDorgbr = dlsym(handle, 'cusolverDnDorgbr')
+
+        global __cusolverDnCungbr
+        __cusolverDnCungbr = dlsym(RTLD_DEFAULT, 'cusolverDnCungbr')
+        if __cusolverDnCungbr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCungbr = dlsym(handle, 'cusolverDnCungbr')
+
+        global __cusolverDnZungbr
+        __cusolverDnZungbr = dlsym(RTLD_DEFAULT, 'cusolverDnZungbr')
+        if __cusolverDnZungbr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZungbr = dlsym(handle, 'cusolverDnZungbr')
+
+        global __cusolverDnSsytrd_bufferSize
+        __cusolverDnSsytrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrd_bufferSize')
+        if __cusolverDnSsytrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsytrd_bufferSize = dlsym(handle, 'cusolverDnSsytrd_bufferSize')
+
+        global __cusolverDnDsytrd_bufferSize
+        __cusolverDnDsytrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrd_bufferSize')
+        if __cusolverDnDsytrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsytrd_bufferSize = dlsym(handle, 'cusolverDnDsytrd_bufferSize')
+
+        global __cusolverDnChetrd_bufferSize
+        __cusolverDnChetrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChetrd_bufferSize')
+        if __cusolverDnChetrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChetrd_bufferSize = dlsym(handle, 'cusolverDnChetrd_bufferSize')
+
+        global __cusolverDnZhetrd_bufferSize
+        __cusolverDnZhetrd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhetrd_bufferSize')
+        if __cusolverDnZhetrd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhetrd_bufferSize = dlsym(handle, 'cusolverDnZhetrd_bufferSize')
+
+        global __cusolverDnSsytrd
+        __cusolverDnSsytrd = dlsym(RTLD_DEFAULT, 'cusolverDnSsytrd')
+        if __cusolverDnSsytrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsytrd = dlsym(handle, 'cusolverDnSsytrd')
+
+        global __cusolverDnDsytrd
+        __cusolverDnDsytrd = dlsym(RTLD_DEFAULT, 'cusolverDnDsytrd')
+        if __cusolverDnDsytrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsytrd = dlsym(handle, 'cusolverDnDsytrd')
+
+        global __cusolverDnChetrd
+        __cusolverDnChetrd = dlsym(RTLD_DEFAULT, 'cusolverDnChetrd')
+        if __cusolverDnChetrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChetrd = dlsym(handle, 'cusolverDnChetrd')
+
+        global __cusolverDnZhetrd
+        __cusolverDnZhetrd = dlsym(RTLD_DEFAULT, 'cusolverDnZhetrd')
+        if __cusolverDnZhetrd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhetrd = dlsym(handle, 'cusolverDnZhetrd')
+
+        global __cusolverDnSorgtr_bufferSize
+        __cusolverDnSorgtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSorgtr_bufferSize')
+        if __cusolverDnSorgtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSorgtr_bufferSize = dlsym(handle, 'cusolverDnSorgtr_bufferSize')
+
+        global __cusolverDnDorgtr_bufferSize
+        __cusolverDnDorgtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDorgtr_bufferSize')
+        if __cusolverDnDorgtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDorgtr_bufferSize = dlsym(handle, 'cusolverDnDorgtr_bufferSize')
+
+        global __cusolverDnCungtr_bufferSize
+        __cusolverDnCungtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCungtr_bufferSize')
+        if __cusolverDnCungtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCungtr_bufferSize = dlsym(handle, 'cusolverDnCungtr_bufferSize')
+
+        global __cusolverDnZungtr_bufferSize
+        __cusolverDnZungtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZungtr_bufferSize')
+        if __cusolverDnZungtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZungtr_bufferSize = dlsym(handle, 'cusolverDnZungtr_bufferSize')
+
+        global __cusolverDnSorgtr
+        __cusolverDnSorgtr = dlsym(RTLD_DEFAULT, 'cusolverDnSorgtr')
+        if __cusolverDnSorgtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSorgtr = dlsym(handle, 'cusolverDnSorgtr')
+
+        global __cusolverDnDorgtr
+        __cusolverDnDorgtr = dlsym(RTLD_DEFAULT, 'cusolverDnDorgtr')
+        if __cusolverDnDorgtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDorgtr = dlsym(handle, 'cusolverDnDorgtr')
+
+        global __cusolverDnCungtr
+        __cusolverDnCungtr = dlsym(RTLD_DEFAULT, 'cusolverDnCungtr')
+        if __cusolverDnCungtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCungtr = dlsym(handle, 'cusolverDnCungtr')
+
+        global __cusolverDnZungtr
+        __cusolverDnZungtr = dlsym(RTLD_DEFAULT, 'cusolverDnZungtr')
+        if __cusolverDnZungtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZungtr = dlsym(handle, 'cusolverDnZungtr')
+
+        global __cusolverDnSormtr_bufferSize
+        __cusolverDnSormtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSormtr_bufferSize')
+        if __cusolverDnSormtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSormtr_bufferSize = dlsym(handle, 'cusolverDnSormtr_bufferSize')
+
+        global __cusolverDnDormtr_bufferSize
+        __cusolverDnDormtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDormtr_bufferSize')
+        if __cusolverDnDormtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDormtr_bufferSize = dlsym(handle, 'cusolverDnDormtr_bufferSize')
+
+        global __cusolverDnCunmtr_bufferSize
+        __cusolverDnCunmtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCunmtr_bufferSize')
+        if __cusolverDnCunmtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCunmtr_bufferSize = dlsym(handle, 'cusolverDnCunmtr_bufferSize')
+
+        global __cusolverDnZunmtr_bufferSize
+        __cusolverDnZunmtr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZunmtr_bufferSize')
+        if __cusolverDnZunmtr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZunmtr_bufferSize = dlsym(handle, 'cusolverDnZunmtr_bufferSize')
+
+        global __cusolverDnSormtr
+        __cusolverDnSormtr = dlsym(RTLD_DEFAULT, 'cusolverDnSormtr')
+        if __cusolverDnSormtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSormtr = dlsym(handle, 'cusolverDnSormtr')
+
+        global __cusolverDnDormtr
+        __cusolverDnDormtr = dlsym(RTLD_DEFAULT, 'cusolverDnDormtr')
+        if __cusolverDnDormtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDormtr = dlsym(handle, 'cusolverDnDormtr')
+
+        global __cusolverDnCunmtr
+        __cusolverDnCunmtr = dlsym(RTLD_DEFAULT, 'cusolverDnCunmtr')
+        if __cusolverDnCunmtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCunmtr = dlsym(handle, 'cusolverDnCunmtr')
+
+        global __cusolverDnZunmtr
+        __cusolverDnZunmtr = dlsym(RTLD_DEFAULT, 'cusolverDnZunmtr')
+        if __cusolverDnZunmtr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZunmtr = dlsym(handle, 'cusolverDnZunmtr')
+
+        global __cusolverDnSgesvd_bufferSize
+        __cusolverDnSgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvd_bufferSize')
+        if __cusolverDnSgesvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvd_bufferSize = dlsym(handle, 'cusolverDnSgesvd_bufferSize')
+
+        global __cusolverDnDgesvd_bufferSize
+        __cusolverDnDgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvd_bufferSize')
+        if __cusolverDnDgesvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvd_bufferSize = dlsym(handle, 'cusolverDnDgesvd_bufferSize')
+
+        global __cusolverDnCgesvd_bufferSize
+        __cusolverDnCgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvd_bufferSize')
+        if __cusolverDnCgesvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvd_bufferSize = dlsym(handle, 'cusolverDnCgesvd_bufferSize')
+
+        global __cusolverDnZgesvd_bufferSize
+        __cusolverDnZgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvd_bufferSize')
+        if __cusolverDnZgesvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvd_bufferSize = dlsym(handle, 'cusolverDnZgesvd_bufferSize')
+
+        global __cusolverDnSgesvd
+        __cusolverDnSgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvd')
+        if __cusolverDnSgesvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvd = dlsym(handle, 'cusolverDnSgesvd')
+
+        global __cusolverDnDgesvd
+        __cusolverDnDgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvd')
+        if __cusolverDnDgesvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvd = dlsym(handle, 'cusolverDnDgesvd')
+
+        global __cusolverDnCgesvd
+        __cusolverDnCgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvd')
+        if __cusolverDnCgesvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvd = dlsym(handle, 'cusolverDnCgesvd')
+
+        global __cusolverDnZgesvd
+        __cusolverDnZgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvd')
+        if __cusolverDnZgesvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvd = dlsym(handle, 'cusolverDnZgesvd')
+
+        global __cusolverDnSsyevd_bufferSize
+        __cusolverDnSsyevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevd_bufferSize')
+        if __cusolverDnSsyevd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevd_bufferSize = dlsym(handle, 'cusolverDnSsyevd_bufferSize')
+
+        global __cusolverDnDsyevd_bufferSize
+        __cusolverDnDsyevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevd_bufferSize')
+        if __cusolverDnDsyevd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevd_bufferSize = dlsym(handle, 'cusolverDnDsyevd_bufferSize')
+
+        global __cusolverDnCheevd_bufferSize
+        __cusolverDnCheevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevd_bufferSize')
+        if __cusolverDnCheevd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevd_bufferSize = dlsym(handle, 'cusolverDnCheevd_bufferSize')
+
+        global __cusolverDnZheevd_bufferSize
+        __cusolverDnZheevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevd_bufferSize')
+        if __cusolverDnZheevd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevd_bufferSize = dlsym(handle, 'cusolverDnZheevd_bufferSize')
+
+        global __cusolverDnSsyevd
+        __cusolverDnSsyevd = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevd')
+        if __cusolverDnSsyevd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevd = dlsym(handle, 'cusolverDnSsyevd')
+
+        global __cusolverDnDsyevd
+        __cusolverDnDsyevd = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevd')
+        if __cusolverDnDsyevd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevd = dlsym(handle, 'cusolverDnDsyevd')
+
+        global __cusolverDnCheevd
+        __cusolverDnCheevd = dlsym(RTLD_DEFAULT, 'cusolverDnCheevd')
+        if __cusolverDnCheevd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevd = dlsym(handle, 'cusolverDnCheevd')
+
+        global __cusolverDnZheevd
+        __cusolverDnZheevd = dlsym(RTLD_DEFAULT, 'cusolverDnZheevd')
+        if __cusolverDnZheevd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevd = dlsym(handle, 'cusolverDnZheevd')
+
+        global __cusolverDnSsyevdx_bufferSize
+        __cusolverDnSsyevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevdx_bufferSize')
+        if __cusolverDnSsyevdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevdx_bufferSize = dlsym(handle, 'cusolverDnSsyevdx_bufferSize')
+
+        global __cusolverDnDsyevdx_bufferSize
+        __cusolverDnDsyevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevdx_bufferSize')
+        if __cusolverDnDsyevdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevdx_bufferSize = dlsym(handle, 'cusolverDnDsyevdx_bufferSize')
+
+        global __cusolverDnCheevdx_bufferSize
+        __cusolverDnCheevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevdx_bufferSize')
+        if __cusolverDnCheevdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevdx_bufferSize = dlsym(handle, 'cusolverDnCheevdx_bufferSize')
+
+        global __cusolverDnZheevdx_bufferSize
+        __cusolverDnZheevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevdx_bufferSize')
+        if __cusolverDnZheevdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevdx_bufferSize = dlsym(handle, 'cusolverDnZheevdx_bufferSize')
+
+        global __cusolverDnSsyevdx
+        __cusolverDnSsyevdx = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevdx')
+        if __cusolverDnSsyevdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevdx = dlsym(handle, 'cusolverDnSsyevdx')
+
+        global __cusolverDnDsyevdx
+        __cusolverDnDsyevdx = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevdx')
+        if __cusolverDnDsyevdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevdx = dlsym(handle, 'cusolverDnDsyevdx')
+
+        global __cusolverDnCheevdx
+        __cusolverDnCheevdx = dlsym(RTLD_DEFAULT, 'cusolverDnCheevdx')
+        if __cusolverDnCheevdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevdx = dlsym(handle, 'cusolverDnCheevdx')
+
+        global __cusolverDnZheevdx
+        __cusolverDnZheevdx = dlsym(RTLD_DEFAULT, 'cusolverDnZheevdx')
+        if __cusolverDnZheevdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevdx = dlsym(handle, 'cusolverDnZheevdx')
+
+        global __cusolverDnSsygvdx_bufferSize
+        __cusolverDnSsygvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvdx_bufferSize')
+        if __cusolverDnSsygvdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsygvdx_bufferSize = dlsym(handle, 'cusolverDnSsygvdx_bufferSize')
+
+        global __cusolverDnDsygvdx_bufferSize
+        __cusolverDnDsygvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvdx_bufferSize')
+        if __cusolverDnDsygvdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsygvdx_bufferSize = dlsym(handle, 'cusolverDnDsygvdx_bufferSize')
+
+        global __cusolverDnChegvdx_bufferSize
+        __cusolverDnChegvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChegvdx_bufferSize')
+        if __cusolverDnChegvdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChegvdx_bufferSize = dlsym(handle, 'cusolverDnChegvdx_bufferSize')
+
+        global __cusolverDnZhegvdx_bufferSize
+        __cusolverDnZhegvdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvdx_bufferSize')
+        if __cusolverDnZhegvdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhegvdx_bufferSize = dlsym(handle, 'cusolverDnZhegvdx_bufferSize')
+
+        global __cusolverDnSsygvdx
+        __cusolverDnSsygvdx = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvdx')
+        if __cusolverDnSsygvdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsygvdx = dlsym(handle, 'cusolverDnSsygvdx')
+
+        global __cusolverDnDsygvdx
+        __cusolverDnDsygvdx = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvdx')
+        if __cusolverDnDsygvdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsygvdx = dlsym(handle, 'cusolverDnDsygvdx')
+
+        global __cusolverDnChegvdx
+        __cusolverDnChegvdx = dlsym(RTLD_DEFAULT, 'cusolverDnChegvdx')
+        if __cusolverDnChegvdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChegvdx = dlsym(handle, 'cusolverDnChegvdx')
+
+        global __cusolverDnZhegvdx
+        __cusolverDnZhegvdx = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvdx')
+        if __cusolverDnZhegvdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhegvdx = dlsym(handle, 'cusolverDnZhegvdx')
+
+        global __cusolverDnSsygvd_bufferSize
+        __cusolverDnSsygvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvd_bufferSize')
+        if __cusolverDnSsygvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsygvd_bufferSize = dlsym(handle, 'cusolverDnSsygvd_bufferSize')
+
+        global __cusolverDnDsygvd_bufferSize
+        __cusolverDnDsygvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvd_bufferSize')
+        if __cusolverDnDsygvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsygvd_bufferSize = dlsym(handle, 'cusolverDnDsygvd_bufferSize')
+
+        global __cusolverDnChegvd_bufferSize
+        __cusolverDnChegvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChegvd_bufferSize')
+        if __cusolverDnChegvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChegvd_bufferSize = dlsym(handle, 'cusolverDnChegvd_bufferSize')
+
+        global __cusolverDnZhegvd_bufferSize
+        __cusolverDnZhegvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvd_bufferSize')
+        if __cusolverDnZhegvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhegvd_bufferSize = dlsym(handle, 'cusolverDnZhegvd_bufferSize')
+
+        global __cusolverDnSsygvd
+        __cusolverDnSsygvd = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvd')
+        if __cusolverDnSsygvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsygvd = dlsym(handle, 'cusolverDnSsygvd')
+
+        global __cusolverDnDsygvd
+        __cusolverDnDsygvd = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvd')
+        if __cusolverDnDsygvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsygvd = dlsym(handle, 'cusolverDnDsygvd')
+
+        global __cusolverDnChegvd
+        __cusolverDnChegvd = dlsym(RTLD_DEFAULT, 'cusolverDnChegvd')
+        if __cusolverDnChegvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChegvd = dlsym(handle, 'cusolverDnChegvd')
+
+        global __cusolverDnZhegvd
+        __cusolverDnZhegvd = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvd')
+        if __cusolverDnZhegvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhegvd = dlsym(handle, 'cusolverDnZhegvd')
+
+        global __cusolverDnCreateSyevjInfo
+        __cusolverDnCreateSyevjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnCreateSyevjInfo')
+        if __cusolverDnCreateSyevjInfo == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCreateSyevjInfo = dlsym(handle, 'cusolverDnCreateSyevjInfo')
+
+        global __cusolverDnDestroySyevjInfo
+        __cusolverDnDestroySyevjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnDestroySyevjInfo')
+        if __cusolverDnDestroySyevjInfo == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDestroySyevjInfo = dlsym(handle, 'cusolverDnDestroySyevjInfo')
+
+        global __cusolverDnXsyevjSetTolerance
+        __cusolverDnXsyevjSetTolerance = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjSetTolerance')
+        if __cusolverDnXsyevjSetTolerance == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevjSetTolerance = dlsym(handle, 'cusolverDnXsyevjSetTolerance')
+
+        global __cusolverDnXsyevjSetMaxSweeps
+        __cusolverDnXsyevjSetMaxSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjSetMaxSweeps')
+        if __cusolverDnXsyevjSetMaxSweeps == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevjSetMaxSweeps = dlsym(handle, 'cusolverDnXsyevjSetMaxSweeps')
+
+        global __cusolverDnXsyevjSetSortEig
+        __cusolverDnXsyevjSetSortEig = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjSetSortEig')
+        if __cusolverDnXsyevjSetSortEig == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevjSetSortEig = dlsym(handle, 'cusolverDnXsyevjSetSortEig')
+
+        global __cusolverDnXsyevjGetResidual
+        __cusolverDnXsyevjGetResidual = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjGetResidual')
+        if __cusolverDnXsyevjGetResidual == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevjGetResidual = dlsym(handle, 'cusolverDnXsyevjGetResidual')
+
+        global __cusolverDnXsyevjGetSweeps
+        __cusolverDnXsyevjGetSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevjGetSweeps')
+        if __cusolverDnXsyevjGetSweeps == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevjGetSweeps = dlsym(handle, 'cusolverDnXsyevjGetSweeps')
+
+        global __cusolverDnSsyevjBatched_bufferSize
+        __cusolverDnSsyevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevjBatched_bufferSize')
+        if __cusolverDnSsyevjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevjBatched_bufferSize = dlsym(handle, 'cusolverDnSsyevjBatched_bufferSize')
+
+        global __cusolverDnDsyevjBatched_bufferSize
+        __cusolverDnDsyevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevjBatched_bufferSize')
+        if __cusolverDnDsyevjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevjBatched_bufferSize = dlsym(handle, 'cusolverDnDsyevjBatched_bufferSize')
+
+        global __cusolverDnCheevjBatched_bufferSize
+        __cusolverDnCheevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevjBatched_bufferSize')
+        if __cusolverDnCheevjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevjBatched_bufferSize = dlsym(handle, 'cusolverDnCheevjBatched_bufferSize')
+
+        global __cusolverDnZheevjBatched_bufferSize
+        __cusolverDnZheevjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevjBatched_bufferSize')
+        if __cusolverDnZheevjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevjBatched_bufferSize = dlsym(handle, 'cusolverDnZheevjBatched_bufferSize')
+
+        global __cusolverDnSsyevjBatched
+        __cusolverDnSsyevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevjBatched')
+        if __cusolverDnSsyevjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevjBatched = dlsym(handle, 'cusolverDnSsyevjBatched')
+
+        global __cusolverDnDsyevjBatched
+        __cusolverDnDsyevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevjBatched')
+        if __cusolverDnDsyevjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevjBatched = dlsym(handle, 'cusolverDnDsyevjBatched')
+
+        global __cusolverDnCheevjBatched
+        __cusolverDnCheevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCheevjBatched')
+        if __cusolverDnCheevjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevjBatched = dlsym(handle, 'cusolverDnCheevjBatched')
+
+        global __cusolverDnZheevjBatched
+        __cusolverDnZheevjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZheevjBatched')
+        if __cusolverDnZheevjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevjBatched = dlsym(handle, 'cusolverDnZheevjBatched')
+
+        global __cusolverDnSsyevj_bufferSize
+        __cusolverDnSsyevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevj_bufferSize')
+        if __cusolverDnSsyevj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevj_bufferSize = dlsym(handle, 'cusolverDnSsyevj_bufferSize')
+
+        global __cusolverDnDsyevj_bufferSize
+        __cusolverDnDsyevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevj_bufferSize')
+        if __cusolverDnDsyevj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevj_bufferSize = dlsym(handle, 'cusolverDnDsyevj_bufferSize')
+
+        global __cusolverDnCheevj_bufferSize
+        __cusolverDnCheevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCheevj_bufferSize')
+        if __cusolverDnCheevj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevj_bufferSize = dlsym(handle, 'cusolverDnCheevj_bufferSize')
+
+        global __cusolverDnZheevj_bufferSize
+        __cusolverDnZheevj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZheevj_bufferSize')
+        if __cusolverDnZheevj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevj_bufferSize = dlsym(handle, 'cusolverDnZheevj_bufferSize')
+
+        global __cusolverDnSsyevj
+        __cusolverDnSsyevj = dlsym(RTLD_DEFAULT, 'cusolverDnSsyevj')
+        if __cusolverDnSsyevj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsyevj = dlsym(handle, 'cusolverDnSsyevj')
+
+        global __cusolverDnDsyevj
+        __cusolverDnDsyevj = dlsym(RTLD_DEFAULT, 'cusolverDnDsyevj')
+        if __cusolverDnDsyevj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsyevj = dlsym(handle, 'cusolverDnDsyevj')
+
+        global __cusolverDnCheevj
+        __cusolverDnCheevj = dlsym(RTLD_DEFAULT, 'cusolverDnCheevj')
+        if __cusolverDnCheevj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCheevj = dlsym(handle, 'cusolverDnCheevj')
+
+        global __cusolverDnZheevj
+        __cusolverDnZheevj = dlsym(RTLD_DEFAULT, 'cusolverDnZheevj')
+        if __cusolverDnZheevj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZheevj = dlsym(handle, 'cusolverDnZheevj')
+
+        global __cusolverDnSsygvj_bufferSize
+        __cusolverDnSsygvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvj_bufferSize')
+        if __cusolverDnSsygvj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsygvj_bufferSize = dlsym(handle, 'cusolverDnSsygvj_bufferSize')
+
+        global __cusolverDnDsygvj_bufferSize
+        __cusolverDnDsygvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvj_bufferSize')
+        if __cusolverDnDsygvj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsygvj_bufferSize = dlsym(handle, 'cusolverDnDsygvj_bufferSize')
+
+        global __cusolverDnChegvj_bufferSize
+        __cusolverDnChegvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnChegvj_bufferSize')
+        if __cusolverDnChegvj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChegvj_bufferSize = dlsym(handle, 'cusolverDnChegvj_bufferSize')
+
+        global __cusolverDnZhegvj_bufferSize
+        __cusolverDnZhegvj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvj_bufferSize')
+        if __cusolverDnZhegvj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhegvj_bufferSize = dlsym(handle, 'cusolverDnZhegvj_bufferSize')
+
+        global __cusolverDnSsygvj
+        __cusolverDnSsygvj = dlsym(RTLD_DEFAULT, 'cusolverDnSsygvj')
+        if __cusolverDnSsygvj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSsygvj = dlsym(handle, 'cusolverDnSsygvj')
+
+        global __cusolverDnDsygvj
+        __cusolverDnDsygvj = dlsym(RTLD_DEFAULT, 'cusolverDnDsygvj')
+        if __cusolverDnDsygvj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDsygvj = dlsym(handle, 'cusolverDnDsygvj')
+
+        global __cusolverDnChegvj
+        __cusolverDnChegvj = dlsym(RTLD_DEFAULT, 'cusolverDnChegvj')
+        if __cusolverDnChegvj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnChegvj = dlsym(handle, 'cusolverDnChegvj')
+
+        global __cusolverDnZhegvj
+        __cusolverDnZhegvj = dlsym(RTLD_DEFAULT, 'cusolverDnZhegvj')
+        if __cusolverDnZhegvj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZhegvj = dlsym(handle, 'cusolverDnZhegvj')
+
+        global __cusolverDnCreateGesvdjInfo
+        __cusolverDnCreateGesvdjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnCreateGesvdjInfo')
+        if __cusolverDnCreateGesvdjInfo == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCreateGesvdjInfo = dlsym(handle, 'cusolverDnCreateGesvdjInfo')
+
+        global __cusolverDnDestroyGesvdjInfo
+        __cusolverDnDestroyGesvdjInfo = dlsym(RTLD_DEFAULT, 'cusolverDnDestroyGesvdjInfo')
+        if __cusolverDnDestroyGesvdjInfo == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDestroyGesvdjInfo = dlsym(handle, 'cusolverDnDestroyGesvdjInfo')
+
+        global __cusolverDnXgesvdjSetTolerance
+        __cusolverDnXgesvdjSetTolerance = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjSetTolerance')
+        if __cusolverDnXgesvdjSetTolerance == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdjSetTolerance = dlsym(handle, 'cusolverDnXgesvdjSetTolerance')
+
+        global __cusolverDnXgesvdjSetMaxSweeps
+        __cusolverDnXgesvdjSetMaxSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjSetMaxSweeps')
+        if __cusolverDnXgesvdjSetMaxSweeps == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdjSetMaxSweeps = dlsym(handle, 'cusolverDnXgesvdjSetMaxSweeps')
+
+        global __cusolverDnXgesvdjSetSortEig
+        __cusolverDnXgesvdjSetSortEig = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjSetSortEig')
+        if __cusolverDnXgesvdjSetSortEig == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdjSetSortEig = dlsym(handle, 'cusolverDnXgesvdjSetSortEig')
+
+        global __cusolverDnXgesvdjGetResidual
+        __cusolverDnXgesvdjGetResidual = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjGetResidual')
+        if __cusolverDnXgesvdjGetResidual == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdjGetResidual = dlsym(handle, 'cusolverDnXgesvdjGetResidual')
+
+        global __cusolverDnXgesvdjGetSweeps
+        __cusolverDnXgesvdjGetSweeps = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdjGetSweeps')
+        if __cusolverDnXgesvdjGetSweeps == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdjGetSweeps = dlsym(handle, 'cusolverDnXgesvdjGetSweeps')
+
+        global __cusolverDnSgesvdjBatched_bufferSize
+        __cusolverDnSgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdjBatched_bufferSize')
+        if __cusolverDnSgesvdjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnSgesvdjBatched_bufferSize')
+
+        global __cusolverDnDgesvdjBatched_bufferSize
+        __cusolverDnDgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdjBatched_bufferSize')
+        if __cusolverDnDgesvdjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnDgesvdjBatched_bufferSize')
+
+        global __cusolverDnCgesvdjBatched_bufferSize
+        __cusolverDnCgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdjBatched_bufferSize')
+        if __cusolverDnCgesvdjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnCgesvdjBatched_bufferSize')
+
+        global __cusolverDnZgesvdjBatched_bufferSize
+        __cusolverDnZgesvdjBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdjBatched_bufferSize')
+        if __cusolverDnZgesvdjBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvdjBatched_bufferSize = dlsym(handle, 'cusolverDnZgesvdjBatched_bufferSize')
+
+        global __cusolverDnSgesvdjBatched
+        __cusolverDnSgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdjBatched')
+        if __cusolverDnSgesvdjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvdjBatched = dlsym(handle, 'cusolverDnSgesvdjBatched')
+
+        global __cusolverDnDgesvdjBatched
+        __cusolverDnDgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdjBatched')
+        if __cusolverDnDgesvdjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvdjBatched = dlsym(handle, 'cusolverDnDgesvdjBatched')
+
+        global __cusolverDnCgesvdjBatched
+        __cusolverDnCgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdjBatched')
+        if __cusolverDnCgesvdjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvdjBatched = dlsym(handle, 'cusolverDnCgesvdjBatched')
+
+        global __cusolverDnZgesvdjBatched
+        __cusolverDnZgesvdjBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdjBatched')
+        if __cusolverDnZgesvdjBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvdjBatched = dlsym(handle, 'cusolverDnZgesvdjBatched')
+
+        global __cusolverDnSgesvdj_bufferSize
+        __cusolverDnSgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdj_bufferSize')
+        if __cusolverDnSgesvdj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvdj_bufferSize = dlsym(handle, 'cusolverDnSgesvdj_bufferSize')
+
+        global __cusolverDnDgesvdj_bufferSize
+        __cusolverDnDgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdj_bufferSize')
+        if __cusolverDnDgesvdj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvdj_bufferSize = dlsym(handle, 'cusolverDnDgesvdj_bufferSize')
+
+        global __cusolverDnCgesvdj_bufferSize
+        __cusolverDnCgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdj_bufferSize')
+        if __cusolverDnCgesvdj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvdj_bufferSize = dlsym(handle, 'cusolverDnCgesvdj_bufferSize')
+
+        global __cusolverDnZgesvdj_bufferSize
+        __cusolverDnZgesvdj_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdj_bufferSize')
+        if __cusolverDnZgesvdj_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvdj_bufferSize = dlsym(handle, 'cusolverDnZgesvdj_bufferSize')
+
+        global __cusolverDnSgesvdj
+        __cusolverDnSgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdj')
+        if __cusolverDnSgesvdj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvdj = dlsym(handle, 'cusolverDnSgesvdj')
+
+        global __cusolverDnDgesvdj
+        __cusolverDnDgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdj')
+        if __cusolverDnDgesvdj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvdj = dlsym(handle, 'cusolverDnDgesvdj')
+
+        global __cusolverDnCgesvdj
+        __cusolverDnCgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdj')
+        if __cusolverDnCgesvdj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvdj = dlsym(handle, 'cusolverDnCgesvdj')
+
+        global __cusolverDnZgesvdj
+        __cusolverDnZgesvdj = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdj')
+        if __cusolverDnZgesvdj == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvdj = dlsym(handle, 'cusolverDnZgesvdj')
+
+        global __cusolverDnSgesvdaStridedBatched_bufferSize
+        __cusolverDnSgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdaStridedBatched_bufferSize')
+        if __cusolverDnSgesvdaStridedBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnSgesvdaStridedBatched_bufferSize')
+
+        global __cusolverDnDgesvdaStridedBatched_bufferSize
+        __cusolverDnDgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdaStridedBatched_bufferSize')
+        if __cusolverDnDgesvdaStridedBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnDgesvdaStridedBatched_bufferSize')
+
+        global __cusolverDnCgesvdaStridedBatched_bufferSize
+        __cusolverDnCgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdaStridedBatched_bufferSize')
+        if __cusolverDnCgesvdaStridedBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnCgesvdaStridedBatched_bufferSize')
+
+        global __cusolverDnZgesvdaStridedBatched_bufferSize
+        __cusolverDnZgesvdaStridedBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdaStridedBatched_bufferSize')
+        if __cusolverDnZgesvdaStridedBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvdaStridedBatched_bufferSize = dlsym(handle, 'cusolverDnZgesvdaStridedBatched_bufferSize')
+
+        global __cusolverDnSgesvdaStridedBatched
+        __cusolverDnSgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnSgesvdaStridedBatched')
+        if __cusolverDnSgesvdaStridedBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSgesvdaStridedBatched = dlsym(handle, 'cusolverDnSgesvdaStridedBatched')
+
+        global __cusolverDnDgesvdaStridedBatched
+        __cusolverDnDgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnDgesvdaStridedBatched')
+        if __cusolverDnDgesvdaStridedBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDgesvdaStridedBatched = dlsym(handle, 'cusolverDnDgesvdaStridedBatched')
+
+        global __cusolverDnCgesvdaStridedBatched
+        __cusolverDnCgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnCgesvdaStridedBatched')
+        if __cusolverDnCgesvdaStridedBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCgesvdaStridedBatched = dlsym(handle, 'cusolverDnCgesvdaStridedBatched')
+
+        global __cusolverDnZgesvdaStridedBatched
+        __cusolverDnZgesvdaStridedBatched = dlsym(RTLD_DEFAULT, 'cusolverDnZgesvdaStridedBatched')
+        if __cusolverDnZgesvdaStridedBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnZgesvdaStridedBatched = dlsym(handle, 'cusolverDnZgesvdaStridedBatched')
+
+        global __cusolverDnCreateParams
+        __cusolverDnCreateParams = dlsym(RTLD_DEFAULT, 'cusolverDnCreateParams')
+        if __cusolverDnCreateParams == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnCreateParams = dlsym(handle, 'cusolverDnCreateParams')
+
+        global __cusolverDnDestroyParams
+        __cusolverDnDestroyParams = dlsym(RTLD_DEFAULT, 'cusolverDnDestroyParams')
+        if __cusolverDnDestroyParams == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnDestroyParams = dlsym(handle, 'cusolverDnDestroyParams')
+
+        global __cusolverDnSetAdvOptions
+        __cusolverDnSetAdvOptions = dlsym(RTLD_DEFAULT, 'cusolverDnSetAdvOptions')
+        if __cusolverDnSetAdvOptions == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSetAdvOptions = dlsym(handle, 'cusolverDnSetAdvOptions')
+
+        global __cusolverDnXpotrf_bufferSize
+        __cusolverDnXpotrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXpotrf_bufferSize')
+        if __cusolverDnXpotrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXpotrf_bufferSize = dlsym(handle, 'cusolverDnXpotrf_bufferSize')
+
+        global __cusolverDnXpotrf
+        __cusolverDnXpotrf = dlsym(RTLD_DEFAULT, 'cusolverDnXpotrf')
+        if __cusolverDnXpotrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXpotrf = dlsym(handle, 'cusolverDnXpotrf')
+
+        global __cusolverDnXpotrs
+        __cusolverDnXpotrs = dlsym(RTLD_DEFAULT, 'cusolverDnXpotrs')
+        if __cusolverDnXpotrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXpotrs = dlsym(handle, 'cusolverDnXpotrs')
+
+        global __cusolverDnXgeqrf_bufferSize
+        __cusolverDnXgeqrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgeqrf_bufferSize')
+        if __cusolverDnXgeqrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgeqrf_bufferSize = dlsym(handle, 'cusolverDnXgeqrf_bufferSize')
+
+        global __cusolverDnXgeqrf
+        __cusolverDnXgeqrf = dlsym(RTLD_DEFAULT, 'cusolverDnXgeqrf')
+        if __cusolverDnXgeqrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgeqrf = dlsym(handle, 'cusolverDnXgeqrf')
+
+        global __cusolverDnXgetrf_bufferSize
+        __cusolverDnXgetrf_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgetrf_bufferSize')
+        if __cusolverDnXgetrf_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgetrf_bufferSize = dlsym(handle, 'cusolverDnXgetrf_bufferSize')
+
+        global __cusolverDnXgetrf
+        __cusolverDnXgetrf = dlsym(RTLD_DEFAULT, 'cusolverDnXgetrf')
+        if __cusolverDnXgetrf == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgetrf = dlsym(handle, 'cusolverDnXgetrf')
+
+        global __cusolverDnXgetrs
+        __cusolverDnXgetrs = dlsym(RTLD_DEFAULT, 'cusolverDnXgetrs')
+        if __cusolverDnXgetrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgetrs = dlsym(handle, 'cusolverDnXgetrs')
+
+        global __cusolverDnXsyevd_bufferSize
+        __cusolverDnXsyevd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevd_bufferSize')
+        if __cusolverDnXsyevd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevd_bufferSize = dlsym(handle, 'cusolverDnXsyevd_bufferSize')
+
+        global __cusolverDnXsyevd
+        __cusolverDnXsyevd = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevd')
+        if __cusolverDnXsyevd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevd = dlsym(handle, 'cusolverDnXsyevd')
+
+        global __cusolverDnXsyevdx_bufferSize
+        __cusolverDnXsyevdx_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevdx_bufferSize')
+        if __cusolverDnXsyevdx_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevdx_bufferSize = dlsym(handle, 'cusolverDnXsyevdx_bufferSize')
+
+        global __cusolverDnXsyevdx
+        __cusolverDnXsyevdx = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevdx')
+        if __cusolverDnXsyevdx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevdx = dlsym(handle, 'cusolverDnXsyevdx')
+
+        global __cusolverDnXgesvd_bufferSize
+        __cusolverDnXgesvd_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvd_bufferSize')
+        if __cusolverDnXgesvd_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvd_bufferSize = dlsym(handle, 'cusolverDnXgesvd_bufferSize')
+
+        global __cusolverDnXgesvd
+        __cusolverDnXgesvd = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvd')
+        if __cusolverDnXgesvd == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvd = dlsym(handle, 'cusolverDnXgesvd')
+
+        global __cusolverDnXgesvdp_bufferSize
+        __cusolverDnXgesvdp_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdp_bufferSize')
+        if __cusolverDnXgesvdp_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdp_bufferSize = dlsym(handle, 'cusolverDnXgesvdp_bufferSize')
+
+        global __cusolverDnXgesvdp
+        __cusolverDnXgesvdp = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdp')
+        if __cusolverDnXgesvdp == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdp = dlsym(handle, 'cusolverDnXgesvdp')
+
+        global __cusolverDnXgesvdr_bufferSize
+        __cusolverDnXgesvdr_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdr_bufferSize')
+        if __cusolverDnXgesvdr_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdr_bufferSize = dlsym(handle, 'cusolverDnXgesvdr_bufferSize')
+
+        global __cusolverDnXgesvdr
+        __cusolverDnXgesvdr = dlsym(RTLD_DEFAULT, 'cusolverDnXgesvdr')
+        if __cusolverDnXgesvdr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgesvdr = dlsym(handle, 'cusolverDnXgesvdr')
+
+        global __cusolverDnXsytrs_bufferSize
+        __cusolverDnXsytrs_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsytrs_bufferSize')
+        if __cusolverDnXsytrs_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsytrs_bufferSize = dlsym(handle, 'cusolverDnXsytrs_bufferSize')
+
+        global __cusolverDnXsytrs
+        __cusolverDnXsytrs = dlsym(RTLD_DEFAULT, 'cusolverDnXsytrs')
+        if __cusolverDnXsytrs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsytrs = dlsym(handle, 'cusolverDnXsytrs')
+
+        global __cusolverDnXtrtri_bufferSize
+        __cusolverDnXtrtri_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXtrtri_bufferSize')
+        if __cusolverDnXtrtri_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXtrtri_bufferSize = dlsym(handle, 'cusolverDnXtrtri_bufferSize')
+
+        global __cusolverDnXtrtri
+        __cusolverDnXtrtri = dlsym(RTLD_DEFAULT, 'cusolverDnXtrtri')
+        if __cusolverDnXtrtri == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXtrtri = dlsym(handle, 'cusolverDnXtrtri')
+
+        global __cusolverDnLoggerSetCallback
+        __cusolverDnLoggerSetCallback = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetCallback')
+        if __cusolverDnLoggerSetCallback == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnLoggerSetCallback = dlsym(handle, 'cusolverDnLoggerSetCallback')
+
+        global __cusolverDnLoggerSetFile
+        __cusolverDnLoggerSetFile = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetFile')
+        if __cusolverDnLoggerSetFile == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnLoggerSetFile = dlsym(handle, 'cusolverDnLoggerSetFile')
+
+        global __cusolverDnLoggerOpenFile
+        __cusolverDnLoggerOpenFile = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerOpenFile')
+        if __cusolverDnLoggerOpenFile == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnLoggerOpenFile = dlsym(handle, 'cusolverDnLoggerOpenFile')
+
+        global __cusolverDnLoggerSetLevel
+        __cusolverDnLoggerSetLevel = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetLevel')
+        if __cusolverDnLoggerSetLevel == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnLoggerSetLevel = dlsym(handle, 'cusolverDnLoggerSetLevel')
+
+        global __cusolverDnLoggerSetMask
+        __cusolverDnLoggerSetMask = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerSetMask')
+        if __cusolverDnLoggerSetMask == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnLoggerSetMask = dlsym(handle, 'cusolverDnLoggerSetMask')
+
+        global __cusolverDnLoggerForceDisable
+        __cusolverDnLoggerForceDisable = dlsym(RTLD_DEFAULT, 'cusolverDnLoggerForceDisable')
+        if __cusolverDnLoggerForceDisable == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnLoggerForceDisable = dlsym(handle, 'cusolverDnLoggerForceDisable')
+
+        global __cusolverDnSetDeterministicMode
+        __cusolverDnSetDeterministicMode = dlsym(RTLD_DEFAULT, 'cusolverDnSetDeterministicMode')
+        if __cusolverDnSetDeterministicMode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnSetDeterministicMode = dlsym(handle, 'cusolverDnSetDeterministicMode')
+
+        global __cusolverDnGetDeterministicMode
+        __cusolverDnGetDeterministicMode = dlsym(RTLD_DEFAULT, 'cusolverDnGetDeterministicMode')
+        if __cusolverDnGetDeterministicMode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnGetDeterministicMode = dlsym(handle, 'cusolverDnGetDeterministicMode')
+
+        global __cusolverDnXlarft_bufferSize
+        __cusolverDnXlarft_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXlarft_bufferSize')
+        if __cusolverDnXlarft_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXlarft_bufferSize = dlsym(handle, 'cusolverDnXlarft_bufferSize')
+
+        global __cusolverDnXlarft
+        __cusolverDnXlarft = dlsym(RTLD_DEFAULT, 'cusolverDnXlarft')
+        if __cusolverDnXlarft == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXlarft = dlsym(handle, 'cusolverDnXlarft')
+
+        global __cusolverDnXsyevBatched_bufferSize
+        __cusolverDnXsyevBatched_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevBatched_bufferSize')
+        if __cusolverDnXsyevBatched_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevBatched_bufferSize = dlsym(handle, 'cusolverDnXsyevBatched_bufferSize')
+
+        global __cusolverDnXsyevBatched
+        __cusolverDnXsyevBatched = dlsym(RTLD_DEFAULT, 'cusolverDnXsyevBatched')
+        if __cusolverDnXsyevBatched == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXsyevBatched = dlsym(handle, 'cusolverDnXsyevBatched')
+
+        global __cusolverDnXgeev_bufferSize
+        __cusolverDnXgeev_bufferSize = dlsym(RTLD_DEFAULT, 'cusolverDnXgeev_bufferSize')
+        if __cusolverDnXgeev_bufferSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgeev_bufferSize = dlsym(handle, 'cusolverDnXgeev_bufferSize')
+
+        global __cusolverDnXgeev
+        __cusolverDnXgeev = dlsym(RTLD_DEFAULT, 'cusolverDnXgeev')
+        if __cusolverDnXgeev == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverDnXgeev = dlsym(handle, 'cusolverDnXgeev')
+
+        __py_cusolverDn_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.1. Do not modify it directly.
 
 from ._internal cimport cufft as _cufft
 
@@ -215,8 +215,8 @@ cdef cufftResult cufftXtSetWorkAreaPolicy(cufftHandle plan, cufftXtWorkAreaPolic
     return _cufft._cufftXtSetWorkAreaPolicy(plan, policy, workSize)
 
 
-cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
-    return _cufft._cufftXtSetJITCallback(plan, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)
+cdef cufftResult cufftXtSetJITCallback(cufftHandle plan, const char* lto_callback_symbol_name, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
+    return _cufft._cufftXtSetJITCallback(plan, lto_callback_symbol_name, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)
 
 
 cdef cufftResult cufftXtSetSubformatDefault(cufftHandle plan, cufftXtSubFormat subformat_forward, cufftXtSubFormat subformat_inverse) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
@@ -233,3 +233,7 @@ cdef cufftResult cufftGetPlanPropertyInt64(cufftHandle plan, cufftProperty prope
 
 cdef cufftResult cufftResetPlanProperty(cufftHandle plan, cufftProperty property) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
     return _cufft._cufftResetPlanProperty(plan, property)
+
+
+cdef cufftResult __cufftXtSetJITCallback_12_7(cufftHandle plan, const char* lto_callback_symbol_name, const void* lto_callback_fatbin, size_t lto_callback_fatbin_size, cufftXtCallbackType type, void** caller_info) except?_CUFFTRESULT_INTERNAL_LOADING_ERROR nogil:
+    return _cufft.___cufftXtSetJITCallback_12_7(plan, lto_callback_symbol_name, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)

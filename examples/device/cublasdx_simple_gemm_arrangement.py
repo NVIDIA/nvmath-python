@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import random_real
 from common_numba import load_to_shared_2d, store_from_shared_2d
 
@@ -17,17 +17,16 @@ def main():
     m, n, k = 32, 16, 64
     block_size = 256
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=np.float32,
         data_type="real",
         arrangement=("row_major", "col_major", "col_major"),
         execution="Block",
         block_size=block_size,
-        compiler="numba",
     )
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(a, b, c, alpha, beta, output):
         smem_a = cuda.shared.array(shape=MM.a_dim, dtype=MM.a_value_type)
         smem_b = cuda.shared.array(shape=MM.b_dim[::-1], dtype=MM.b_value_type)

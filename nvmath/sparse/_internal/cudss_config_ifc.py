@@ -80,6 +80,10 @@ class PlanConfig:
         self._pivot_type = np.zeros((1,), dtype=get_dtype(ConfigParamEnum.PIVOT_TYPE))
         self._pivot_threshold = np.zeros((1,), dtype=get_dtype(ConfigParamEnum.PIVOT_THRESHOLD))
         self._max_lu_nnz = np.zeros((1,), dtype=get_dtype(ConfigParamEnum.MAX_LU_NNZ))
+        self._use_matching = np.zeros((1,), dtype=get_dtype(ConfigParamEnum.USE_MATCHING))
+        self._matching_alg = np.zeros((1,), dtype=get_dtype(ConfigParamEnum.MATCHING_ALG))
+        self._nd_nlevels = np.zeros((1,), dtype=get_dtype(ConfigParamEnum.ND_NLEVELS))
+        self._use_superpanels = np.zeros((1,), dtype=get_dtype(ConfigParamEnum.USE_SUPERPANELS))
 
     def _check_valid_solver_wrapper(self, *args, **kwargs):
         _check_valid_solver(self)
@@ -146,6 +150,36 @@ specification."
         """
         algorithm = cudss.AlgType(algorithm)
         _set_scalar_attribute(self._config_ptr, ConfigParamEnum.REORDERING_ALG, self._reordering_alg, algorithm)
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def matching_algorithm(self):
+        """
+        Query or set the matching algorithm used. See
+        :class:`nvmath.bindings.cudss.AlgType` and the `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_ for more
+        information.
+        """
+        _get_scalar_attribute(self._config_ptr, ConfigParamEnum.MATCHING_ALG, self._matching_alg)
+
+        return cudss.AlgType(self._matching_alg.item())
+
+    @matching_algorithm.setter
+    @utils.precondition(_check_valid_solver_wrapper)
+    def matching_algorithm(self, algorithm):
+        """
+        Set the matching algorithm to use. See :class:`nvmath.bindings.cudss.AlgType` and
+        the `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_ for more
+        information.
+
+        Args:
+            algorithm: The matching algorithm of type
+            :class:`nvmath.bindings.cudss.AlgType` or Python `int`.
+
+        """
+        algorithm = cudss.AlgType(algorithm)
+        _set_scalar_attribute(self._config_ptr, ConfigParamEnum.MATCHING_ALG, self._matching_alg, algorithm)
 
     @property
     @utils.precondition(_check_valid_solver_wrapper)
@@ -233,6 +267,93 @@ specification."
 
         """
         _set_scalar_attribute(self._config_ptr, ConfigParamEnum.MAX_LU_NNZ, self._max_lu_nnz, max_nnz)
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def use_matching(self):
+        """
+        Query or set the option to enable or disable matching. See the
+        `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+        for more information.
+        """
+        _get_scalar_attribute(self._config_ptr, ConfigParamEnum.USE_MATCHING, self._use_matching)
+
+        return self._use_matching.item()
+
+    @use_matching.setter
+    @utils.precondition(_check_valid_solver_wrapper)
+    def use_matching(self, matching_flag):
+        """
+        Set the option to enable or disable matching. See the
+        `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+        for more information.
+
+        Args:
+            matching_flag: The flag to enable or disable matching (Python `int`
+                or `bool`, 0 to disable).
+
+        """
+        _set_scalar_attribute(self._config_ptr, ConfigParamEnum.USE_MATCHING, self._use_matching, matching_flag)
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def nd_min_levels(self):
+        """
+        Query or set the minimum number of levels for the nested dissection reordering. See
+        the `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+        for more information.
+        """
+        _get_scalar_attribute(self._config_ptr, ConfigParamEnum.ND_NLEVELS, self._nd_nlevels)
+
+        return self._nd_nlevels.item()
+
+    @nd_min_levels.setter
+    @utils.precondition(_check_valid_solver_wrapper)
+    def nd_min_levels(self, min_levels):
+        """
+        Set the minimum number of levels for the nested dissection reordering. See the
+        `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+        for more information.
+
+        Args:
+            min_levels: The minimum number of levels for the nested dissection reordering
+                (Python `int`).
+
+        """
+        _set_scalar_attribute(self._config_ptr, ConfigParamEnum.ND_NLEVELS, self._nd_nlevels, min_levels)
+
+    @property
+    @utils.precondition(_check_valid_solver_wrapper)
+    def use_superpanels(self):
+        """
+        Query or set the option to enable or disable superpanel optimization. See the
+        `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+        for more information.
+        """
+        _get_scalar_attribute(self._config_ptr, ConfigParamEnum.USE_SUPERPANELS, self._use_superpanels)
+
+        return self._use_superpanels.item()
+
+    @use_superpanels.setter
+    @utils.precondition(_check_valid_solver_wrapper)
+    def use_superpanels(self, superpanels_flag):
+        """
+        Set the option to enable or disable superpanel optimization. See the
+        `cuDSS documentation
+        <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+        for more information.
+
+        Args:
+            superpanels_flag: The flag to enable or disable superpanel optimization
+                (Python `int` or `bool`, 0 to disable).
+
+        """
+        _set_scalar_attribute(self._config_ptr, ConfigParamEnum.USE_SUPERPANELS, self._use_superpanels, superpanels_flag)
 
 
 class FactorizationConfig:

@@ -1,2 +1,0 @@
-# These are dependencies to test against dev version of libmathdx
-nvidia-libmathdx-cu12 >= 0.2.4.dev0

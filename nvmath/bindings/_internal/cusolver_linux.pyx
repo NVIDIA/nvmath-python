@@ -6,9 +6,12 @@
 
 from libc.stdint cimport intptr_t, uintptr_t
 
+import threading
+
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -28,13 +31,31 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cusolver_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cusolverGetProperty = NULL
 cdef void* __cusolverGetVersion = NULL
@@ -49,44 +70,28 @@ cdef int _check_or_init_cusolver() except -1 nogil:
     if __py_cusolver_init:
         return 0
 
-    # Load driver to check version
     cdef void* handle = NULL
-    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
-    global __cuDriverGetVersion
-    if __cuDriverGetVersion == NULL:
-        __cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
-    if __cuDriverGetVersion == NULL:
-        with gil:
-            raise RuntimeError('something went wrong')
-    cdef int err, driver_ver
-    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-    if err != 0:
-        with gil:
-            raise RuntimeError('something went wrong')
-    #dlclose(handle)
-    handle = NULL
 
-    # Load function
-    global __cusolverGetProperty
-    __cusolverGetProperty = dlsym(RTLD_DEFAULT, 'cusolverGetProperty')
-    if __cusolverGetProperty == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverGetProperty = dlsym(handle, 'cusolverGetProperty')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
-    global __cusolverGetVersion
-    __cusolverGetVersion = dlsym(RTLD_DEFAULT, 'cusolverGetVersion')
-    if __cusolverGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverGetVersion = dlsym(handle, 'cusolverGetVersion')
+        # Load function
+        global __cusolverGetProperty
+        __cusolverGetProperty = dlsym(RTLD_DEFAULT, 'cusolverGetProperty')
+        if __cusolverGetProperty == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverGetProperty = dlsym(handle, 'cusolverGetProperty')
 
-    __py_cusolver_init = True
-    return 0
+        global __cusolverGetVersion
+        __cusolverGetVersion = dlsym(RTLD_DEFAULT, 'cusolverGetVersion')
+        if __cusolverGetVersion == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverGetVersion = dlsym(handle, 'cusolverGetVersion')
+
+        __py_cusolver_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

@@ -13,7 +13,7 @@ import cupy
 import pytest
 
 from nvmath.device import CodeType, ComputeCapability
-from nvmath.device.common_cuda import MAX_SUPPORTED_CC, get_default_code_type
+from nvmath.device.common_cuda import MAX_SUPPORTED_CC, current_device_sm, get_default_code_type
 from nvmath._utils import get_nvrtc_version
 
 
@@ -37,14 +37,13 @@ def CHECK_NVRTC(err, prog):
         raise RuntimeError(f"NVRTC error: {log.decode('ascii')}")
 
 
-def set_device():
+def set_device() -> ComputeCapability:
     (err,) = cudart.cudaSetDevice(0)
     CHECK_CUDART(err)
-    err, prop = cudart.cudaGetDeviceProperties(0)
-    CHECK_CUDART(err)
-    if (prop.major, prop.minor) > MAX_SUPPORTED_CC:
-        return MAX_SUPPORTED_CC
-    return (prop.major, prop.minor)
+    cc = current_device_sm()
+    if cc > MAX_SUPPORTED_CC:
+        cc = MAX_SUPPORTED_CC
+    return cc
 
 
 def random_complex(shape, real_dtype, order="C", module=np) -> np.ndarray:

@@ -10,13 +10,13 @@ Overview
 
 These APIs offer integration with the NVIDIA cuBLASDx library.
 Detailed documentation of cuBLASDx can be found in the
-`cuBLASDx documentation <https://docs.nvidia.com/cuda/cublasdx/0.1.1>`_.
+`cuBLASDx documentation <https://docs.nvidia.com/cuda/cublasdx/0.4.1>`_.
 
 .. note::
 
-   The :class:`~nvmath.device.matmul` device API in module
-   :mod:`nvmath.device` currently supports cuBLASDx 0.1.1, also available
-   as part of MathDx 24.04.
+   The :class:`~nvmath.device.Matmul` device API in module
+   :mod:`nvmath.device` currently supports cuBLASDx 0.4.1, also available
+   as part of MathDx 25.06.
 
 .. _device-api-cublas-reference:
 
@@ -28,8 +28,22 @@ API Reference
 .. autosummary::
    :toctree: generated/
 
+   Matmul
    matmul
-   BlasOptions
+   make_tensor
+   axpby
+   copy
+   copy_fragment
+   clear
+   copy_wait
+
+   OpaqueTensor
+   Layout
+
+   Partition
+   Partitioner
+
+   SharedStorageCalc
 
    :template: namedtuple.rst
 

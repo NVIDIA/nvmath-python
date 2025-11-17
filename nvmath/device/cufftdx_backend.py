@@ -10,7 +10,7 @@ import numpy
 
 from nvmath.device.common_backend import DescriptorWrapper
 from nvmath.device.common_cuda import ComputeCapability
-from .common import check_contains, check_in, check_not_in, check_code_type
+from .common import check_contains, check_in, check_not_in, check_sm
 from .common_backend import (
     NP_TYPES_TO_MATHDX_PRECISION,
     EXECUTION_STR_TO_MATHDX,
@@ -69,7 +69,7 @@ def validate(
     ffts_per_block,
     elements_per_thread,
     real_fft_options,
-    code_type,
+    sm,
 ):
     if size <= 0:
         raise ValueError(f"size must be > 0. Got {size}")
@@ -100,7 +100,7 @@ def validate(
         check_contains(real_fft_options, "real_mode")
         check_in("real_fft_options['complex_layout']", real_fft_options["complex_layout"], ["natural", "packed", "full"])
         check_in("real_fft_options['real_mode']", real_fft_options["real_mode"], ["normal", "folded"])
-    check_code_type(code_type)
+    check_sm(sm, "sm")
 
 
 def validate_execute_api(execution: str, execute_api: str | None):
@@ -120,7 +120,7 @@ def generate_FFT(
     precision,
     fft_type,
     direction,
-    code_type,
+    sm,
     execution,
     ffts_per_block,
     elements_per_thread,
@@ -132,9 +132,14 @@ def generate_FFT(
 
     h = mathdx.cufftdx_create_descriptor()
 
+    # TODO: remove after migrating to libmathdx 0.2.4+
+    if execute_api is None:
+        execute_api = "register_memory"
+
     if execute_api is not None:
         mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.API, _FFT_API_STR_TO_MATHDX[execute_api])
 
+    mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.SM, sm.major * 100 + sm.minor * 10)
     mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.SIZE, size)
     mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.PRECISION, NP_TYPES_TO_MATHDX_PRECISION[precision])
     mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.TYPE, _FFT_TYPE_TO_MATHDX[fft_type])
@@ -149,9 +154,6 @@ def generate_FFT(
         )
 
     mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.EXECUTION, EXECUTION_STR_TO_MATHDX[execution])
-
-    if code_type:
-        mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.SM, code_type.cc.major * 100 + code_type.cc.minor * 10)
 
     if ffts_per_block:
         mathdx.cufftdx_set_operator_int64(h, mathdx.CufftdxOperatorType.FFTS_PER_BLOCK, ffts_per_block)

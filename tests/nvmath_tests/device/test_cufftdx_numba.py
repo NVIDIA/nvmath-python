@@ -6,9 +6,10 @@ import numpy as np
 from numba import cuda
 import pytest
 
-from nvmath.device import FFTOptions
-from nvmath.device import current_device_lto, fft, float16x4, float16x2, float64x2_type, float32x2_type, float16x4_type
-from nvmath.device.cufftdx import FFTCompiled, FFTNumba
+from nvmath.device import FFT
+from nvmath.device import fft, float16x4, float16x2
+from nvmath.device.types import half4, complex64, complex128
+from nvmath.device.common_cuda import current_device_sm
 from .helpers import _TOLERANCE, random_complex, random_real, show_FFT_traits, complex64_to_fp16x2, fp16x2_to_complex64
 
 np.random.seed(314 + 271)
@@ -90,7 +91,7 @@ def convert_output(fft_type, precision, output_d):
     return output_test
 
 
-COMPLEX_TYPE_MAP = {np.float16: float16x4_type, np.float32: float32x2_type, np.float64: float64x2_type}
+COMPLEX_TYPE_MAP = {np.float16: half4, np.float32: complex64, np.float64: complex128}
 
 IMPLICIT_BATCHING_MAP = {
     np.float16: 2,
@@ -516,21 +517,53 @@ def test_thread(fft_type, size, precision, direction, real_fft_options):
 
 
 def test_valid():
-    base_FFT = FFTOptions(
+    base_FFT = FFT(
         fft_type="c2c",
         size=2,
         precision=np.float32,
         direction="forward",
         execution="Block",
-        code_type=current_device_lto(),
+        sm=current_device_sm(),
     )
 
     count = 0
     for ept, fpb in base_FFT.valid("elements_per_thread", "ffts_per_block"):
-        FFT0 = base_FFT.create(elements_per_thread=ept, ffts_per_block=fpb, compiler="numba")
-        assert isinstance(FFT0, FFTNumba)
-        FFT1 = base_FFT.create(elements_per_thread=ept, ffts_per_block=fpb)
-        assert isinstance(FFT1, FFTCompiled)
+        FFT0 = base_FFT.create(elements_per_thread=ept, ffts_per_block=fpb)
+        assert isinstance(FFT0, FFT)
         count += 1
 
     assert count > 0
+
+
+def test_lto_symbol_duplicate():
+    """
+    Test that two different FFT(...) function overloads points to the same LTO
+    symbol without causing a duplicate symbol error at link time.
+
+    Two local arrays have different type (ndim is different), so that triggers
+    overload resolution twice in Numba.
+    """
+    threads_count = 4
+    FFT = fft(
+        fft_type="c2c",
+        size=8,
+        precision=np.float32,
+        direction="forward",
+        execution="Thread",
+    )
+
+    @cuda.jit
+    def f(data):
+        thread_data = cuda.local.array(shape=(FFT.storage_size,), dtype=FFT.value_type)
+        thread_data[0] = data[0, 0]
+        FFT(thread_data)
+        data[0, 0] = thread_data[0]
+
+        thread_data2 = cuda.local.array(shape=(FFT.storage_size, 1), dtype=FFT.value_type)
+        thread_data2[0, 0] = data[0, 0]
+        FFT(thread_data2)
+        data[0, 0] = thread_data2[0, 0]
+
+    data = np.ones((threads_count, FFT.size), dtype=FFT.value_type)
+    data_d = cuda.to_device(data)
+    f[1, threads_count](data_d)

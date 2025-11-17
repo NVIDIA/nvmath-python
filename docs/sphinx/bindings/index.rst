@@ -31,6 +31,8 @@ follows:
      - :mod:`nvmath.bindings.cublas`
    * - cuBLASLt
      - :mod:`nvmath.bindings.cublasLt`
+   * - cuBLASMp
+     - :mod:`nvmath.bindings.cublasMp`
    * - cuDSS
      - :mod:`nvmath.bindings.cudss`
    * - cuFFT
@@ -43,6 +45,10 @@ follows:
      - :mod:`nvmath.bindings.cusolverDn`
    * - cuSPARSE
      - :mod:`nvmath.bindings.cusparse`
+   * - NVPL BLAS
+     - :mod:`nvmath.bindings.nvpl.blas`
+   * - NVPL FFT
+     - :mod:`nvmath.bindings.nvpl.fft`
 
 Support for more libraries will be added in the future.
 
@@ -188,9 +194,12 @@ This reference describes all nvmath-python's math primitives.
 
    cublas
    cublasLt
+   cublasMp
    cudss
    cufft
    cusolver
    cusolverDn
    cusparse
    curand
+   nvpl.blas
+   nvpl.fft

@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import random_real
 from common_numba import load_to_shared_batched, store_from_shared_batched
 
@@ -18,13 +18,12 @@ def main():
     block_size = 64
     batches = 2
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=np.float64,
         data_type="real",
         arrangement=("row_major", "col_major", "col_major"),
         execution="Block",
-        compiler="numba",
         block_size=block_size,
     )
 
@@ -34,7 +33,7 @@ def main():
     b_size_batched = batches * MM.b_size
     c_size_batched = batches * MM.c_size
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(a, b, c, alpha, beta, output):
         bid = cuda.threadIdx.y
 

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.3.0. Do not modify it directly.
+# This code was automatically generated with version 0.4.2. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 

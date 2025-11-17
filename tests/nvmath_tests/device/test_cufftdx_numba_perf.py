@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from nvmath.device import CodeType, FFTOptions
+from nvmath.device import FFT
 from .helpers import smallest_multiple, time_check_cupy, set_device, random_complex
 from ..helpers import fft_conv_perf_GFlops, print_aligned_table
 import cupy
@@ -59,7 +59,7 @@ def run_conv_perf(test_cases):
 
     for size, precision in test_cases:
         # Figure out EPT/BPB
-        BASE = FFTOptions(
+        BASE = FFT(
             fft_type="c2c",
             size=size,
             precision=precision,
@@ -67,7 +67,7 @@ def run_conv_perf(test_cases):
             elements_per_thread="suggested",
             ffts_per_block="suggested",
             execution="Block",
-            code_type=CodeType("lto", (SM[0], SM[1])),
+            sm=SM,
         )
 
         ffts_per_block = BASE.ffts_per_block

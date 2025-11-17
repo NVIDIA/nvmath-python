@@ -2,13 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["FFTDirection", "FFTOptions", "Slab"]
+__all__ = ["FFTDirection", "FFTOptions"]
 
 from dataclasses import dataclass
 from enum import IntEnum
 from logging import Logger
 from typing import Literal
-from nvmath.bindings import cufftMp  # type: ignore
 
 
 @dataclass
@@ -43,7 +42,7 @@ class FFTOptions:
             the CPU, to ensure that the user doesn't inadvertently use the result before it
             becomes available. The default is ``"auto"``.
 
-    See Also:
+    .. seealso::
         :class:`FFT`, :func:`fft`, :func:`ifft`, :func:`rfft`, and :func:`irfft`.
     """
 
@@ -72,29 +71,9 @@ class FFTOptions:
 class FFTDirection(IntEnum):
     """An IntEnum class specifying the direction of the transform.
 
-    See Also:
+    .. seealso::
         :meth:`FFT.execute`, :func:`fft`
     """
 
     FORWARD = -1
     INVERSE = 1
-
-
-class Slab(IntEnum):
-    """An IntEnum class to specify a cuFFTMp Slab distribution.
-
-    Given an array of size X * Y * Z distributed over n GPUs, there are two possible slab
-    distributions depending on whether the data is partitioned on the X or Y axis:
-
-    * X axis partitioning: the first X % n GPUs each own (X/n+1) * Y * Z elements and
-      the remaining GPUs each own (X/n) * Y * Z elements.
-
-    * Y axis partitioning: the first Y % n GPUs each own X * (Y/n+1) * Z elements and
-      the remaining GPUs each own X * (Y/n) * Z elements.
-
-    See Also:
-        :class:`FFT`, :func:`fft`
-    """
-
-    X = cufftMp.XtSubFormat.FORMAT_INPLACE
-    Y = cufftMp.XtSubFormat.FORMAT_INPLACE_SHUFFLED

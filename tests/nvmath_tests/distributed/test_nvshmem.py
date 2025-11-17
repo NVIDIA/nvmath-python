@@ -45,7 +45,7 @@ def nvmath_distributed():
 
     comm = MPI.COMM_WORLD
     device_id = comm.Get_rank() % cuda.core.experimental.system.num_devices
-    nvmath.distributed.initialize(device_id)
+    nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
     yield
 

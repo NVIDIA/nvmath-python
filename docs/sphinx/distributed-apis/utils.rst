@@ -69,6 +69,7 @@ API Reference
 =============
 
 .. module:: nvmath.distributed
+   :no-index:
 
 Symmetric Memory utilities
 --------------------------

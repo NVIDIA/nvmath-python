@@ -8,60 +8,55 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import fft, Dim3
+from nvmath.device import FFT, Dim3
 from common import random_complex
 
 
 def main():
-    fft_size = 16
+    fft = FFT(fft_type="c2c", size=16, direction="forward", precision=np.float32, execution="Thread")
 
-    FFT = fft(fft_type="c2c", size=fft_size, direction="forward", precision=np.float32, execution="Thread", compiler="numba")
-
-    block_dim = Dim3(fft_size, fft_size, 1)
+    block_dim = Dim3(fft.size, fft.size, 1)
     grid_dim = Dim3(1, 1, 1)
-    storage_size = FFT.storage_size
-    value_type = FFT.value_type
-    shared_memory_size = fft_size * fft_size * fft_size * np.complex64(1).itemsize
-    elements_per_thread = FFT.elements_per_thread
+    shared_memory_size = fft.size * fft.size * fft.size * np.complex64(1).itemsize
 
-    stride_x = fft_size * fft_size
-    stride_y = fft_size
+    stride_x = fft.size * fft.size
+    stride_y = fft.size
 
-    @cuda.jit(link=FFT.files)
+    @cuda.jit
     def f(input, output):
-        thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
-        shared_mem = cuda.shared.array(shape=(0,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft.storage_size,), dtype=fft.value_type)
+        shared_mem = cuda.shared.array(shape=(0,), dtype=fft.value_type)
 
         ## Load
         j, k = cuda.threadIdx.y, cuda.threadIdx.x
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             thread_data[i] = input[i, j, k]
 
         ## FFT along X
-        FFT(thread_data)
+        fft.execute(thread_data)
 
         # Exchange/transpose via shared memory
-        index = cuda.threadIdx.x + cuda.threadIdx.y * fft_size
-        for i in range(elements_per_thread):
+        index = cuda.threadIdx.x + cuda.threadIdx.y * fft.size
+        for i in range(fft.elements_per_thread):
             shared_mem[index] = thread_data[i]
             index += stride_x
         cuda.syncthreads()
-        index = cuda.threadIdx.x + cuda.threadIdx.y * fft_size * fft_size
-        for i in range(elements_per_thread):
+        index = cuda.threadIdx.x + cuda.threadIdx.y * fft.size * fft.size
+        for i in range(fft.elements_per_thread):
             thread_data[i] = shared_mem[index]
             index += stride_y
 
         # FFT along Y
-        FFT(thread_data)
+        fft.execute(thread_data)
 
         # Exchange/transpose via shared memory
-        index = cuda.threadIdx.x + cuda.threadIdx.y * fft_size * fft_size
-        for i in range(elements_per_thread):
+        index = cuda.threadIdx.x + cuda.threadIdx.y * fft.size * fft.size
+        for i in range(fft.elements_per_thread):
             shared_mem[index] = thread_data[i]
             index += stride_y
         cuda.syncthreads()
-        index = (cuda.threadIdx.x + cuda.threadIdx.y * fft_size) * fft_size
-        for i in range(elements_per_thread):
+        index = (cuda.threadIdx.x + cuda.threadIdx.y * fft.size) * fft.size
+        for i in range(fft.elements_per_thread):
             thread_data[i] = shared_mem[index]
             index += 1
         # for i in range(0, elements_per_thread, 2): # Manually vectorized
@@ -69,29 +64,29 @@ def main():
         #     index += 2
 
         # FFT along Z
-        FFT(thread_data)
+        fft.execute(thread_data)
 
         # Shared memory IO - exchange data to store with coalesced stores
-        index = (cuda.threadIdx.x + cuda.threadIdx.y * fft_size) * fft_size
-        for i in range(elements_per_thread):
+        index = (cuda.threadIdx.x + cuda.threadIdx.y * fft.size) * fft.size
+        for i in range(fft.elements_per_thread):
             shared_mem[index] = thread_data[i]
             index += 1
         # for i in range(0, elements_per_thread, 2): # Manually vectorized
         #     fast_copy_2x(thread_data, i, shared_mem, index)
         #     index += 2
         cuda.syncthreads()
-        index = cuda.threadIdx.x + cuda.threadIdx.y * fft_size
-        for i in range(elements_per_thread):
+        index = cuda.threadIdx.x + cuda.threadIdx.y * fft.size
+        for i in range(fft.elements_per_thread):
             thread_data[i] = shared_mem[index]
             index += stride_x
 
         # Store
         j, k = cuda.threadIdx.y, cuda.threadIdx.x
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             output[i, j, k] = thread_data[i]
 
-    input = random_complex((fft_size, fft_size, fft_size), real_dtype=np.float32)
-    output = np.zeros((fft_size, fft_size, fft_size), dtype=np.complex64)
+    input = random_complex((fft.size, fft.size, fft.size), real_dtype=np.float32)
+    output = np.zeros((fft.size, fft.size, fft.size), dtype=np.complex64)
     input_d = cuda.to_device(input)
     output_d = cuda.to_device(output)
 

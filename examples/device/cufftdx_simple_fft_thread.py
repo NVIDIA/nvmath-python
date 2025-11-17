@@ -8,34 +8,29 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import fft
+from nvmath.device import FFT
 
 
 def main():
     threads_count = 4
 
-    FFT = fft(fft_type="c2c", size=8, precision=np.float64, direction="forward", execution="Thread", compiler="numba")
+    fft = FFT(fft_type="c2c", size=8, precision=np.float64, direction="forward", execution="Thread")
 
-    size = FFT.size
-    value_type = FFT.value_type
-    storage_size = FFT.storage_size
-    elements_per_thread = FFT.elements_per_thread
-
-    @cuda.jit(link=FFT.files)
+    @cuda.jit
     def f(data):
-        thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft.storage_size,), dtype=fft.value_type)
 
         local_fft_id = cuda.threadIdx.x
 
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             thread_data[i] = data[local_fft_id, i]
 
-        FFT(thread_data)
+        fft.execute(thread_data)
 
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             data[local_fft_id, i] = thread_data[i]
 
-    data = np.ones((threads_count, size), dtype=np.complex128)
+    data = np.ones((threads_count, fft.size), dtype=np.complex128)
     data_d = cuda.to_device(data)
 
     print("input [1st FFT]:", data[0, :])

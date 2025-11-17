@@ -4,8 +4,8 @@ Overview
 ********
 
 The primary goal of nvmath-python is to bring the power of the NVIDIA math libraries to the
-Python ecosystem. The package aims to provide intuitive Pythonic APIs that provide users
-full access to all the features offered by our libraries in a variety of execution spaces.
+Python ecosystem. The package aims to provide intuitive Pythonic APIs giving users full
+access to all the features offered by our libraries in a variety of execution spaces.
 
 We hope to empower a wide range of Python users by providing easy access to high-performance
 core math operations such as FFT, dense and sparse linear algebra, and more. This includes
@@ -28,19 +28,24 @@ The APIs provided by nvmath-python can be categorized into:
 The nvmath-python library is dedicated to delivering the following key features and
 commitments:
 
-1. **Logical Feature Parity**: While the Pythonic API surface (the number of APIs and the
+1. **Interoperability with array and tensor libraries**: Instead of providing a native array
+   or tensor data structure, nvmath-python provides seamless interoperability with
+   widely-used array libraries such as NumPy, CuPy, and PyTorch, through APIs compatible
+   with their data representations. nvmath-python should not be regarded as a replacement,
+   but rather as a complementary tool to these libraries.
+2. **Logical Feature Parity**: While the Pythonic API surface (the number of APIs and the
    complexity of each) is more concise compared to that of the C libraries, it provides
    access to their complete functionality.
-2. **Consistent Design Patterns**: Uniform design across all modules to simplify user
+3. **Consistent Design Patterns**: Uniform design across all modules to simplify user
    experience.
-3. **Transparency and Explicitness**: Avoiding implicit, costly operations such as copying
+4. **Transparency and Explicitness**: Avoiding implicit, costly operations such as copying
    data across the same memory space, automatic type promotion, and alterations to the user
    environment or state (current device, current stream, etc.). This allows users to perform
    the required conversion once for use in all subsequent operations instead of incurring
    hidden costs on each call.
-4. **Clear, Actionable Error Messages**: Ensuring that errors are informative and helpful in
+5. **Clear, Actionable Error Messages**: Ensuring that errors are informative and helpful in
    resolving the problem.
-5. **DRY Principle Compliance**: Automatically utilizing available information such as the
+6. **DRY Principle Compliance**: Automatically utilizing available information such as the
    current stream and memory pool to avoid redundant specification ("don't repeat
    yourself").
 
@@ -89,8 +94,12 @@ categories:
 
 - Fast Fourier Transform in :mod:`nvmath.fft`. Refer to :doc:`Fast Fourier Transform
   <host-apis/fft/index>` for details.
-- Linear Algebra in :mod:`nvmath.linalg`. Refer to :doc:`Linear Algebra
+- Dense Linear Algebra in :mod:`nvmath.linalg`. Refer to :doc:`Linear Algebra
   <host-apis/linalg/index>` for details.
+- Sparse Linear Algebra in :mod:`nvmath.sparse`. Refer to :doc:`Sparse Linear Algebra
+  <host-apis/sparse/index>` for details.
+- Tensor Algebra in :mod:`nvmath.tensor`. Refer to :doc:`Tensor Operations
+  <host-apis/tensor/index>` for details.
 
 
 .. _host api interop:
@@ -377,8 +386,8 @@ We currently offer support for calling FFT, matrix multiplication, and random nu
 generation APIs in kernels written using `Numba`_, with plans to offer more core operations
 and support other compilers in the future. The design of the device APIs closely mimics that
 of the C++ APIs from the corresponding NVIDIA Math Libraries (MathDx libraries `cuFFTDx
-<https://docs.nvidia.com/cuda/cufftdx/1.2.0>`_ and `cuBLASDx
-<https://docs.nvidia.com/cuda/cublasdx/0.1.1>`_ for FFT and matrix multiplication, and
+<https://docs.nvidia.com/cuda/cufftdx/1.5.1>`_ and `cuBLASDx
+<https://docs.nvidia.com/cuda/cublasdx/0.4.1>`_ for FFT and matrix multiplication, and
 `cuRAND device APIs <https://docs.nvidia.com/cuda/curand/group__DEVICE.html#group__DEVICE>`_
 for random number generation).
 
@@ -394,7 +403,7 @@ considerations, we strive to meet the following commitments:
 1. For the :doc:`low-level Python bindings <bindings/index>`,
 
    * if the library to be bound is part of CUDA Toolkit, we support the library from the
-     most recent two CUDA major versions (currently CUDA 11/12)
+     most recent two CUDA major versions (currently CUDA 12/13)
    * otherwise, we support the library within its major version
 
    Note that all bindings are currently *experimental*.

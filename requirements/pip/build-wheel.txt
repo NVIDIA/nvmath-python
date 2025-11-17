@@ -1,5 +1,0 @@
-auditwheel
-build
-pyproject-validate
-twine
-wheel

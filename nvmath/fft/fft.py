@@ -10,7 +10,6 @@ from dataclasses import dataclass, astuple as data_cls_astuple
 import enum
 import functools
 import logging
-import math
 import operator
 
 from ._configuration import ExecutionCPU, ExecutionCUDA, FFTOptions, FFTDirection, DeviceCallable
@@ -869,57 +868,6 @@ def create_fft_key(
     return plan_args, callable_data, data_cls_astuple(execution)  # type: ignore[arg-type]
 
 
-def _has_only_small_factors_extent(extent):
-    # fast track for powers of 2 (and zero)
-    if extent & (extent - 1) == 0:
-        return True
-    # Divide the `extent` by the product of all the prime factors up to
-    # 127 present in the `extent` until there are none left.
-    # Considering all the prime factors at once is faster, even though the
-    # first call (and only the first call) to gcd operates on ints with precision
-    # exceeding 64 bits. For common 2, 3, 5, 7 factors, the higher powers are included,
-    # to reduce number of iterations.
-    # math.prod(p for p in range(2, 128) if is_prime(p)) * 2**10 * 3**7 * 5**5 * 7**4
-    magic_prod = 67455891904760197438286248026720562156610454525830430432000000
-    d = math.gcd(extent, magic_prod)
-    while d > 1:
-        if extent == d:
-            return True
-        extent //= d
-        d = math.gcd(extent, d)
-    return False
-
-
-def _has_only_small_factors_shape(shape):
-    return all(extent <= 2048 or _has_only_small_factors_extent(extent) for extent in shape)
-
-
-def check_is_shape_supported_lto_ea(operand, plan_traits, fft_abstract_type):
-    if fft_abstract_type != "C2R":
-        shape = plan_traits.ordered_fft_in_shape
-    else:
-        shape = plan_traits.ordered_fft_out_shape
-    if not _has_only_small_factors_shape(shape):
-        raise ValueError(
-            f"cuFFT LTO EA does not support callbacks with inputs of certain shapes. "
-            f"Tensor with extents comprasing prime factors larger than 127 are not supported. "
-            f"Got a tensor of shape {operand.shape}."
-        )
-    if len(shape) == 3 and sum(e == 1 for e in shape) == 1 and shape[-1] == 1:
-        raise ValueError(
-            "cuFFT LTO EA does not support callbacks with inputs of certain shapes. "
-            "3D FFT with the last extent equal 1 are not supported"
-        )
-
-
-def _check_prolog_epilog_traits(prolog, epilog, plan_traits, operand, fft_abstract_type):
-    # Since the version 11300, cufft does the validation itself.
-    # In earlier versions, it could ignore the callback silently
-    # for unsupported shapes
-    if (prolog or epilog) and cufft.get_version() < 11300:
-        check_is_shape_supported_lto_ea(operand, plan_traits, fft_abstract_type)
-
-
 def set_prolog_and_epilog(handle, prolog, epilog, operand_dtype, result_dtype, logger):
     def set_callback(cbkind, cbobj, dtype):
         if cbobj is None:
@@ -929,18 +877,13 @@ def set_prolog_and_epilog(handle, prolog, epilog, operand_dtype, result_dtype, l
         CBType = CBLoadType if cbkind == "prolog" else CBStoreType
 
         try:
-            cufft.xt_set_jit_callback(handle, cbobj.ltoir, cbobj.size, CBType[dtype.upper()], [cbobj.data])
+            cufft.xt_set_jit_callback(handle, 0, cbobj.ltoir, cbobj.size, CBType[dtype.upper()], [cbobj.data])
         except _bindings_utils.FunctionNotFoundError as e:
             version = cufft.get_version()
             raise RuntimeError(
                 f"The currently running cuFFT version {version} does not support LTO callbacks. \n"
-                f"The following cuFFT releases support LTO callbacks: \n"
-                f"1. cuFFT shipped with CUDA 12.6U2 (11.3.0) or newer \n"
-                f"2. the older, experimental cuFFT LTO EA (early access) preview build "
-                f"(https://developer.nvidia.com/cufftea).\n"
-                f"To use version different from the one shipped with CUDA Toolkit, please make "
-                f"sure the right 'libcufft.so' takes precedence for nvmath. "
-                f"For example, by adjusting the 'LD_LIBRARY_PATH' or 'LD_PRELOAD'."
+                f"cuFFT LTO callbacks are supported starting with cuFFT 11.3, "
+                f"shipped with CUDA Toolkit 12.6U2 (11.3.0) or newer. \n"
             ) from e
 
         logger.info(f"The specified LTO-IR {cbkind} has been set.")
@@ -1004,7 +947,7 @@ class FFT:
 
         stream: {stream}
 
-    See Also:
+    .. seealso::
         :meth:`plan`, :meth:`reset_operand`, :meth:`execute`, :meth:`create_key`
 
     Examples:
@@ -1309,7 +1252,7 @@ class FFT:
         Returns:
             {fft_key}
 
-        See Also:
+        .. seealso::
             :meth:`create_key`
         """
         return create_fft_key(
@@ -1490,7 +1433,6 @@ class FFT:
             # Set LTO-IR callbacks, if present.
             prolog = utils.check_or_create_options(DeviceCallable, prolog, "prolog", keep_none=True)
             epilog = utils.check_or_create_options(DeviceCallable, epilog, "epilog", keep_none=True)
-            _check_prolog_epilog_traits(prolog, epilog, self.plan_traits, self.operand, self.fft_abstract_type)
             set_prolog_and_epilog(self.handle, prolog, epilog, self.operand_data_type, self.result_data_type, self.logger)
 
         # Get all the arguments to xt_make_plan_many except for the first (the handle).
@@ -2053,7 +1995,7 @@ def _fft(
         A transformed operand that retains the same data type and shape as the input. It
         remains on the same device and uses the same package as the input operand.
 
-    See Also:
+    .. seealso::
         :func:`ifft`, :func:`irfft`, :func:`rfft`, :class:`FFT`
 
     Examples:
@@ -2182,7 +2124,7 @@ def rfft(
         ``operand.shape[axes[-1]] // 2 + 1``.
 
 
-    See Also:
+    .. seealso::
         :func:`fft`, :func:`irfft`, :class:`FFT`.
     """
     wrapped_operand = tensor_wrapper.wrap_operand(operand)
@@ -2229,7 +2171,7 @@ ifft.__doc__ = """
         A transformed operand that retains the same data type and shape as the input. It
         remains on the same device and uses the same package as the input operand.
 
-    See Also:
+    .. seealso::
         :func:`fft`, :func:`irfft`, :class:`FFT`.
 
     Notes:
@@ -2284,7 +2226,7 @@ def irfft(
         ``even``, or ``operand.shape[axes[-1]] * 2 - 1`` if
         :attr:`FFTOptions.last_axis_parity` is ``odd``.
 
-    See Also:
+    .. seealso::
         :func:`fft`, :func:`ifft`, :class:`FFT`.
 
     Examples:

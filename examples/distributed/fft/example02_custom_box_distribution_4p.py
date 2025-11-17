@@ -20,13 +20,14 @@ import cuda.core.experimental
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cuda.core.experimental.system.num_devices
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 if nranks != 4:
     raise RuntimeError("This example requires 4 processes")
@@ -42,13 +43,13 @@ a = np.random.rand(*shape) + 1j * np.random.rand(*shape)
 
 # Forward FFT.
 if rank == 0:
-    input_box = [(0, 0, 0), (32, 128, 128)]
+    input_box = Box((0, 0, 0), (32, 128, 128))
 elif rank == 1:
-    input_box = [(0, 128, 0), (32, 256, 128)]
+    input_box = Box((0, 128, 0), (32, 256, 128))
 elif rank == 2:
-    input_box = [(32, 0, 0), (64, 128, 128)]
+    input_box = Box((32, 0, 0), (64, 128, 128))
 else:
-    input_box = [(32, 128, 0), (64, 256, 128)]
+    input_box = Box((32, 128, 0), (64, 256, 128))
 # Use the same pencil distribution for the output.
 output_box = input_box
 b = nvmath.distributed.fft.fft(a, distribution=[input_box, output_box])

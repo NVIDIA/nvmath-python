@@ -8,8 +8,8 @@ Overview
 ========
 
 The sparse linear algebra module :mod:`nvmath.sparse` in nvmath-python leverages various
-NVIDIA math libraries to support sparse linear algebra computations. As of the current Beta
-release, we offer the specialized sparse direct solver API based on the `cuDSS library
+NVIDIA math libraries to support sparse [#]_ linear algebra computations. As of the current
+Beta release, we offer the specialized sparse direct solver API based on the `cuDSS library
 <https://docs.nvidia.com/cuda/cudss/>`_.
 
 .. _sparse-api-reference:
@@ -50,3 +50,7 @@ Specialized Linear Algebra APIs (:mod:`nvmath.sparse.advanced`)
    ExecutionCUDA
    ExecutionHybrid
    HybridMemoryModeOptions
+
+.. rubric:: Footnotes
+
+.. [#] See :ref:`Linear Algebra <linalg-overview>` for dense operations.

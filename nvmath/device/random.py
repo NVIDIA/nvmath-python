@@ -17,7 +17,7 @@ import nvmath.device
 from nvmath.device import curand_kernel, random_helpers
 from nvmath.device import random_states as states
 from cuda.core.experimental import ObjectCode, Program, ProgramOptions
-from .common_mathdx import CUDA_HOME
+from cuda import pathfinder
 
 # Common APIs (initialization, bit generation).
 _COMMON_APIS = ["init", "rand", "rand4"]
@@ -406,7 +406,10 @@ class Compile:
                 link_time_optimization=True,
                 gen_opt_lto=True,
                 relocatable_device_code=True,
-                include_path=[h + "/include" for h in CUDA_HOME] + list(CUDA_HOME) if CUDA_HOME is not None else [],
+                include_path=[
+                    pathfinder.find_nvidia_header_directory("cudart"),
+                    pathfinder.find_nvidia_header_directory("cccl"),
+                ],
             ),
         )
         obj = prog.compile("ltoir")

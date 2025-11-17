@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.1. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -107,8 +107,12 @@ cpdef size_t xt_get_size_many(int plan, int rank, n, inembed, long long int istr
 cpdef xt_exec(int plan, intptr_t input, intptr_t output, int direction)
 cpdef xt_exec_descriptor(int plan, intptr_t input, intptr_t output, int direction)
 cpdef xt_set_work_area_policy(int plan, int policy, intptr_t work_size)
-cpdef xt_set_jit_callback(int plan, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info)
+cpdef _xt_set_jit_callback(int plan, intptr_t lto_callback_symbol_name, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info)
 cpdef xt_set_subformat_default(int plan, int subformat_forward, int subformat_inverse)
 cpdef set_plan_property_int64(int plan, int property, long long int input_value_int)
 cpdef long long int get_plan_property_int64(int plan, int property) except? -1
 cpdef reset_plan_property(int plan, int property)
+cpdef _xt_set_jit_callback_12_7(int plan, intptr_t lto_callback_symbol_name, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info)
+
+# wrapper calling the correct function based on the CTK version
+cpdef xt_set_jit_callback(int plan, intptr_t lto_callback_symbol_name, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info)

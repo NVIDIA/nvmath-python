@@ -8,38 +8,33 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import fft, float16x4
+from nvmath.device import FFT, float16x4
 from common import random_complex, fp16x2_to_complex64, complex64_to_fp16x2
 
 
 def main():
     threads_count = 3
 
-    FFT = fft(fft_type="c2c", size=8, precision=np.float16, direction="forward", execution="Thread", compiler="numba")
+    fft = FFT(fft_type="c2c", size=8, precision=np.float16, direction="forward", execution="Thread")
 
-    size = FFT.size
-    value_type = FFT.value_type
-    storage_size = FFT.storage_size
-    elements_per_thread = FFT.elements_per_thread
-    implicit_type_batching = FFT.implicit_type_batching
-    assert implicit_type_batching == 2
+    assert fft.implicit_type_batching == 2
 
-    @cuda.jit(link=FFT.files)
+    @cuda.jit
     def f(data):
-        thread_data = cuda.local.array(shape=(storage_size,), dtype=value_type)
+        thread_data = cuda.local.array(shape=(fft.storage_size,), dtype=fft.value_type)
 
         local_fft_id = cuda.threadIdx.x
 
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             r0 = data[2 * local_fft_id, 2 * i + 0]
             i0 = data[2 * local_fft_id, 2 * i + 1]
             r1 = data[2 * local_fft_id + 1, 2 * i + 0]
             i1 = data[2 * local_fft_id + 1, 2 * i + 1]
             thread_data[i] = float16x4(r0, r1, i0, i1)
 
-        FFT(thread_data)
+        fft.execute(thread_data)
 
-        for i in range(elements_per_thread):
+        for i in range(fft.elements_per_thread):
             rrii = thread_data[i]
             r0, r1, i0, i1 = rrii.x, rrii.y, rrii.z, rrii.w
             data[2 * local_fft_id, 2 * i + 0] = r0
@@ -49,7 +44,7 @@ def main():
 
     # Numpy has no FP16 complex, so we create a 2xlarger arrays of FP16 reals
     # Each consecutive pair of reals form one logical FP16 complex number
-    data = random_complex((implicit_type_batching * threads_count, size), real_dtype=np.float32)
+    data = random_complex((fft.implicit_type_batching * threads_count, fft.size), real_dtype=np.float32)
     data_fp16 = complex64_to_fp16x2(data)
     data_d = cuda.to_device(data_fp16)
 

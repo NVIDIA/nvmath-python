@@ -2,7 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["current_device_lto", "ComputeCapability", "CodeType", "ISAVersion", "Code", "Dim3", "MAX_SUPPORTED_CC"]
+__all__ = [
+    "current_device_lto",
+    "current_device_sm",
+    "ComputeCapability",
+    "CodeType",
+    "ISAVersion",
+    "Code",
+    "Dim3",
+    "MAX_SUPPORTED_CC",
+]
 
 from typing import NamedTuple
 from cuda.bindings import runtime as cudart, driver as cudadrv
@@ -62,6 +71,7 @@ class ComputeCapability(NamedTuple):
     pass
 
 
+MIN_SUPPORTED_CC = ComputeCapability(7, 0)
 MAX_SUPPORTED_CC = ComputeCapability(12, 1)
 
 
@@ -154,3 +164,15 @@ def current_device_lto():
         device.
     """
     return get_default_code_type()
+
+
+def current_device_sm() -> ComputeCapability:
+    """
+    A helper function to get the default SM for mathdx types on the
+    current device.
+
+    Returns:
+        A :class:`ComputeCapability` object representing the default SM for
+        mathdx types on the current device.
+    """
+    return get_current_device_cc()

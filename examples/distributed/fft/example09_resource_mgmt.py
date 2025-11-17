@@ -26,7 +26,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (256, 512, 512).
 # In this example, the input data is distributed across processes according to
@@ -45,10 +45,10 @@ with cp.cuda.Device(device_id):
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 
 # Create and prepare two FFT objects.
-f1 = nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X)
+f1 = nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.distribution.Slab.X)
 f1.plan()
 
-f2 = nvmath.distributed.fft.FFT(b, distribution=nvmath.distributed.fft.Slab.X)
+f2 = nvmath.distributed.fft.FFT(b, distribution=nvmath.distributed.distribution.Slab.X)
 f2.plan()
 
 num_iter = 3

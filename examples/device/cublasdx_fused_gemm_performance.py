@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import random_complex
 from common_numba import set_max_dynamic_shared_size_bytes, load_to_shared, store_from_shared, time_numba
 
@@ -30,12 +30,11 @@ def main():
         "arrangement": ("col_major", "col_major", "col_major"),
         "execution": "Block",
         "block_size": block_size,
-        "compiler": "numba",
     }
 
-    MM1 = matmul(size=(m1, n1, k1), **kwargs)
+    MM1 = Matmul(size=(m1, n1, k1), **kwargs)
 
-    MM2 = matmul(size=(m2, n2, k2), **kwargs)
+    MM2 = Matmul(size=(m2, n2, k2), **kwargs)
 
     value_type = MM1.a_value_type  # all value types are the same
 
@@ -62,7 +61,7 @@ def main():
     assert MM1.c_size == MM2.a_size
     assert MM1.leading_dimension.c == MM2.leading_dimension.a
 
-    @cuda.jit(link=MM1.files)
+    @cuda.jit
     def kernel(alpha1, a, b, beta1, c, alpha2, d, beta2, f, output):
         smem = cuda.shared.array(shape=(0,), dtype=value_type)
 

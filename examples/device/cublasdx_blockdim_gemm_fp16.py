@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul, Dim3
+from nvmath.device import Matmul, Dim3
 from common import random_real
 from common_numba import load_to_shared, store_from_shared
 
@@ -31,17 +31,16 @@ def main():
     for scenario, (blas_block_dim, kernel_block_dim) in enumerate(zip(blas_block_dims, kernel_block_dims, strict=True)):
         print(f"Scenario with BLAS dim {blas_block_dim} and kernel dim {kernel_block_dim}")
 
-        MM = matmul(
+        MM = Matmul(
             size=(m, n, k),
             precision=precision,
             data_type="real",
             arrangement=("row_major", "col_major", "col_major"),
             execution="Block",
-            compiler="numba",
             block_dim=blas_block_dim,
         )
 
-        @cuda.jit(link=MM.files)
+        @cuda.jit
         def f(a, b, c, alpha, beta, output):
             smem_a = cuda.shared.array(shape=MM.a_size, dtype=MM.a_value_type)
             smem_b = cuda.shared.array(shape=MM.b_size, dtype=MM.b_value_type)

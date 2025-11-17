@@ -8,7 +8,7 @@ try:
 except ImportError:
     torch = None
 import pytest
-from .utils import sample_matrix, assert_tensors_equal, matmul_with_random_autotune
+from ...utils import sample_matrix, assert_tensors_equal, matmul_with_random_autotune
 from .fp8_utils import choose_scales, generate_inputs, assert_fp8_equal, fp8_matmul_reference
 from nvmath.linalg.advanced import Matmul, matmul, MatmulQuantizationScales
 from nvmath.internal.typemaps import NAME_TO_DATA_TYPE

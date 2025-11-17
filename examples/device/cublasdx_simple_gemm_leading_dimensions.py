@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul, Dim3
+from nvmath.device import Matmul, Dim3
 from common import random_real
 from common_numba import load_to_shared, store_from_shared
 
@@ -27,11 +27,10 @@ def main():
         "arrangement": ("row_major", "col_major", "col_major"),
         "execution": "Block",
         "block_dim": block_dim,
-        "compiler": "numba",
     }
 
-    MM_static_ld = matmul(**kwargs, leading_dimension=(lda, ldb, ldc))
-    MM_runtime_ld = matmul(**kwargs, execute_api="dynamic_leading_dimensions")
+    MM_static_ld = Matmul(**kwargs, leading_dimension=(lda, ldb, ldc))
+    MM_runtime_ld = Matmul(**kwargs)
 
     value_type = MM_static_ld.a_value_type  # all value types are the same
     a_size = MM_static_ld.a_size
@@ -40,7 +39,7 @@ def main():
     b_dim = MM_static_ld.b_dim
     c_dim = MM_static_ld.c_dim
 
-    @cuda.jit(link=MM_static_ld.files)
+    @cuda.jit
     def f_static_ld(alpha, a, b, beta, c, output):
         smem = cuda.shared.array(shape=(0,), dtype=value_type)
         smem_a = smem[0:]
@@ -59,7 +58,7 @@ def main():
 
         store_from_shared(smem_c, output, c_dim, ldc)
 
-    @cuda.jit(link=MM_runtime_ld.files)
+    @cuda.jit
     def f_runtime_ld(alpha, a, lda, b, ldb, beta, c, ldc, output):
         smem = cuda.shared.array(shape=(0,), dtype=value_type)
         smem_a = smem[0:]

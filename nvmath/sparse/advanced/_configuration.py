@@ -41,7 +41,7 @@ class HybridMemoryModeOptions:
             ``True``. See
             :attr:`nvmath.bindings.cudss.ConfigParam.USE_CUDA_REGISTER_MEMORY`.
 
-    See Also:
+    .. seealso::
        :class:`ExecutionHybrid`, :class:`DirectSolver`, :func:`direct_solver`.
     """
 
@@ -66,7 +66,7 @@ class ExecutionCUDA:
         hybrid_memory_mode_options: Options controlling the use of hybrid (CPU-GPU) memory
             as an object of type :class:`HybridMemoryModeOptions` or a `dict`.
 
-    See Also:
+    .. seealso::
        :class:`ExecutionHybrid`, :class:`HybridMemoryModeOptions`, :class:`DirectSolver`,
        :func:`direct_solver`.
     """
@@ -88,7 +88,7 @@ class ExecutionHybrid:
         num_threads: The number of CPU threads used to execute the plan.
             If not specified, defaults to the number of CPU cores available to the process.
 
-    See Also:
+    .. seealso::
        :class:`ExecutionCUDA`, :class:`DirectSolver`, :func:`direct_solver`.
     """
 
@@ -131,7 +131,7 @@ class DirectSolverOptions:
 
         handle: cuDSS library handle. A handle will be created if one is not provided.
 
-    See Also:
+    .. seealso::
         :class:`ExecutionCUDA`, :class:`ExecutionHybrid`, :class:`DirectSolver`, and
         :func:`direct_solver`.
     """

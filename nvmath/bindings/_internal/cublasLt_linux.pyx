@@ -6,9 +6,12 @@
 
 from libc.stdint cimport intptr_t, uintptr_t
 
+import threading
+
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -28,13 +31,31 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cublasLt_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cublasLtCreate = NULL
 cdef void* __cublasLtDestroy = NULL
@@ -89,317 +110,301 @@ cdef int _check_or_init_cublasLt() except -1 nogil:
     if __py_cublasLt_init:
         return 0
 
-    # Load driver to check version
     cdef void* handle = NULL
-    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
-    global __cuDriverGetVersion
-    if __cuDriverGetVersion == NULL:
-        __cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
-    if __cuDriverGetVersion == NULL:
-        with gil:
-            raise RuntimeError('something went wrong')
-    cdef int err, driver_ver
-    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-    if err != 0:
-        with gil:
-            raise RuntimeError('something went wrong')
-    #dlclose(handle)
-    handle = NULL
 
-    # Load function
-    global __cublasLtCreate
-    __cublasLtCreate = dlsym(RTLD_DEFAULT, 'cublasLtCreate')
-    if __cublasLtCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtCreate = dlsym(handle, 'cublasLtCreate')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
-    global __cublasLtDestroy
-    __cublasLtDestroy = dlsym(RTLD_DEFAULT, 'cublasLtDestroy')
-    if __cublasLtDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtDestroy = dlsym(handle, 'cublasLtDestroy')
+        # Load function
+        global __cublasLtCreate
+        __cublasLtCreate = dlsym(RTLD_DEFAULT, 'cublasLtCreate')
+        if __cublasLtCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtCreate = dlsym(handle, 'cublasLtCreate')
 
-    global __cublasLtGetVersion
-    __cublasLtGetVersion = dlsym(RTLD_DEFAULT, 'cublasLtGetVersion')
-    if __cublasLtGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtGetVersion = dlsym(handle, 'cublasLtGetVersion')
+        global __cublasLtDestroy
+        __cublasLtDestroy = dlsym(RTLD_DEFAULT, 'cublasLtDestroy')
+        if __cublasLtDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtDestroy = dlsym(handle, 'cublasLtDestroy')
 
-    global __cublasLtGetCudartVersion
-    __cublasLtGetCudartVersion = dlsym(RTLD_DEFAULT, 'cublasLtGetCudartVersion')
-    if __cublasLtGetCudartVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtGetCudartVersion = dlsym(handle, 'cublasLtGetCudartVersion')
+        global __cublasLtGetVersion
+        __cublasLtGetVersion = dlsym(RTLD_DEFAULT, 'cublasLtGetVersion')
+        if __cublasLtGetVersion == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtGetVersion = dlsym(handle, 'cublasLtGetVersion')
 
-    global __cublasLtGetProperty
-    __cublasLtGetProperty = dlsym(RTLD_DEFAULT, 'cublasLtGetProperty')
-    if __cublasLtGetProperty == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtGetProperty = dlsym(handle, 'cublasLtGetProperty')
+        global __cublasLtGetCudartVersion
+        __cublasLtGetCudartVersion = dlsym(RTLD_DEFAULT, 'cublasLtGetCudartVersion')
+        if __cublasLtGetCudartVersion == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtGetCudartVersion = dlsym(handle, 'cublasLtGetCudartVersion')
 
-    global __cublasLtMatmul
-    __cublasLtMatmul = dlsym(RTLD_DEFAULT, 'cublasLtMatmul')
-    if __cublasLtMatmul == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmul = dlsym(handle, 'cublasLtMatmul')
+        global __cublasLtGetProperty
+        __cublasLtGetProperty = dlsym(RTLD_DEFAULT, 'cublasLtGetProperty')
+        if __cublasLtGetProperty == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtGetProperty = dlsym(handle, 'cublasLtGetProperty')
 
-    global __cublasLtMatrixTransform
-    __cublasLtMatrixTransform = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransform')
-    if __cublasLtMatrixTransform == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixTransform = dlsym(handle, 'cublasLtMatrixTransform')
+        global __cublasLtMatmul
+        __cublasLtMatmul = dlsym(RTLD_DEFAULT, 'cublasLtMatmul')
+        if __cublasLtMatmul == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmul = dlsym(handle, 'cublasLtMatmul')
 
-    global __cublasLtMatrixLayoutCreate
-    __cublasLtMatrixLayoutCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutCreate')
-    if __cublasLtMatrixLayoutCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixLayoutCreate = dlsym(handle, 'cublasLtMatrixLayoutCreate')
+        global __cublasLtMatrixTransform
+        __cublasLtMatrixTransform = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransform')
+        if __cublasLtMatrixTransform == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixTransform = dlsym(handle, 'cublasLtMatrixTransform')
 
-    global __cublasLtMatrixLayoutDestroy
-    __cublasLtMatrixLayoutDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutDestroy')
-    if __cublasLtMatrixLayoutDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixLayoutDestroy = dlsym(handle, 'cublasLtMatrixLayoutDestroy')
+        global __cublasLtMatrixLayoutCreate
+        __cublasLtMatrixLayoutCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutCreate')
+        if __cublasLtMatrixLayoutCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixLayoutCreate = dlsym(handle, 'cublasLtMatrixLayoutCreate')
 
-    global __cublasLtMatrixLayoutSetAttribute
-    __cublasLtMatrixLayoutSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutSetAttribute')
-    if __cublasLtMatrixLayoutSetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixLayoutSetAttribute = dlsym(handle, 'cublasLtMatrixLayoutSetAttribute')
+        global __cublasLtMatrixLayoutDestroy
+        __cublasLtMatrixLayoutDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutDestroy')
+        if __cublasLtMatrixLayoutDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixLayoutDestroy = dlsym(handle, 'cublasLtMatrixLayoutDestroy')
 
-    global __cublasLtMatrixLayoutGetAttribute
-    __cublasLtMatrixLayoutGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutGetAttribute')
-    if __cublasLtMatrixLayoutGetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixLayoutGetAttribute = dlsym(handle, 'cublasLtMatrixLayoutGetAttribute')
+        global __cublasLtMatrixLayoutSetAttribute
+        __cublasLtMatrixLayoutSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutSetAttribute')
+        if __cublasLtMatrixLayoutSetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixLayoutSetAttribute = dlsym(handle, 'cublasLtMatrixLayoutSetAttribute')
 
-    global __cublasLtMatmulDescCreate
-    __cublasLtMatmulDescCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescCreate')
-    if __cublasLtMatmulDescCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulDescCreate = dlsym(handle, 'cublasLtMatmulDescCreate')
+        global __cublasLtMatrixLayoutGetAttribute
+        __cublasLtMatrixLayoutGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixLayoutGetAttribute')
+        if __cublasLtMatrixLayoutGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixLayoutGetAttribute = dlsym(handle, 'cublasLtMatrixLayoutGetAttribute')
 
-    global __cublasLtMatmulDescDestroy
-    __cublasLtMatmulDescDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescDestroy')
-    if __cublasLtMatmulDescDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulDescDestroy = dlsym(handle, 'cublasLtMatmulDescDestroy')
+        global __cublasLtMatmulDescCreate
+        __cublasLtMatmulDescCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescCreate')
+        if __cublasLtMatmulDescCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulDescCreate = dlsym(handle, 'cublasLtMatmulDescCreate')
 
-    global __cublasLtMatmulDescSetAttribute
-    __cublasLtMatmulDescSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescSetAttribute')
-    if __cublasLtMatmulDescSetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulDescSetAttribute = dlsym(handle, 'cublasLtMatmulDescSetAttribute')
+        global __cublasLtMatmulDescDestroy
+        __cublasLtMatmulDescDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescDestroy')
+        if __cublasLtMatmulDescDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulDescDestroy = dlsym(handle, 'cublasLtMatmulDescDestroy')
 
-    global __cublasLtMatmulDescGetAttribute
-    __cublasLtMatmulDescGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescGetAttribute')
-    if __cublasLtMatmulDescGetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulDescGetAttribute = dlsym(handle, 'cublasLtMatmulDescGetAttribute')
+        global __cublasLtMatmulDescSetAttribute
+        __cublasLtMatmulDescSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescSetAttribute')
+        if __cublasLtMatmulDescSetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulDescSetAttribute = dlsym(handle, 'cublasLtMatmulDescSetAttribute')
 
-    global __cublasLtMatrixTransformDescCreate
-    __cublasLtMatrixTransformDescCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescCreate')
-    if __cublasLtMatrixTransformDescCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixTransformDescCreate = dlsym(handle, 'cublasLtMatrixTransformDescCreate')
+        global __cublasLtMatmulDescGetAttribute
+        __cublasLtMatmulDescGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulDescGetAttribute')
+        if __cublasLtMatmulDescGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulDescGetAttribute = dlsym(handle, 'cublasLtMatmulDescGetAttribute')
 
-    global __cublasLtMatrixTransformDescDestroy
-    __cublasLtMatrixTransformDescDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescDestroy')
-    if __cublasLtMatrixTransformDescDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixTransformDescDestroy = dlsym(handle, 'cublasLtMatrixTransformDescDestroy')
+        global __cublasLtMatrixTransformDescCreate
+        __cublasLtMatrixTransformDescCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescCreate')
+        if __cublasLtMatrixTransformDescCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixTransformDescCreate = dlsym(handle, 'cublasLtMatrixTransformDescCreate')
 
-    global __cublasLtMatrixTransformDescSetAttribute
-    __cublasLtMatrixTransformDescSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescSetAttribute')
-    if __cublasLtMatrixTransformDescSetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixTransformDescSetAttribute = dlsym(handle, 'cublasLtMatrixTransformDescSetAttribute')
+        global __cublasLtMatrixTransformDescDestroy
+        __cublasLtMatrixTransformDescDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescDestroy')
+        if __cublasLtMatrixTransformDescDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixTransformDescDestroy = dlsym(handle, 'cublasLtMatrixTransformDescDestroy')
 
-    global __cublasLtMatrixTransformDescGetAttribute
-    __cublasLtMatrixTransformDescGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescGetAttribute')
-    if __cublasLtMatrixTransformDescGetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatrixTransformDescGetAttribute = dlsym(handle, 'cublasLtMatrixTransformDescGetAttribute')
+        global __cublasLtMatrixTransformDescSetAttribute
+        __cublasLtMatrixTransformDescSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescSetAttribute')
+        if __cublasLtMatrixTransformDescSetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixTransformDescSetAttribute = dlsym(handle, 'cublasLtMatrixTransformDescSetAttribute')
 
-    global __cublasLtMatmulPreferenceCreate
-    __cublasLtMatmulPreferenceCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceCreate')
-    if __cublasLtMatmulPreferenceCreate == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulPreferenceCreate = dlsym(handle, 'cublasLtMatmulPreferenceCreate')
+        global __cublasLtMatrixTransformDescGetAttribute
+        __cublasLtMatrixTransformDescGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatrixTransformDescGetAttribute')
+        if __cublasLtMatrixTransformDescGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatrixTransformDescGetAttribute = dlsym(handle, 'cublasLtMatrixTransformDescGetAttribute')
 
-    global __cublasLtMatmulPreferenceDestroy
-    __cublasLtMatmulPreferenceDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceDestroy')
-    if __cublasLtMatmulPreferenceDestroy == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulPreferenceDestroy = dlsym(handle, 'cublasLtMatmulPreferenceDestroy')
+        global __cublasLtMatmulPreferenceCreate
+        __cublasLtMatmulPreferenceCreate = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceCreate')
+        if __cublasLtMatmulPreferenceCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulPreferenceCreate = dlsym(handle, 'cublasLtMatmulPreferenceCreate')
 
-    global __cublasLtMatmulPreferenceSetAttribute
-    __cublasLtMatmulPreferenceSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceSetAttribute')
-    if __cublasLtMatmulPreferenceSetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulPreferenceSetAttribute = dlsym(handle, 'cublasLtMatmulPreferenceSetAttribute')
+        global __cublasLtMatmulPreferenceDestroy
+        __cublasLtMatmulPreferenceDestroy = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceDestroy')
+        if __cublasLtMatmulPreferenceDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulPreferenceDestroy = dlsym(handle, 'cublasLtMatmulPreferenceDestroy')
 
-    global __cublasLtMatmulPreferenceGetAttribute
-    __cublasLtMatmulPreferenceGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceGetAttribute')
-    if __cublasLtMatmulPreferenceGetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulPreferenceGetAttribute = dlsym(handle, 'cublasLtMatmulPreferenceGetAttribute')
+        global __cublasLtMatmulPreferenceSetAttribute
+        __cublasLtMatmulPreferenceSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceSetAttribute')
+        if __cublasLtMatmulPreferenceSetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulPreferenceSetAttribute = dlsym(handle, 'cublasLtMatmulPreferenceSetAttribute')
 
-    global __cublasLtMatmulAlgoGetHeuristic
-    __cublasLtMatmulAlgoGetHeuristic = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoGetHeuristic')
-    if __cublasLtMatmulAlgoGetHeuristic == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulAlgoGetHeuristic = dlsym(handle, 'cublasLtMatmulAlgoGetHeuristic')
+        global __cublasLtMatmulPreferenceGetAttribute
+        __cublasLtMatmulPreferenceGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulPreferenceGetAttribute')
+        if __cublasLtMatmulPreferenceGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulPreferenceGetAttribute = dlsym(handle, 'cublasLtMatmulPreferenceGetAttribute')
 
-    global __cublasLtMatmulAlgoGetIds
-    __cublasLtMatmulAlgoGetIds = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoGetIds')
-    if __cublasLtMatmulAlgoGetIds == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulAlgoGetIds = dlsym(handle, 'cublasLtMatmulAlgoGetIds')
+        global __cublasLtMatmulAlgoGetHeuristic
+        __cublasLtMatmulAlgoGetHeuristic = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoGetHeuristic')
+        if __cublasLtMatmulAlgoGetHeuristic == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulAlgoGetHeuristic = dlsym(handle, 'cublasLtMatmulAlgoGetHeuristic')
 
-    global __cublasLtMatmulAlgoInit
-    __cublasLtMatmulAlgoInit = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoInit')
-    if __cublasLtMatmulAlgoInit == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulAlgoInit = dlsym(handle, 'cublasLtMatmulAlgoInit')
+        global __cublasLtMatmulAlgoGetIds
+        __cublasLtMatmulAlgoGetIds = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoGetIds')
+        if __cublasLtMatmulAlgoGetIds == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulAlgoGetIds = dlsym(handle, 'cublasLtMatmulAlgoGetIds')
 
-    global __cublasLtMatmulAlgoCheck
-    __cublasLtMatmulAlgoCheck = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoCheck')
-    if __cublasLtMatmulAlgoCheck == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulAlgoCheck = dlsym(handle, 'cublasLtMatmulAlgoCheck')
+        global __cublasLtMatmulAlgoInit
+        __cublasLtMatmulAlgoInit = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoInit')
+        if __cublasLtMatmulAlgoInit == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulAlgoInit = dlsym(handle, 'cublasLtMatmulAlgoInit')
 
-    global __cublasLtMatmulAlgoCapGetAttribute
-    __cublasLtMatmulAlgoCapGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoCapGetAttribute')
-    if __cublasLtMatmulAlgoCapGetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulAlgoCapGetAttribute = dlsym(handle, 'cublasLtMatmulAlgoCapGetAttribute')
+        global __cublasLtMatmulAlgoCheck
+        __cublasLtMatmulAlgoCheck = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoCheck')
+        if __cublasLtMatmulAlgoCheck == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulAlgoCheck = dlsym(handle, 'cublasLtMatmulAlgoCheck')
 
-    global __cublasLtMatmulAlgoConfigSetAttribute
-    __cublasLtMatmulAlgoConfigSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoConfigSetAttribute')
-    if __cublasLtMatmulAlgoConfigSetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulAlgoConfigSetAttribute = dlsym(handle, 'cublasLtMatmulAlgoConfigSetAttribute')
+        global __cublasLtMatmulAlgoCapGetAttribute
+        __cublasLtMatmulAlgoCapGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoCapGetAttribute')
+        if __cublasLtMatmulAlgoCapGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulAlgoCapGetAttribute = dlsym(handle, 'cublasLtMatmulAlgoCapGetAttribute')
 
-    global __cublasLtMatmulAlgoConfigGetAttribute
-    __cublasLtMatmulAlgoConfigGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoConfigGetAttribute')
-    if __cublasLtMatmulAlgoConfigGetAttribute == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtMatmulAlgoConfigGetAttribute = dlsym(handle, 'cublasLtMatmulAlgoConfigGetAttribute')
+        global __cublasLtMatmulAlgoConfigSetAttribute
+        __cublasLtMatmulAlgoConfigSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoConfigSetAttribute')
+        if __cublasLtMatmulAlgoConfigSetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulAlgoConfigSetAttribute = dlsym(handle, 'cublasLtMatmulAlgoConfigSetAttribute')
 
-    global __cublasLtLoggerSetCallback
-    __cublasLtLoggerSetCallback = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetCallback')
-    if __cublasLtLoggerSetCallback == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtLoggerSetCallback = dlsym(handle, 'cublasLtLoggerSetCallback')
+        global __cublasLtMatmulAlgoConfigGetAttribute
+        __cublasLtMatmulAlgoConfigGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtMatmulAlgoConfigGetAttribute')
+        if __cublasLtMatmulAlgoConfigGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtMatmulAlgoConfigGetAttribute = dlsym(handle, 'cublasLtMatmulAlgoConfigGetAttribute')
 
-    global __cublasLtLoggerSetFile
-    __cublasLtLoggerSetFile = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetFile')
-    if __cublasLtLoggerSetFile == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtLoggerSetFile = dlsym(handle, 'cublasLtLoggerSetFile')
+        global __cublasLtLoggerSetCallback
+        __cublasLtLoggerSetCallback = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetCallback')
+        if __cublasLtLoggerSetCallback == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtLoggerSetCallback = dlsym(handle, 'cublasLtLoggerSetCallback')
 
-    global __cublasLtLoggerOpenFile
-    __cublasLtLoggerOpenFile = dlsym(RTLD_DEFAULT, 'cublasLtLoggerOpenFile')
-    if __cublasLtLoggerOpenFile == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtLoggerOpenFile = dlsym(handle, 'cublasLtLoggerOpenFile')
+        global __cublasLtLoggerSetFile
+        __cublasLtLoggerSetFile = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetFile')
+        if __cublasLtLoggerSetFile == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtLoggerSetFile = dlsym(handle, 'cublasLtLoggerSetFile')
 
-    global __cublasLtLoggerSetLevel
-    __cublasLtLoggerSetLevel = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetLevel')
-    if __cublasLtLoggerSetLevel == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtLoggerSetLevel = dlsym(handle, 'cublasLtLoggerSetLevel')
+        global __cublasLtLoggerOpenFile
+        __cublasLtLoggerOpenFile = dlsym(RTLD_DEFAULT, 'cublasLtLoggerOpenFile')
+        if __cublasLtLoggerOpenFile == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtLoggerOpenFile = dlsym(handle, 'cublasLtLoggerOpenFile')
 
-    global __cublasLtLoggerSetMask
-    __cublasLtLoggerSetMask = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetMask')
-    if __cublasLtLoggerSetMask == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtLoggerSetMask = dlsym(handle, 'cublasLtLoggerSetMask')
+        global __cublasLtLoggerSetLevel
+        __cublasLtLoggerSetLevel = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetLevel')
+        if __cublasLtLoggerSetLevel == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtLoggerSetLevel = dlsym(handle, 'cublasLtLoggerSetLevel')
 
-    global __cublasLtLoggerForceDisable
-    __cublasLtLoggerForceDisable = dlsym(RTLD_DEFAULT, 'cublasLtLoggerForceDisable')
-    if __cublasLtLoggerForceDisable == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtLoggerForceDisable = dlsym(handle, 'cublasLtLoggerForceDisable')
+        global __cublasLtLoggerSetMask
+        __cublasLtLoggerSetMask = dlsym(RTLD_DEFAULT, 'cublasLtLoggerSetMask')
+        if __cublasLtLoggerSetMask == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtLoggerSetMask = dlsym(handle, 'cublasLtLoggerSetMask')
 
-    global __cublasLtGetStatusName
-    __cublasLtGetStatusName = dlsym(RTLD_DEFAULT, 'cublasLtGetStatusName')
-    if __cublasLtGetStatusName == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtGetStatusName = dlsym(handle, 'cublasLtGetStatusName')
+        global __cublasLtLoggerForceDisable
+        __cublasLtLoggerForceDisable = dlsym(RTLD_DEFAULT, 'cublasLtLoggerForceDisable')
+        if __cublasLtLoggerForceDisable == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtLoggerForceDisable = dlsym(handle, 'cublasLtLoggerForceDisable')
 
-    global __cublasLtGetStatusString
-    __cublasLtGetStatusString = dlsym(RTLD_DEFAULT, 'cublasLtGetStatusString')
-    if __cublasLtGetStatusString == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtGetStatusString = dlsym(handle, 'cublasLtGetStatusString')
+        global __cublasLtGetStatusName
+        __cublasLtGetStatusName = dlsym(RTLD_DEFAULT, 'cublasLtGetStatusName')
+        if __cublasLtGetStatusName == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtGetStatusName = dlsym(handle, 'cublasLtGetStatusName')
 
-    global __cublasLtHeuristicsCacheGetCapacity
-    __cublasLtHeuristicsCacheGetCapacity = dlsym(RTLD_DEFAULT, 'cublasLtHeuristicsCacheGetCapacity')
-    if __cublasLtHeuristicsCacheGetCapacity == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtHeuristicsCacheGetCapacity = dlsym(handle, 'cublasLtHeuristicsCacheGetCapacity')
+        global __cublasLtGetStatusString
+        __cublasLtGetStatusString = dlsym(RTLD_DEFAULT, 'cublasLtGetStatusString')
+        if __cublasLtGetStatusString == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtGetStatusString = dlsym(handle, 'cublasLtGetStatusString')
 
-    global __cublasLtHeuristicsCacheSetCapacity
-    __cublasLtHeuristicsCacheSetCapacity = dlsym(RTLD_DEFAULT, 'cublasLtHeuristicsCacheSetCapacity')
-    if __cublasLtHeuristicsCacheSetCapacity == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtHeuristicsCacheSetCapacity = dlsym(handle, 'cublasLtHeuristicsCacheSetCapacity')
+        global __cublasLtHeuristicsCacheGetCapacity
+        __cublasLtHeuristicsCacheGetCapacity = dlsym(RTLD_DEFAULT, 'cublasLtHeuristicsCacheGetCapacity')
+        if __cublasLtHeuristicsCacheGetCapacity == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtHeuristicsCacheGetCapacity = dlsym(handle, 'cublasLtHeuristicsCacheGetCapacity')
 
-    global __cublasLtDisableCpuInstructionsSetMask
-    __cublasLtDisableCpuInstructionsSetMask = dlsym(RTLD_DEFAULT, 'cublasLtDisableCpuInstructionsSetMask')
-    if __cublasLtDisableCpuInstructionsSetMask == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasLtDisableCpuInstructionsSetMask = dlsym(handle, 'cublasLtDisableCpuInstructionsSetMask')
+        global __cublasLtHeuristicsCacheSetCapacity
+        __cublasLtHeuristicsCacheSetCapacity = dlsym(RTLD_DEFAULT, 'cublasLtHeuristicsCacheSetCapacity')
+        if __cublasLtHeuristicsCacheSetCapacity == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtHeuristicsCacheSetCapacity = dlsym(handle, 'cublasLtHeuristicsCacheSetCapacity')
 
-    __py_cublasLt_init = True
-    return 0
+        global __cublasLtDisableCpuInstructionsSetMask
+        __cublasLtDisableCpuInstructionsSetMask = dlsym(RTLD_DEFAULT, 'cublasLtDisableCpuInstructionsSetMask')
+        if __cublasLtDisableCpuInstructionsSetMask == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtDisableCpuInstructionsSetMask = dlsym(handle, 'cublasLtDisableCpuInstructionsSetMask')
+
+        __py_cublasLt_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

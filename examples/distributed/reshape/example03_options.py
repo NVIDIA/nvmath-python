@@ -13,6 +13,7 @@ $ mpiexec -n 4 python example03_options.py
 
 import cupy as cp
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 from mpi4py import MPI
@@ -21,7 +22,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The problem consists of a global 3-D array of size (64, 256, 128), that is
 # initially partitioned on the X axis across processes.
@@ -37,10 +38,10 @@ with cp.cuda.Device(device_id):
 
 # We're going to redistribute the operand so that it is partitioned on the Y axis.
 x_offset = comm.scan(X // nranks, op=MPI.SUM)
-input_box = [(x_offset - X // nranks, 0, 0), (x_offset, Y, Z)]
+input_box = Box((x_offset - X // nranks, 0, 0), (x_offset, Y, Z))
 
 y_offset = comm.scan(Y // nranks, op=MPI.SUM)
-output_box = [(0, y_offset - Y // nranks, 0), (X, y_offset, Z)]
+output_box = Box((0, y_offset - Y // nranks, 0), (X, y_offset, Z))
 
 # Execute the Reshape.
 

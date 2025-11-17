@@ -5,18 +5,13 @@
 # type: ignore
 
 from nvmath.bindings import cublas
+from nvmath.bindings import cublasLt
 from nvmath.bindings import cudss
 from nvmath.bindings import cufft
 from nvmath.bindings import curand
 from nvmath.bindings import cusolver
 from nvmath.bindings import cusolverDn
 from nvmath.bindings import cusparse
-
-try:
-    # nvpl is Linux-only.
-    from nvmath.bindings import nvpl
-except ImportError:
-    nvpl = None
 
 try:
     # cufftMp is Linux-only.
@@ -30,8 +25,28 @@ try:
 except ImportError:
     nvshmem = None
 
+try:
+    # NCCL is Linux-only.
+    from nvmath.bindings import nccl
+except ImportError:
+    nccl = None
+
+try:
+    # cublasMp is Linux-only.
+    from nvmath.bindings import cublasMp
+except ImportError:
+    cublasMp = None
+
+try:
+    # cutensor binding is Linux-only for nvmath-python beta7.0.
+    from nvmath.bindings import cutensor
+except ImportError:
+    cutensor = None
+
 __all__ = [
     "cublas",
+    "cublasLt",
+    "cublasMp",
     "cudss",
     "cufft",
     "cufftMp",
@@ -39,6 +54,8 @@ __all__ = [
     "cusolver",
     "cusolverDn",
     "cusparse",
+    "cutensor",
+    "nccl",
     "nvpl",
     "nvshmem",
 ]

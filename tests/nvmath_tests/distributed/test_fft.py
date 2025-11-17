@@ -9,7 +9,7 @@ import nvmath.distributed
 from nvmath.internal.utils import device_ctx, get_or_create_stream
 from nvmath.distributed import free_symmetric_memory
 from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand, maybe_register_package
-from nvmath.distributed.fft._configuration import Slab
+from nvmath.distributed.distribution import Slab, Box
 
 from .helpers import gather_array, generate_random_data, is_close, to_host
 from .helpers_fft import calc_slab_shape
@@ -34,7 +34,7 @@ def nvmath_distributed():
         pass
 
     device_id = MPI.COMM_WORLD.Get_rank() % cuda.core.experimental.system.num_devices
-    nvmath.distributed.initialize(device_id, MPI.COMM_WORLD)
+    nvmath.distributed.initialize(device_id, MPI.COMM_WORLD, backends=["nvshmem"])
 
     yield
 
@@ -95,7 +95,10 @@ def test_wrong_slab_shape(distribution, nvmath_distributed, check_symmetric_memo
             shape = (25, 64) if distribution == Slab.X else (64, 25)
 
     data = np.ones(shape, dtype=np.complex64)
-    with pytest.raises(ValueError, match=(r"The operand shape is \(\d+, \d+\), but the expected slab shape is \(\d+, \d+\)")):
+    with pytest.raises(
+        nvmath.distributed.distribution.BindDistributionError,
+        match=(r"The given shapes \(global_shape=\(\d+, \d+\), shape=\(\d+, \d+\)\) don't fit distribution Slab"),
+    ):
         nvmath.distributed.fft.fft(data, distribution=distribution)
 
 
@@ -240,6 +243,7 @@ def generate_data_with_padding(
         partition_dim = 0 if distribution == Slab.X else 1
         shape = calc_slab_shape(global_shape, partition_dim, rank, nranks)
     else:
+        assert isinstance(distribution[0], Box)
         lower, upper = distribution[0]
         shape = tuple(upper[i] - lower[i] for i in range(len(global_shape)))
 
@@ -365,12 +369,12 @@ def test_distributed_fft(
 
     global_output_shape = list(global_shape)
     if fft_type == "C2C":
-        in_dtype = np.complex64
+        in_dtype = np.complex64 if blocking is True else np.complex128
     elif fft_type == "R2C":
-        in_dtype = np.float32
+        in_dtype = np.float32 if blocking is True else np.float64
         global_output_shape[-1] = global_output_shape[-1] // 2 + 1
     elif fft_type == "C2R":
-        in_dtype = np.complex64
+        in_dtype = np.complex64 if blocking is True else np.complex128
         global_output_shape[-1] = (global_output_shape[-1] - 1) * 2
         if last_axis_parity == "odd":
             global_output_shape[-1] += 1
@@ -412,10 +416,12 @@ def test_distributed_fft(
             fft_count += 1
             assert data_in.module is result.module
 
-            if fft_type in ("C2C", "R2C"):
-                assert result.dtype == "complex64"
+            if fft_type == "C2C":
+                assert result.dtype == np.dtype(in_dtype).name
+            elif fft_type == "R2C":
+                assert result.dtype == "complex64" if np.dtype(in_dtype).name == "float32" else "complex128"
             else:
-                assert result.dtype == "float32"
+                assert result.dtype == "float32" if np.dtype(in_dtype).name == "complex64" else "float64"
 
             if data_in.shape == result.shape:
                 assert data_in.tensor is result.tensor
@@ -538,7 +544,7 @@ def calculate_box(dim0, dim1, shapes, global_shape, rank):
     upper = list(lower)
     for i in range(len(upper)):
         upper[i] += shapes[rank][i]
-    return (lower, upper)
+    return Box(lower, upper)
 
 
 def gather_pencils(x, dim0, dim1, shape, global_shape, comm, rank, nranks):

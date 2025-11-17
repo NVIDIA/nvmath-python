@@ -1,6 +1,50 @@
 nvmath-python Release Notes
 ***************************
 
+nvmath-python v0.7.0
+====================
+
+Beta7 release.
+
+* This release supports CUDA 12 and CUDA 13. Support for CUDA 11 has been dropped.
+* New binary and ternary tensor contraction host APIs on GPU.
+* New generic host Matmul APIs that support dense and structured matrices (such as
+  triangular and diagonal) on GPU and CPU.
+* New distributed Matmul APIs to run on multi-node/multi-GPU systems.
+* Support for 64-bit integer indexing for the sparse direct solver.
+* The FFT and Matmul device APIs are now implicitly linked in kernels and the
+  ``link=`` argument to :func:`numba.cuda.jit` is no longer needed.
+* The device APIs now use custom types that lower to NumPy (host) or Numba (device)
+  types. As a result of this, :attr:`nvmath.device.FFT.value_type` and
+  :attr:`nvmath.device.Matmul.value_type` return NumPy types.
+
+Bugs Fixed
+----------
+
+* `nvmath-python/#47 <https://github.com/NVIDIA/nvmath-python/issues/47>`_
+  Fixed a "key error" bug that prevented use of complex-to-real double precision
+  distributed FFT.
+* `cuda-python/#852 <https://github.com/NVIDIA/cuda-python/issues/852>`_
+  An internal symbol table used when loading symbols from libraries was made
+  thread-safe.
+
+Breaking Changes
+----------------
+
+* :func:`nvmath.distributed.initialize` now requires the ``backends`` argument, which
+  was introduced to support more than one communication backend (NVSHMEM, NCCL, ...).
+* The ``code_type`` argument was replaced by the ``sm`` argument in
+  :class:`nvmath.device.FFT` and :class:`nvmath.device.Matmul`.
+
+Deprecations
+------------
+
+* The :func:`nvmath.device.fft` and :func:`nvmath.device.matmul` utility functions
+  are deprecated. Use :class:`nvmath.device.FFT` and :class:`nvmath.device.Matmul` instead.
+* The Slab distribution has moved to :mod:`nvmath.distributed.distribution` and
+  :attr:`nvmath.distributed.fft.Slab` will be removed in the future. Use
+  :class:`nvmath.distributed.distribution.Slab` instead.
+
 nvmath-python v0.6.0
 ====================
 

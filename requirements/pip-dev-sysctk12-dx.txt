@@ -1,5 +1,0 @@
--r pip/docs.txt
--r pip/tests.txt
--r pip/nvmath-python.txt
--r pip/nvmath-python-sysctk12.txt
--r pip/nvmath-python-sysctk12-dx.txt

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.5.0. Do not modify it directly.
+# This code was automatically generated with version 0.7.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -22,7 +22,8 @@ ctypedef enum cudssConfigParam_t "cudssConfigParam_t":
     CUDSS_CONFIG_REORDERING_ALG "CUDSS_CONFIG_REORDERING_ALG"
     CUDSS_CONFIG_FACTORIZATION_ALG "CUDSS_CONFIG_FACTORIZATION_ALG"
     CUDSS_CONFIG_SOLVE_ALG "CUDSS_CONFIG_SOLVE_ALG"
-    CUDSS_CONFIG_MATCHING_TYPE "CUDSS_CONFIG_MATCHING_TYPE"
+    CUDSS_CONFIG_USE_MATCHING "CUDSS_CONFIG_USE_MATCHING"
+    CUDSS_CONFIG_MATCHING_ALG "CUDSS_CONFIG_MATCHING_ALG"
     CUDSS_CONFIG_SOLVE_MODE "CUDSS_CONFIG_SOLVE_MODE"
     CUDSS_CONFIG_IR_N_STEPS "CUDSS_CONFIG_IR_N_STEPS"
     CUDSS_CONFIG_IR_TOL "CUDSS_CONFIG_IR_TOL"
@@ -36,6 +37,14 @@ ctypedef enum cudssConfigParam_t "cudssConfigParam_t":
     CUDSS_CONFIG_HOST_NTHREADS "CUDSS_CONFIG_HOST_NTHREADS"
     CUDSS_CONFIG_HYBRID_EXECUTE_MODE "CUDSS_CONFIG_HYBRID_EXECUTE_MODE"
     CUDSS_CONFIG_PIVOT_EPSILON_ALG "CUDSS_CONFIG_PIVOT_EPSILON_ALG"
+    CUDSS_CONFIG_ND_NLEVELS "CUDSS_CONFIG_ND_NLEVELS"
+    CUDSS_CONFIG_UBATCH_SIZE "CUDSS_CONFIG_UBATCH_SIZE"
+    CUDSS_CONFIG_UBATCH_INDEX "CUDSS_CONFIG_UBATCH_INDEX"
+    CUDSS_CONFIG_USE_SUPERPANELS "CUDSS_CONFIG_USE_SUPERPANELS"
+    CUDSS_CONFIG_DEVICE_COUNT "CUDSS_CONFIG_DEVICE_COUNT"
+    CUDSS_CONFIG_DEVICE_INDICES "CUDSS_CONFIG_DEVICE_INDICES"
+    CUDSS_CONFIG_SCHUR_MODE "CUDSS_CONFIG_SCHUR_MODE"
+    CUDSS_CONFIG_DETERMINISTIC_MODE "CUDSS_CONFIG_DETERMINISTIC_MODE"
 
 ctypedef enum cudssDataParam_t "cudssDataParam_t":
     CUDSS_DATA_INFO "CUDSS_DATA_INFO"
@@ -51,15 +60,30 @@ ctypedef enum cudssDataParam_t "cudssDataParam_t":
     CUDSS_DATA_HYBRID_DEVICE_MEMORY_MIN "CUDSS_DATA_HYBRID_DEVICE_MEMORY_MIN"
     CUDSS_DATA_COMM "CUDSS_DATA_COMM"
     CUDSS_DATA_MEMORY_ESTIMATES "CUDSS_DATA_MEMORY_ESTIMATES"
+    CUDSS_DATA_PERM_MATCHING "CUDSS_DATA_PERM_MATCHING"
+    CUDSS_DATA_SCALE_ROW "CUDSS_DATA_SCALE_ROW"
+    CUDSS_DATA_SCALE_COL "CUDSS_DATA_SCALE_COL"
+    CUDSS_DATA_NSUPERPANELS "CUDSS_DATA_NSUPERPANELS"
+    CUDSS_DATA_USER_SCHUR_INDICES "CUDSS_DATA_USER_SCHUR_INDICES"
+    CUDSS_DATA_SCHUR_SHAPE "CUDSS_DATA_SCHUR_SHAPE"
+    CUDSS_DATA_SCHUR_MATRIX "CUDSS_DATA_SCHUR_MATRIX"
+    CUDSS_DATA_USER_ELIMINATION_TREE "CUDSS_DATA_USER_ELIMINATION_TREE"
+    CUDSS_DATA_ELIMINATION_TREE "CUDSS_DATA_ELIMINATION_TREE"
+    CUDSS_DATA_USER_HOST_INTERRUPT "CUDSS_DATA_USER_HOST_INTERRUPT"
 
 ctypedef enum cudssPhase_t "cudssPhase_t":
-    CUDSS_PHASE_ANALYSIS "CUDSS_PHASE_ANALYSIS" = 1
-    CUDSS_PHASE_FACTORIZATION "CUDSS_PHASE_FACTORIZATION" = 2
-    CUDSS_PHASE_REFACTORIZATION "CUDSS_PHASE_REFACTORIZATION" = 4
-    CUDSS_PHASE_SOLVE "CUDSS_PHASE_SOLVE" = 8
-    CUDSS_PHASE_SOLVE_FWD "CUDSS_PHASE_SOLVE_FWD" = 16
-    CUDSS_PHASE_SOLVE_DIAG "CUDSS_PHASE_SOLVE_DIAG" = 32
-    CUDSS_PHASE_SOLVE_BWD "CUDSS_PHASE_SOLVE_BWD" = 64
+    CUDSS_PHASE_REORDERING "CUDSS_PHASE_REORDERING" = (1 << 0)
+    CUDSS_PHASE_SYMBOLIC_FACTORIZATION "CUDSS_PHASE_SYMBOLIC_FACTORIZATION" = (1 << 1)
+    CUDSS_PHASE_ANALYSIS "CUDSS_PHASE_ANALYSIS" = (CUDSS_PHASE_REORDERING | CUDSS_PHASE_SYMBOLIC_FACTORIZATION)
+    CUDSS_PHASE_FACTORIZATION "CUDSS_PHASE_FACTORIZATION" = (1 << 2)
+    CUDSS_PHASE_REFACTORIZATION "CUDSS_PHASE_REFACTORIZATION" = (1 << 3)
+    CUDSS_PHASE_SOLVE_FWD_PERM "CUDSS_PHASE_SOLVE_FWD_PERM" = (1 << 4)
+    CUDSS_PHASE_SOLVE_FWD "CUDSS_PHASE_SOLVE_FWD" = (1 << 5)
+    CUDSS_PHASE_SOLVE_DIAG "CUDSS_PHASE_SOLVE_DIAG" = (1 << 6)
+    CUDSS_PHASE_SOLVE_BWD "CUDSS_PHASE_SOLVE_BWD" = (1 << 7)
+    CUDSS_PHASE_SOLVE_BWD_PERM "CUDSS_PHASE_SOLVE_BWD_PERM" = (1 << 8)
+    CUDSS_PHASE_SOLVE_REFINEMENT "CUDSS_PHASE_SOLVE_REFINEMENT" = (1 << 9)
+    CUDSS_PHASE_SOLVE "CUDSS_PHASE_SOLVE" = (((((CUDSS_PHASE_SOLVE_FWD_PERM | CUDSS_PHASE_SOLVE_FWD) | CUDSS_PHASE_SOLVE_DIAG) | CUDSS_PHASE_SOLVE_BWD) | CUDSS_PHASE_SOLVE_BWD_PERM) | CUDSS_PHASE_SOLVE_REFINEMENT)
 
 ctypedef enum cudssStatus_t "cudssStatus_t":
     CUDSS_STATUS_SUCCESS "CUDSS_STATUS_SUCCESS" = 0
@@ -96,6 +120,8 @@ ctypedef enum cudssAlgType_t "cudssAlgType_t":
     CUDSS_ALG_1 "CUDSS_ALG_1"
     CUDSS_ALG_2 "CUDSS_ALG_2"
     CUDSS_ALG_3 "CUDSS_ALG_3"
+    CUDSS_ALG_4 "CUDSS_ALG_4"
+    CUDSS_ALG_5 "CUDSS_ALG_5"
 
 ctypedef enum cudssPivotType_t "cudssPivotType_t":
     CUDSS_PIVOT_COL "CUDSS_PIVOT_COL"
@@ -106,6 +132,7 @@ ctypedef enum cudssMatrixFormat_t "cudssMatrixFormat_t":
     CUDSS_MFORMAT_DENSE "CUDSS_MFORMAT_DENSE" = 1
     CUDSS_MFORMAT_CSR "CUDSS_MFORMAT_CSR" = 2
     CUDSS_MFORMAT_BATCH "CUDSS_MFORMAT_BATCH" = 4
+    CUDSS_MFORMAT_DISTRIBUTED "CUDSS_MFORMAT_DISTRIBUTED" = 8
 
 
 # types
@@ -162,7 +189,7 @@ cdef cudssStatus_t cudssConfigSet(cudssConfig_t config, cudssConfigParam_t param
 cdef cudssStatus_t cudssConfigGet(cudssConfig_t config, cudssConfigParam_t param, void* value, size_t sizeInBytes, size_t* sizeWritten) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssDataSet(cudssHandle_t handle, cudssData_t data, cudssDataParam_t param, void* value, size_t sizeInBytes) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssDataGet(cudssHandle_t handle, cudssData_t data, cudssDataParam_t param, void* value, size_t sizeInBytes, size_t* sizeWritten) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
-cdef cudssStatus_t cudssExecute(cudssHandle_t handle, cudssPhase_t phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cudssStatus_t cudssExecute(cudssHandle_t handle, int phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssSetStream(cudssHandle_t handle, cudaStream_t stream) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssSetCommLayer(cudssHandle_t handle, const char* commLibFileName) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssSetThreadingLayer(cudssHandle_t handle, const char* thrLibFileName) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
@@ -171,6 +198,7 @@ cdef cudssStatus_t cudssConfigDestroy(cudssConfig_t solverConfig) except?_CUDSSS
 cdef cudssStatus_t cudssDataCreate(cudssHandle_t handle, cudssData_t* solverData) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssDataDestroy(cudssHandle_t handle, cudssData_t solverData) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssCreate(cudssHandle_t* handle) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cudssStatus_t cudssCreateMg(cudssHandle_t* handle_pt, int device_count, int* device_indices) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssDestroy(cudssHandle_t handle) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssGetProperty(libraryPropertyType propertyType, int* value) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssMatrixCreateDn(cudssMatrix_t* matrix, int64_t nrows, int64_t ncols, int64_t ld, void* values, cudaDataType_t valueType, cudssLayout_t layout) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
@@ -187,5 +215,7 @@ cdef cudssStatus_t cudssMatrixGetBatchCsr(cudssMatrix_t matrix, int64_t* batchCo
 cdef cudssStatus_t cudssMatrixSetBatchValues(cudssMatrix_t matrix, void** values) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssMatrixSetBatchCsrPointers(cudssMatrix_t matrix, void** rowOffsets, void** rowEnd, void** colIndices, void** values) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssMatrixGetFormat(cudssMatrix_t matrix, int* format) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cudssStatus_t cudssMatrixSetDistributionRow1d(cudssMatrix_t matrix, int64_t first_row, int64_t last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cudssStatus_t cudssMatrixGetDistributionRow1d(cudssMatrix_t matrix, int64_t* first_row, int64_t* last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssGetDeviceMemHandler(cudssHandle_t handle, cudssDeviceMemHandler_t* handler) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cudssStatus_t cudssSetDeviceMemHandler(cudssHandle_t handle, const cudssDeviceMemHandler_t* handler) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil

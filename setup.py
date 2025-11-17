@@ -83,6 +83,12 @@ def get_ext_modules() -> list[Extension]:
     return ext_modules + ext_nvmath_internal_modules
 
 
+# WAR: cython compilation
+# https://github.com/cython/cython/issues/7122#issuecomment-3240416121
+# TODO: remove with next cython release (3.1.4+)
+sys.setrecursionlimit(50000)
+
+
 nthreads = os.cpu_count()
 setup(
     ext_modules=cythonize(

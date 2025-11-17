@@ -32,6 +32,7 @@ $ mpiexec -n 2 python example01_numpy.py
 import numpy as np
 import cuda.core.experimental
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 from mpi4py import MPI
@@ -40,7 +41,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cuda.core.experimental.system.num_devices
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 assert nranks == 2, "Please run with two processes"
 
@@ -49,11 +50,11 @@ A = np.zeros((4, 2)) if rank == 0 else np.ones((4, 2))
 
 # Reshape from column-wise to row-wise.
 if rank == 0:
-    input_box = [(0, 0), (4, 2)]
-    output_box = [(0, 0), (2, 4)]
+    input_box = Box((0, 0), (4, 2))
+    output_box = Box((0, 0), (2, 4))
 else:
-    input_box = [(0, 2), (4, 4)]
-    output_box = [(2, 0), (4, 4)]
+    input_box = Box((0, 2), (4, 4))
+    output_box = Box((2, 0), (4, 4))
 # Distributed reshape returns a new operand with its own buffer.
 A_reshaped = nvmath.distributed.reshape.reshape(A, input_box, output_box)
 

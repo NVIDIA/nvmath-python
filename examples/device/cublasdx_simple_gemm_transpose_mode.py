@@ -4,7 +4,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import random_real
 from common_numba import load_to_shared_2d, store_from_shared_2d
 
@@ -13,7 +13,7 @@ def main():
     m, n, k = 32, 16, 64
     block_size = 256
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=np.float32,
         data_type="real",
@@ -22,10 +22,9 @@ def main():
         transpose_mode=("non_transposed", "transposed"),
         execution="Block",
         block_size=block_size,
-        compiler="numba",
     )
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(a, b, c, alpha, beta, output):
         # cuBLASDx requires column-major arrays but cuda.shared.array creates row-major
         # arrays (only) so we emulate a column-major array by flipping dimensions

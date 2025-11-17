@@ -16,13 +16,14 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 if nranks != 4:
     raise RuntimeError("This example requires 4 processes")
@@ -43,17 +44,17 @@ with cp.cuda.Device(device_id):
 # Input distribution is pencil decomposition on X and Y axes.
 # Output distribution is pencil decomposition on Y an Z axes.
 if rank == 0:
-    input_box = ([0, 0, 0], [64, 128, 128])
-    output_box = ([0, 0, 0], [128, 128, 64])
+    input_box = Box([0, 0, 0], [64, 128, 128])
+    output_box = Box([0, 0, 0], [128, 128, 64])
 elif rank == 1:
-    input_box = ([0, 128, 0], [64, 256, 128])
-    output_box = ([0, 0, 64], [128, 128, 128])
+    input_box = Box([0, 128, 0], [64, 256, 128])
+    output_box = Box([0, 0, 64], [128, 128, 128])
 elif rank == 2:
-    input_box = ([64, 0, 0], [128, 128, 128])
-    output_box = ([0, 128, 0], [128, 256, 64])
+    input_box = Box([64, 0, 0], [128, 128, 128])
+    output_box = Box([0, 128, 0], [128, 256, 64])
 else:
-    input_box = ([64, 128, 0], [128, 256, 128])
-    output_box = ([0, 128, 64], [128, 256, 128])
+    input_box = Box([64, 128, 0], [128, 256, 128])
+    output_box = Box([0, 128, 64], [128, 256, 128])
 
 # Create a stateful FFT object 'f'.
 with nvmath.distributed.fft.FFT(a, distribution=[input_box, output_box]) as f:

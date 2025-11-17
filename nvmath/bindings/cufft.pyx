@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.0.1. Do not modify it directly.
 
 cimport cython  # NOQA
 from libc.stdint cimport int64_t
@@ -35,13 +35,17 @@ class Result(_IntEnum):
     SETUP_FAILED = CUFFT_SETUP_FAILED
     INVALID_SIZE = CUFFT_INVALID_SIZE
     UNALIGNED_DATA = CUFFT_UNALIGNED_DATA
-    INCOMPLETE_PARAMETER_LIST = CUFFT_INCOMPLETE_PARAMETER_LIST
     INVALID_DEVICE = CUFFT_INVALID_DEVICE
-    PARSE_ERROR = CUFFT_PARSE_ERROR
     NO_WORKSPACE = CUFFT_NO_WORKSPACE
     NOT_IMPLEMENTED = CUFFT_NOT_IMPLEMENTED
-    LICENSE_ERROR = CUFFT_LICENSE_ERROR
     NOT_SUPPORTED = CUFFT_NOT_SUPPORTED
+    MISSING_DEPENDENCY = CUFFT_MISSING_DEPENDENCY
+    NVRTC_FAILURE = CUFFT_NVRTC_FAILURE
+    NVJITLINK_FAILURE = CUFFT_NVJITLINK_FAILURE
+    NVSHMEM_FAILURE = CUFFT_NVSHMEM_FAILURE
+    INCOMPLETE_PARAMETER_LIST = _CUFFTRESULT_INTERNAL_LOADING_ERROR
+    PARSE_ERROR = CUFFT_INCOMPLETE_PARAMETER_LIST
+    LICENSE_ERROR = CUFFT_PARSE_ERROR
 
 class Type(_IntEnum):
     """See `cufftType`."""
@@ -144,6 +148,8 @@ cpdef inline check_status(int status):
     if status != 0:
         raise cuFFTError(status)
 
+
+cdef int _cufft_version = 0
 
 ###############################################################################
 # Wrapper functions
@@ -592,13 +598,13 @@ cpdef xt_set_work_area_policy(int plan, int policy, intptr_t work_size):
     check_status(status)
 
 
-cpdef xt_set_jit_callback(int plan, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info):
+cpdef _xt_set_jit_callback(int plan, intptr_t lto_callback_symbol_name, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info):
     """See `cufftXtSetJITCallback`."""
     cdef void* _lto_callback_fatbin_ = get_buffer_pointer(lto_callback_fatbin, lto_callback_fatbin_size, readonly=True)
     cdef nullable_unique_ptr[ vector[void*] ] _caller_info_
     get_resource_ptrs[void](_caller_info_, caller_info, <void*>NULL)
     with nogil:
-        status = cufftXtSetJITCallback(<cufftHandle>plan, <const void*>_lto_callback_fatbin_, lto_callback_fatbin_size, <_XtCallbackType>type, <void**>(_caller_info_.data()))
+        status = cufftXtSetJITCallback(<cufftHandle>plan, <const char*>lto_callback_symbol_name, <const void*>_lto_callback_fatbin_, lto_callback_fatbin_size, <_XtCallbackType>type, <void**>(_caller_info_.data()))
     check_status(status)
 
 
@@ -630,3 +636,26 @@ cpdef reset_plan_property(int plan, int property):
     with nogil:
         status = cufftResetPlanProperty(<cufftHandle>plan, <_Property>property)
     check_status(status)
+
+
+cpdef _xt_set_jit_callback_12_7(int plan, intptr_t lto_callback_symbol_name, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info):
+    """See `__cufftXtSetJITCallback_12_7`."""
+    cdef void* _lto_callback_fatbin_ = get_buffer_pointer(lto_callback_fatbin, lto_callback_fatbin_size, readonly=True)
+    cdef nullable_unique_ptr[ vector[void*] ] _caller_info_
+    get_resource_ptrs[void](_caller_info_, caller_info, <void*>NULL)
+    with nogil:
+        status = __cufftXtSetJITCallback_12_7(<cufftHandle>plan, <const char*>lto_callback_symbol_name, <const void*>_lto_callback_fatbin_, lto_callback_fatbin_size, <_XtCallbackType>type, <void**>(_caller_info_.data()))
+    check_status(status)
+
+cpdef xt_set_jit_callback(int plan, intptr_t lto_callback_symbol_name, lto_callback_fatbin, size_t lto_callback_fatbin_size, int type, caller_info):
+    """
+    Signature of `cufftXtSetJITCallback` changed with CTK 13.
+    This wrapper makes sure to use the __cufftXtSetJITCallback_12_7 for older CTK.
+    """
+    global _cufft_version
+    if _cufft_version == 0:
+        _cufft_version = get_version()
+    if _cufft_version < 12000:  # CTK 13 is shipped with cuFFT 12.0
+        _xt_set_jit_callback_12_7(plan, lto_callback_symbol_name, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)
+    else:
+        _xt_set_jit_callback(plan, lto_callback_symbol_name, lto_callback_fatbin, lto_callback_fatbin_size, type, caller_info)

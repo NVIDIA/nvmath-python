@@ -1,6 +1,8 @@
-# This code was automatically generated with version 0.2.3. Do not modify it directly.
+# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
+
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
@@ -10,6 +12,8 @@ from cuda.pathfinder import load_nvidia_dynamic_lib
 ###############################################################################
 # Extern
 ###############################################################################
+
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "<dlfcn.h>" nogil:
     void* dlopen(const char*, int)
@@ -25,13 +29,32 @@ cdef extern from "<dlfcn.h>" nogil:
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
 
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
+
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_mathdx_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __commondxCreateCode = NULL
 cdef void* __commondxSetCodeOptionInt64 = NULL
@@ -103,6 +126,11 @@ cdef void* __cusolverdxFinalizeCode = NULL
 cdef void* __cusolverdxDestroyDescriptor = NULL
 cdef void* __cusolverdxOperatorTypeToStr = NULL
 cdef void* __cusolverdxTraitTypeToStr = NULL
+cdef void* __cublasdxCreateTensor = NULL
+cdef void* __cublasdxMakeTensorLike = NULL
+cdef void* __cublasdxDestroyTensor = NULL
+cdef void* __cublasdxCreateDeviceFunction = NULL
+cdef void* __cublasdxDestroyDeviceFunction = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
@@ -116,520 +144,539 @@ cdef int _check_or_init_mathdx() except -1 nogil:
     if __py_mathdx_init:
         return 0
 
-    # Load driver to check version
     cdef void* handle = NULL
-    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
-    if handle == NULL:
-        with gil:
-            err_msg = dlerror()
-            raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
-    global __cuDriverGetVersion
-    if __cuDriverGetVersion == NULL:
-        __cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
-    if __cuDriverGetVersion == NULL:
-        with gil:
-            raise RuntimeError('something went wrong')
-    cdef int err, driver_ver
-    err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-    if err != 0:
-        with gil:
-            raise RuntimeError('something went wrong')
-    #dlclose(handle)
-    handle = NULL
-
-    # Load function
-    global __commondxCreateCode
-    __commondxCreateCode = dlsym(RTLD_DEFAULT, 'commondxCreateCode')
-    if __commondxCreateCode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxCreateCode = dlsym(handle, 'commondxCreateCode')
-
-    global __commondxSetCodeOptionInt64
-    __commondxSetCodeOptionInt64 = dlsym(RTLD_DEFAULT, 'commondxSetCodeOptionInt64')
-    if __commondxSetCodeOptionInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxSetCodeOptionInt64 = dlsym(handle, 'commondxSetCodeOptionInt64')
-
-    global __commondxSetCodeOptionStr
-    __commondxSetCodeOptionStr = dlsym(RTLD_DEFAULT, 'commondxSetCodeOptionStr')
-    if __commondxSetCodeOptionStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxSetCodeOptionStr = dlsym(handle, 'commondxSetCodeOptionStr')
-
-    global __commondxGetCodeOptionInt64
-    __commondxGetCodeOptionInt64 = dlsym(RTLD_DEFAULT, 'commondxGetCodeOptionInt64')
-    if __commondxGetCodeOptionInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxGetCodeOptionInt64 = dlsym(handle, 'commondxGetCodeOptionInt64')
-
-    global __commondxGetCodeOptionsInt64s
-    __commondxGetCodeOptionsInt64s = dlsym(RTLD_DEFAULT, 'commondxGetCodeOptionsInt64s')
-    if __commondxGetCodeOptionsInt64s == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxGetCodeOptionsInt64s = dlsym(handle, 'commondxGetCodeOptionsInt64s')
-
-    global __commondxGetCodeLTOIRSize
-    __commondxGetCodeLTOIRSize = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRSize')
-    if __commondxGetCodeLTOIRSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxGetCodeLTOIRSize = dlsym(handle, 'commondxGetCodeLTOIRSize')
-
-    global __commondxGetCodeLTOIR
-    __commondxGetCodeLTOIR = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIR')
-    if __commondxGetCodeLTOIR == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxGetCodeLTOIR = dlsym(handle, 'commondxGetCodeLTOIR')
-
-    global __commondxGetCodeNumLTOIRs
-    __commondxGetCodeNumLTOIRs = dlsym(RTLD_DEFAULT, 'commondxGetCodeNumLTOIRs')
-    if __commondxGetCodeNumLTOIRs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxGetCodeNumLTOIRs = dlsym(handle, 'commondxGetCodeNumLTOIRs')
-
-    global __commondxGetCodeLTOIRSizes
-    __commondxGetCodeLTOIRSizes = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRSizes')
-    if __commondxGetCodeLTOIRSizes == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxGetCodeLTOIRSizes = dlsym(handle, 'commondxGetCodeLTOIRSizes')
-
-    global __commondxGetCodeLTOIRs
-    __commondxGetCodeLTOIRs = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRs')
-    if __commondxGetCodeLTOIRs == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxGetCodeLTOIRs = dlsym(handle, 'commondxGetCodeLTOIRs')
-
-    global __commondxDestroyCode
-    __commondxDestroyCode = dlsym(RTLD_DEFAULT, 'commondxDestroyCode')
-    if __commondxDestroyCode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxDestroyCode = dlsym(handle, 'commondxDestroyCode')
-
-    global __commondxStatusToStr
-    __commondxStatusToStr = dlsym(RTLD_DEFAULT, 'commondxStatusToStr')
-    if __commondxStatusToStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __commondxStatusToStr = dlsym(handle, 'commondxStatusToStr')
-
-    global __mathdxGetVersion
-    __mathdxGetVersion = dlsym(RTLD_DEFAULT, 'mathdxGetVersion')
-    if __mathdxGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __mathdxGetVersion = dlsym(handle, 'mathdxGetVersion')
-
-    global __mathdxGetVersionEx
-    __mathdxGetVersionEx = dlsym(RTLD_DEFAULT, 'mathdxGetVersionEx')
-    if __mathdxGetVersionEx == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __mathdxGetVersionEx = dlsym(handle, 'mathdxGetVersionEx')
-
-    global __cublasdxCreateDescriptor
-    __cublasdxCreateDescriptor = dlsym(RTLD_DEFAULT, 'cublasdxCreateDescriptor')
-    if __cublasdxCreateDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxCreateDescriptor = dlsym(handle, 'cublasdxCreateDescriptor')
-
-    global __cublasdxSetOptionStr
-    __cublasdxSetOptionStr = dlsym(RTLD_DEFAULT, 'cublasdxSetOptionStr')
-    if __cublasdxSetOptionStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxSetOptionStr = dlsym(handle, 'cublasdxSetOptionStr')
-
-    global __cublasdxSetOperatorInt64
-    __cublasdxSetOperatorInt64 = dlsym(RTLD_DEFAULT, 'cublasdxSetOperatorInt64')
-    if __cublasdxSetOperatorInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxSetOperatorInt64 = dlsym(handle, 'cublasdxSetOperatorInt64')
-
-    global __cublasdxSetOperatorInt64s
-    __cublasdxSetOperatorInt64s = dlsym(RTLD_DEFAULT, 'cublasdxSetOperatorInt64s')
-    if __cublasdxSetOperatorInt64s == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxSetOperatorInt64s = dlsym(handle, 'cublasdxSetOperatorInt64s')
-
-    global __cublasdxBindTensor
-    __cublasdxBindTensor = dlsym(RTLD_DEFAULT, 'cublasdxBindTensor')
-    if __cublasdxBindTensor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxBindTensor = dlsym(handle, 'cublasdxBindTensor')
-
-    global __cublasdxSetTensorOptionInt64
-    __cublasdxSetTensorOptionInt64 = dlsym(RTLD_DEFAULT, 'cublasdxSetTensorOptionInt64')
-    if __cublasdxSetTensorOptionInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxSetTensorOptionInt64 = dlsym(handle, 'cublasdxSetTensorOptionInt64')
-
-    global __cublasdxFinalizeTensors
-    __cublasdxFinalizeTensors = dlsym(RTLD_DEFAULT, 'cublasdxFinalizeTensors')
-    if __cublasdxFinalizeTensors == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxFinalizeTensors = dlsym(handle, 'cublasdxFinalizeTensors')
-
-    global __cublasdxGetTensorTraitInt64
-    __cublasdxGetTensorTraitInt64 = dlsym(RTLD_DEFAULT, 'cublasdxGetTensorTraitInt64')
-    if __cublasdxGetTensorTraitInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetTensorTraitInt64 = dlsym(handle, 'cublasdxGetTensorTraitInt64')
-
-    global __cublasdxGetTensorTraitStrSize
-    __cublasdxGetTensorTraitStrSize = dlsym(RTLD_DEFAULT, 'cublasdxGetTensorTraitStrSize')
-    if __cublasdxGetTensorTraitStrSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetTensorTraitStrSize = dlsym(handle, 'cublasdxGetTensorTraitStrSize')
-
-    global __cublasdxGetTensorTraitStr
-    __cublasdxGetTensorTraitStr = dlsym(RTLD_DEFAULT, 'cublasdxGetTensorTraitStr')
-    if __cublasdxGetTensorTraitStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetTensorTraitStr = dlsym(handle, 'cublasdxGetTensorTraitStr')
-
-    global __cublasdxBindDeviceFunction
-    __cublasdxBindDeviceFunction = dlsym(RTLD_DEFAULT, 'cublasdxBindDeviceFunction')
-    if __cublasdxBindDeviceFunction == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxBindDeviceFunction = dlsym(handle, 'cublasdxBindDeviceFunction')
-
-    global __cublasdxFinalizeDeviceFunctions
-    __cublasdxFinalizeDeviceFunctions = dlsym(RTLD_DEFAULT, 'cublasdxFinalizeDeviceFunctions')
-    if __cublasdxFinalizeDeviceFunctions == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxFinalizeDeviceFunctions = dlsym(handle, 'cublasdxFinalizeDeviceFunctions')
-
-    global __cublasdxGetDeviceFunctionTraitStrSize
-    __cublasdxGetDeviceFunctionTraitStrSize = dlsym(RTLD_DEFAULT, 'cublasdxGetDeviceFunctionTraitStrSize')
-    if __cublasdxGetDeviceFunctionTraitStrSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetDeviceFunctionTraitStrSize = dlsym(handle, 'cublasdxGetDeviceFunctionTraitStrSize')
-
-    global __cublasdxGetDeviceFunctionTraitStr
-    __cublasdxGetDeviceFunctionTraitStr = dlsym(RTLD_DEFAULT, 'cublasdxGetDeviceFunctionTraitStr')
-    if __cublasdxGetDeviceFunctionTraitStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetDeviceFunctionTraitStr = dlsym(handle, 'cublasdxGetDeviceFunctionTraitStr')
-
-    global __cublasdxGetLTOIRSize
-    __cublasdxGetLTOIRSize = dlsym(RTLD_DEFAULT, 'cublasdxGetLTOIRSize')
-    if __cublasdxGetLTOIRSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetLTOIRSize = dlsym(handle, 'cublasdxGetLTOIRSize')
-
-    global __cublasdxGetLTOIR
-    __cublasdxGetLTOIR = dlsym(RTLD_DEFAULT, 'cublasdxGetLTOIR')
-    if __cublasdxGetLTOIR == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetLTOIR = dlsym(handle, 'cublasdxGetLTOIR')
-
-    global __cublasdxGetTraitStrSize
-    __cublasdxGetTraitStrSize = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitStrSize')
-    if __cublasdxGetTraitStrSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetTraitStrSize = dlsym(handle, 'cublasdxGetTraitStrSize')
-
-    global __cublasdxGetTraitStr
-    __cublasdxGetTraitStr = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitStr')
-    if __cublasdxGetTraitStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetTraitStr = dlsym(handle, 'cublasdxGetTraitStr')
-
-    global __cublasdxGetTraitInt64
-    __cublasdxGetTraitInt64 = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitInt64')
-    if __cublasdxGetTraitInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetTraitInt64 = dlsym(handle, 'cublasdxGetTraitInt64')
-
-    global __cublasdxGetTraitInt64s
-    __cublasdxGetTraitInt64s = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitInt64s')
-    if __cublasdxGetTraitInt64s == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxGetTraitInt64s = dlsym(handle, 'cublasdxGetTraitInt64s')
-
-    global __cublasdxOperatorTypeToStr
-    __cublasdxOperatorTypeToStr = dlsym(RTLD_DEFAULT, 'cublasdxOperatorTypeToStr')
-    if __cublasdxOperatorTypeToStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxOperatorTypeToStr = dlsym(handle, 'cublasdxOperatorTypeToStr')
-
-    global __cublasdxTraitTypeToStr
-    __cublasdxTraitTypeToStr = dlsym(RTLD_DEFAULT, 'cublasdxTraitTypeToStr')
-    if __cublasdxTraitTypeToStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxTraitTypeToStr = dlsym(handle, 'cublasdxTraitTypeToStr')
-
-    global __cublasdxFinalizeCode
-    __cublasdxFinalizeCode = dlsym(RTLD_DEFAULT, 'cublasdxFinalizeCode')
-    if __cublasdxFinalizeCode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxFinalizeCode = dlsym(handle, 'cublasdxFinalizeCode')
-
-    global __cublasdxDestroyDescriptor
-    __cublasdxDestroyDescriptor = dlsym(RTLD_DEFAULT, 'cublasdxDestroyDescriptor')
-    if __cublasdxDestroyDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cublasdxDestroyDescriptor = dlsym(handle, 'cublasdxDestroyDescriptor')
-
-    global __cufftdxCreateDescriptor
-    __cufftdxCreateDescriptor = dlsym(RTLD_DEFAULT, 'cufftdxCreateDescriptor')
-    if __cufftdxCreateDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxCreateDescriptor = dlsym(handle, 'cufftdxCreateDescriptor')
-
-    global __cufftdxSetOptionStr
-    __cufftdxSetOptionStr = dlsym(RTLD_DEFAULT, 'cufftdxSetOptionStr')
-    if __cufftdxSetOptionStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxSetOptionStr = dlsym(handle, 'cufftdxSetOptionStr')
-
-    global __cufftdxGetKnobInt64Size
-    __cufftdxGetKnobInt64Size = dlsym(RTLD_DEFAULT, 'cufftdxGetKnobInt64Size')
-    if __cufftdxGetKnobInt64Size == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetKnobInt64Size = dlsym(handle, 'cufftdxGetKnobInt64Size')
-
-    global __cufftdxGetKnobInt64s
-    __cufftdxGetKnobInt64s = dlsym(RTLD_DEFAULT, 'cufftdxGetKnobInt64s')
-    if __cufftdxGetKnobInt64s == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetKnobInt64s = dlsym(handle, 'cufftdxGetKnobInt64s')
-
-    global __cufftdxSetOperatorInt64
-    __cufftdxSetOperatorInt64 = dlsym(RTLD_DEFAULT, 'cufftdxSetOperatorInt64')
-    if __cufftdxSetOperatorInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxSetOperatorInt64 = dlsym(handle, 'cufftdxSetOperatorInt64')
-
-    global __cufftdxSetOperatorInt64s
-    __cufftdxSetOperatorInt64s = dlsym(RTLD_DEFAULT, 'cufftdxSetOperatorInt64s')
-    if __cufftdxSetOperatorInt64s == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxSetOperatorInt64s = dlsym(handle, 'cufftdxSetOperatorInt64s')
-
-    global __cufftdxGetLTOIRSize
-    __cufftdxGetLTOIRSize = dlsym(RTLD_DEFAULT, 'cufftdxGetLTOIRSize')
-    if __cufftdxGetLTOIRSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetLTOIRSize = dlsym(handle, 'cufftdxGetLTOIRSize')
-
-    global __cufftdxGetLTOIR
-    __cufftdxGetLTOIR = dlsym(RTLD_DEFAULT, 'cufftdxGetLTOIR')
-    if __cufftdxGetLTOIR == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetLTOIR = dlsym(handle, 'cufftdxGetLTOIR')
-
-    global __cufftdxGetTraitStrSize
-    __cufftdxGetTraitStrSize = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitStrSize')
-    if __cufftdxGetTraitStrSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetTraitStrSize = dlsym(handle, 'cufftdxGetTraitStrSize')
-
-    global __cufftdxGetTraitStr
-    __cufftdxGetTraitStr = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitStr')
-    if __cufftdxGetTraitStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetTraitStr = dlsym(handle, 'cufftdxGetTraitStr')
-
-    global __cufftdxGetTraitInt64
-    __cufftdxGetTraitInt64 = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitInt64')
-    if __cufftdxGetTraitInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetTraitInt64 = dlsym(handle, 'cufftdxGetTraitInt64')
-
-    global __cufftdxGetTraitInt64s
-    __cufftdxGetTraitInt64s = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitInt64s')
-    if __cufftdxGetTraitInt64s == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetTraitInt64s = dlsym(handle, 'cufftdxGetTraitInt64s')
-
-    global __cufftdxGetTraitCommondxDataType
-    __cufftdxGetTraitCommondxDataType = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitCommondxDataType')
-    if __cufftdxGetTraitCommondxDataType == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxGetTraitCommondxDataType = dlsym(handle, 'cufftdxGetTraitCommondxDataType')
-
-    global __cufftdxFinalizeCode
-    __cufftdxFinalizeCode = dlsym(RTLD_DEFAULT, 'cufftdxFinalizeCode')
-    if __cufftdxFinalizeCode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxFinalizeCode = dlsym(handle, 'cufftdxFinalizeCode')
-
-    global __cufftdxDestroyDescriptor
-    __cufftdxDestroyDescriptor = dlsym(RTLD_DEFAULT, 'cufftdxDestroyDescriptor')
-    if __cufftdxDestroyDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxDestroyDescriptor = dlsym(handle, 'cufftdxDestroyDescriptor')
-
-    global __cufftdxOperatorTypeToStr
-    __cufftdxOperatorTypeToStr = dlsym(RTLD_DEFAULT, 'cufftdxOperatorTypeToStr')
-    if __cufftdxOperatorTypeToStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxOperatorTypeToStr = dlsym(handle, 'cufftdxOperatorTypeToStr')
-
-    global __cufftdxTraitTypeToStr
-    __cufftdxTraitTypeToStr = dlsym(RTLD_DEFAULT, 'cufftdxTraitTypeToStr')
-    if __cufftdxTraitTypeToStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cufftdxTraitTypeToStr = dlsym(handle, 'cufftdxTraitTypeToStr')
-
-    global __cusolverdxCreateDescriptor
-    __cusolverdxCreateDescriptor = dlsym(RTLD_DEFAULT, 'cusolverdxCreateDescriptor')
-    if __cusolverdxCreateDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxCreateDescriptor = dlsym(handle, 'cusolverdxCreateDescriptor')
-
-    global __cusolverdxSetOptionStr
-    __cusolverdxSetOptionStr = dlsym(RTLD_DEFAULT, 'cusolverdxSetOptionStr')
-    if __cusolverdxSetOptionStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxSetOptionStr = dlsym(handle, 'cusolverdxSetOptionStr')
-
-    global __cusolverdxSetOperatorInt64
-    __cusolverdxSetOperatorInt64 = dlsym(RTLD_DEFAULT, 'cusolverdxSetOperatorInt64')
-    if __cusolverdxSetOperatorInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxSetOperatorInt64 = dlsym(handle, 'cusolverdxSetOperatorInt64')
-
-    global __cusolverdxSetOperatorInt64s
-    __cusolverdxSetOperatorInt64s = dlsym(RTLD_DEFAULT, 'cusolverdxSetOperatorInt64s')
-    if __cusolverdxSetOperatorInt64s == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxSetOperatorInt64s = dlsym(handle, 'cusolverdxSetOperatorInt64s')
-
-    global __cusolverdxGetLTOIRSize
-    __cusolverdxGetLTOIRSize = dlsym(RTLD_DEFAULT, 'cusolverdxGetLTOIRSize')
-    if __cusolverdxGetLTOIRSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxGetLTOIRSize = dlsym(handle, 'cusolverdxGetLTOIRSize')
-
-    global __cusolverdxGetLTOIR
-    __cusolverdxGetLTOIR = dlsym(RTLD_DEFAULT, 'cusolverdxGetLTOIR')
-    if __cusolverdxGetLTOIR == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxGetLTOIR = dlsym(handle, 'cusolverdxGetLTOIR')
-
-    global __cusolverdxGetUniversalFATBINSize
-    __cusolverdxGetUniversalFATBINSize = dlsym(RTLD_DEFAULT, 'cusolverdxGetUniversalFATBINSize')
-    if __cusolverdxGetUniversalFATBINSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxGetUniversalFATBINSize = dlsym(handle, 'cusolverdxGetUniversalFATBINSize')
-
-    global __cusolverdxGetUniversalFATBIN
-    __cusolverdxGetUniversalFATBIN = dlsym(RTLD_DEFAULT, 'cusolverdxGetUniversalFATBIN')
-    if __cusolverdxGetUniversalFATBIN == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxGetUniversalFATBIN = dlsym(handle, 'cusolverdxGetUniversalFATBIN')
-
-    global __cusolverdxGetTraitStrSize
-    __cusolverdxGetTraitStrSize = dlsym(RTLD_DEFAULT, 'cusolverdxGetTraitStrSize')
-    if __cusolverdxGetTraitStrSize == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxGetTraitStrSize = dlsym(handle, 'cusolverdxGetTraitStrSize')
-
-    global __cusolverdxGetTraitStr
-    __cusolverdxGetTraitStr = dlsym(RTLD_DEFAULT, 'cusolverdxGetTraitStr')
-    if __cusolverdxGetTraitStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxGetTraitStr = dlsym(handle, 'cusolverdxGetTraitStr')
-
-    global __cusolverdxGetTraitInt64
-    __cusolverdxGetTraitInt64 = dlsym(RTLD_DEFAULT, 'cusolverdxGetTraitInt64')
-    if __cusolverdxGetTraitInt64 == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxGetTraitInt64 = dlsym(handle, 'cusolverdxGetTraitInt64')
-
-    global __cusolverdxFinalizeCode
-    __cusolverdxFinalizeCode = dlsym(RTLD_DEFAULT, 'cusolverdxFinalizeCode')
-    if __cusolverdxFinalizeCode == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxFinalizeCode = dlsym(handle, 'cusolverdxFinalizeCode')
-
-    global __cusolverdxDestroyDescriptor
-    __cusolverdxDestroyDescriptor = dlsym(RTLD_DEFAULT, 'cusolverdxDestroyDescriptor')
-    if __cusolverdxDestroyDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxDestroyDescriptor = dlsym(handle, 'cusolverdxDestroyDescriptor')
-
-    global __cusolverdxOperatorTypeToStr
-    __cusolverdxOperatorTypeToStr = dlsym(RTLD_DEFAULT, 'cusolverdxOperatorTypeToStr')
-    if __cusolverdxOperatorTypeToStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxOperatorTypeToStr = dlsym(handle, 'cusolverdxOperatorTypeToStr')
-
-    global __cusolverdxTraitTypeToStr
-    __cusolverdxTraitTypeToStr = dlsym(RTLD_DEFAULT, 'cusolverdxTraitTypeToStr')
-    if __cusolverdxTraitTypeToStr == NULL:
-        if handle == NULL:
-            handle = load_library(driver_ver)
-        __cusolverdxTraitTypeToStr = dlsym(handle, 'cusolverdxTraitTypeToStr')
-
-    __py_mathdx_init = True
-    return 0
+
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
+
+        # Load function
+        global __commondxCreateCode
+        __commondxCreateCode = dlsym(RTLD_DEFAULT, 'commondxCreateCode')
+        if __commondxCreateCode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxCreateCode = dlsym(handle, 'commondxCreateCode')
+
+        global __commondxSetCodeOptionInt64
+        __commondxSetCodeOptionInt64 = dlsym(RTLD_DEFAULT, 'commondxSetCodeOptionInt64')
+        if __commondxSetCodeOptionInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxSetCodeOptionInt64 = dlsym(handle, 'commondxSetCodeOptionInt64')
+
+        global __commondxSetCodeOptionStr
+        __commondxSetCodeOptionStr = dlsym(RTLD_DEFAULT, 'commondxSetCodeOptionStr')
+        if __commondxSetCodeOptionStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxSetCodeOptionStr = dlsym(handle, 'commondxSetCodeOptionStr')
+
+        global __commondxGetCodeOptionInt64
+        __commondxGetCodeOptionInt64 = dlsym(RTLD_DEFAULT, 'commondxGetCodeOptionInt64')
+        if __commondxGetCodeOptionInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxGetCodeOptionInt64 = dlsym(handle, 'commondxGetCodeOptionInt64')
+
+        global __commondxGetCodeOptionsInt64s
+        __commondxGetCodeOptionsInt64s = dlsym(RTLD_DEFAULT, 'commondxGetCodeOptionsInt64s')
+        if __commondxGetCodeOptionsInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxGetCodeOptionsInt64s = dlsym(handle, 'commondxGetCodeOptionsInt64s')
+
+        global __commondxGetCodeLTOIRSize
+        __commondxGetCodeLTOIRSize = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRSize')
+        if __commondxGetCodeLTOIRSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxGetCodeLTOIRSize = dlsym(handle, 'commondxGetCodeLTOIRSize')
+
+        global __commondxGetCodeLTOIR
+        __commondxGetCodeLTOIR = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIR')
+        if __commondxGetCodeLTOIR == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxGetCodeLTOIR = dlsym(handle, 'commondxGetCodeLTOIR')
+
+        global __commondxGetCodeNumLTOIRs
+        __commondxGetCodeNumLTOIRs = dlsym(RTLD_DEFAULT, 'commondxGetCodeNumLTOIRs')
+        if __commondxGetCodeNumLTOIRs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxGetCodeNumLTOIRs = dlsym(handle, 'commondxGetCodeNumLTOIRs')
+
+        global __commondxGetCodeLTOIRSizes
+        __commondxGetCodeLTOIRSizes = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRSizes')
+        if __commondxGetCodeLTOIRSizes == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxGetCodeLTOIRSizes = dlsym(handle, 'commondxGetCodeLTOIRSizes')
+
+        global __commondxGetCodeLTOIRs
+        __commondxGetCodeLTOIRs = dlsym(RTLD_DEFAULT, 'commondxGetCodeLTOIRs')
+        if __commondxGetCodeLTOIRs == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxGetCodeLTOIRs = dlsym(handle, 'commondxGetCodeLTOIRs')
+
+        global __commondxDestroyCode
+        __commondxDestroyCode = dlsym(RTLD_DEFAULT, 'commondxDestroyCode')
+        if __commondxDestroyCode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxDestroyCode = dlsym(handle, 'commondxDestroyCode')
+
+        global __commondxStatusToStr
+        __commondxStatusToStr = dlsym(RTLD_DEFAULT, 'commondxStatusToStr')
+        if __commondxStatusToStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxStatusToStr = dlsym(handle, 'commondxStatusToStr')
+
+        global __mathdxGetVersion
+        __mathdxGetVersion = dlsym(RTLD_DEFAULT, 'mathdxGetVersion')
+        if __mathdxGetVersion == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __mathdxGetVersion = dlsym(handle, 'mathdxGetVersion')
+
+        global __mathdxGetVersionEx
+        __mathdxGetVersionEx = dlsym(RTLD_DEFAULT, 'mathdxGetVersionEx')
+        if __mathdxGetVersionEx == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __mathdxGetVersionEx = dlsym(handle, 'mathdxGetVersionEx')
+
+        global __cublasdxCreateDescriptor
+        __cublasdxCreateDescriptor = dlsym(RTLD_DEFAULT, 'cublasdxCreateDescriptor')
+        if __cublasdxCreateDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxCreateDescriptor = dlsym(handle, 'cublasdxCreateDescriptor')
+
+        global __cublasdxSetOptionStr
+        __cublasdxSetOptionStr = dlsym(RTLD_DEFAULT, 'cublasdxSetOptionStr')
+        if __cublasdxSetOptionStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxSetOptionStr = dlsym(handle, 'cublasdxSetOptionStr')
+
+        global __cublasdxSetOperatorInt64
+        __cublasdxSetOperatorInt64 = dlsym(RTLD_DEFAULT, 'cublasdxSetOperatorInt64')
+        if __cublasdxSetOperatorInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxSetOperatorInt64 = dlsym(handle, 'cublasdxSetOperatorInt64')
+
+        global __cublasdxSetOperatorInt64s
+        __cublasdxSetOperatorInt64s = dlsym(RTLD_DEFAULT, 'cublasdxSetOperatorInt64s')
+        if __cublasdxSetOperatorInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxSetOperatorInt64s = dlsym(handle, 'cublasdxSetOperatorInt64s')
+
+        global __cublasdxBindTensor
+        __cublasdxBindTensor = dlsym(RTLD_DEFAULT, 'cublasdxBindTensor')
+        if __cublasdxBindTensor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxBindTensor = dlsym(handle, 'cublasdxBindTensor')
+
+        global __cublasdxSetTensorOptionInt64
+        __cublasdxSetTensorOptionInt64 = dlsym(RTLD_DEFAULT, 'cublasdxSetTensorOptionInt64')
+        if __cublasdxSetTensorOptionInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxSetTensorOptionInt64 = dlsym(handle, 'cublasdxSetTensorOptionInt64')
+
+        global __cublasdxFinalizeTensors
+        __cublasdxFinalizeTensors = dlsym(RTLD_DEFAULT, 'cublasdxFinalizeTensors')
+        if __cublasdxFinalizeTensors == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxFinalizeTensors = dlsym(handle, 'cublasdxFinalizeTensors')
+
+        global __cublasdxGetTensorTraitInt64
+        __cublasdxGetTensorTraitInt64 = dlsym(RTLD_DEFAULT, 'cublasdxGetTensorTraitInt64')
+        if __cublasdxGetTensorTraitInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetTensorTraitInt64 = dlsym(handle, 'cublasdxGetTensorTraitInt64')
+
+        global __cublasdxGetTensorTraitStrSize
+        __cublasdxGetTensorTraitStrSize = dlsym(RTLD_DEFAULT, 'cublasdxGetTensorTraitStrSize')
+        if __cublasdxGetTensorTraitStrSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetTensorTraitStrSize = dlsym(handle, 'cublasdxGetTensorTraitStrSize')
+
+        global __cublasdxGetTensorTraitStr
+        __cublasdxGetTensorTraitStr = dlsym(RTLD_DEFAULT, 'cublasdxGetTensorTraitStr')
+        if __cublasdxGetTensorTraitStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetTensorTraitStr = dlsym(handle, 'cublasdxGetTensorTraitStr')
+
+        global __cublasdxBindDeviceFunction
+        __cublasdxBindDeviceFunction = dlsym(RTLD_DEFAULT, 'cublasdxBindDeviceFunction')
+        if __cublasdxBindDeviceFunction == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxBindDeviceFunction = dlsym(handle, 'cublasdxBindDeviceFunction')
+
+        global __cublasdxFinalizeDeviceFunctions
+        __cublasdxFinalizeDeviceFunctions = dlsym(RTLD_DEFAULT, 'cublasdxFinalizeDeviceFunctions')
+        if __cublasdxFinalizeDeviceFunctions == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxFinalizeDeviceFunctions = dlsym(handle, 'cublasdxFinalizeDeviceFunctions')
+
+        global __cublasdxGetDeviceFunctionTraitStrSize
+        __cublasdxGetDeviceFunctionTraitStrSize = dlsym(RTLD_DEFAULT, 'cublasdxGetDeviceFunctionTraitStrSize')
+        if __cublasdxGetDeviceFunctionTraitStrSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetDeviceFunctionTraitStrSize = dlsym(handle, 'cublasdxGetDeviceFunctionTraitStrSize')
+
+        global __cublasdxGetDeviceFunctionTraitStr
+        __cublasdxGetDeviceFunctionTraitStr = dlsym(RTLD_DEFAULT, 'cublasdxGetDeviceFunctionTraitStr')
+        if __cublasdxGetDeviceFunctionTraitStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetDeviceFunctionTraitStr = dlsym(handle, 'cublasdxGetDeviceFunctionTraitStr')
+
+        global __cublasdxGetLTOIRSize
+        __cublasdxGetLTOIRSize = dlsym(RTLD_DEFAULT, 'cublasdxGetLTOIRSize')
+        if __cublasdxGetLTOIRSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetLTOIRSize = dlsym(handle, 'cublasdxGetLTOIRSize')
+
+        global __cublasdxGetLTOIR
+        __cublasdxGetLTOIR = dlsym(RTLD_DEFAULT, 'cublasdxGetLTOIR')
+        if __cublasdxGetLTOIR == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetLTOIR = dlsym(handle, 'cublasdxGetLTOIR')
+
+        global __cublasdxGetTraitStrSize
+        __cublasdxGetTraitStrSize = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitStrSize')
+        if __cublasdxGetTraitStrSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetTraitStrSize = dlsym(handle, 'cublasdxGetTraitStrSize')
+
+        global __cublasdxGetTraitStr
+        __cublasdxGetTraitStr = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitStr')
+        if __cublasdxGetTraitStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetTraitStr = dlsym(handle, 'cublasdxGetTraitStr')
+
+        global __cublasdxGetTraitInt64
+        __cublasdxGetTraitInt64 = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitInt64')
+        if __cublasdxGetTraitInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetTraitInt64 = dlsym(handle, 'cublasdxGetTraitInt64')
+
+        global __cublasdxGetTraitInt64s
+        __cublasdxGetTraitInt64s = dlsym(RTLD_DEFAULT, 'cublasdxGetTraitInt64s')
+        if __cublasdxGetTraitInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetTraitInt64s = dlsym(handle, 'cublasdxGetTraitInt64s')
+
+        global __cublasdxOperatorTypeToStr
+        __cublasdxOperatorTypeToStr = dlsym(RTLD_DEFAULT, 'cublasdxOperatorTypeToStr')
+        if __cublasdxOperatorTypeToStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxOperatorTypeToStr = dlsym(handle, 'cublasdxOperatorTypeToStr')
+
+        global __cublasdxTraitTypeToStr
+        __cublasdxTraitTypeToStr = dlsym(RTLD_DEFAULT, 'cublasdxTraitTypeToStr')
+        if __cublasdxTraitTypeToStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxTraitTypeToStr = dlsym(handle, 'cublasdxTraitTypeToStr')
+
+        global __cublasdxFinalizeCode
+        __cublasdxFinalizeCode = dlsym(RTLD_DEFAULT, 'cublasdxFinalizeCode')
+        if __cublasdxFinalizeCode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxFinalizeCode = dlsym(handle, 'cublasdxFinalizeCode')
+
+        global __cublasdxDestroyDescriptor
+        __cublasdxDestroyDescriptor = dlsym(RTLD_DEFAULT, 'cublasdxDestroyDescriptor')
+        if __cublasdxDestroyDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxDestroyDescriptor = dlsym(handle, 'cublasdxDestroyDescriptor')
+
+        global __cufftdxCreateDescriptor
+        __cufftdxCreateDescriptor = dlsym(RTLD_DEFAULT, 'cufftdxCreateDescriptor')
+        if __cufftdxCreateDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxCreateDescriptor = dlsym(handle, 'cufftdxCreateDescriptor')
+
+        global __cufftdxSetOptionStr
+        __cufftdxSetOptionStr = dlsym(RTLD_DEFAULT, 'cufftdxSetOptionStr')
+        if __cufftdxSetOptionStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxSetOptionStr = dlsym(handle, 'cufftdxSetOptionStr')
+
+        global __cufftdxGetKnobInt64Size
+        __cufftdxGetKnobInt64Size = dlsym(RTLD_DEFAULT, 'cufftdxGetKnobInt64Size')
+        if __cufftdxGetKnobInt64Size == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetKnobInt64Size = dlsym(handle, 'cufftdxGetKnobInt64Size')
+
+        global __cufftdxGetKnobInt64s
+        __cufftdxGetKnobInt64s = dlsym(RTLD_DEFAULT, 'cufftdxGetKnobInt64s')
+        if __cufftdxGetKnobInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetKnobInt64s = dlsym(handle, 'cufftdxGetKnobInt64s')
+
+        global __cufftdxSetOperatorInt64
+        __cufftdxSetOperatorInt64 = dlsym(RTLD_DEFAULT, 'cufftdxSetOperatorInt64')
+        if __cufftdxSetOperatorInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxSetOperatorInt64 = dlsym(handle, 'cufftdxSetOperatorInt64')
+
+        global __cufftdxSetOperatorInt64s
+        __cufftdxSetOperatorInt64s = dlsym(RTLD_DEFAULT, 'cufftdxSetOperatorInt64s')
+        if __cufftdxSetOperatorInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxSetOperatorInt64s = dlsym(handle, 'cufftdxSetOperatorInt64s')
+
+        global __cufftdxGetLTOIRSize
+        __cufftdxGetLTOIRSize = dlsym(RTLD_DEFAULT, 'cufftdxGetLTOIRSize')
+        if __cufftdxGetLTOIRSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetLTOIRSize = dlsym(handle, 'cufftdxGetLTOIRSize')
+
+        global __cufftdxGetLTOIR
+        __cufftdxGetLTOIR = dlsym(RTLD_DEFAULT, 'cufftdxGetLTOIR')
+        if __cufftdxGetLTOIR == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetLTOIR = dlsym(handle, 'cufftdxGetLTOIR')
+
+        global __cufftdxGetTraitStrSize
+        __cufftdxGetTraitStrSize = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitStrSize')
+        if __cufftdxGetTraitStrSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetTraitStrSize = dlsym(handle, 'cufftdxGetTraitStrSize')
+
+        global __cufftdxGetTraitStr
+        __cufftdxGetTraitStr = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitStr')
+        if __cufftdxGetTraitStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetTraitStr = dlsym(handle, 'cufftdxGetTraitStr')
+
+        global __cufftdxGetTraitInt64
+        __cufftdxGetTraitInt64 = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitInt64')
+        if __cufftdxGetTraitInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetTraitInt64 = dlsym(handle, 'cufftdxGetTraitInt64')
+
+        global __cufftdxGetTraitInt64s
+        __cufftdxGetTraitInt64s = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitInt64s')
+        if __cufftdxGetTraitInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetTraitInt64s = dlsym(handle, 'cufftdxGetTraitInt64s')
+
+        global __cufftdxGetTraitCommondxDataType
+        __cufftdxGetTraitCommondxDataType = dlsym(RTLD_DEFAULT, 'cufftdxGetTraitCommondxDataType')
+        if __cufftdxGetTraitCommondxDataType == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxGetTraitCommondxDataType = dlsym(handle, 'cufftdxGetTraitCommondxDataType')
+
+        global __cufftdxFinalizeCode
+        __cufftdxFinalizeCode = dlsym(RTLD_DEFAULT, 'cufftdxFinalizeCode')
+        if __cufftdxFinalizeCode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxFinalizeCode = dlsym(handle, 'cufftdxFinalizeCode')
+
+        global __cufftdxDestroyDescriptor
+        __cufftdxDestroyDescriptor = dlsym(RTLD_DEFAULT, 'cufftdxDestroyDescriptor')
+        if __cufftdxDestroyDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxDestroyDescriptor = dlsym(handle, 'cufftdxDestroyDescriptor')
+
+        global __cufftdxOperatorTypeToStr
+        __cufftdxOperatorTypeToStr = dlsym(RTLD_DEFAULT, 'cufftdxOperatorTypeToStr')
+        if __cufftdxOperatorTypeToStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxOperatorTypeToStr = dlsym(handle, 'cufftdxOperatorTypeToStr')
+
+        global __cufftdxTraitTypeToStr
+        __cufftdxTraitTypeToStr = dlsym(RTLD_DEFAULT, 'cufftdxTraitTypeToStr')
+        if __cufftdxTraitTypeToStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cufftdxTraitTypeToStr = dlsym(handle, 'cufftdxTraitTypeToStr')
+
+        global __cusolverdxCreateDescriptor
+        __cusolverdxCreateDescriptor = dlsym(RTLD_DEFAULT, 'cusolverdxCreateDescriptor')
+        if __cusolverdxCreateDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxCreateDescriptor = dlsym(handle, 'cusolverdxCreateDescriptor')
+
+        global __cusolverdxSetOptionStr
+        __cusolverdxSetOptionStr = dlsym(RTLD_DEFAULT, 'cusolverdxSetOptionStr')
+        if __cusolverdxSetOptionStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxSetOptionStr = dlsym(handle, 'cusolverdxSetOptionStr')
+
+        global __cusolverdxSetOperatorInt64
+        __cusolverdxSetOperatorInt64 = dlsym(RTLD_DEFAULT, 'cusolverdxSetOperatorInt64')
+        if __cusolverdxSetOperatorInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxSetOperatorInt64 = dlsym(handle, 'cusolverdxSetOperatorInt64')
+
+        global __cusolverdxSetOperatorInt64s
+        __cusolverdxSetOperatorInt64s = dlsym(RTLD_DEFAULT, 'cusolverdxSetOperatorInt64s')
+        if __cusolverdxSetOperatorInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxSetOperatorInt64s = dlsym(handle, 'cusolverdxSetOperatorInt64s')
+
+        global __cusolverdxGetLTOIRSize
+        __cusolverdxGetLTOIRSize = dlsym(RTLD_DEFAULT, 'cusolverdxGetLTOIRSize')
+        if __cusolverdxGetLTOIRSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetLTOIRSize = dlsym(handle, 'cusolverdxGetLTOIRSize')
+
+        global __cusolverdxGetLTOIR
+        __cusolverdxGetLTOIR = dlsym(RTLD_DEFAULT, 'cusolverdxGetLTOIR')
+        if __cusolverdxGetLTOIR == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetLTOIR = dlsym(handle, 'cusolverdxGetLTOIR')
+
+        global __cusolverdxGetUniversalFATBINSize
+        __cusolverdxGetUniversalFATBINSize = dlsym(RTLD_DEFAULT, 'cusolverdxGetUniversalFATBINSize')
+        if __cusolverdxGetUniversalFATBINSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetUniversalFATBINSize = dlsym(handle, 'cusolverdxGetUniversalFATBINSize')
+
+        global __cusolverdxGetUniversalFATBIN
+        __cusolverdxGetUniversalFATBIN = dlsym(RTLD_DEFAULT, 'cusolverdxGetUniversalFATBIN')
+        if __cusolverdxGetUniversalFATBIN == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetUniversalFATBIN = dlsym(handle, 'cusolverdxGetUniversalFATBIN')
+
+        global __cusolverdxGetTraitStrSize
+        __cusolverdxGetTraitStrSize = dlsym(RTLD_DEFAULT, 'cusolverdxGetTraitStrSize')
+        if __cusolverdxGetTraitStrSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetTraitStrSize = dlsym(handle, 'cusolverdxGetTraitStrSize')
+
+        global __cusolverdxGetTraitStr
+        __cusolverdxGetTraitStr = dlsym(RTLD_DEFAULT, 'cusolverdxGetTraitStr')
+        if __cusolverdxGetTraitStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetTraitStr = dlsym(handle, 'cusolverdxGetTraitStr')
+
+        global __cusolverdxGetTraitInt64
+        __cusolverdxGetTraitInt64 = dlsym(RTLD_DEFAULT, 'cusolverdxGetTraitInt64')
+        if __cusolverdxGetTraitInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetTraitInt64 = dlsym(handle, 'cusolverdxGetTraitInt64')
+
+        global __cusolverdxFinalizeCode
+        __cusolverdxFinalizeCode = dlsym(RTLD_DEFAULT, 'cusolverdxFinalizeCode')
+        if __cusolverdxFinalizeCode == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxFinalizeCode = dlsym(handle, 'cusolverdxFinalizeCode')
+
+        global __cusolverdxDestroyDescriptor
+        __cusolverdxDestroyDescriptor = dlsym(RTLD_DEFAULT, 'cusolverdxDestroyDescriptor')
+        if __cusolverdxDestroyDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxDestroyDescriptor = dlsym(handle, 'cusolverdxDestroyDescriptor')
+
+        global __cusolverdxOperatorTypeToStr
+        __cusolverdxOperatorTypeToStr = dlsym(RTLD_DEFAULT, 'cusolverdxOperatorTypeToStr')
+        if __cusolverdxOperatorTypeToStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxOperatorTypeToStr = dlsym(handle, 'cusolverdxOperatorTypeToStr')
+
+        global __cusolverdxTraitTypeToStr
+        __cusolverdxTraitTypeToStr = dlsym(RTLD_DEFAULT, 'cusolverdxTraitTypeToStr')
+        if __cusolverdxTraitTypeToStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxTraitTypeToStr = dlsym(handle, 'cusolverdxTraitTypeToStr')
+
+        global __cublasdxCreateTensor
+        __cublasdxCreateTensor = dlsym(RTLD_DEFAULT, 'cublasdxCreateTensor')
+        if __cublasdxCreateTensor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxCreateTensor = dlsym(handle, 'cublasdxCreateTensor')
+
+        global __cublasdxMakeTensorLike
+        __cublasdxMakeTensorLike = dlsym(RTLD_DEFAULT, 'cublasdxMakeTensorLike')
+        if __cublasdxMakeTensorLike == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxMakeTensorLike = dlsym(handle, 'cublasdxMakeTensorLike')
+
+        global __cublasdxDestroyTensor
+        __cublasdxDestroyTensor = dlsym(RTLD_DEFAULT, 'cublasdxDestroyTensor')
+        if __cublasdxDestroyTensor == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxDestroyTensor = dlsym(handle, 'cublasdxDestroyTensor')
+
+        global __cublasdxCreateDeviceFunction
+        __cublasdxCreateDeviceFunction = dlsym(RTLD_DEFAULT, 'cublasdxCreateDeviceFunction')
+        if __cublasdxCreateDeviceFunction == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxCreateDeviceFunction = dlsym(handle, 'cublasdxCreateDeviceFunction')
+
+        global __cublasdxDestroyDeviceFunction
+        __cublasdxDestroyDeviceFunction = dlsym(RTLD_DEFAULT, 'cublasdxDestroyDeviceFunction')
+        if __cublasdxDestroyDeviceFunction == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxDestroyDeviceFunction = dlsym(handle, 'cublasdxDestroyDeviceFunction')
+
+        __py_mathdx_init = True
+        return 0
 
 
 cdef dict func_ptrs = None
@@ -853,6 +900,21 @@ cpdef dict _inspect_function_pointers():
     global __cusolverdxTraitTypeToStr
     data["__cusolverdxTraitTypeToStr"] = <intptr_t>__cusolverdxTraitTypeToStr
 
+    global __cublasdxCreateTensor
+    data["__cublasdxCreateTensor"] = <intptr_t>__cublasdxCreateTensor
+
+    global __cublasdxMakeTensorLike
+    data["__cublasdxMakeTensorLike"] = <intptr_t>__cublasdxMakeTensorLike
+
+    global __cublasdxDestroyTensor
+    data["__cublasdxDestroyTensor"] = <intptr_t>__cublasdxDestroyTensor
+
+    global __cublasdxCreateDeviceFunction
+    data["__cublasdxCreateDeviceFunction"] = <intptr_t>__cublasdxCreateDeviceFunction
+
+    global __cublasdxDestroyDeviceFunction
+    data["__cublasdxDestroyDeviceFunction"] = <intptr_t>__cublasdxDestroyDeviceFunction
+
     func_ptrs = data
     return data
 
@@ -1068,14 +1130,14 @@ cdef commondxStatusType _cublasdxSetTensorOptionInt64(cublasdxTensor tensor, cub
         tensor, option, value)
 
 
-cdef commondxStatusType _cublasdxFinalizeTensors(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+cdef commondxStatusType _cublasdxFinalizeTensorsNew(size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __cublasdxFinalizeTensors
     _check_or_init_mathdx()
     if __cublasdxFinalizeTensors == NULL:
         with gil:
             raise FunctionNotFoundError("function cublasdxFinalizeTensors is not found")
-    return (<commondxStatusType (*)(cublasdxDescriptor, size_t, const cublasdxTensor*) noexcept nogil>__cublasdxFinalizeTensors)(
-        handle, count, array)
+    return (<commondxStatusType (*)(size_t, const cublasdxTensor*) noexcept nogil>__cublasdxFinalizeTensors)(
+        count, array)
 
 
 cdef commondxStatusType _cublasdxGetTensorTraitInt64(cublasdxTensor tensor, cublasdxTensorTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -1108,7 +1170,7 @@ cdef commondxStatusType _cublasdxGetTensorTraitStr(cublasdxTensor tensor, cublas
         tensor, trait, size, value)
 
 
-cdef commondxStatusType _cublasdxBindDeviceFunction(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+cdef commondxStatusType _cublasdxCreateDeviceFunctionOld(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __cublasdxBindDeviceFunction
     _check_or_init_mathdx()
     if __cublasdxBindDeviceFunction == NULL:
@@ -1566,3 +1628,62 @@ cdef const char* _cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NUL
             raise FunctionNotFoundError("function cusolverdxTraitTypeToStr is not found")
     return (<const char* (*)(cusolverdxTraitType) noexcept nogil>__cusolverdxTraitTypeToStr)(
         trait)
+
+
+cdef commondxStatusType _cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateTensor
+    _check_or_init_mathdx()
+    if __cublasdxCreateTensor == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateTensor is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxTensorType, cublasdxTensor*) noexcept nogil>__cublasdxCreateTensor)(
+        handle, tensor_type, tensor)
+
+
+cdef commondxStatusType _cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxMakeTensorLike
+    _check_or_init_mathdx()
+    if __cublasdxMakeTensorLike == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxMakeTensorLike is not found")
+    return (<commondxStatusType (*)(cublasdxTensor, commondxValueType, cublasdxTensor*) noexcept nogil>__cublasdxMakeTensorLike)(
+        input, value_type, output)
+
+
+cdef commondxStatusType _cublasdxDestroyTensorNew(cublasdxTensor tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxDestroyTensor
+    _check_or_init_mathdx()
+    if __cublasdxDestroyTensor == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxDestroyTensor is not found")
+    return (<commondxStatusType (*)(cublasdxTensor) noexcept nogil>__cublasdxDestroyTensor)(
+        tensor)
+
+
+cdef commondxStatusType _cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateDeviceFunction
+    _check_or_init_mathdx()
+    if __cublasdxCreateDeviceFunction == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateDeviceFunction is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxDeviceFunctionType, size_t, const cublasdxTensor*, cublasdxDeviceFunction*) noexcept nogil>__cublasdxCreateDeviceFunction)(
+        handle, device_function_type, count, array, device_function)
+
+
+cdef commondxStatusType _cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxDestroyDeviceFunction
+    _check_or_init_mathdx()
+    if __cublasdxDestroyDeviceFunction == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxDestroyDeviceFunction is not found")
+    return (<commondxStatusType (*)(cublasdxDeviceFunction) noexcept nogil>__cublasdxDestroyDeviceFunction)(
+        device_function)
+
+cdef commondxStatusType _cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxFinalizeTensors
+    _check_or_init_mathdx()
+    if __cublasdxFinalizeTensors == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxFinalizeTensors is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, size_t, const cublasdxTensor*) noexcept nogil>__cublasdxFinalizeTensors)(
+        handle, count, array)

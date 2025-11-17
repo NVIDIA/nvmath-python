@@ -1,80 +1,83 @@
-import _cython_3_1_3
+import _cython_3_1_4
 import enum
 from typing import Any, Callable, ClassVar
 
 __pyx_capi__: dict
 __test__: dict
-check_status: _cython_3_1_3.cython_function_or_method
-commondx_create_code: _cython_3_1_3.cython_function_or_method
-commondx_destroy_code: _cython_3_1_3.cython_function_or_method
-commondx_get_code_ltoir: _cython_3_1_3.cython_function_or_method
-commondx_get_code_ltoir_size: _cython_3_1_3.cython_function_or_method
-commondx_get_code_ltoir_sizes: _cython_3_1_3.cython_function_or_method
-commondx_get_code_ltoirs: _cython_3_1_3.cython_function_or_method
-commondx_get_code_num_ltoirs: _cython_3_1_3.cython_function_or_method
-commondx_get_code_option_int64: _cython_3_1_3.cython_function_or_method
-commondx_get_code_options_int64s: _cython_3_1_3.cython_function_or_method
-commondx_set_code_option_int64: _cython_3_1_3.cython_function_or_method
-commondx_set_code_option_str: _cython_3_1_3.cython_function_or_method
-commondx_status_to_str: _cython_3_1_3.cython_function_or_method
-cublasdx_bind_device_function: _cython_3_1_3.cython_function_or_method
-cublasdx_bind_tensor: _cython_3_1_3.cython_function_or_method
-cublasdx_create_descriptor: _cython_3_1_3.cython_function_or_method
-cublasdx_destroy_descriptor: _cython_3_1_3.cython_function_or_method
-cublasdx_finalize_code: _cython_3_1_3.cython_function_or_method
-cublasdx_finalize_device_functions: _cython_3_1_3.cython_function_or_method
-cublasdx_finalize_tensors: _cython_3_1_3.cython_function_or_method
-cublasdx_get_device_function_trait_str: _cython_3_1_3.cython_function_or_method
-cublasdx_get_device_function_trait_str_size: _cython_3_1_3.cython_function_or_method
-cublasdx_get_ltoir: _cython_3_1_3.cython_function_or_method
-cublasdx_get_ltoir_size: _cython_3_1_3.cython_function_or_method
-cublasdx_get_tensor_trait_int64: _cython_3_1_3.cython_function_or_method
-cublasdx_get_tensor_trait_str: _cython_3_1_3.cython_function_or_method
-cublasdx_get_tensor_trait_str_size: _cython_3_1_3.cython_function_or_method
-cublasdx_get_trait_int64: _cython_3_1_3.cython_function_or_method
-cublasdx_get_trait_int64s: _cython_3_1_3.cython_function_or_method
-cublasdx_get_trait_str: _cython_3_1_3.cython_function_or_method
-cublasdx_get_trait_str_size: _cython_3_1_3.cython_function_or_method
-cublasdx_operator_type_to_str: _cython_3_1_3.cython_function_or_method
-cublasdx_set_operator_int64: _cython_3_1_3.cython_function_or_method
-cublasdx_set_operator_int64s: _cython_3_1_3.cython_function_or_method
-cublasdx_set_option_str: _cython_3_1_3.cython_function_or_method
-cublasdx_set_tensor_option_int64: _cython_3_1_3.cython_function_or_method
-cublasdx_trait_type_to_str: _cython_3_1_3.cython_function_or_method
-cufftdx_create_descriptor: _cython_3_1_3.cython_function_or_method
-cufftdx_destroy_descriptor: _cython_3_1_3.cython_function_or_method
-cufftdx_finalize_code: _cython_3_1_3.cython_function_or_method
-cufftdx_get_knob_int64s: _cython_3_1_3.cython_function_or_method
-cufftdx_get_knob_int64size: _cython_3_1_3.cython_function_or_method
-cufftdx_get_ltoir: _cython_3_1_3.cython_function_or_method
-cufftdx_get_ltoir_size: _cython_3_1_3.cython_function_or_method
-cufftdx_get_trait_commondx_data_type: _cython_3_1_3.cython_function_or_method
-cufftdx_get_trait_int64: _cython_3_1_3.cython_function_or_method
-cufftdx_get_trait_int64s: _cython_3_1_3.cython_function_or_method
-cufftdx_get_trait_str: _cython_3_1_3.cython_function_or_method
-cufftdx_get_trait_str_size: _cython_3_1_3.cython_function_or_method
-cufftdx_operator_type_to_str: _cython_3_1_3.cython_function_or_method
-cufftdx_set_operator_int64: _cython_3_1_3.cython_function_or_method
-cufftdx_set_operator_int64s: _cython_3_1_3.cython_function_or_method
-cufftdx_set_option_str: _cython_3_1_3.cython_function_or_method
-cufftdx_trait_type_to_str: _cython_3_1_3.cython_function_or_method
-cusolverdx_create_descriptor: _cython_3_1_3.cython_function_or_method
-cusolverdx_destroy_descriptor: _cython_3_1_3.cython_function_or_method
-cusolverdx_finalize_code: _cython_3_1_3.cython_function_or_method
-cusolverdx_get_ltoir: _cython_3_1_3.cython_function_or_method
-cusolverdx_get_ltoir_size: _cython_3_1_3.cython_function_or_method
-cusolverdx_get_trait_int64: _cython_3_1_3.cython_function_or_method
-cusolverdx_get_trait_str: _cython_3_1_3.cython_function_or_method
-cusolverdx_get_trait_str_size: _cython_3_1_3.cython_function_or_method
-cusolverdx_get_universal_fatbin: _cython_3_1_3.cython_function_or_method
-cusolverdx_get_universal_fatbin_size: _cython_3_1_3.cython_function_or_method
-cusolverdx_operator_type_to_str: _cython_3_1_3.cython_function_or_method
-cusolverdx_set_operator_int64: _cython_3_1_3.cython_function_or_method
-cusolverdx_set_operator_int64s: _cython_3_1_3.cython_function_or_method
-cusolverdx_set_option_str: _cython_3_1_3.cython_function_or_method
-cusolverdx_trait_type_to_str: _cython_3_1_3.cython_function_or_method
-get_version: _cython_3_1_3.cython_function_or_method
-get_version_ex: _cython_3_1_3.cython_function_or_method
+check_status: _cython_3_1_4.cython_function_or_method
+commondx_create_code: _cython_3_1_4.cython_function_or_method
+commondx_destroy_code: _cython_3_1_4.cython_function_or_method
+commondx_get_code_ltoir: _cython_3_1_4.cython_function_or_method
+commondx_get_code_ltoir_size: _cython_3_1_4.cython_function_or_method
+commondx_get_code_ltoir_sizes: _cython_3_1_4.cython_function_or_method
+commondx_get_code_ltoirs: _cython_3_1_4.cython_function_or_method
+commondx_get_code_num_ltoirs: _cython_3_1_4.cython_function_or_method
+commondx_get_code_option_int64: _cython_3_1_4.cython_function_or_method
+commondx_get_code_options_int64s: _cython_3_1_4.cython_function_or_method
+commondx_set_code_option_int64: _cython_3_1_4.cython_function_or_method
+commondx_set_code_option_str: _cython_3_1_4.cython_function_or_method
+commondx_status_to_str: _cython_3_1_4.cython_function_or_method
+cublasdx_create_descriptor: _cython_3_1_4.cython_function_or_method
+cublasdx_create_device_function: _cython_3_1_4.cython_function_or_method
+cublasdx_create_tensor: _cython_3_1_4.cython_function_or_method
+cublasdx_destroy_descriptor: _cython_3_1_4.cython_function_or_method
+cublasdx_destroy_device_function: _cython_3_1_4.cython_function_or_method
+cublasdx_destroy_tensor: _cython_3_1_4.cython_function_or_method
+cublasdx_finalize_code: _cython_3_1_4.cython_function_or_method
+cublasdx_finalize_device_functions: _cython_3_1_4.cython_function_or_method
+cublasdx_finalize_tensors: _cython_3_1_4.cython_function_or_method
+cublasdx_get_device_function_trait_str: _cython_3_1_4.cython_function_or_method
+cublasdx_get_device_function_trait_str_size: _cython_3_1_4.cython_function_or_method
+cublasdx_get_ltoir: _cython_3_1_4.cython_function_or_method
+cublasdx_get_ltoir_size: _cython_3_1_4.cython_function_or_method
+cublasdx_get_tensor_trait_int64: _cython_3_1_4.cython_function_or_method
+cublasdx_get_tensor_trait_str: _cython_3_1_4.cython_function_or_method
+cublasdx_get_tensor_trait_str_size: _cython_3_1_4.cython_function_or_method
+cublasdx_get_trait_int64: _cython_3_1_4.cython_function_or_method
+cublasdx_get_trait_int64s: _cython_3_1_4.cython_function_or_method
+cublasdx_get_trait_str: _cython_3_1_4.cython_function_or_method
+cublasdx_get_trait_str_size: _cython_3_1_4.cython_function_or_method
+cublasdx_make_tensor_like: _cython_3_1_4.cython_function_or_method
+cublasdx_operator_type_to_str: _cython_3_1_4.cython_function_or_method
+cublasdx_set_operator_int64: _cython_3_1_4.cython_function_or_method
+cublasdx_set_operator_int64s: _cython_3_1_4.cython_function_or_method
+cublasdx_set_option_str: _cython_3_1_4.cython_function_or_method
+cublasdx_set_tensor_option_int64: _cython_3_1_4.cython_function_or_method
+cublasdx_trait_type_to_str: _cython_3_1_4.cython_function_or_method
+cufftdx_create_descriptor: _cython_3_1_4.cython_function_or_method
+cufftdx_destroy_descriptor: _cython_3_1_4.cython_function_or_method
+cufftdx_finalize_code: _cython_3_1_4.cython_function_or_method
+cufftdx_get_knob_int64s: _cython_3_1_4.cython_function_or_method
+cufftdx_get_knob_int64size: _cython_3_1_4.cython_function_or_method
+cufftdx_get_ltoir: _cython_3_1_4.cython_function_or_method
+cufftdx_get_ltoir_size: _cython_3_1_4.cython_function_or_method
+cufftdx_get_trait_commondx_data_type: _cython_3_1_4.cython_function_or_method
+cufftdx_get_trait_int64: _cython_3_1_4.cython_function_or_method
+cufftdx_get_trait_int64s: _cython_3_1_4.cython_function_or_method
+cufftdx_get_trait_str: _cython_3_1_4.cython_function_or_method
+cufftdx_get_trait_str_size: _cython_3_1_4.cython_function_or_method
+cufftdx_operator_type_to_str: _cython_3_1_4.cython_function_or_method
+cufftdx_set_operator_int64: _cython_3_1_4.cython_function_or_method
+cufftdx_set_operator_int64s: _cython_3_1_4.cython_function_or_method
+cufftdx_set_option_str: _cython_3_1_4.cython_function_or_method
+cufftdx_trait_type_to_str: _cython_3_1_4.cython_function_or_method
+cusolverdx_create_descriptor: _cython_3_1_4.cython_function_or_method
+cusolverdx_destroy_descriptor: _cython_3_1_4.cython_function_or_method
+cusolverdx_finalize_code: _cython_3_1_4.cython_function_or_method
+cusolverdx_get_ltoir: _cython_3_1_4.cython_function_or_method
+cusolverdx_get_ltoir_size: _cython_3_1_4.cython_function_or_method
+cusolverdx_get_trait_int64: _cython_3_1_4.cython_function_or_method
+cusolverdx_get_trait_str: _cython_3_1_4.cython_function_or_method
+cusolverdx_get_trait_str_size: _cython_3_1_4.cython_function_or_method
+cusolverdx_get_universal_fatbin: _cython_3_1_4.cython_function_or_method
+cusolverdx_get_universal_fatbin_size: _cython_3_1_4.cython_function_or_method
+cusolverdx_operator_type_to_str: _cython_3_1_4.cython_function_or_method
+cusolverdx_set_operator_int64: _cython_3_1_4.cython_function_or_method
+cusolverdx_set_operator_int64s: _cython_3_1_4.cython_function_or_method
+cusolverdx_set_option_str: _cython_3_1_4.cython_function_or_method
+cusolverdx_trait_type_to_str: _cython_3_1_4.cython_function_or_method
+get_version: _cython_3_1_4.cython_function_or_method
+get_version_ex: _cython_3_1_4.cython_function_or_method
 
 class CommondxCodeContainer(enum.IntEnum):
     __new__: ClassVar[Callable] = ...
@@ -244,7 +247,6 @@ class CublasdxDeviceFunctionOption(enum.IntEnum):
 
 class CublasdxDeviceFunctionTrait(enum.IntEnum):
     __new__: ClassVar[Callable] = ...
-    NAME: ClassVar[CublasdxDeviceFunctionTrait] = ...
     SYMBOL: ClassVar[CublasdxDeviceFunctionTrait] = ...
     _generate_next_value_: ClassVar[Callable] = ...
     _member_map_: ClassVar[dict] = ...
@@ -262,6 +264,12 @@ class CublasdxDeviceFunctionType(enum.IntEnum):
     COPY: ClassVar[CublasdxDeviceFunctionType] = ...
     COPY_WAIT: ClassVar[CublasdxDeviceFunctionType] = ...
     EXECUTE: ClassVar[CublasdxDeviceFunctionType] = ...
+    IS_INDEX_IN_BOUNDS: ClassVar[CublasdxDeviceFunctionType] = ...
+    IS_PREDICATED: ClassVar[CublasdxDeviceFunctionType] = ...
+    IS_THREAD_ACTIVE: ClassVar[CublasdxDeviceFunctionType] = ...
+    MAP_CRD2IDX: ClassVar[CublasdxDeviceFunctionType] = ...
+    MAP_IDX2CRD: ClassVar[CublasdxDeviceFunctionType] = ...
+    MAP_IDX2CRD_PARTITIONER: ClassVar[CublasdxDeviceFunctionType] = ...
     _generate_next_value_: ClassVar[Callable] = ...
     _member_map_: ClassVar[dict] = ...
     _member_names_: ClassVar[list] = ...
@@ -274,6 +282,20 @@ class CublasdxDeviceFunctionType(enum.IntEnum):
 class CublasdxFunction(enum.IntEnum):
     __new__: ClassVar[Callable] = ...
     MM: ClassVar[CublasdxFunction] = ...
+    _generate_next_value_: ClassVar[Callable] = ...
+    _member_map_: ClassVar[dict] = ...
+    _member_names_: ClassVar[list] = ...
+    _member_type_: ClassVar[type[int]] = ...
+    _unhashable_values_: ClassVar[list] = ...
+    _use_args_: ClassVar[bool] = ...
+    _value2member_map_: ClassVar[dict] = ...
+    def __format__(self, *args, **kwargs) -> str: ...
+
+class CublasdxMemorySpace(enum.IntEnum):
+    __new__: ClassVar[Callable] = ...
+    GMEM: ClassVar[CublasdxMemorySpace] = ...
+    RMEM: ClassVar[CublasdxMemorySpace] = ...
+    SMEM: ClassVar[CublasdxMemorySpace] = ...
     _generate_next_value_: ClassVar[Callable] = ...
     _member_map_: ClassVar[dict] = ...
     _member_names_: ClassVar[list] = ...
@@ -322,6 +344,8 @@ class CublasdxTensorOption(enum.IntEnum):
 class CublasdxTensorTrait(enum.IntEnum):
     __new__: ClassVar[Callable] = ...
     ALIGNMENT_BYTES: ClassVar[CublasdxTensorTrait] = ...
+    LOGICAL_SIZE: ClassVar[CublasdxTensorTrait] = ...
+    MEMORY_SPACE: ClassVar[CublasdxTensorTrait] = ...
     OPAQUE_NAME: ClassVar[CublasdxTensorTrait] = ...
     STORAGE_BYTES: ClassVar[CublasdxTensorTrait] = ...
     UID: ClassVar[CublasdxTensorTrait] = ...

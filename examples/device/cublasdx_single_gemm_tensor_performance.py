@@ -4,7 +4,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import mm_perf_GFlops, random_real
 from common_numba import time_numba
 from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_tensor
@@ -19,16 +19,13 @@ def main():
     data_type = "real"
     precision = np.float16
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=(precision, precision, precision),
         data_type=data_type,
         arrangement=("row_major", "col_major", "col_major"),
         execution="Block",
         block_size=block_size,
-        compiler="numba",
-        execute_api="tensors",
-        tensor_types=("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
     )
     grid_dim = 1
 
@@ -36,7 +33,7 @@ def main():
     b_size = MM.suggest_layout_smem_b().cosize
     c_size = MM.suggest_layout_rmem_c().cosize
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(a, b, c, alpha, beta, output, repeat):
         # We have same precision for all tensors
         smem = cuda.shared.array(shape=(0,), dtype=precision, alignment=16)

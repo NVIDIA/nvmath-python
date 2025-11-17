@@ -21,10 +21,6 @@ n = 8
 # Create a diagonally dominant random CSR matrix.
 a = torch.rand(n, n) + torch.diag(torch.tensor([10] * n))
 a = a.to_sparse_csr()
-# Note that torch uses int64 for index buffers, whereas cuDSS currently requires int32.
-a = torch.sparse_csr_tensor(
-    a.crow_indices().to(dtype=torch.int32), a.col_indices().to(dtype=torch.int32), a.values(), size=a.size()
-)
 
 # Create the RHS, which can be a matrix or vector in column-major layout.
 b = torch.ones(2, n).T

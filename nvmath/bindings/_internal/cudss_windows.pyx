@@ -2,27 +2,83 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.5.0. Do not modify it directly.
+# This code was automatically generated with version 0.7.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
 import os
 import site
-
-import win32api
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
+from libc.stddef cimport wchar_t
+from libc.stdint cimport uintptr_t
+from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
+
+# You must 'from .utils import NotSupportedError' before using this template
+
+cdef extern from "windows.h" nogil:
+    ctypedef void* HMODULE
+    ctypedef void* HANDLE
+    ctypedef void* FARPROC
+    ctypedef unsigned long DWORD
+    ctypedef const wchar_t *LPCWSTR
+    ctypedef const char *LPCSTR
+
+    cdef DWORD LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+    cdef DWORD LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+    cdef DWORD LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+
+    HMODULE _LoadLibraryExW "LoadLibraryExW"(
+        LPCWSTR lpLibFileName,
+        HANDLE hFile,
+        DWORD dwFlags
+    )
+
+    FARPROC _GetProcAddress "GetProcAddress"(HMODULE hModule, LPCSTR lpProcName)
+
+cdef inline uintptr_t LoadLibraryExW(str path, HANDLE hFile, DWORD dwFlags):
+    cdef uintptr_t result
+    cdef wchar_t* wpath = PyUnicode_AsWideCharString(path, NULL)
+    with nogil:
+        result = <uintptr_t>_LoadLibraryExW(
+            wpath,
+            hFile,
+            dwFlags
+        )
+    PyMem_Free(wpath)
+    return result
+
+cdef inline void *GetProcAddress(uintptr_t hModule, const char* lpProcName) nogil:
+    return _GetProcAddress(<HMODULE>hModule, lpProcName)
+
+cdef int get_cuda_version():
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = LoadLibraryExW("nvcuda.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)
+    if handle == 0:
+        raise NotSupportedError('CUDA driver is not found')
+    cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in nvcuda.dll')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
+
 
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
-LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cudss_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cudssConfigSet = NULL
 cdef void* __cudssConfigGet = NULL
@@ -37,6 +93,7 @@ cdef void* __cudssConfigDestroy = NULL
 cdef void* __cudssDataCreate = NULL
 cdef void* __cudssDataDestroy = NULL
 cdef void* __cudssCreate = NULL
+cdef void* __cudssCreateMg = NULL
 cdef void* __cudssDestroy = NULL
 cdef void* __cudssGetProperty = NULL
 cdef void* __cudssMatrixCreateDn = NULL
@@ -53,6 +110,8 @@ cdef void* __cudssMatrixGetBatchCsr = NULL
 cdef void* __cudssMatrixSetBatchValues = NULL
 cdef void* __cudssMatrixSetBatchCsrPointers = NULL
 cdef void* __cudssMatrixGetFormat = NULL
+cdef void* __cudssMatrixSetDistributionRow1d = NULL
+cdef void* __cudssMatrixGetDistributionRow1d = NULL
 cdef void* __cudssGetDeviceMemHandler = NULL
 cdef void* __cudssSetDeviceMemHandler = NULL
 
@@ -71,199 +130,115 @@ cdef int _check_or_init_cudss() except -1 nogil:
     if __py_cudss_init:
         return 0
 
-    with gil:
+    with gil, __symbol_lock:
         # Load library
         handle = <intptr_t>load_library()
 
         # Load function
         global __cudssConfigSet
-        try:
-            __cudssConfigSet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssConfigSet')
-        except:
-            pass
+        __cudssConfigSet = GetProcAddress(handle, 'cudssConfigSet')
 
         global __cudssConfigGet
-        try:
-            __cudssConfigGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssConfigGet')
-        except:
-            pass
+        __cudssConfigGet = GetProcAddress(handle, 'cudssConfigGet')
 
         global __cudssDataSet
-        try:
-            __cudssDataSet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssDataSet')
-        except:
-            pass
+        __cudssDataSet = GetProcAddress(handle, 'cudssDataSet')
 
         global __cudssDataGet
-        try:
-            __cudssDataGet = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssDataGet')
-        except:
-            pass
+        __cudssDataGet = GetProcAddress(handle, 'cudssDataGet')
 
         global __cudssExecute
-        try:
-            __cudssExecute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssExecute')
-        except:
-            pass
+        __cudssExecute = GetProcAddress(handle, 'cudssExecute')
 
         global __cudssSetStream
-        try:
-            __cudssSetStream = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssSetStream')
-        except:
-            pass
+        __cudssSetStream = GetProcAddress(handle, 'cudssSetStream')
 
         global __cudssSetCommLayer
-        try:
-            __cudssSetCommLayer = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssSetCommLayer')
-        except:
-            pass
+        __cudssSetCommLayer = GetProcAddress(handle, 'cudssSetCommLayer')
 
         global __cudssSetThreadingLayer
-        try:
-            __cudssSetThreadingLayer = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssSetThreadingLayer')
-        except:
-            pass
+        __cudssSetThreadingLayer = GetProcAddress(handle, 'cudssSetThreadingLayer')
 
         global __cudssConfigCreate
-        try:
-            __cudssConfigCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssConfigCreate')
-        except:
-            pass
+        __cudssConfigCreate = GetProcAddress(handle, 'cudssConfigCreate')
 
         global __cudssConfigDestroy
-        try:
-            __cudssConfigDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssConfigDestroy')
-        except:
-            pass
+        __cudssConfigDestroy = GetProcAddress(handle, 'cudssConfigDestroy')
 
         global __cudssDataCreate
-        try:
-            __cudssDataCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssDataCreate')
-        except:
-            pass
+        __cudssDataCreate = GetProcAddress(handle, 'cudssDataCreate')
 
         global __cudssDataDestroy
-        try:
-            __cudssDataDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssDataDestroy')
-        except:
-            pass
+        __cudssDataDestroy = GetProcAddress(handle, 'cudssDataDestroy')
 
         global __cudssCreate
-        try:
-            __cudssCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssCreate')
-        except:
-            pass
+        __cudssCreate = GetProcAddress(handle, 'cudssCreate')
+
+        global __cudssCreateMg
+        __cudssCreateMg = GetProcAddress(handle, 'cudssCreateMg')
 
         global __cudssDestroy
-        try:
-            __cudssDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssDestroy')
-        except:
-            pass
+        __cudssDestroy = GetProcAddress(handle, 'cudssDestroy')
 
         global __cudssGetProperty
-        try:
-            __cudssGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssGetProperty')
-        except:
-            pass
+        __cudssGetProperty = GetProcAddress(handle, 'cudssGetProperty')
 
         global __cudssMatrixCreateDn
-        try:
-            __cudssMatrixCreateDn = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixCreateDn')
-        except:
-            pass
+        __cudssMatrixCreateDn = GetProcAddress(handle, 'cudssMatrixCreateDn')
 
         global __cudssMatrixCreateCsr
-        try:
-            __cudssMatrixCreateCsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixCreateCsr')
-        except:
-            pass
+        __cudssMatrixCreateCsr = GetProcAddress(handle, 'cudssMatrixCreateCsr')
 
         global __cudssMatrixCreateBatchDn
-        try:
-            __cudssMatrixCreateBatchDn = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixCreateBatchDn')
-        except:
-            pass
+        __cudssMatrixCreateBatchDn = GetProcAddress(handle, 'cudssMatrixCreateBatchDn')
 
         global __cudssMatrixCreateBatchCsr
-        try:
-            __cudssMatrixCreateBatchCsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixCreateBatchCsr')
-        except:
-            pass
+        __cudssMatrixCreateBatchCsr = GetProcAddress(handle, 'cudssMatrixCreateBatchCsr')
 
         global __cudssMatrixDestroy
-        try:
-            __cudssMatrixDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixDestroy')
-        except:
-            pass
+        __cudssMatrixDestroy = GetProcAddress(handle, 'cudssMatrixDestroy')
 
         global __cudssMatrixGetDn
-        try:
-            __cudssMatrixGetDn = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixGetDn')
-        except:
-            pass
+        __cudssMatrixGetDn = GetProcAddress(handle, 'cudssMatrixGetDn')
 
         global __cudssMatrixGetCsr
-        try:
-            __cudssMatrixGetCsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixGetCsr')
-        except:
-            pass
+        __cudssMatrixGetCsr = GetProcAddress(handle, 'cudssMatrixGetCsr')
 
         global __cudssMatrixSetValues
-        try:
-            __cudssMatrixSetValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixSetValues')
-        except:
-            pass
+        __cudssMatrixSetValues = GetProcAddress(handle, 'cudssMatrixSetValues')
 
         global __cudssMatrixSetCsrPointers
-        try:
-            __cudssMatrixSetCsrPointers = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixSetCsrPointers')
-        except:
-            pass
+        __cudssMatrixSetCsrPointers = GetProcAddress(handle, 'cudssMatrixSetCsrPointers')
 
         global __cudssMatrixGetBatchDn
-        try:
-            __cudssMatrixGetBatchDn = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixGetBatchDn')
-        except:
-            pass
+        __cudssMatrixGetBatchDn = GetProcAddress(handle, 'cudssMatrixGetBatchDn')
 
         global __cudssMatrixGetBatchCsr
-        try:
-            __cudssMatrixGetBatchCsr = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixGetBatchCsr')
-        except:
-            pass
+        __cudssMatrixGetBatchCsr = GetProcAddress(handle, 'cudssMatrixGetBatchCsr')
 
         global __cudssMatrixSetBatchValues
-        try:
-            __cudssMatrixSetBatchValues = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixSetBatchValues')
-        except:
-            pass
+        __cudssMatrixSetBatchValues = GetProcAddress(handle, 'cudssMatrixSetBatchValues')
 
         global __cudssMatrixSetBatchCsrPointers
-        try:
-            __cudssMatrixSetBatchCsrPointers = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixSetBatchCsrPointers')
-        except:
-            pass
+        __cudssMatrixSetBatchCsrPointers = GetProcAddress(handle, 'cudssMatrixSetBatchCsrPointers')
 
         global __cudssMatrixGetFormat
-        try:
-            __cudssMatrixGetFormat = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssMatrixGetFormat')
-        except:
-            pass
+        __cudssMatrixGetFormat = GetProcAddress(handle, 'cudssMatrixGetFormat')
+
+        global __cudssMatrixSetDistributionRow1d
+        __cudssMatrixSetDistributionRow1d = GetProcAddress(handle, 'cudssMatrixSetDistributionRow1d')
+
+        global __cudssMatrixGetDistributionRow1d
+        __cudssMatrixGetDistributionRow1d = GetProcAddress(handle, 'cudssMatrixGetDistributionRow1d')
 
         global __cudssGetDeviceMemHandler
-        try:
-            __cudssGetDeviceMemHandler = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssGetDeviceMemHandler')
-        except:
-            pass
+        __cudssGetDeviceMemHandler = GetProcAddress(handle, 'cudssGetDeviceMemHandler')
 
         global __cudssSetDeviceMemHandler
-        try:
-            __cudssSetDeviceMemHandler = <void*><intptr_t>win32api.GetProcAddress(handle, 'cudssSetDeviceMemHandler')
-        except:
-            pass
+        __cudssSetDeviceMemHandler = GetProcAddress(handle, 'cudssSetDeviceMemHandler')
 
-    __py_cudss_init = True
-    return 0
+        __py_cudss_init = True
+        return 0
 
 
 cdef dict func_ptrs = None
@@ -316,6 +291,9 @@ cpdef dict _inspect_function_pointers():
     global __cudssCreate
     data["__cudssCreate"] = <intptr_t>__cudssCreate
 
+    global __cudssCreateMg
+    data["__cudssCreateMg"] = <intptr_t>__cudssCreateMg
+
     global __cudssDestroy
     data["__cudssDestroy"] = <intptr_t>__cudssDestroy
 
@@ -363,6 +341,12 @@ cpdef dict _inspect_function_pointers():
 
     global __cudssMatrixGetFormat
     data["__cudssMatrixGetFormat"] = <intptr_t>__cudssMatrixGetFormat
+
+    global __cudssMatrixSetDistributionRow1d
+    data["__cudssMatrixSetDistributionRow1d"] = <intptr_t>__cudssMatrixSetDistributionRow1d
+
+    global __cudssMatrixGetDistributionRow1d
+    data["__cudssMatrixGetDistributionRow1d"] = <intptr_t>__cudssMatrixGetDistributionRow1d
 
     global __cudssGetDeviceMemHandler
     data["__cudssGetDeviceMemHandler"] = <intptr_t>__cudssGetDeviceMemHandler
@@ -425,13 +409,13 @@ cdef cudssStatus_t _cudssDataGet(cudssHandle_t handle, cudssData_t data, cudssDa
         handle, data, param, value, sizeInBytes, sizeWritten)
 
 
-cdef cudssStatus_t _cudssExecute(cudssHandle_t handle, cudssPhase_t phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+cdef cudssStatus_t _cudssExecute(cudssHandle_t handle, int phase, cudssConfig_t solverConfig, cudssData_t solverData, cudssMatrix_t inputMatrix, cudssMatrix_t solution, cudssMatrix_t rhs) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cudssExecute
     _check_or_init_cudss()
     if __cudssExecute == NULL:
         with gil:
             raise FunctionNotFoundError("function cudssExecute is not found")
-    return (<cudssStatus_t (*)(cudssHandle_t, cudssPhase_t, cudssConfig_t, cudssData_t, cudssMatrix_t, cudssMatrix_t, cudssMatrix_t) noexcept nogil>__cudssExecute)(
+    return (<cudssStatus_t (*)(cudssHandle_t, int, cudssConfig_t, cudssData_t, cudssMatrix_t, cudssMatrix_t, cudssMatrix_t) noexcept nogil>__cudssExecute)(
         handle, phase, solverConfig, solverData, inputMatrix, solution, rhs)
 
 
@@ -513,6 +497,16 @@ cdef cudssStatus_t _cudssCreate(cudssHandle_t* handle) except?_CUDSSSTATUS_T_INT
             raise FunctionNotFoundError("function cudssCreate is not found")
     return (<cudssStatus_t (*)(cudssHandle_t*) noexcept nogil>__cudssCreate)(
         handle)
+
+
+cdef cudssStatus_t _cudssCreateMg(cudssHandle_t* handle_pt, int device_count, int* device_indices) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cudssCreateMg
+    _check_or_init_cudss()
+    if __cudssCreateMg == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cudssCreateMg is not found")
+    return (<cudssStatus_t (*)(cudssHandle_t*, int, int*) noexcept nogil>__cudssCreateMg)(
+        handle_pt, device_count, device_indices)
 
 
 cdef cudssStatus_t _cudssDestroy(cudssHandle_t handle) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -673,6 +667,26 @@ cdef cudssStatus_t _cudssMatrixGetFormat(cudssMatrix_t matrix, int* format) exce
             raise FunctionNotFoundError("function cudssMatrixGetFormat is not found")
     return (<cudssStatus_t (*)(cudssMatrix_t, int*) noexcept nogil>__cudssMatrixGetFormat)(
         matrix, format)
+
+
+cdef cudssStatus_t _cudssMatrixSetDistributionRow1d(cudssMatrix_t matrix, int64_t first_row, int64_t last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cudssMatrixSetDistributionRow1d
+    _check_or_init_cudss()
+    if __cudssMatrixSetDistributionRow1d == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cudssMatrixSetDistributionRow1d is not found")
+    return (<cudssStatus_t (*)(cudssMatrix_t, int64_t, int64_t) noexcept nogil>__cudssMatrixSetDistributionRow1d)(
+        matrix, first_row, last_row)
+
+
+cdef cudssStatus_t _cudssMatrixGetDistributionRow1d(cudssMatrix_t matrix, int64_t* first_row, int64_t* last_row) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cudssMatrixGetDistributionRow1d
+    _check_or_init_cudss()
+    if __cudssMatrixGetDistributionRow1d == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cudssMatrixGetDistributionRow1d is not found")
+    return (<cudssStatus_t (*)(cudssMatrix_t, int64_t*, int64_t*) noexcept nogil>__cudssMatrixGetDistributionRow1d)(
+        matrix, first_row, last_row)
 
 
 cdef cudssStatus_t _cudssGetDeviceMemHandler(cudssHandle_t handle, cudssDeviceMemHandler_t* handler) except?_CUDSSSTATUS_T_INTERNAL_LOADING_ERROR nogil:

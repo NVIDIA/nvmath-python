@@ -16,7 +16,7 @@ try:
 except ModuleNotFoundError:
     cp = None
 
-from .utils import compare_tensors, random_torch_complex, sample_matrix, assert_tensors_equal, to_numpy, get_framework
+from ...utils import compare_tensors, random_torch_complex, sample_matrix, assert_tensors_equal, to_numpy, get_framework
 
 
 @pytest.mark.parametrize("framework", ("torch", "numpy/cupy"))

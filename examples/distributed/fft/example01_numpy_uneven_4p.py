@@ -21,13 +21,14 @@ import cuda.core.experimental
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Slab
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cuda.core.experimental.system.num_devices
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 if nranks != 4:
     raise RuntimeError("This example requires 4 processes")
@@ -49,7 +50,7 @@ a = nvmath.distributed.fft.allocate_operand(
     shape,  # local shape
     np,
     input_dtype=np.complex128,
-    distribution=nvmath.distributed.fft.Slab.X,
+    distribution=Slab.X,
     fft_type="C2C",
 )
 
@@ -59,7 +60,7 @@ a[:] = np.random.rand(*shape) + 1j * np.random.rand(*shape)
 # Forward FFT.
 # In this example, the forward FFT operand is distributed according to Slab.X distribution.
 # With reshape=False, the FFT result will be distributed according to Slab.Y distribution.
-b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False})
+b = nvmath.distributed.fft.fft(a, distribution=Slab.X, options={"reshape": False})
 
 # Distributed FFT performs computations in-place. The result is stored in the same
 # buffer as operand a. Note, however, that operand b has a different shape (due
@@ -72,7 +73,7 @@ if rank == 0:
 # Recall from previous transform that the inverse FFT operand is distributed according to
 # Slab.Y. With reshape=False, the inverse FFT result will be distributed according to
 # Slab.X distribution.
-c = nvmath.distributed.fft.ifft(b, distribution=nvmath.distributed.fft.Slab.Y, options={"reshape": False})
+c = nvmath.distributed.fft.ifft(b, distribution=Slab.Y, options={"reshape": False})
 
 # The shape of c is the same as a (due to Slab.X distribution). Once again, note that
 # a, b and c are sharing the same symmetric memory buffer (distributed FFT operations

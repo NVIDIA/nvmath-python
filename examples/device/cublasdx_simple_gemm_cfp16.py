@@ -8,7 +8,7 @@
 
 import numpy as np
 from numba import cuda
-from nvmath.device import matmul
+from nvmath.device import Matmul
 from common import random_complex
 from common_numba import load_to_shared, store_from_shared
 
@@ -16,16 +16,15 @@ from common_numba import load_to_shared, store_from_shared
 def main():
     m, n, k = 64, 64, 64
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=np.float16,
         data_type="complex",
         arrangement=("row_major", "col_major", "col_major"),
         execution="Block",
-        compiler="numba",
     )
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit
     def f(a, b, c, alpha, beta, output):
         # all value types are the same
         smem = cuda.shared.array(shape=(0,), dtype=MM.a_value_type)

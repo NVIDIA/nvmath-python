@@ -48,7 +48,21 @@ def detect_cuda_paths():
 
 def decide_lib_name(ext_name):
     # TODO: move the record of the supported lib list elsewhere?
-    for lib in ("cublas", "cusolver", "cufftMp", "cufft", "cusparse", "curand", "nvpl", "nvshmem", "mathdx", "cudss"):
+    for lib in (
+        "cublasMp",
+        "cublas",
+        "cusolver",
+        "cufftMp",
+        "cufft",
+        "cusparse",
+        "curand",
+        "nvpl",
+        "nvshmem",
+        "nccl",
+        "mathdx",
+        "cudss",
+        "cutensor",
+    ):
         if lib in ext_name:
             return lib
     else:

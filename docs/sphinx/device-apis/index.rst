@@ -10,8 +10,8 @@ nvmath-python Device APIs
 The device module of nvmath-python :mod:`nvmath.device` offers integration with NVIDIA's
 high-performance computing libraries through device APIs for cuFFTDx, cuBLASDx, and cuRAND.
 Detailed documentation for these libraries can be found at `cuFFTDx
-<https://docs.nvidia.com/cuda/cufftdx/1.2.0>`_, `cuBLASDx
-<https://docs.nvidia.com/cuda/cublasdx/0.1.1>`_, and `cuRAND device APIs
+<https://docs.nvidia.com/cuda/cufftdx/1.5.1>`_, `cuBLASDx
+<https://docs.nvidia.com/cuda/cublasdx/0.4.1>`_, and `cuRAND device APIs
 <https://docs.nvidia.com/cuda/curand/group__DEVICE.html#group__DEVICE>`_ respectively.
 Device APIs can only be called from CUDA device or kernel code, and execute on the GPU.
 
@@ -25,9 +25,9 @@ Users may take advantage of the device module via the two approaches below:
 
 .. note::
 
-   The :class:`~nvmath.device.fft` and :class:`~nvmath.device.matmul` device APIs in module
-   :mod:`nvmath.device` currently supports cuFFTDx 1.2.0 and cuBLASDx 0.1.1, also available
-   as part of MathDx 24.04. All functionalities from the C++ libraries are supported with
+   The :class:`~nvmath.device.FFT` and :class:`~nvmath.device.Matmul` device APIs in module
+   :mod:`nvmath.device` currently supports cuFFTDx 1.5.1 and cuBLASDx 0.4.1, also available
+   as part of MathDx 25.06. All functionalities from the C++ libraries are supported with
    the exception of cuFFTDx C++ APIs with a workspace argument, which are currently not
    available in nvmath-python.
 

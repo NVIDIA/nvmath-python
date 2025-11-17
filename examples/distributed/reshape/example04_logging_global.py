@@ -14,13 +14,14 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D problem size is (512, 512, 256), initially partitioned on the X axis
 # across processes.
@@ -40,10 +41,10 @@ with cp.cuda.Device(device_id):
 # Reshape the operand so that it is partitioned on the Y axis.
 
 x_offset = comm.scan(X // nranks, op=MPI.SUM)
-input_box = [(x_offset - X // nranks, 0, 0), (x_offset, Y, Z)]
+input_box = Box((x_offset - X // nranks, 0, 0), (x_offset, Y, Z))
 
 y_offset = comm.scan(Y // nranks, op=MPI.SUM)
-output_box = [(0, y_offset - Y // nranks, 0), (X, y_offset, Z)]
+output_box = Box((0, y_offset - Y // nranks, 0), (X, y_offset, Z))
 
 b = nvmath.distributed.reshape.reshape(a, input_box, output_box)
 

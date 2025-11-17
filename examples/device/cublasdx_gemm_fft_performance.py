@@ -9,7 +9,7 @@
 import numpy as np
 import cupy as cp
 from numba import cuda
-from nvmath.device import matmul, fft
+from nvmath.device import Matmul, FFT
 from common import random_complex
 from common_numba import load_to_shared, time_numba
 from common_cupy import time_cupy
@@ -25,7 +25,7 @@ def main():
     batch_size = 128 * 1024
     m, n, k = 8, 8, 8
 
-    FFT = fft(
+    fft = FFT(
         fft_type="c2c",
         size=m * n,
         precision=np.float32,
@@ -33,31 +33,23 @@ def main():
         elements_per_thread=2,
         ffts_per_block=1,
         execution="Block",
-        compiler="numba",
     )
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=np.float32,
         data_type="complex",
         arrangement=("col_major", "col_major", "col_major"),
         execution="Block",
-        block_dim=FFT.block_dim,
-        compiler="numba",
+        block_dim=fft.block_dim,
     )
 
-    elements_per_thread = FFT.elements_per_thread
-    ffts_per_block = FFT.ffts_per_block
-    complex_type = FFT.value_type
-    storage_size = FFT.storage_size
-    stride = FFT.stride
+    shared_memory_size = max(MM.get_shared_storage_size(), fft.shared_memory_size)
 
-    shared_memory_size = max(MM.get_shared_storage_size(), FFT.shared_memory_size)
-
-    @cuda.jit(link=MM.files + FFT.files)
+    @cuda.jit
     def kernel(a, b, c, alpha, beta, output):
-        thread_data = cuda.local.array(shape=(storage_size,), dtype=complex_type)
-        shared_mem = cuda.shared.array(shape=(0,), dtype=complex_type)
+        thread_data = cuda.local.array(shape=(fft.storage_size,), dtype=fft.value_type)
+        shared_mem = cuda.shared.array(shape=(0,), dtype=fft.value_type)
 
         batch = cuda.blockIdx.x
         local_fft_id = cuda.threadIdx.y
@@ -85,21 +77,21 @@ def main():
         cuda.syncthreads()
 
         # Load data into local array
-        index = local_fft_id * ffts_per_block + cuda.threadIdx.x
-        for i in range(elements_per_thread):
+        index = local_fft_id * fft.ffts_per_block + cuda.threadIdx.x
+        for i in range(fft.elements_per_thread):
             thread_data[i] = smem_c[index]
-            index += stride
+            index += fft.stride
 
         cuda.syncthreads()
 
         # Execute FFT
-        FFT(thread_data, shared_mem)
+        fft.execute(thread_data, shared_mem)
 
         # Transform and store data
-        index = local_fft_id * ffts_per_block + cuda.threadIdx.x
-        for i in range(elements_per_thread):
+        index = local_fft_id * fft.ffts_per_block + cuda.threadIdx.x
+        for i in range(fft.elements_per_thread):
             output[batch, index] = nb_transform(thread_data[i])
-            index += stride
+            index += fft.stride
 
     a = cp.array(random_complex((batch_size, *MM.a_dim), np.float32))
     b = cp.array(random_complex((batch_size, *MM.b_dim), np.float32))
@@ -108,8 +100,8 @@ def main():
 
     alpha = 2.0 + 0j
     beta = 3.0 + 0j
-    grid_dim = batch_size // ffts_per_block
-    block_dim = FFT.block_dim
+    grid_dim = batch_size // fft.ffts_per_block
+    block_dim = fft.block_dim
 
     kernel[grid_dim, block_dim, 0, shared_memory_size](a, b, c, alpha, beta, data_test)
     cuda.synchronize()

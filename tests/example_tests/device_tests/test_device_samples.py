@@ -22,6 +22,11 @@ class TestDeviceSamples:
             # spec = importlib.util.find_spec("cuda.cccl")
             # if spec is None:
             pytest.skip("Skipping test for cublasdx_fp64_emulation.py, requires cuda.cccl module")
+        if os.path.basename(sample) == "cublasdx_simple_partition.py":
+            from nvmath.bindings import mathdx
+
+            if mathdx.get_version_ex() < (0, 3, 0):
+                pytest.skip("Partition is supported on libmathdx 0.3.0+")
         if os.path.basename(sample) == "cublasdx_gemm_fft_fp16.py":
             pytest.skip("NVBug 5218000")
         run_sample(samples_path, sample, {"__name__": "__main__"})

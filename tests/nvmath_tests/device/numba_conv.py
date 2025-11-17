@@ -5,7 +5,7 @@
 import numpy as np
 from numba import cuda
 
-from nvmath.device import fft, float32x2_type, float64x2_type
+from nvmath.device import fft
 from .helpers import _TOLERANCE, l2error
 import cupy
 import time
@@ -60,9 +60,9 @@ class FFTConvNumba:
         assert FWD.ffts_per_block == ffts_per_block
         assert FWD.elements_per_thread == elements_per_thread
         if precision == np.float32:
-            assert complex_type == float32x2_type
+            assert complex_type == np.dtype(np.complex64)
         else:
-            assert complex_type == float64x2_type
+            assert complex_type == np.dtype(np.complex128)
         assert all(code.endswith(".ltoir") for code in FWD.files + INV.files)
 
         @cuda.jit(link=FWD.files + INV.files)

@@ -8,19 +8,22 @@ from collections import namedtuple
 from functools import lru_cache
 from typing import NamedTuple, Protocol
 from collections.abc import Sequence
+import weakref
 
 import numpy as np
 
 
-from .common import check_in, check_code_type
+from .common import check_in, check_sm
 from .common_backend import (
     EXECUTION_STR_TO_MATHDX,
     NP_TYPES_TO_MATHDX_PRECISION,
     NVARG_GEN_OPT_LTO,
     build_get_int_traits,
     build_get_str_trait,
+    get_isa_version,
+    get_lto,
 )
-from .common_cuda import CodeType, Dim3, ComputeCapability, ISAVersion
+from .common_cuda import Code, CodeType, Dim3, ComputeCapability, ISAVersion
 from .common_backend import DescriptorWrapper
 from .types import REAL_NP_TYPES, INT_NP_TYPES
 
@@ -149,14 +152,13 @@ class CublasdxTensors(NamedTuple):
     c: int
 
 
-class CublasdxTensorAPISymbols(NamedTuple):
-    copy_a: str
-    copy_b: str
-    copy_c: str
-    copy_c_back: str
-    clear_c: str
-    axpby: str
-    gemm: str
+class CublasdxTensorsResponse:
+    gmem: CublasdxTensors
+    target: CublasdxTensors
+
+    def __init__(self, gmem: CublasdxTensors, target: CublasdxTensors):
+        self.gmem = gmem
+        self.target = target
 
 
 MAX_ALIGNMENT = Alignment(16, 16, 16)
@@ -199,7 +201,7 @@ def validate(
     arrangement,
     alignment,
     block_dim,
-    code_type,
+    sm,
     function,
     leading_dimension,
     static_block_dim,
@@ -215,6 +217,7 @@ def validate(
             f"precision should be an instance of {Precision} or a 3-sequence, and individual fields "
             f"should be one of {_ACCEPTED_PRECISION}. Instead got precision = {precision}"
         )
+    check_sm(sm, "sm")
     check_in("data_type", data_type, ["real", "complex"])
     check_in("execution", execution, ["Block", "Thread"])
     check_in("function", function, ["MM"])
@@ -256,8 +259,6 @@ def validate(
             )
     else:
         raise ValueError(f"block_dim should be None, a Dim3 instance or 'suggested'; got block_dim = {block_dim}")
-    if code_type is not None:
-        check_code_type(code_type)
     if leading_dimension in (None, "suggested") or isinstance(leading_dimension, LeadingDimension):
         pass
     else:
@@ -325,11 +326,11 @@ def generate_MM(
     transpose_mode: TransposeMode | None,
     arrangement: Arrangement | None,
     alignment: Alignment | None,
-    code_type: CodeType | None,
+    sm: ComputeCapability,
     block_dim: Dim3 | None,
     static_block_dim: bool,
     execution: str,
-    leading_dimension: LeadingDimension | None,
+    leading_dimension: LeadingDimension | None = None,
     execute_api: str | None = None,
     tensor_types: tuple[str, str, str] | None = None,
 ):
@@ -341,6 +342,10 @@ def generate_MM(
     h = mathdx.cublasdx_create_descriptor()
 
     (m, n, k) = size
+
+    # TODO: remove once libmathdx supports it
+    if execute_api is None:
+        execute_api = "static_leading_dimensions"
 
     if execute_api is not None:
         mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.API, _BLAS_API_STR_TO_MATHDX[execute_api])
@@ -354,16 +359,13 @@ def generate_MM(
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.EXECUTION, EXECUTION_STR_TO_MATHDX[execution])
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.TYPE, _BLAS_TYPE_STR_TO_MATHDX[data_type])
 
+    mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.SM, sm.major * 100 + sm.minor * 10)
+
     if block_dim:
         mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.BLOCK_DIM, 3, block_dim)
 
     if static_block_dim:
         mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.STATIC_BLOCK_DIM, 1)
-
-    if code_type:
-        mathdx.cublasdx_set_operator_int64(
-            h, mathdx.CublasdxOperatorType.SM, code_type.cc.major * 100 + code_type.cc.minor * 10
-        )
 
     if leading_dimension:
         mathdx.cublasdx_set_operator_int64s(
@@ -416,14 +418,72 @@ def generate_code(handle, version: ComputeCapability, device_functions: tuple | 
 
 
 @lru_cache
-def generate_tensors(h, tensor_types, gmem_alignment: Alignment | None = None):
-    type_mem_a = mathdx.cublasdx_bind_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[0]])
-    type_mem_b = mathdx.cublasdx_bind_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[1]])
-    type_mem_c = mathdx.cublasdx_bind_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[2]])
+def generate_tensor(h: int, tensor_type: str, gmem_alignment: int | None = None) -> DescriptorWrapper:
+    tensor = mathdx.cublasdx_create_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_type])
 
-    gmem_a = mathdx.cublasdx_bind_tensor(h, mathdx.CublasdxTensorType.GMEM_A)
-    gmem_b = mathdx.cublasdx_bind_tensor(h, mathdx.CublasdxTensorType.GMEM_B)
-    gmem_c = mathdx.cublasdx_bind_tensor(h, mathdx.CublasdxTensorType.GMEM_C)
+    if gmem_alignment is not None:
+        try:
+            mathdx.cublasdx_set_tensor_option_int64(
+                tensor,
+                mathdx.CublasdxTensorOption.ALIGNMENT_BYTES,
+                gmem_alignment,
+            )
+        except Exception:
+            print(f"[WARN] Failed to set {tensor_type} tensor alignment {gmem_alignment}")
+
+    mathdx.cublasdx_finalize_tensors(h, 1, [tensor])
+
+    return DescriptorWrapper(tensor, mathdx.cublasdx_destroy_tensor)
+
+
+@lru_cache
+def get_tensor_traits(tensor: int) -> tuple[int, int, int]:
+    """Get tensor traits: (uid, logical_size, storage_bytes)"""
+    return (
+        int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.UID)),
+        int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.LOGICAL_SIZE))
+        if mathdx.get_version_ex() >= (0, 3, 0)
+        else 0,
+        int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.STORAGE_BYTES)),
+    )
+
+
+def generate_function_code(
+    MM_handler: int, function_type: mathdx.CublasdxDeviceFunctionType, args: Sequence[int], version: ISAVersion
+):
+    function_handler = mathdx.cublasdx_create_device_function(MM_handler, function_type, len(args), list(args))
+    symbol = get_str_device_trait(function_handler, mathdx.CublasdxDeviceFunctionTrait.SYMBOL)
+    code = generate_code(MM_handler, version, (function_handler,))
+
+    return code, symbol
+
+
+def get_function_code(
+    MM_handler: int,
+    function_type: mathdx.CublasdxDeviceFunctionType,
+    args: Sequence[int],
+    code_type: CodeType,
+):
+    code, symbol = generate_function_code(MM_handler, function_type, args, code_type.cc)
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+@lru_cache
+def generate_tensors(h, tensor_types, gmem_alignment: Alignment | None = None):
+    type_mem_a = mathdx.cublasdx_create_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[0]])
+    type_mem_b = mathdx.cublasdx_create_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[1]])
+    type_mem_c = mathdx.cublasdx_create_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[2]])
+
+    gmem_a = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.GMEM_A)
+    gmem_b = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.GMEM_B)
+    gmem_c = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.GMEM_C)
 
     if gmem_alignment:
         mathdx.cublasdx_set_tensor_option_int64(
@@ -456,58 +516,18 @@ def generate_tensors(h, tensor_types, gmem_alignment: Alignment | None = None):
     target_tensors = CublasdxTensors(type_mem_a, type_mem_b, type_mem_c)
     gmem_tensors = CublasdxTensors(gmem_a, gmem_b, gmem_c)
 
-    return gmem_tensors, target_tensors
+    resp = CublasdxTensorsResponse(gmem_tensors, target_tensors)
+
+    weakref.finalize(resp, destroy_tensors, resp.gmem)
+    weakref.finalize(resp, destroy_tensors, resp.target)
+
+    return resp
 
 
-@lru_cache
-def generate_code_tensors(
-    handle,
-    version: ISAVersion,
-    gmem_tensors: CublasdxTensors,
-    target_tensors: CublasdxTensors,
-    rmem_c: bool = False,
-):
-    copy_a = mathdx.cublasdx_bind_device_function(
-        handle, mathdx.CublasdxDeviceFunctionType.COPY, 2, [gmem_tensors.a, target_tensors.a]
-    )
-    copy_b = mathdx.cublasdx_bind_device_function(
-        handle, mathdx.CublasdxDeviceFunctionType.COPY, 2, [gmem_tensors.b, target_tensors.b]
-    )
-    copy_c = mathdx.cublasdx_bind_device_function(
-        handle, mathdx.CublasdxDeviceFunctionType.COPY, 2, [gmem_tensors.c, target_tensors.c]
-    )
-    copy_c_back = mathdx.cublasdx_bind_device_function(
-        handle, mathdx.CublasdxDeviceFunctionType.COPY, 2, [target_tensors.c, gmem_tensors.c]
-    )
-    if rmem_c:
-        clear_c_fn = mathdx.cublasdx_bind_device_function(
-            handle, mathdx.CublasdxDeviceFunctionType.CLEAR, 1, [target_tensors.c]
-        )
-        axpby_fn = mathdx.cublasdx_bind_device_function(
-            handle, mathdx.CublasdxDeviceFunctionType.AXPBY, 2, [target_tensors.c, target_tensors.c]
-        )
-    gemm = mathdx.cublasdx_bind_device_function(
-        handle, mathdx.CublasdxDeviceFunctionType.EXECUTE, 3, [target_tensors.a, target_tensors.b, target_tensors.c]
-    )
-
-    clear_c_sym = get_str_device_trait(clear_c_fn, mathdx.CublasdxDeviceFunctionTrait.SYMBOL) if rmem_c else ""
-    axpby_sm = get_str_device_trait(axpby_fn, mathdx.CublasdxDeviceFunctionTrait.SYMBOL) if rmem_c else ""
-
-    tensor_symbols = CublasdxTensorAPISymbols(
-        get_str_device_trait(copy_a, mathdx.CublasdxDeviceFunctionTrait.SYMBOL),
-        get_str_device_trait(copy_b, mathdx.CublasdxDeviceFunctionTrait.SYMBOL),
-        get_str_device_trait(copy_c, mathdx.CublasdxDeviceFunctionTrait.SYMBOL),
-        get_str_device_trait(copy_c_back, mathdx.CublasdxDeviceFunctionTrait.SYMBOL),
-        clear_c_sym,
-        axpby_sm,
-        get_str_device_trait(gemm, mathdx.CublasdxDeviceFunctionTrait.SYMBOL),
-    )
-
-    function_list = [copy_a, copy_b, copy_c, copy_c_back, gemm]
-    if rmem_c:
-        function_list += [clear_c_fn, axpby_fn]
-
-    return generate_code(handle, version, tuple(function_list)), tensor_symbols
+def destroy_tensors(tensors: CublasdxTensors):
+    mathdx.cublasdx_destroy_tensor(tensors.a)
+    mathdx.cublasdx_destroy_tensor(tensors.b)
+    mathdx.cublasdx_destroy_tensor(tensors.c)
 
 
 def generate_copy_wait_lto(compute_capability: ComputeCapability):
@@ -532,7 +552,7 @@ def generate_device_function_lto(compute_capability: ComputeCapability, function
     mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.BLOCK_DIM, 3, [32, 1, 1])
     mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.SIZE, 3, [1, 1, 1])
 
-    function = mathdx.cublasdx_bind_device_function(h, function_type, len(args), [*args])
+    function = mathdx.cublasdx_create_device_function(h, function_type, len(args), [*args])
     symbol = get_str_device_trait(function, mathdx.CublasdxDeviceFunctionTrait.SYMBOL)
 
     # Compile the device function to lto
@@ -547,6 +567,7 @@ def generate_device_function_lto(compute_capability: ComputeCapability, function
     mathdx.commondx_get_code_ltoir(code, lto_size, lto)
 
     mathdx.commondx_destroy_code(code)
+    mathdx.cublasdx_destroy_device_function(function)
     mathdx.cublasdx_destroy_descriptor(h)
 
     return symbol, bytes(lto)

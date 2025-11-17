@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 import numpy as np
 from numba import cuda, types
 
@@ -14,6 +15,13 @@ from nvmath.device import (
     float32x2_type,
     float16x2_type,
     float16x4_type,
+    complex32,
+    complex64,
+    complex128,
+    half2,
+    half4,
+    np_float16x2,
+    np_float16x4,
 )
 import pytest
 
@@ -189,4 +197,82 @@ def test_views_vector_load_store():
     assert "st.global.u64" not in ptx
 
     assert "ld.global.u16" in ptx
-    assert "ld.global.u16" in ptx
+    assert "st.global.u16" in ptx
+
+
+@pytest.mark.parametrize(
+    "dtype, expected_host_dtype, expected_alignment",
+    [
+        (complex32, np_float16x2, 4),
+        (complex64, np.complex64, 8),
+        (complex128, np.complex128, 16),
+        (half2, np_float16x2, 4),
+        (half4, np_float16x4, 8),
+    ],
+)
+def test_numba_type(dtype, expected_host_dtype, expected_alignment):
+    make_dtype = dtype.make
+
+    HOST_COMPLEX = inspect.isclass(expected_host_dtype) and issubclass(expected_host_dtype, np.complexfloating)
+    FOUR_ARGS = expected_host_dtype == np_float16x4
+
+    @cuda.jit
+    def kernel(a):
+        l = cuda.local.array(shape=(1,), dtype=dtype)
+        if FOUR_ARGS:
+            l[0] = make_dtype(3.14, 2.71, -1.0, 1.0)
+        else:
+            l[0] = make_dtype(3.14, 2.71)
+        if HOST_COMPLEX:
+            a[0] = l[0]
+        else:
+            a.view(dtype)[0] = l[0]
+
+    a = np.zeros(1, dtype=dtype)
+    assert a.dtype == expected_host_dtype
+
+    kernel[1, 1](a)
+
+    if HOST_COMPLEX:
+        assert a[0] == 3.14 + 2.71j
+    elif FOUR_ARGS:
+        assert np.allclose(a.view(np.float16), np.array([3.14, 2.71, -1.0, 1.0], dtype=np.float16))
+    else:
+        assert np.allclose(a.view(np.float16), np.array([3.14, 2.71], dtype=np.float16))
+
+
+@pytest.mark.parametrize(
+    "dtype, expected_alignment",
+    [
+        (complex32, 4),
+        (complex64, 8),
+        (complex128, 16),
+        (half2, 4),
+        (half4, 8),
+    ],
+)
+def test_numba_type_alignment(dtype, expected_alignment):
+    @cuda.jit
+    def copy(a, b):
+        av = a.view(dtype)
+        bv = b.view(dtype)
+        bv[0] = av[0]
+
+    a = np.zeros(1, dtype=dtype)
+    b = np.zeros(1, dtype=dtype)
+
+    copy[1, 1](a, b)
+
+    ptx = [v for k, v in copy.inspect_asm().items()]
+    assert len(ptx) == 1
+    ptx = ptx[0]
+
+    print(ptx)
+
+    if expected_alignment < 16:
+        expected_ld_st_inst = f"global.u{expected_alignment * 8}"
+    else:
+        expected_ld_st_inst = f"global.v2.u{expected_alignment * 4}"
+
+    assert "ld." + expected_ld_st_inst in ptx
+    assert "st." + expected_ld_st_inst in ptx

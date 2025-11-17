@@ -4,3 +4,4 @@
 
 from ._configuration import *  # noqa: F403
 from .fft import *  # noqa: F403
+from ..distribution import Slab as Slab

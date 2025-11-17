@@ -20,6 +20,15 @@ API Reference
    :toctree: generated/
 
    current_device_lto
+   Complex
+   Vector
+   complex32
+   complex64
+   complex128
+   np_float16x2
+   np_float16x4
+   half2
+   half4
    float16x2
    float16x4
    float32x2
@@ -35,5 +44,4 @@ API Reference
    Code
    CodeType
    ComputeCapability
-   CodeType
    Dim3

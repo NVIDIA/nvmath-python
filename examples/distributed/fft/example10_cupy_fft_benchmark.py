@@ -11,12 +11,13 @@ import cuda.core.experimental
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Slab
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cuda.core.experimental.system.num_devices
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (N, N, N)
 N = 512
@@ -32,7 +33,7 @@ a[:] = cp.random.rand(*shape, dtype=cp.float32) + 1j * cp.random.rand(*shape, dt
 print(f"[{rank}] The local operand shape = {a.shape}, with data type {dtype} running on {nranks} processes.")
 
 # Create the distributed FFT op, plan, and benchmark.
-with nvmath.distributed.fft.FFT(a, distribution=nvmath.distributed.fft.Slab.X, options={"reshape": False}) as fftobj:
+with nvmath.distributed.fft.FFT(a, distribution=Slab.X, options={"reshape": False}) as fftobj:
     fftobj.plan()
     b = cupyx.profiler.benchmark(fftobj.execute, n_repeat=10)
     print(f"[{rank}] {b}")

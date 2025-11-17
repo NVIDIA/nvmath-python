@@ -1,3 +1,0 @@
-cuda-bindings>=11.8.7,<12
-cuda-core==0.3.2 # last supported version for ctk11
-cupy-cuda11x

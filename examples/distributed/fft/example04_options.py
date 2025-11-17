@@ -19,13 +19,14 @@ import cuda.core.experimental
 from mpi4py import MPI
 
 import nvmath.distributed
+from nvmath.distributed.distribution import Slab
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cuda.core.experimental.system.num_devices
-nvmath.distributed.initialize(device_id, comm)
+nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (64, 256, 128).
 # In this example, the input data is distributed across processes according to
@@ -47,14 +48,14 @@ a = np.random.rand(*shape) + 1j * np.random.rand(*shape)
 
 # Alternative #1 for specifying options, using dataclass.
 options = nvmath.distributed.fft.FFTOptions(reshape=False)
-b = nvmath.distributed.fft.fft(a, distribution=nvmath.distributed.fft.Slab.X, options=options)
+b = nvmath.distributed.fft.fft(a, distribution=Slab.X, options=options)
 if rank == 0:
     print(f"Does the forward FFT result share the same distribution as the input ? {b.shape == a.shape}")
     print(f"Input type = {type(a)}, FFT output type = {type(b)}")
 
 # Alternative #2 for specifying options, using dict. The two alternatives are entirely
 # equivalent.
-c = nvmath.distributed.fft.ifft(b, distribution=nvmath.distributed.fft.Slab.Y, options={"reshape": False})
+c = nvmath.distributed.fft.ifft(b, distribution=Slab.Y, options={"reshape": False})
 if rank == 0:
     print(f"Does the inverse FFT result share the same distribution as the forward input ? {c.shape == a.shape}")
     print(f"Input type = {type(a)}, FFT output type = {type(b)}")

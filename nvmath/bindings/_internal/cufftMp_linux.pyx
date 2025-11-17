@@ -6,9 +6,12 @@
 
 from libc.stdint cimport intptr_t, uintptr_t
 
+import threading
+
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
+
 
 ###############################################################################
 # Extern
@@ -25,15 +28,33 @@ cdef extern from "<dlfcn.h>" nogil:
         RTLD_NOW
         RTLD_GLOBAL
         RTLD_LOCAL
-        RTLD_DEEPBIND
 
     const void* RTLD_DEFAULT 'RTLD_DEFAULT'
+
+cdef int get_cuda_version():
+    cdef void* handle = NULL
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = dlopen('libcuda.so.1', RTLD_NOW | RTLD_GLOBAL)
+    if handle == NULL:
+        err_msg = dlerror()
+        raise NotSupportedError(f'CUDA driver is not found ({err_msg.decode()})')
+    cuDriverGetVersion = dlsym(handle, "cuDriverGetVersion")
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in libcuda.so.1')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
+
+    return driver_ver
 
 
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cufftMp_init = False
 
 cdef void* __cufftPlan1d = NULL
@@ -115,394 +136,395 @@ cdef int _check_or_init_cufftMp() except -1 nogil:
     if __py_cufftMp_init:
         return 0
 
-    # Load function
     cdef void* handle = NULL
-    global __cufftPlan1d
-    if __cufftPlan1d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftPlan1d = dlsym(handle, 'cufftPlan1d')
-
-    global __cufftPlan2d
-    if __cufftPlan2d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftPlan2d = dlsym(handle, 'cufftPlan2d')
-
-    global __cufftPlan3d
-    if __cufftPlan3d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftPlan3d = dlsym(handle, 'cufftPlan3d')
-
-    global __cufftPlanMany
-    if __cufftPlanMany == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftPlanMany = dlsym(handle, 'cufftPlanMany')
-
-    global __cufftMakePlan1d
-    if __cufftMakePlan1d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMakePlan1d = dlsym(handle, 'cufftMakePlan1d')
-
-    global __cufftMakePlan2d
-    if __cufftMakePlan2d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMakePlan2d = dlsym(handle, 'cufftMakePlan2d')
-
-    global __cufftMakePlan3d
-    if __cufftMakePlan3d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMakePlan3d = dlsym(handle, 'cufftMakePlan3d')
-
-    global __cufftMakePlanMany
-    if __cufftMakePlanMany == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMakePlanMany = dlsym(handle, 'cufftMakePlanMany')
-
-    global __cufftMakePlanMany64
-    if __cufftMakePlanMany64 == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMakePlanMany64 = dlsym(handle, 'cufftMakePlanMany64')
-
-    global __cufftGetSizeMany64
-    if __cufftGetSizeMany64 == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetSizeMany64 = dlsym(handle, 'cufftGetSizeMany64')
-
-    global __cufftEstimate1d
-    if __cufftEstimate1d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftEstimate1d = dlsym(handle, 'cufftEstimate1d')
-
-    global __cufftEstimate2d
-    if __cufftEstimate2d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftEstimate2d = dlsym(handle, 'cufftEstimate2d')
-
-    global __cufftEstimate3d
-    if __cufftEstimate3d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftEstimate3d = dlsym(handle, 'cufftEstimate3d')
-
-    global __cufftEstimateMany
-    if __cufftEstimateMany == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftEstimateMany = dlsym(handle, 'cufftEstimateMany')
-
-    global __cufftCreate
-    if __cufftCreate == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftCreate = dlsym(handle, 'cufftCreate')
-
-    global __cufftGetSize1d
-    if __cufftGetSize1d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetSize1d = dlsym(handle, 'cufftGetSize1d')
-
-    global __cufftGetSize2d
-    if __cufftGetSize2d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetSize2d = dlsym(handle, 'cufftGetSize2d')
-
-    global __cufftGetSize3d
-    if __cufftGetSize3d == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetSize3d = dlsym(handle, 'cufftGetSize3d')
-
-    global __cufftGetSizeMany
-    if __cufftGetSizeMany == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetSizeMany = dlsym(handle, 'cufftGetSizeMany')
-
-    global __cufftGetSize
-    if __cufftGetSize == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetSize = dlsym(handle, 'cufftGetSize')
-
-    global __cufftSetWorkArea
-    if __cufftSetWorkArea == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftSetWorkArea = dlsym(handle, 'cufftSetWorkArea')
-
-    global __cufftSetAutoAllocation
-    if __cufftSetAutoAllocation == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftSetAutoAllocation = dlsym(handle, 'cufftSetAutoAllocation')
-
-    global __cufftExecC2C
-    if __cufftExecC2C == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftExecC2C = dlsym(handle, 'cufftExecC2C')
-
-    global __cufftExecR2C
-    if __cufftExecR2C == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftExecR2C = dlsym(handle, 'cufftExecR2C')
-
-    global __cufftExecC2R
-    if __cufftExecC2R == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftExecC2R = dlsym(handle, 'cufftExecC2R')
-
-    global __cufftExecZ2Z
-    if __cufftExecZ2Z == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftExecZ2Z = dlsym(handle, 'cufftExecZ2Z')
-
-    global __cufftExecD2Z
-    if __cufftExecD2Z == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftExecD2Z = dlsym(handle, 'cufftExecD2Z')
-
-    global __cufftExecZ2D
-    if __cufftExecZ2D == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftExecZ2D = dlsym(handle, 'cufftExecZ2D')
-
-    global __cufftSetStream
-    if __cufftSetStream == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftSetStream = dlsym(handle, 'cufftSetStream')
-
-    global __cufftDestroy
-    if __cufftDestroy == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftDestroy = dlsym(handle, 'cufftDestroy')
-
-    global __cufftGetVersion
-    if __cufftGetVersion == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetVersion = dlsym(handle, 'cufftGetVersion')
-
-    global __cufftGetProperty
-    if __cufftGetProperty == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetProperty = dlsym(handle, 'cufftGetProperty')
-
-    global __cufftSetPlanPropertyInt64
-    if __cufftSetPlanPropertyInt64 == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftSetPlanPropertyInt64 = dlsym(handle, 'cufftSetPlanPropertyInt64')
-
-    global __cufftGetPlanPropertyInt64
-    if __cufftGetPlanPropertyInt64 == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftGetPlanPropertyInt64 = dlsym(handle, 'cufftGetPlanPropertyInt64')
-
-    global __cufftResetPlanProperty
-    if __cufftResetPlanProperty == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftResetPlanProperty = dlsym(handle, 'cufftResetPlanProperty')
-
-    global __cufftXtSetGPUs
-    if __cufftXtSetGPUs == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtSetGPUs = dlsym(handle, 'cufftXtSetGPUs')
-
-    global __cufftXtMalloc
-    if __cufftXtMalloc == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtMalloc = dlsym(handle, 'cufftXtMalloc')
-
-    global __cufftXtMemcpy
-    if __cufftXtMemcpy == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtMemcpy = dlsym(handle, 'cufftXtMemcpy')
-
-    global __cufftXtFree
-    if __cufftXtFree == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtFree = dlsym(handle, 'cufftXtFree')
-
-    global __cufftXtSetWorkArea
-    if __cufftXtSetWorkArea == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtSetWorkArea = dlsym(handle, 'cufftXtSetWorkArea')
-
-    global __cufftXtExecDescriptorC2C
-    if __cufftXtExecDescriptorC2C == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExecDescriptorC2C = dlsym(handle, 'cufftXtExecDescriptorC2C')
-
-    global __cufftXtExecDescriptorR2C
-    if __cufftXtExecDescriptorR2C == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExecDescriptorR2C = dlsym(handle, 'cufftXtExecDescriptorR2C')
-
-    global __cufftXtExecDescriptorC2R
-    if __cufftXtExecDescriptorC2R == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExecDescriptorC2R = dlsym(handle, 'cufftXtExecDescriptorC2R')
-
-    global __cufftXtExecDescriptorZ2Z
-    if __cufftXtExecDescriptorZ2Z == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExecDescriptorZ2Z = dlsym(handle, 'cufftXtExecDescriptorZ2Z')
-
-    global __cufftXtExecDescriptorD2Z
-    if __cufftXtExecDescriptorD2Z == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExecDescriptorD2Z = dlsym(handle, 'cufftXtExecDescriptorD2Z')
-
-    global __cufftXtExecDescriptorZ2D
-    if __cufftXtExecDescriptorZ2D == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExecDescriptorZ2D = dlsym(handle, 'cufftXtExecDescriptorZ2D')
-
-    global __cufftXtQueryPlan
-    if __cufftXtQueryPlan == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtQueryPlan = dlsym(handle, 'cufftXtQueryPlan')
-
-    global __cufftXtClearCallback
-    if __cufftXtClearCallback == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtClearCallback = dlsym(handle, 'cufftXtClearCallback')
-
-    global __cufftXtSetCallbackSharedSize
-    if __cufftXtSetCallbackSharedSize == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtSetCallbackSharedSize = dlsym(handle, 'cufftXtSetCallbackSharedSize')
-
-    global __cufftXtMakePlanMany
-    if __cufftXtMakePlanMany == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtMakePlanMany = dlsym(handle, 'cufftXtMakePlanMany')
-
-    global __cufftXtGetSizeMany
-    if __cufftXtGetSizeMany == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtGetSizeMany = dlsym(handle, 'cufftXtGetSizeMany')
-
-    global __cufftXtExec
-    if __cufftXtExec == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExec = dlsym(handle, 'cufftXtExec')
-
-    global __cufftXtExecDescriptor
-    if __cufftXtExecDescriptor == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtExecDescriptor = dlsym(handle, 'cufftXtExecDescriptor')
-
-    global __cufftXtSetWorkAreaPolicy
-    if __cufftXtSetWorkAreaPolicy == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtSetWorkAreaPolicy = dlsym(handle, 'cufftXtSetWorkAreaPolicy')
-
-    global __cufftMpAttachComm
-    if __cufftMpAttachComm == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMpAttachComm = dlsym(handle, 'cufftMpAttachComm')
-
-    global __cufftXtSetDistribution
-    if __cufftXtSetDistribution == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtSetDistribution = dlsym(handle, 'cufftXtSetDistribution')
-
-    global __cufftXtSetSubformatDefault
-    if __cufftXtSetSubformatDefault == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftXtSetSubformatDefault = dlsym(handle, 'cufftXtSetSubformatDefault')
-
-    global __cufftMpCreateReshape
-    if __cufftMpCreateReshape == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMpCreateReshape = dlsym(handle, 'cufftMpCreateReshape')
-
-    global __cufftMpAttachReshapeComm
-    if __cufftMpAttachReshapeComm == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMpAttachReshapeComm = dlsym(handle, 'cufftMpAttachReshapeComm')
-
-    global __cufftMpGetReshapeSize
-    if __cufftMpGetReshapeSize == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMpGetReshapeSize = dlsym(handle, 'cufftMpGetReshapeSize')
-
-    global __cufftMpMakeReshape
-    if __cufftMpMakeReshape == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMpMakeReshape = dlsym(handle, 'cufftMpMakeReshape')
-
-    global __cufftMpExecReshapeAsync
-    if __cufftMpExecReshapeAsync == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMpExecReshapeAsync = dlsym(handle, 'cufftMpExecReshapeAsync')
-
-    global __cufftMpDestroyReshape
-    if __cufftMpDestroyReshape == NULL:
-        if handle == NULL:
-            handle = load_library()
-        __cufftMpDestroyReshape = dlsym(handle, 'cufftMpDestroyReshape')
-
-    global ____cufftMpMakeReshape_11_4
-    if ____cufftMpMakeReshape_11_4 == NULL:
-        if handle == NULL:
-            handle = load_library()
-        ____cufftMpMakeReshape_11_4 = dlsym(handle, '__cufftMpMakeReshape_11_4')
-
-    __py_cufftMp_init = True
-    return 0
+
+    with gil, __symbol_lock:
+        # Load function
+        global __cufftPlan1d
+        if __cufftPlan1d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftPlan1d = dlsym(handle, 'cufftPlan1d')
+
+        global __cufftPlan2d
+        if __cufftPlan2d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftPlan2d = dlsym(handle, 'cufftPlan2d')
+
+        global __cufftPlan3d
+        if __cufftPlan3d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftPlan3d = dlsym(handle, 'cufftPlan3d')
+
+        global __cufftPlanMany
+        if __cufftPlanMany == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftPlanMany = dlsym(handle, 'cufftPlanMany')
+
+        global __cufftMakePlan1d
+        if __cufftMakePlan1d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMakePlan1d = dlsym(handle, 'cufftMakePlan1d')
+
+        global __cufftMakePlan2d
+        if __cufftMakePlan2d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMakePlan2d = dlsym(handle, 'cufftMakePlan2d')
+
+        global __cufftMakePlan3d
+        if __cufftMakePlan3d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMakePlan3d = dlsym(handle, 'cufftMakePlan3d')
+
+        global __cufftMakePlanMany
+        if __cufftMakePlanMany == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMakePlanMany = dlsym(handle, 'cufftMakePlanMany')
+
+        global __cufftMakePlanMany64
+        if __cufftMakePlanMany64 == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMakePlanMany64 = dlsym(handle, 'cufftMakePlanMany64')
+
+        global __cufftGetSizeMany64
+        if __cufftGetSizeMany64 == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetSizeMany64 = dlsym(handle, 'cufftGetSizeMany64')
+
+        global __cufftEstimate1d
+        if __cufftEstimate1d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftEstimate1d = dlsym(handle, 'cufftEstimate1d')
+
+        global __cufftEstimate2d
+        if __cufftEstimate2d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftEstimate2d = dlsym(handle, 'cufftEstimate2d')
+
+        global __cufftEstimate3d
+        if __cufftEstimate3d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftEstimate3d = dlsym(handle, 'cufftEstimate3d')
+
+        global __cufftEstimateMany
+        if __cufftEstimateMany == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftEstimateMany = dlsym(handle, 'cufftEstimateMany')
+
+        global __cufftCreate
+        if __cufftCreate == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftCreate = dlsym(handle, 'cufftCreate')
+
+        global __cufftGetSize1d
+        if __cufftGetSize1d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetSize1d = dlsym(handle, 'cufftGetSize1d')
+
+        global __cufftGetSize2d
+        if __cufftGetSize2d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetSize2d = dlsym(handle, 'cufftGetSize2d')
+
+        global __cufftGetSize3d
+        if __cufftGetSize3d == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetSize3d = dlsym(handle, 'cufftGetSize3d')
+
+        global __cufftGetSizeMany
+        if __cufftGetSizeMany == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetSizeMany = dlsym(handle, 'cufftGetSizeMany')
+
+        global __cufftGetSize
+        if __cufftGetSize == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetSize = dlsym(handle, 'cufftGetSize')
+
+        global __cufftSetWorkArea
+        if __cufftSetWorkArea == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftSetWorkArea = dlsym(handle, 'cufftSetWorkArea')
+
+        global __cufftSetAutoAllocation
+        if __cufftSetAutoAllocation == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftSetAutoAllocation = dlsym(handle, 'cufftSetAutoAllocation')
+
+        global __cufftExecC2C
+        if __cufftExecC2C == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftExecC2C = dlsym(handle, 'cufftExecC2C')
+
+        global __cufftExecR2C
+        if __cufftExecR2C == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftExecR2C = dlsym(handle, 'cufftExecR2C')
+
+        global __cufftExecC2R
+        if __cufftExecC2R == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftExecC2R = dlsym(handle, 'cufftExecC2R')
+
+        global __cufftExecZ2Z
+        if __cufftExecZ2Z == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftExecZ2Z = dlsym(handle, 'cufftExecZ2Z')
+
+        global __cufftExecD2Z
+        if __cufftExecD2Z == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftExecD2Z = dlsym(handle, 'cufftExecD2Z')
+
+        global __cufftExecZ2D
+        if __cufftExecZ2D == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftExecZ2D = dlsym(handle, 'cufftExecZ2D')
+
+        global __cufftSetStream
+        if __cufftSetStream == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftSetStream = dlsym(handle, 'cufftSetStream')
+
+        global __cufftDestroy
+        if __cufftDestroy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftDestroy = dlsym(handle, 'cufftDestroy')
+
+        global __cufftGetVersion
+        if __cufftGetVersion == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetVersion = dlsym(handle, 'cufftGetVersion')
+
+        global __cufftGetProperty
+        if __cufftGetProperty == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetProperty = dlsym(handle, 'cufftGetProperty')
+
+        global __cufftSetPlanPropertyInt64
+        if __cufftSetPlanPropertyInt64 == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftSetPlanPropertyInt64 = dlsym(handle, 'cufftSetPlanPropertyInt64')
+
+        global __cufftGetPlanPropertyInt64
+        if __cufftGetPlanPropertyInt64 == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftGetPlanPropertyInt64 = dlsym(handle, 'cufftGetPlanPropertyInt64')
+
+        global __cufftResetPlanProperty
+        if __cufftResetPlanProperty == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftResetPlanProperty = dlsym(handle, 'cufftResetPlanProperty')
+
+        global __cufftXtSetGPUs
+        if __cufftXtSetGPUs == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtSetGPUs = dlsym(handle, 'cufftXtSetGPUs')
+
+        global __cufftXtMalloc
+        if __cufftXtMalloc == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtMalloc = dlsym(handle, 'cufftXtMalloc')
+
+        global __cufftXtMemcpy
+        if __cufftXtMemcpy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtMemcpy = dlsym(handle, 'cufftXtMemcpy')
+
+        global __cufftXtFree
+        if __cufftXtFree == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtFree = dlsym(handle, 'cufftXtFree')
+
+        global __cufftXtSetWorkArea
+        if __cufftXtSetWorkArea == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtSetWorkArea = dlsym(handle, 'cufftXtSetWorkArea')
+
+        global __cufftXtExecDescriptorC2C
+        if __cufftXtExecDescriptorC2C == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExecDescriptorC2C = dlsym(handle, 'cufftXtExecDescriptorC2C')
+
+        global __cufftXtExecDescriptorR2C
+        if __cufftXtExecDescriptorR2C == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExecDescriptorR2C = dlsym(handle, 'cufftXtExecDescriptorR2C')
+
+        global __cufftXtExecDescriptorC2R
+        if __cufftXtExecDescriptorC2R == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExecDescriptorC2R = dlsym(handle, 'cufftXtExecDescriptorC2R')
+
+        global __cufftXtExecDescriptorZ2Z
+        if __cufftXtExecDescriptorZ2Z == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExecDescriptorZ2Z = dlsym(handle, 'cufftXtExecDescriptorZ2Z')
+
+        global __cufftXtExecDescriptorD2Z
+        if __cufftXtExecDescriptorD2Z == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExecDescriptorD2Z = dlsym(handle, 'cufftXtExecDescriptorD2Z')
+
+        global __cufftXtExecDescriptorZ2D
+        if __cufftXtExecDescriptorZ2D == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExecDescriptorZ2D = dlsym(handle, 'cufftXtExecDescriptorZ2D')
+
+        global __cufftXtQueryPlan
+        if __cufftXtQueryPlan == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtQueryPlan = dlsym(handle, 'cufftXtQueryPlan')
+
+        global __cufftXtClearCallback
+        if __cufftXtClearCallback == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtClearCallback = dlsym(handle, 'cufftXtClearCallback')
+
+        global __cufftXtSetCallbackSharedSize
+        if __cufftXtSetCallbackSharedSize == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtSetCallbackSharedSize = dlsym(handle, 'cufftXtSetCallbackSharedSize')
+
+        global __cufftXtMakePlanMany
+        if __cufftXtMakePlanMany == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtMakePlanMany = dlsym(handle, 'cufftXtMakePlanMany')
+
+        global __cufftXtGetSizeMany
+        if __cufftXtGetSizeMany == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtGetSizeMany = dlsym(handle, 'cufftXtGetSizeMany')
+
+        global __cufftXtExec
+        if __cufftXtExec == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExec = dlsym(handle, 'cufftXtExec')
+
+        global __cufftXtExecDescriptor
+        if __cufftXtExecDescriptor == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtExecDescriptor = dlsym(handle, 'cufftXtExecDescriptor')
+
+        global __cufftXtSetWorkAreaPolicy
+        if __cufftXtSetWorkAreaPolicy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtSetWorkAreaPolicy = dlsym(handle, 'cufftXtSetWorkAreaPolicy')
+
+        global __cufftMpAttachComm
+        if __cufftMpAttachComm == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMpAttachComm = dlsym(handle, 'cufftMpAttachComm')
+
+        global __cufftXtSetDistribution
+        if __cufftXtSetDistribution == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtSetDistribution = dlsym(handle, 'cufftXtSetDistribution')
+
+        global __cufftXtSetSubformatDefault
+        if __cufftXtSetSubformatDefault == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftXtSetSubformatDefault = dlsym(handle, 'cufftXtSetSubformatDefault')
+
+        global __cufftMpCreateReshape
+        if __cufftMpCreateReshape == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMpCreateReshape = dlsym(handle, 'cufftMpCreateReshape')
+
+        global __cufftMpAttachReshapeComm
+        if __cufftMpAttachReshapeComm == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMpAttachReshapeComm = dlsym(handle, 'cufftMpAttachReshapeComm')
+
+        global __cufftMpGetReshapeSize
+        if __cufftMpGetReshapeSize == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMpGetReshapeSize = dlsym(handle, 'cufftMpGetReshapeSize')
+
+        global __cufftMpMakeReshape
+        if __cufftMpMakeReshape == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMpMakeReshape = dlsym(handle, 'cufftMpMakeReshape')
+
+        global __cufftMpExecReshapeAsync
+        if __cufftMpExecReshapeAsync == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMpExecReshapeAsync = dlsym(handle, 'cufftMpExecReshapeAsync')
+
+        global __cufftMpDestroyReshape
+        if __cufftMpDestroyReshape == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cufftMpDestroyReshape = dlsym(handle, 'cufftMpDestroyReshape')
+
+        global ____cufftMpMakeReshape_11_4
+        if ____cufftMpMakeReshape_11_4 == NULL:
+            if handle == NULL:
+                handle = load_library()
+            ____cufftMpMakeReshape_11_4 = dlsym(handle, '__cufftMpMakeReshape_11_4')
+        __py_cufftMp_init = True
+        return 0
 
 
 cdef dict func_ptrs = None

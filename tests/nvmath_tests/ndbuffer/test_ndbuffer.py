@@ -634,6 +634,12 @@ def test_wide_strides_large_volume_copy(caplog, shape, slice, permutation, dtype
 def test_unsupported_ndim():
     with pytest.raises(ValueError, match="Max supported ndim is 32"):
         ndb.empty(shape=(1,) * 33, dtype_name="int8", itemsize=1, device_id=ndb.CPU_DEVICE_ID)
+    # For numpy==1.*, the maximum numpy.ndarray ndim is also 32, so we cannot test
+    # conversion
+    if int(np.__version__.split(".")[0]) < 2:
+        with pytest.raises(ValueError, match=("maximum supported dimension for an ndarray is 32")):
+            np.zeros(shape=(1,) * 34, dtype="float32")
+        return
     with pytest.raises(ValueError, match="Max supported ndim is 32"):
         wrap_operand(np.zeros(shape=(1,) * 34, dtype="float32")).asndbuffer()
 

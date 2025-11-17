@@ -9,20 +9,77 @@ from libc.stdint cimport intptr_t, uintptr_t
 
 import os
 import site
-
-import win32api
+import threading
 
 from .utils import FunctionNotFoundError, NotSupportedError
 
 from cuda.pathfinder import load_nvidia_dynamic_lib
 
+from libc.stddef cimport wchar_t
+from libc.stdint cimport uintptr_t
+from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
+
+from .utils import NotSupportedError
+
+cdef extern from "windows.h" nogil:
+    ctypedef void* HMODULE
+    ctypedef void* HANDLE
+    ctypedef void* FARPROC
+    ctypedef unsigned long DWORD
+    ctypedef const wchar_t *LPCWSTR
+    ctypedef const char *LPCSTR
+
+    cdef DWORD LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+    cdef DWORD LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+    cdef DWORD LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+
+    HMODULE _LoadLibraryExW "LoadLibraryExW"(
+        LPCWSTR lpLibFileName,
+        HANDLE hFile,
+        DWORD dwFlags
+    )
+
+    FARPROC _GetProcAddress "GetProcAddress"(HMODULE hModule, LPCSTR lpProcName)
+
+cdef inline uintptr_t LoadLibraryExW(str path, HANDLE hFile, DWORD dwFlags):
+    cdef uintptr_t result
+    cdef wchar_t* wpath = PyUnicode_AsWideCharString(path, NULL)
+    with nogil:
+        result = <uintptr_t>_LoadLibraryExW(
+            wpath,
+            hFile,
+            dwFlags
+        )
+    PyMem_Free(wpath)
+    return result
+
+cdef inline void *GetProcAddress(uintptr_t hModule, const char* lpProcName) nogil:
+    return _GetProcAddress(<HMODULE>hModule, lpProcName)
+
+cdef int get_cuda_version():
+    cdef int err, driver_ver = 0
+
+    # Load driver to check version
+    handle = LoadLibraryExW("nvcuda.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)
+    if handle == 0:
+        raise NotSupportedError('CUDA driver is not found')
+    cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
+    if cuDriverGetVersion == NULL:
+        raise RuntimeError('something went wrong')
+    err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
+    if err != 0:
+        raise RuntimeError('something went wrong')
+
+    return driver_ver
+
+
+
 ###############################################################################
 # Wrapper init
 ###############################################################################
 
-LOAD_LIBRARY_SEARCH_SYSTEM32     = 0x00000800
+cdef object __symbol_lock = threading.Lock()
 cdef bint __py_cublasLt_init = False
-cdef void* __cuDriverGetVersion = NULL
 
 cdef void* __cublasLtCreate = NULL
 cdef void* __cublasLtDestroy = NULL
@@ -80,274 +137,138 @@ cdef int _check_or_init_cublasLt() except -1 nogil:
     if __py_cublasLt_init:
         return 0
 
-    cdef int err, driver_ver
-    with gil:
-        # Load driver to check version
-        try:
-            handle = win32api.LoadLibraryEx("nvcuda.dll", 0, LOAD_LIBRARY_SEARCH_SYSTEM32)
-        except Exception as e:
-            raise NotSupportedError(f'CUDA driver is not found ({e})')
-        global __cuDriverGetVersion
-        if __cuDriverGetVersion == NULL:
-            __cuDriverGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cuDriverGetVersion')
-            if __cuDriverGetVersion == NULL:
-                raise RuntimeError('something went wrong')
-        err = (<int (*)(int*) noexcept nogil>__cuDriverGetVersion)(&driver_ver)
-        if err != 0:
-            raise RuntimeError('something went wrong')
+    with gil, __symbol_lock:
+        driver_ver = get_cuda_version()
 
         # Load library
         handle = load_library(driver_ver)
 
         # Load function
         global __cublasLtCreate
-        try:
-            __cublasLtCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtCreate')
-        except:
-            pass
+        __cublasLtCreate = GetProcAddress(handle, 'cublasLtCreate')
 
         global __cublasLtDestroy
-        try:
-            __cublasLtDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtDestroy')
-        except:
-            pass
+        __cublasLtDestroy = GetProcAddress(handle, 'cublasLtDestroy')
 
         global __cublasLtGetVersion
-        try:
-            __cublasLtGetVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetVersion')
-        except:
-            pass
+        __cublasLtGetVersion = GetProcAddress(handle, 'cublasLtGetVersion')
 
         global __cublasLtGetCudartVersion
-        try:
-            __cublasLtGetCudartVersion = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetCudartVersion')
-        except:
-            pass
+        __cublasLtGetCudartVersion = GetProcAddress(handle, 'cublasLtGetCudartVersion')
 
         global __cublasLtGetProperty
-        try:
-            __cublasLtGetProperty = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetProperty')
-        except:
-            pass
+        __cublasLtGetProperty = GetProcAddress(handle, 'cublasLtGetProperty')
 
         global __cublasLtMatmul
-        try:
-            __cublasLtMatmul = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmul')
-        except:
-            pass
+        __cublasLtMatmul = GetProcAddress(handle, 'cublasLtMatmul')
 
         global __cublasLtMatrixTransform
-        try:
-            __cublasLtMatrixTransform = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransform')
-        except:
-            pass
+        __cublasLtMatrixTransform = GetProcAddress(handle, 'cublasLtMatrixTransform')
 
         global __cublasLtMatrixLayoutCreate
-        try:
-            __cublasLtMatrixLayoutCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutCreate')
-        except:
-            pass
+        __cublasLtMatrixLayoutCreate = GetProcAddress(handle, 'cublasLtMatrixLayoutCreate')
 
         global __cublasLtMatrixLayoutDestroy
-        try:
-            __cublasLtMatrixLayoutDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutDestroy')
-        except:
-            pass
+        __cublasLtMatrixLayoutDestroy = GetProcAddress(handle, 'cublasLtMatrixLayoutDestroy')
 
         global __cublasLtMatrixLayoutSetAttribute
-        try:
-            __cublasLtMatrixLayoutSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutSetAttribute')
-        except:
-            pass
+        __cublasLtMatrixLayoutSetAttribute = GetProcAddress(handle, 'cublasLtMatrixLayoutSetAttribute')
 
         global __cublasLtMatrixLayoutGetAttribute
-        try:
-            __cublasLtMatrixLayoutGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixLayoutGetAttribute')
-        except:
-            pass
+        __cublasLtMatrixLayoutGetAttribute = GetProcAddress(handle, 'cublasLtMatrixLayoutGetAttribute')
 
         global __cublasLtMatmulDescCreate
-        try:
-            __cublasLtMatmulDescCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescCreate')
-        except:
-            pass
+        __cublasLtMatmulDescCreate = GetProcAddress(handle, 'cublasLtMatmulDescCreate')
 
         global __cublasLtMatmulDescDestroy
-        try:
-            __cublasLtMatmulDescDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescDestroy')
-        except:
-            pass
+        __cublasLtMatmulDescDestroy = GetProcAddress(handle, 'cublasLtMatmulDescDestroy')
 
         global __cublasLtMatmulDescSetAttribute
-        try:
-            __cublasLtMatmulDescSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescSetAttribute')
-        except:
-            pass
+        __cublasLtMatmulDescSetAttribute = GetProcAddress(handle, 'cublasLtMatmulDescSetAttribute')
 
         global __cublasLtMatmulDescGetAttribute
-        try:
-            __cublasLtMatmulDescGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulDescGetAttribute')
-        except:
-            pass
+        __cublasLtMatmulDescGetAttribute = GetProcAddress(handle, 'cublasLtMatmulDescGetAttribute')
 
         global __cublasLtMatrixTransformDescCreate
-        try:
-            __cublasLtMatrixTransformDescCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescCreate')
-        except:
-            pass
+        __cublasLtMatrixTransformDescCreate = GetProcAddress(handle, 'cublasLtMatrixTransformDescCreate')
 
         global __cublasLtMatrixTransformDescDestroy
-        try:
-            __cublasLtMatrixTransformDescDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescDestroy')
-        except:
-            pass
+        __cublasLtMatrixTransformDescDestroy = GetProcAddress(handle, 'cublasLtMatrixTransformDescDestroy')
 
         global __cublasLtMatrixTransformDescSetAttribute
-        try:
-            __cublasLtMatrixTransformDescSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescSetAttribute')
-        except:
-            pass
+        __cublasLtMatrixTransformDescSetAttribute = GetProcAddress(handle, 'cublasLtMatrixTransformDescSetAttribute')
 
         global __cublasLtMatrixTransformDescGetAttribute
-        try:
-            __cublasLtMatrixTransformDescGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatrixTransformDescGetAttribute')
-        except:
-            pass
+        __cublasLtMatrixTransformDescGetAttribute = GetProcAddress(handle, 'cublasLtMatrixTransformDescGetAttribute')
 
         global __cublasLtMatmulPreferenceCreate
-        try:
-            __cublasLtMatmulPreferenceCreate = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceCreate')
-        except:
-            pass
+        __cublasLtMatmulPreferenceCreate = GetProcAddress(handle, 'cublasLtMatmulPreferenceCreate')
 
         global __cublasLtMatmulPreferenceDestroy
-        try:
-            __cublasLtMatmulPreferenceDestroy = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceDestroy')
-        except:
-            pass
+        __cublasLtMatmulPreferenceDestroy = GetProcAddress(handle, 'cublasLtMatmulPreferenceDestroy')
 
         global __cublasLtMatmulPreferenceSetAttribute
-        try:
-            __cublasLtMatmulPreferenceSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceSetAttribute')
-        except:
-            pass
+        __cublasLtMatmulPreferenceSetAttribute = GetProcAddress(handle, 'cublasLtMatmulPreferenceSetAttribute')
 
         global __cublasLtMatmulPreferenceGetAttribute
-        try:
-            __cublasLtMatmulPreferenceGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulPreferenceGetAttribute')
-        except:
-            pass
+        __cublasLtMatmulPreferenceGetAttribute = GetProcAddress(handle, 'cublasLtMatmulPreferenceGetAttribute')
 
         global __cublasLtMatmulAlgoGetHeuristic
-        try:
-            __cublasLtMatmulAlgoGetHeuristic = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoGetHeuristic')
-        except:
-            pass
+        __cublasLtMatmulAlgoGetHeuristic = GetProcAddress(handle, 'cublasLtMatmulAlgoGetHeuristic')
 
         global __cublasLtMatmulAlgoGetIds
-        try:
-            __cublasLtMatmulAlgoGetIds = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoGetIds')
-        except:
-            pass
+        __cublasLtMatmulAlgoGetIds = GetProcAddress(handle, 'cublasLtMatmulAlgoGetIds')
 
         global __cublasLtMatmulAlgoInit
-        try:
-            __cublasLtMatmulAlgoInit = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoInit')
-        except:
-            pass
+        __cublasLtMatmulAlgoInit = GetProcAddress(handle, 'cublasLtMatmulAlgoInit')
 
         global __cublasLtMatmulAlgoCheck
-        try:
-            __cublasLtMatmulAlgoCheck = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoCheck')
-        except:
-            pass
+        __cublasLtMatmulAlgoCheck = GetProcAddress(handle, 'cublasLtMatmulAlgoCheck')
 
         global __cublasLtMatmulAlgoCapGetAttribute
-        try:
-            __cublasLtMatmulAlgoCapGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoCapGetAttribute')
-        except:
-            pass
+        __cublasLtMatmulAlgoCapGetAttribute = GetProcAddress(handle, 'cublasLtMatmulAlgoCapGetAttribute')
 
         global __cublasLtMatmulAlgoConfigSetAttribute
-        try:
-            __cublasLtMatmulAlgoConfigSetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoConfigSetAttribute')
-        except:
-            pass
+        __cublasLtMatmulAlgoConfigSetAttribute = GetProcAddress(handle, 'cublasLtMatmulAlgoConfigSetAttribute')
 
         global __cublasLtMatmulAlgoConfigGetAttribute
-        try:
-            __cublasLtMatmulAlgoConfigGetAttribute = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtMatmulAlgoConfigGetAttribute')
-        except:
-            pass
+        __cublasLtMatmulAlgoConfigGetAttribute = GetProcAddress(handle, 'cublasLtMatmulAlgoConfigGetAttribute')
 
         global __cublasLtLoggerSetCallback
-        try:
-            __cublasLtLoggerSetCallback = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetCallback')
-        except:
-            pass
+        __cublasLtLoggerSetCallback = GetProcAddress(handle, 'cublasLtLoggerSetCallback')
 
         global __cublasLtLoggerSetFile
-        try:
-            __cublasLtLoggerSetFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetFile')
-        except:
-            pass
+        __cublasLtLoggerSetFile = GetProcAddress(handle, 'cublasLtLoggerSetFile')
 
         global __cublasLtLoggerOpenFile
-        try:
-            __cublasLtLoggerOpenFile = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerOpenFile')
-        except:
-            pass
+        __cublasLtLoggerOpenFile = GetProcAddress(handle, 'cublasLtLoggerOpenFile')
 
         global __cublasLtLoggerSetLevel
-        try:
-            __cublasLtLoggerSetLevel = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetLevel')
-        except:
-            pass
+        __cublasLtLoggerSetLevel = GetProcAddress(handle, 'cublasLtLoggerSetLevel')
 
         global __cublasLtLoggerSetMask
-        try:
-            __cublasLtLoggerSetMask = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerSetMask')
-        except:
-            pass
+        __cublasLtLoggerSetMask = GetProcAddress(handle, 'cublasLtLoggerSetMask')
 
         global __cublasLtLoggerForceDisable
-        try:
-            __cublasLtLoggerForceDisable = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtLoggerForceDisable')
-        except:
-            pass
+        __cublasLtLoggerForceDisable = GetProcAddress(handle, 'cublasLtLoggerForceDisable')
 
         global __cublasLtGetStatusName
-        try:
-            __cublasLtGetStatusName = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetStatusName')
-        except:
-            pass
+        __cublasLtGetStatusName = GetProcAddress(handle, 'cublasLtGetStatusName')
 
         global __cublasLtGetStatusString
-        try:
-            __cublasLtGetStatusString = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtGetStatusString')
-        except:
-            pass
+        __cublasLtGetStatusString = GetProcAddress(handle, 'cublasLtGetStatusString')
 
         global __cublasLtHeuristicsCacheGetCapacity
-        try:
-            __cublasLtHeuristicsCacheGetCapacity = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtHeuristicsCacheGetCapacity')
-        except:
-            pass
+        __cublasLtHeuristicsCacheGetCapacity = GetProcAddress(handle, 'cublasLtHeuristicsCacheGetCapacity')
 
         global __cublasLtHeuristicsCacheSetCapacity
-        try:
-            __cublasLtHeuristicsCacheSetCapacity = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtHeuristicsCacheSetCapacity')
-        except:
-            pass
+        __cublasLtHeuristicsCacheSetCapacity = GetProcAddress(handle, 'cublasLtHeuristicsCacheSetCapacity')
 
         global __cublasLtDisableCpuInstructionsSetMask
-        try:
-            __cublasLtDisableCpuInstructionsSetMask = <void*><intptr_t>win32api.GetProcAddress(handle, 'cublasLtDisableCpuInstructionsSetMask')
-        except:
-            pass
+        __cublasLtDisableCpuInstructionsSetMask = GetProcAddress(handle, 'cublasLtDisableCpuInstructionsSetMask')
 
-    __py_cublasLt_init = True
-    return 0
+        __py_cublasLt_init = True
+        return 0
 
 
 cdef dict func_ptrs = None
