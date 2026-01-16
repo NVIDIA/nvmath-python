@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 cimport cython
 
@@ -21,14 +21,14 @@ ctypedef cusparseSpVecDescr_t SpVecDescr
 ctypedef cusparseDnVecDescr_t DnVecDescr
 ctypedef cusparseSpMatDescr_t SpMatDescr
 ctypedef cusparseDnMatDescr_t DnMatDescr
-ctypedef cusparseSpGEMMDescr_t SpGEMMDescr
-ctypedef cusparseSpSVDescr_t SpSVDescr
-ctypedef cusparseSpSMDescr_t SpSMDescr
-ctypedef cusparseSpMMOpPlan_t SpMMOpPlan
 ctypedef cusparseConstSpVecDescr_t ConstSpVecDescr
 ctypedef cusparseConstDnVecDescr_t ConstDnVecDescr
 ctypedef cusparseConstSpMatDescr_t ConstSpMatDescr
 ctypedef cusparseConstDnMatDescr_t ConstDnMatDescr
+ctypedef cusparseSpSVDescr_t SpSVDescr
+ctypedef cusparseSpSMDescr_t SpSMDescr
+ctypedef cusparseSpGEMMDescr_t SpGEMMDescr
+ctypedef cusparseSpMMOpPlan_t SpMMOpPlan
 ctypedef cusparseLoggerCallback_t LoggerCallback
 
 ctypedef cudaStream_t Stream
@@ -55,15 +55,15 @@ ctypedef cusparseCsr2CscAlg_t _Csr2CscAlg
 ctypedef cusparseFormat_t _Format
 ctypedef cusparseOrder_t _Order
 ctypedef cusparseIndexType_t _IndexType
-ctypedef cusparseSpMVAlg_t _SpMVAlg
-ctypedef cusparseSpMMAlg_t _SpMMAlg
-ctypedef cusparseSpGEMMAlg_t _SpGEMMAlg
+ctypedef cusparseSpMatAttribute_t _SpMatAttribute
 ctypedef cusparseSparseToDenseAlg_t _SparseToDenseAlg
 ctypedef cusparseDenseToSparseAlg_t _DenseToSparseAlg
-ctypedef cusparseSDDMMAlg_t _SDDMMAlg
-ctypedef cusparseSpMatAttribute_t _SpMatAttribute
+ctypedef cusparseSpMVAlg_t _SpMVAlg
 ctypedef cusparseSpSVAlg_t _SpSVAlg
 ctypedef cusparseSpSMAlg_t _SpSMAlg
+ctypedef cusparseSpMMAlg_t _SpMMAlg
+ctypedef cusparseSpGEMMAlg_t _SpGEMMAlg
+ctypedef cusparseSDDMMAlg_t _SDDMMAlg
 ctypedef cusparseSpMMOpAlg_t _SpMMOpAlg
 ctypedef cusparseSpSVUpdate_t _SpSVUpdate
 ctypedef cusparseSpSMUpdate_t _SpSMUpdate
@@ -83,6 +83,10 @@ cpdef set_stream(intptr_t handle, intptr_t stream_id)
 cpdef intptr_t get_stream(intptr_t handle) except? 0
 cpdef int get_pointer_mode(intptr_t handle) except? -1
 cpdef set_pointer_mode(intptr_t handle, int mode)
+cpdef logger_open_file(log_file)
+cpdef logger_set_level(int level)
+cpdef logger_set_mask(int mask)
+cpdef logger_force_disable()
 cpdef intptr_t create_mat_descr() except? 0
 cpdef destroy_mat_descr(intptr_t descr_a)
 cpdef set_mat_type(intptr_t descr_a, int type)
@@ -216,34 +220,61 @@ cpdef xcscsort(intptr_t handle, int m, int n, int nnz, intptr_t descr_a, intptr_
 cpdef csr2csc_ex2(intptr_t handle, int m, int n, int nnz, intptr_t csr_val, intptr_t csr_row_ptr, intptr_t csr_col_ind, intptr_t csc_val, intptr_t csc_col_ptr, intptr_t csc_row_ind, int val_type, int copy_values, int idx_base, int alg, intptr_t buffer)
 cpdef size_t csr2csc_ex2_buffer_size(intptr_t handle, int m, int n, int nnz, intptr_t csr_val, intptr_t csr_row_ptr, intptr_t csr_col_ind, intptr_t csc_val, intptr_t csc_col_ptr, intptr_t csc_row_ind, int val_type, int copy_values, int idx_base, int alg) except? 0
 cpdef intptr_t create_sp_vec(int64_t size, int64_t nnz, intptr_t indices, intptr_t values, int idx_type, int idx_base, int value_type) except? 0
+cpdef intptr_t create_const_sp_vec(int64_t size, int64_t nnz, intptr_t indices, intptr_t values, int idx_type, int idx_base, int value_type) except? 0
 cpdef destroy_sp_vec(intptr_t sp_vec_descr)
 cpdef tuple sp_vec_get(intptr_t sp_vec_descr)
+cpdef tuple const_sp_vec_get(intptr_t sp_vec_descr)
 cpdef int sp_vec_get_index_base(intptr_t sp_vec_descr) except? -1
 cpdef intptr_t sp_vec_get_values(intptr_t sp_vec_descr) except? -1
+cpdef intptr_t const_sp_vec_get_values(intptr_t sp_vec_descr) except? -1
 cpdef sp_vec_set_values(intptr_t sp_vec_descr, intptr_t values)
 cpdef intptr_t create_dn_vec(int64_t size, intptr_t values, int value_type) except? 0
+cpdef intptr_t create_const_dn_vec(int64_t size, intptr_t values, int value_type) except? 0
 cpdef destroy_dn_vec(intptr_t dn_vec_descr)
 cpdef tuple dn_vec_get(intptr_t dn_vec_descr)
+cpdef tuple const_dn_vec_get(intptr_t dn_vec_descr)
 cpdef intptr_t dn_vec_get_values(intptr_t dn_vec_descr) except? -1
+cpdef intptr_t const_dn_vec_get_values(intptr_t dn_vec_descr) except? -1
 cpdef dn_vec_set_values(intptr_t dn_vec_descr, intptr_t values)
 cpdef destroy_sp_mat(intptr_t sp_mat_descr)
 cpdef int sp_mat_get_format(intptr_t sp_mat_descr) except? -1
 cpdef int sp_mat_get_index_base(intptr_t sp_mat_descr) except? -1
 cpdef intptr_t sp_mat_get_values(intptr_t sp_mat_descr) except? -1
+cpdef intptr_t const_sp_mat_get_values(intptr_t sp_mat_descr) except? -1
 cpdef sp_mat_set_values(intptr_t sp_mat_descr, intptr_t values)
 cpdef tuple sp_mat_get_size(intptr_t sp_mat_descr)
 cpdef int sp_mat_get_strided_batch(intptr_t sp_mat_descr) except? -1
 cpdef coo_set_strided_batch(intptr_t sp_mat_descr, int batch_count, int64_t batch_stride)
 cpdef csr_set_strided_batch(intptr_t sp_mat_descr, int batch_count, int64_t offsets_batch_stride, int64_t columns_values_batch_stride)
+cpdef get_sp_mat_attribute_dtype(int attr)
+cpdef sp_mat_get_attribute(intptr_t sp_mat_descr, int attribute, intptr_t data, size_t data_size)
+cpdef sp_mat_set_attribute(intptr_t sp_mat_descr, int attribute, intptr_t data, size_t data_size)
 cpdef intptr_t create_csr(int64_t rows, int64_t cols, int64_t nnz, intptr_t csr_row_offsets, intptr_t csr_col_ind, intptr_t csr_values, int csr_row_offsets_type, int csr_col_ind_type, int idx_base, int value_type) except? 0
+cpdef intptr_t create_const_csr(int64_t rows, int64_t cols, int64_t nnz, intptr_t csr_row_offsets, intptr_t csr_col_ind, intptr_t csr_values, int csr_row_offsets_type, int csr_col_ind_type, int idx_base, int value_type) except? 0
+cpdef intptr_t create_csc(int64_t rows, int64_t cols, int64_t nnz, intptr_t csc_col_offsets, intptr_t csc_row_ind, intptr_t csc_values, int csc_col_offsets_type, int csc_row_ind_type, int idx_base, int value_type) except? 0
+cpdef intptr_t create_const_csc(int64_t rows, int64_t cols, int64_t nnz, intptr_t csc_col_offsets, intptr_t csc_row_ind, intptr_t csc_values, int csc_col_offsets_type, int csc_row_ind_type, int idx_base, int value_type) except? 0
 cpdef tuple csr_get(intptr_t sp_mat_descr)
+cpdef tuple const_csr_get(intptr_t sp_mat_descr)
+cpdef tuple csc_get(intptr_t sp_mat_descr)
+cpdef tuple const_csc_get(intptr_t sp_mat_descr)
 cpdef csr_set_pointers(intptr_t sp_mat_descr, intptr_t csr_row_offsets, intptr_t csr_col_ind, intptr_t csr_values)
+cpdef csc_set_pointers(intptr_t sp_mat_descr, intptr_t csc_col_offsets, intptr_t csc_row_ind, intptr_t csc_values)
 cpdef intptr_t create_coo(int64_t rows, int64_t cols, int64_t nnz, intptr_t coo_row_ind, intptr_t coo_col_ind, intptr_t coo_values, int coo_idx_type, int idx_base, int value_type) except? 0
+cpdef intptr_t create_const_coo(int64_t rows, int64_t cols, int64_t nnz, intptr_t coo_row_ind, intptr_t coo_col_ind, intptr_t coo_values, int coo_idx_type, int idx_base, int value_type) except? 0
 cpdef tuple coo_get(intptr_t sp_mat_descr)
+cpdef tuple const_coo_get(intptr_t sp_mat_descr)
+cpdef coo_set_pointers(intptr_t sp_mat_descr, intptr_t coo_rows, intptr_t coo_columns, intptr_t coo_values)
+cpdef intptr_t create_blocked_ell(int64_t rows, int64_t cols, int64_t ell_block_size, int64_t ell_cols, intptr_t ell_col_ind, intptr_t ell_value, int ell_idx_type, int idx_base, int value_type) except? 0
+cpdef intptr_t create_const_blocked_ell(int64_t rows, int64_t cols, int64_t ell_block_size, int64_t ell_cols, intptr_t ell_col_ind, intptr_t ell_value, int ell_idx_type, int idx_base, int value_type) except? 0
+cpdef tuple blocked_ell_get(intptr_t sp_mat_descr)
+cpdef tuple const_blocked_ell_get(intptr_t sp_mat_descr)
 cpdef intptr_t create_dn_mat(int64_t rows, int64_t cols, int64_t ld, intptr_t values, int value_type, int order) except? 0
+cpdef intptr_t create_const_dn_mat(int64_t rows, int64_t cols, int64_t ld, intptr_t values, int value_type, int order) except? 0
 cpdef destroy_dn_mat(intptr_t dn_mat_descr)
 cpdef tuple dn_mat_get(intptr_t dn_mat_descr)
+cpdef tuple const_dn_mat_get(intptr_t dn_mat_descr)
 cpdef intptr_t dn_mat_get_values(intptr_t dn_mat_descr) except? -1
+cpdef intptr_t const_dn_mat_get_values(intptr_t dn_mat_descr) except? -1
 cpdef dn_mat_set_values(intptr_t dn_mat_descr, intptr_t values)
 cpdef dn_mat_set_strided_batch(intptr_t dn_mat_descr, int batch_count, int64_t batch_stride)
 cpdef tuple dn_mat_get_strided_batch(intptr_t dn_mat_descr)
@@ -252,32 +283,13 @@ cpdef gather(intptr_t handle, intptr_t vec_y, intptr_t vec_x)
 cpdef scatter(intptr_t handle, intptr_t vec_x, intptr_t vec_y)
 cpdef size_t sp_vv_buffer_size(intptr_t handle, int op_x, intptr_t vec_x, intptr_t vec_y, intptr_t result, int compute_type) except? 0
 cpdef sp_vv(intptr_t handle, int op_x, intptr_t vec_x, intptr_t vec_y, intptr_t result, int compute_type, intptr_t external_buffer)
-cpdef sp_mv(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg, intptr_t external_buffer)
-cpdef size_t sp_mv_buffer_size(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg) except? 0
-cpdef sp_mm(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
-cpdef size_t sp_mm_buffer_size(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg) except? 0
-cpdef intptr_t sp_gemm_create_descr() except? 0
-cpdef sp_gemm_destroy_descr(intptr_t descr)
-cpdef size_t sp_gemm_work_estimation(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t spgemm_descr, intptr_t external_buffer1) except? 0
-cpdef sp_gemm_compute(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t spgemm_descr, intptr_t buffer_size2, intptr_t external_buffer2)
-cpdef sp_gemm_copy(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t spgemm_descr)
-cpdef intptr_t create_csc(int64_t rows, int64_t cols, int64_t nnz, intptr_t csc_col_offsets, intptr_t csc_row_ind, intptr_t csc_values, int csc_col_offsets_type, int csc_row_ind_type, int idx_base, int value_type) except? 0
-cpdef csc_set_pointers(intptr_t sp_mat_descr, intptr_t csc_col_offsets, intptr_t csc_row_ind, intptr_t csc_values)
-cpdef coo_set_pointers(intptr_t sp_mat_descr, intptr_t coo_rows, intptr_t coo_columns, intptr_t coo_values)
 cpdef size_t sparse_to_dense_buffer_size(intptr_t handle, intptr_t mat_a, intptr_t mat_b, int alg) except? 0
 cpdef sparse_to_dense(intptr_t handle, intptr_t mat_a, intptr_t mat_b, int alg, intptr_t external_buffer)
 cpdef size_t dense_to_sparse_buffer_size(intptr_t handle, intptr_t mat_a, intptr_t mat_b, int alg) except? 0
 cpdef dense_to_sparse_analysis(intptr_t handle, intptr_t mat_a, intptr_t mat_b, int alg, intptr_t external_buffer)
 cpdef dense_to_sparse_convert(intptr_t handle, intptr_t mat_a, intptr_t mat_b, int alg, intptr_t external_buffer)
-cpdef intptr_t create_blocked_ell(int64_t rows, int64_t cols, int64_t ell_block_size, int64_t ell_cols, intptr_t ell_col_ind, intptr_t ell_value, int ell_idx_type, int idx_base, int value_type) except? 0
-cpdef tuple blocked_ell_get(intptr_t sp_mat_descr)
-cpdef sp_mm_preprocess(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
-cpdef sddmm_buffer_size(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t buffer_size)
-cpdef sddmm_preprocess(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
-cpdef sddmm(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
-cpdef get_sp_mat_attribute_dtype(int attr)
-cpdef sp_mat_get_attribute(intptr_t sp_mat_descr, int attribute, intptr_t data, size_t data_size)
-cpdef sp_mat_set_attribute(intptr_t sp_mat_descr, int attribute, intptr_t data, size_t data_size)
+cpdef sp_mv(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg, intptr_t external_buffer)
+cpdef size_t sp_mv_buffer_size(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg) except? 0
 cpdef intptr_t sp_sv_create_descr() except? 0
 cpdef sp_sv_destroy_descr(intptr_t descr)
 cpdef size_t sp_sv_buffer_size(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t vec_y, int compute_type, int alg, intptr_t spsv_descr) except? 0
@@ -288,37 +300,25 @@ cpdef sp_sm_destroy_descr(intptr_t descr)
 cpdef size_t sp_sm_buffer_size(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int compute_type, int alg, intptr_t spsm_descr) except? 0
 cpdef sp_sm_analysis(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int compute_type, int alg, intptr_t spsm_descr, intptr_t external_buffer)
 cpdef sp_sm_solve(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int compute_type, int alg, intptr_t spsm_descr)
+cpdef size_t sp_mm_buffer_size(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg) except? 0
+cpdef sp_mm_preprocess(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
+cpdef sp_mm(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
+cpdef intptr_t sp_gemm_create_descr() except? 0
+cpdef sp_gemm_destroy_descr(intptr_t descr)
+cpdef size_t sp_gemm_work_estimation(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t spgemm_descr, intptr_t external_buffer1) except? 0
+cpdef int64_t sp_gemm_get_num_products(intptr_t spgemm_descr) except? -1
+cpdef sp_gemm_compute(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t spgemm_descr, intptr_t buffer_size2, intptr_t external_buffer2)
+cpdef sp_gemm_copy(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t spgemm_descr)
 cpdef size_t sp_gemm_reuse_work_estimation(intptr_t handle, int op_a, int op_b, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int alg, intptr_t spgemm_descr, intptr_t external_buffer1) except? 0
 cpdef tuple sp_gemm_reuse_nnz(intptr_t handle, int op_a, int op_b, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int alg, intptr_t spgemm_descr, intptr_t external_buffer2, intptr_t external_buffer3, intptr_t external_buffer4)
 cpdef size_t sp_gemm_reuse_copy(intptr_t handle, int op_a, int op_b, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int alg, intptr_t spgemm_descr, intptr_t external_buffer5) except? 0
 cpdef sp_gemm_reuse_compute(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t spgemm_descr)
-cpdef logger_open_file(log_file)
-cpdef logger_set_level(int level)
-cpdef logger_set_mask(int mask)
-cpdef logger_force_disable()
-cpdef tuple sp_mm_op_create_plan(intptr_t handle, int op_a, int op_b, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int compute_type, int alg, intptr_t add_operation_nvvm_buffer, size_t add_operation_buffer_size, intptr_t mul_operation_nvvm_buffer, size_t mul_operation_buffer_size, intptr_t epilogue_nvvm_buffer, size_t epilogue_buffer_size)
+cpdef sddmm_buffer_size(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t buffer_size)
+cpdef sddmm_preprocess(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
+cpdef sddmm(intptr_t handle, int op_a, int op_b, intptr_t alpha, intptr_t mat_a, intptr_t mat_b, intptr_t beta, intptr_t mat_c, int compute_type, int alg, intptr_t external_buffer)
+cpdef tuple sp_mm_op_create_plan(intptr_t handle, int op_a, int op_b, intptr_t mat_a, intptr_t mat_b, intptr_t mat_c, int compute_type, int alg, intptr_t add_operation_ltoir_buffer, size_t add_operation_buffer_size, intptr_t mul_operation_ltoir_buffer, size_t mul_operation_buffer_size, intptr_t epilogue_ltoir_buffer, size_t epilogue_buffer_size)
 cpdef sp_mm_op(intptr_t plan, intptr_t external_buffer)
 cpdef sp_mm_op_destroy_plan(intptr_t plan)
-cpdef tuple csc_get(intptr_t sp_mat_descr)
-cpdef intptr_t create_const_sp_vec(int64_t size, int64_t nnz, intptr_t indices, intptr_t values, int idx_type, int idx_base, int value_type) except? 0
-cpdef tuple const_sp_vec_get(intptr_t sp_vec_descr)
-cpdef intptr_t const_sp_vec_get_values(intptr_t sp_vec_descr) except? -1
-cpdef intptr_t create_const_dn_vec(int64_t size, intptr_t values, int value_type) except? 0
-cpdef tuple const_dn_vec_get(intptr_t dn_vec_descr)
-cpdef intptr_t const_dn_vec_get_values(intptr_t dn_vec_descr) except? -1
-cpdef intptr_t const_sp_mat_get_values(intptr_t sp_mat_descr) except? -1
-cpdef intptr_t create_const_csr(int64_t rows, int64_t cols, int64_t nnz, intptr_t csr_row_offsets, intptr_t csr_col_ind, intptr_t csr_values, int csr_row_offsets_type, int csr_col_ind_type, int idx_base, int value_type) except? 0
-cpdef intptr_t create_const_csc(int64_t rows, int64_t cols, int64_t nnz, intptr_t csc_col_offsets, intptr_t csc_row_ind, intptr_t csc_values, int csc_col_offsets_type, int csc_row_ind_type, int idx_base, int value_type) except? 0
-cpdef tuple const_csr_get(intptr_t sp_mat_descr)
-cpdef tuple const_csc_get(intptr_t sp_mat_descr)
-cpdef intptr_t create_const_coo(int64_t rows, int64_t cols, int64_t nnz, intptr_t coo_row_ind, intptr_t coo_col_ind, intptr_t coo_values, int coo_idx_type, int idx_base, int value_type) except? 0
-cpdef tuple const_coo_get(intptr_t sp_mat_descr)
-cpdef intptr_t create_const_blocked_ell(int64_t rows, int64_t cols, int64_t ell_block_size, int64_t ell_cols, intptr_t ell_col_ind, intptr_t ell_value, int ell_idx_type, int idx_base, int value_type) except? 0
-cpdef tuple const_blocked_ell_get(intptr_t sp_mat_descr)
-cpdef intptr_t create_const_dn_mat(int64_t rows, int64_t cols, int64_t ld, intptr_t values, int value_type, int order) except? 0
-cpdef tuple const_dn_mat_get(intptr_t dn_mat_descr)
-cpdef intptr_t const_dn_mat_get_values(intptr_t dn_mat_descr) except? -1
-cpdef int64_t sp_gemm_get_num_products(intptr_t spgemm_descr) except? -1
 cpdef bsr_set_strided_batch(intptr_t sp_mat_descr, int batch_count, int64_t offsets_batch_stride, int64_t columns_batch_stride, int64_t values_batch_stride)
 cpdef intptr_t create_bsr(int64_t brows, int64_t bcols, int64_t bnnz, int64_t row_block_size, int64_t col_block_size, intptr_t bsr_row_offsets, intptr_t bsr_col_ind, intptr_t bsr_values, int bsr_row_offsets_type, int bsr_col_ind_type, int idx_base, int value_type, int order) except? 0
 cpdef intptr_t create_const_bsr(int64_t brows, int64_t bcols, int64_t bnnz, int64_t row_block_dim, int64_t col_block_dim, intptr_t bsr_row_offsets, intptr_t bsr_col_ind, intptr_t bsr_values, int bsr_row_offsets_type, int bsr_col_ind_type, int idx_base, int value_type, int order) except? 0

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,9 +9,13 @@ from ast import literal_eval
 
 import pytest
 import numpy as np
-import cuda.core.experimental as ccx
 
-from nvmath.memory import BaseCUDAMemoryManager, MemoryPointer
+
+try:
+    from cuda.core import Event, _device
+except ImportError:
+    from cuda.core.experimental import Event, _device
+from nvmath.memory import BaseCUDAMemoryManager, MemoryPointer  # noqa: E402
 
 try:
     import cupy as cp
@@ -22,9 +26,9 @@ try:
 except ImportError:
     torch = None
 
-import nvmath
+import nvmath  # noqa: E402
 
-from .utils.common_axes import (
+from .utils.common_axes import (  # noqa: E402
     ExecBackend,
     MemBackend,
     Framework,
@@ -35,7 +39,7 @@ from .utils.common_axes import (
     OptFftLayout,
     Direction,
 )
-from .utils.axes_utils import (
+from .utils.axes_utils import (  # noqa: E402
     get_framework_dtype,
     is_complex,
     is_half,
@@ -44,7 +48,7 @@ from .utils.axes_utils import (
     framework_dtype,
     r2c_dtype,
 )
-from .utils.support_matrix import (
+from .utils.support_matrix import (  # noqa: E402
     type_shape_support,
     opt_fft_type_direction_support,
     opt_fft_type_input_type_support,
@@ -53,7 +57,7 @@ from .utils.support_matrix import (
     supported_backends,
     multi_gpu_only,
 )
-from .utils.input_fixtures import (
+from .utils.input_fixtures import (  # noqa: E402
     get_1d_shape_cases,
     get_random_1d_shape,
     get_random_input_data,
@@ -62,7 +66,7 @@ from .utils.input_fixtures import (
     get_framework_device_ctx,
     init_assert_exec_backend_specified,
 )
-from .utils.check_helpers import (
+from .utils.check_helpers import (  # noqa: E402
     assert_eq,
     copy_array,
     use_stream,
@@ -96,8 +100,8 @@ assert_exec_backend_specified = init_assert_exec_backend_specified()
         for shape_kind, shape in get_1d_shape_cases(type_shape_support[exec_backend][dtype], rng)
     ],
 )
-def test_fft_ifft(framework, exec_backend, mem_backend, dtype, shape_kind, shape):
-    signal = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=42)
+def test_fft_ifft(seeder, framework, exec_backend, mem_backend, dtype, shape_kind, shape):
+    signal = get_random_input_data(framework, (shape,), dtype, mem_backend)
 
     if exec_backend == ExecBackend.cufft and shape == 1 and is_half(dtype) and get_cufft_version() < 10702:
         with pytest.raises(ValueError, match="sample size 1 and half-precision type"):
@@ -151,8 +155,8 @@ def test_fft_ifft(framework, exec_backend, mem_backend, dtype, shape_kind, shape
         if dtype in opt_fft_type_input_type_support[fft_type]
     ],
 )
-def test_fft_explicit_fft_type(framework, fft_type, exec_backend, mem_backend, dtype, shape_kind, shape):
-    sample = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=17)
+def test_fft_explicit_fft_type(seeder, framework, fft_type, exec_backend, mem_backend, dtype, shape_kind, shape):
+    sample = get_random_input_data(framework, (shape,), dtype, mem_backend)
 
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     sample_fft = fn(sample, options={"fft_type": fft_type.value}, execution=exec_backend.nvname)
@@ -192,9 +196,9 @@ def test_fft_explicit_fft_type(framework, fft_type, exec_backend, mem_backend, d
         if dtype in opt_fft_type_input_type_support[fft_type]
     ],
 )
-def test_ifft_explicit_fft_type(framework, fft_type, exec_backend, mem_backend, dtype, shape_kind, shape):
+def test_ifft_explicit_fft_type(seeder, framework, fft_type, exec_backend, mem_backend, dtype, shape_kind, shape):
     signal_dtype = get_ifft_dtype(dtype, fft_type)
-    signal = get_random_input_data(framework, (shape,), signal_dtype, mem_backend, seed=21)
+    signal = get_random_input_data(framework, (shape,), signal_dtype, mem_backend)
     sample_fft = get_fft_ref(signal)
     assert_array_type(sample_fft, framework, mem_backend, dtype)
 
@@ -229,8 +233,8 @@ def test_ifft_explicit_fft_type(framework, fft_type, exec_backend, mem_backend, 
         for shape_kind, shape in get_1d_shape_cases(type_shape_support[exec_backend][dtype], rng)
     ],
 )
-def test_fft_inplace(framework, exec_backend, mem_backend, dtype, shape_kind, shape):
-    sample = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=71)
+def test_fft_inplace(seeder, framework, exec_backend, mem_backend, dtype, shape_kind, shape):
+    sample = get_random_input_data(framework, (shape,), dtype, mem_backend)
     ref_fft = get_fft_ref(sample)
 
     if exec_backend == ExecBackend.cufft and shape == 1 and is_half(dtype) and get_cufft_version() < 10702:
@@ -261,8 +265,8 @@ def test_fft_inplace(framework, exec_backend, mem_backend, dtype, shape_kind, sh
         for shape_kind, shape in get_1d_shape_cases(type_shape_support[exec_backend][dtype], rng)
     ],
 )
-def test_ifft_inplace(framework, exec_backend, mem_backend, dtype, shape_kind, shape):
-    signal = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=32)
+def test_ifft_inplace(seeder, framework, exec_backend, mem_backend, dtype, shape_kind, shape):
+    signal = get_random_input_data(framework, (shape,), dtype, mem_backend)
     sample = get_fft_ref(signal)
 
     if exec_backend == ExecBackend.cufft and shape == 1 and is_half(dtype) and get_cufft_version() < 10702:
@@ -323,6 +327,7 @@ def test_ifft_inplace(framework, exec_backend, mem_backend, dtype, shape_kind, s
     ],
 )
 def test_fft_ifft_overlap(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -334,7 +339,7 @@ def test_fft_ifft_overlap(
     result_layout,
 ):
     signal_size = batch_size * step_size + window_size - 1
-    signal = get_random_input_data(framework, (signal_size,), dtype, mem_backend, seed=42)
+    signal = get_random_input_data(framework, (signal_size,), dtype, mem_backend)
     batch = unfold(signal, 0, window_size, step_size)
     assert_eq(batch.shape[0], batch_size)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
@@ -404,18 +409,18 @@ def test_fft_ifft_overlap(
         for blocking in OptFftBlocking
     ],
 )
-def test_ifft_fft_blocking(monkeypatch, framework, exec_backend, mem_backend, dtype, blocking, shape_kind, shape):
+def test_ifft_fft_blocking(seeder, monkeypatch, framework, exec_backend, mem_backend, dtype, blocking, shape_kind, shape):
     synchronization_num = 0
 
-    class LoggedSyncEvent(ccx.Event):
+    class LoggedSyncEvent(Event):
         def sync(self):
             nonlocal synchronization_num
             synchronization_num += 1
             super().sync()
 
-    monkeypatch.setattr(ccx._device, "Event", LoggedSyncEvent)
+    monkeypatch.setattr(_device, "Event", LoggedSyncEvent)
 
-    sample = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=33)
+    sample = get_random_input_data(framework, (shape,), dtype, mem_backend)
     sample_fft_ref = get_fft_ref(sample)
     sample_scaled = get_scaled(sample, shape)
 
@@ -482,9 +487,9 @@ def test_ifft_fft_blocking(monkeypatch, framework, exec_backend, mem_backend, dt
         if dtype in opt_fft_type_input_type_support[fft_type]
     ],
 )
-def test_fft_ifft_inplace_blocking_auto(framework, exec_backend, mem_backend, dtype, fft_type, shape_kind, shape):
+def test_fft_ifft_inplace_blocking_auto(seeder, framework, exec_backend, mem_backend, dtype, fft_type, shape_kind, shape):
     assert fft_type == OptFftType.c2c  # only C2C supports inplace FFT
-    signal = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=63)
+    signal = get_random_input_data(framework, (shape,), dtype, mem_backend)
     signal_scaled = get_scaled(signal, shape)
     signal_copy = copy_array(signal)
 
@@ -522,13 +527,13 @@ def test_fft_ifft_inplace_blocking_auto(framework, exec_backend, mem_backend, dt
     ],
 )
 @multi_gpu_only
-def test_fft_explicit_device_id(monkeypatch, framework, exec_backend, mem_backend, dtype):
+def test_fft_explicit_device_id(seeder, monkeypatch, framework, exec_backend, mem_backend, dtype):
     from nvmath.bindings import cufft  # type: ignore
 
     device_ids = intercept_device_id(monkeypatch, (cufft, "xt_make_plan_many"), (cufft, "xt_exec"))
 
     shape = 4096
-    signal = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=318)
+    signal = get_random_input_data(framework, (shape,), dtype, mem_backend)
     signal_copy = copy_array(signal)
 
     array_device = 0
@@ -579,10 +584,10 @@ def test_fft_explicit_device_id(monkeypatch, framework, exec_backend, mem_backen
     ],
 )
 @multi_gpu_only
-def test_fft_array_device_id(monkeypatch, framework, exec_backend, mem_backend, blocking, dtype):
+def test_fft_array_device_id(seeder, monkeypatch, framework, exec_backend, mem_backend, blocking, dtype):
     shape = 2048
-    signal_1 = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=415, device_id=1)
-    signal_0 = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=416, device_id=0)
+    signal_1 = get_random_input_data(framework, (shape,), dtype, mem_backend, device_id=1)
+    signal_0 = get_random_input_data(framework, (shape,), dtype, mem_backend, device_id=0)
 
     from nvmath.bindings import cufft  # type: ignore
 
@@ -668,12 +673,12 @@ def test_fft_array_device_id(monkeypatch, framework, exec_backend, mem_backend, 
         for use_stream_ptr in (True, False)
     ],
 )
-def test_fft_custom_stream(framework, exec_backend, mem_backend, dtype, use_stream_ptr):
+def test_fft_custom_stream(seeder, framework, exec_backend, mem_backend, dtype, use_stream_ptr):
     stream = get_custom_stream(framework)
     shape = 1024 * 1024
 
     with use_stream(stream):
-        signal = get_random_input_data(framework, (shape,), dtype, mem_backend, seed=234)
+        signal = get_random_input_data(framework, (shape,), dtype, mem_backend)
         fft_ref = get_fft_ref(signal)
         fft_ref = fft_ref * 42
 
@@ -783,7 +788,7 @@ def test_fft_unsupported_shape(framework, exec_backend, mem_backend, dtype, shap
         ShapeKind.pow2357: 210,
         ShapeKind.prime: 127,
     }
-    sample = get_random_input_data(framework, (shapes[shape_kind],), dtype, mem_backend, seed=101)
+    sample = get_random_input_data(framework, (shapes[shape_kind],), dtype, mem_backend)
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
@@ -816,7 +821,7 @@ def test_ifft_unsupported_shape(framework, exec_backend, mem_backend, dtype, sha
         ShapeKind.pow2357: 630,
         ShapeKind.prime: 101,
     }
-    sample = get_random_input_data(framework, (shapes[shape_kind],), dtype, mem_backend, seed=101)
+    sample = get_random_input_data(framework, (shapes[shape_kind],), dtype, mem_backend)
     with pytest.raises(
         nvmath.bindings.cufft.cuFFTError,
         match="(CUFFT_NOT_SUPPORTED|CUFFT_SETUP_FAILED)",
@@ -842,7 +847,7 @@ def test_ifft_unsupported_shape(framework, exec_backend, mem_backend, dtype, sha
 def test_irfft_unsupported_empty_output(framework, exec_backend, dtype, mem_backend, shape, axes):
     shape = literal_eval(shape)
     axes = literal_eval(axes)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=101)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     sample_vol = math.prod(shape) if axes is None else math.prod(shape[a] for a in axes)
 
     if exec_backend == ExecBackend.cufft and sample_vol == 1 and is_half(dtype) and get_cufft_version() < 10702:
@@ -884,7 +889,7 @@ def test_incompatible_fft_type_direction(framework, fft_type, direction, exec_ba
     else:
         dtype = DType.complex64
         fn = nvmath.fft.fft if direction == Direction.forward else nvmath.fft.ifft
-    sample = get_random_input_data(framework, (128,), dtype, mem_backend, seed=15)
+    sample = get_random_input_data(framework, (128,), dtype, mem_backend)
     with pytest.raises(
         ValueError,
         match=(f"The specified direction {direction.value} is not compatible with the FFT type '{fft_type.value}'"),
@@ -906,7 +911,7 @@ def test_incompatible_fft_type_direction(framework, fft_type, direction, exec_ba
     ],
 )
 def test_incompatible_fft_type_dtype(framework, fft_type, direction, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (512,), dtype, mem_backend, seed=17)
+    sample = get_random_input_data(framework, (512,), dtype, mem_backend)
     if is_complex(dtype):
         fn = nvmath.fft.fft if direction == Direction.forward else nvmath.fft.ifft
     else:
@@ -964,7 +969,7 @@ def test_incompatible_fft_type_dtype(framework, fft_type, direction, exec_backen
     ],
 )
 def test_inplace_unsupported_fft_type(framework, fft_type, direction, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (256,), dtype, mem_backend, seed=19)
+    sample = get_random_input_data(framework, (256,), dtype, mem_backend)
     if is_complex(dtype):
         fn = nvmath.fft.fft if direction == Direction.forward else nvmath.fft.ifft
     else:
@@ -1001,7 +1006,7 @@ def test_inplace_unsupported_fft_type(framework, fft_type, direction, exec_backe
     ],
 )
 def test_unsupported_execution_backend(framework, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (16,), dtype, mem_backend, seed=119)
+    sample = get_random_input_data(framework, (16,), dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
     with pytest.raises(
@@ -1023,7 +1028,7 @@ def test_unsupported_execution_backend(framework, exec_backend, mem_backend, dty
     ],
 )
 def test_wrong_execution_backend(framework, mem_backend, dtype):
-    sample = get_random_input_data(framework, (16,), dtype, mem_backend, seed=119)
+    sample = get_random_input_data(framework, (16,), dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
     with pytest.raises(
@@ -1098,7 +1103,7 @@ def test_wrong_execution_backend(framework, mem_backend, dtype):
     ],
 )
 def test_cpu_execution_wrong_options(framework, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (16,), dtype, mem_backend, seed=119)
+    sample = get_random_input_data(framework, (16,), dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     assert exec_backend.nvname == "cpu"
 
@@ -1203,7 +1208,7 @@ def test_cpu_execution_wrong_options(framework, exec_backend, mem_backend, dtype
     ],
 )
 def test_gpu_execution_wrong_options(framework, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (16,), dtype, mem_backend, seed=119)
+    sample = get_random_input_data(framework, (16,), dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     assert exec_backend.nvname == "cuda"
 
@@ -1237,7 +1242,7 @@ def test_gpu_execution_wrong_options(framework, exec_backend, mem_backend, dtype
     ],
 )
 def test_conflicting_device_id_option(framework, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (16,), dtype, mem_backend, seed=119)
+    sample = get_random_input_data(framework, (16,), dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     assert exec_backend.nvname == "cuda"
 
@@ -1279,7 +1284,7 @@ def test_conflicting_device_id_option(framework, exec_backend, mem_backend, dtyp
     ],
 )
 def test_stride_overflow_error(framework, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (2**31,), dtype, mem_backend, seed=19)
+    sample = get_random_input_data(framework, (2**31,), dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     with pytest.raises(
         ValueError,
@@ -1307,7 +1312,7 @@ def test_stride_overflow_error(framework, exec_backend, mem_backend, dtype):
     ],
 )
 def test_inplace_unsupported_implicit_r2c_c2r(framework, exec_backend, mem_backend, dtype):
-    sample = get_random_input_data(framework, (256,), dtype, mem_backend, seed=19)
+    sample = get_random_input_data(framework, (256,), dtype, mem_backend)
     fn = nvmath.fft.irfft if is_complex(dtype) else nvmath.fft.rfft
     implicit_kind = OptFftType.c2r if is_complex(dtype) else OptFftType.r2c
     with pytest.raises(
@@ -1343,7 +1348,6 @@ def test_fft_wrong_device_stream(framework, exec_backend, mem_backend, dtype):
         (shape,),
         dtype,
         mem_backend,
-        seed=12345,
         device_id=1,
     )
 

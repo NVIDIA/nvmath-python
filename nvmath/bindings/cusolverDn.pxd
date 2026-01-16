@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -165,6 +165,8 @@ cpdef spotri(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t wor
 cpdef dpotri(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t work, int lwork, intptr_t dev_info)
 cpdef cpotri(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t work, int lwork, intptr_t dev_info)
 cpdef zpotri(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t work, int lwork, intptr_t dev_info)
+cpdef tuple xtrtri_buffer_size(intptr_t handle, int uplo, int diag, int64_t n, int data_type_a, intptr_t a, int64_t lda)
+cpdef xtrtri(intptr_t handle, int uplo, int diag, int64_t n, int data_type_a, intptr_t a, int64_t lda, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t dev_info)
 cpdef int slauum_buffer_size(intptr_t handle, int uplo, int n, intptr_t a, int lda) except? -1
 cpdef int dlauum_buffer_size(intptr_t handle, int uplo, int n, intptr_t a, int lda) except? -1
 cpdef int clauum_buffer_size(intptr_t handle, int uplo, int n, intptr_t a, int lda) except? -1
@@ -221,6 +223,8 @@ cpdef ssytrf(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t ipi
 cpdef dsytrf(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t ipiv, intptr_t work, int lwork, intptr_t info)
 cpdef csytrf(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t ipiv, intptr_t work, int lwork, intptr_t info)
 cpdef zsytrf(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t ipiv, intptr_t work, int lwork, intptr_t info)
+cpdef tuple xsytrs_buffer_size(intptr_t handle, int uplo, int64_t n, int64_t nrhs, int data_type_a, intptr_t a, int64_t lda, intptr_t ipiv, int data_type_b, intptr_t b, int64_t ldb)
+cpdef xsytrs(intptr_t handle, int uplo, int64_t n, int64_t nrhs, int data_type_a, intptr_t a, int64_t lda, intptr_t ipiv, int data_type_b, intptr_t b, int64_t ldb, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info)
 cpdef int ssytri_buffer_size(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t ipiv) except? -1
 cpdef int dsytri_buffer_size(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t ipiv) except? -1
 cpdef int csytri_buffer_size(intptr_t handle, int uplo, int n, intptr_t a, int lda, intptr_t ipiv) except? -1
@@ -392,10 +396,6 @@ cpdef tuple xgesvdp_buffer_size(intptr_t handle, intptr_t params, int jobz, int 
 cpdef double xgesvdp(intptr_t handle, intptr_t params, int jobz, int econ, int64_t m, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_s, intptr_t s, int data_type_u, intptr_t u, int64_t ldu, int data_type_v, intptr_t v, int64_t ldv, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_info) except? 0
 cpdef tuple xgesvdr_buffer_size(intptr_t handle, intptr_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, int data_type_a, intptr_t a, int64_t lda, int data_type_srand, intptr_t srand, int data_type_urand, intptr_t urand, int64_t ld_urand, int data_type_vrand, intptr_t vrand, int64_t ld_vrand, int compute_type)
 cpdef xgesvdr(intptr_t handle, intptr_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, int data_type_a, intptr_t a, int64_t lda, int data_type_srand, intptr_t srand, int data_type_urand, intptr_t urand, int64_t ld_urand, int data_type_vrand, intptr_t vrand, int64_t ld_vrand, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_info)
-cpdef tuple xsytrs_buffer_size(intptr_t handle, int uplo, int64_t n, int64_t nrhs, int data_type_a, intptr_t a, int64_t lda, intptr_t ipiv, int data_type_b, intptr_t b, int64_t ldb)
-cpdef xsytrs(intptr_t handle, int uplo, int64_t n, int64_t nrhs, int data_type_a, intptr_t a, int64_t lda, intptr_t ipiv, int data_type_b, intptr_t b, int64_t ldb, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info)
-cpdef tuple xtrtri_buffer_size(intptr_t handle, int uplo, int diag, int64_t n, int data_type_a, intptr_t a, int64_t lda)
-cpdef xtrtri(intptr_t handle, int uplo, int diag, int64_t n, int data_type_a, intptr_t a, int64_t lda, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t dev_info)
 cpdef logger_open_file(log_file)
 cpdef logger_set_level(int level)
 cpdef logger_set_mask(int mask)
@@ -408,3 +408,7 @@ cpdef tuple xsyev_batched_buffer_size(intptr_t handle, intptr_t params, int jobz
 cpdef xsyev_batched(intptr_t handle, intptr_t params, int jobz, int uplo, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info, int64_t batch_size)
 cpdef tuple xgeev_buffer_size(intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int data_type_vl, intptr_t vl, int64_t ldvl, int data_type_vr, intptr_t vr, int64_t ldvr, int compute_type)
 cpdef xgeev(intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int data_type_vl, intptr_t vl, int64_t ldvl, int data_type_vr, intptr_t vr, int64_t ldvr, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info)
+cpdef set_math_mode(intptr_t handle, cusolverMathMode_t mode)
+cpdef get_math_mode(intptr_t handle, intptr_t mode)
+cpdef set_emulation_strategy(intptr_t handle, cudaEmulationStrategy_t strategy)
+cpdef get_emulation_strategy(intptr_t handle, intptr_t strategy)

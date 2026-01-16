@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -422,6 +422,7 @@ def test_epilogs(
     # Currently, those are not supported by cuBLAS, so we allow them to fail with
     # "NOT_SUPPORTED".
     allow_not_supported = False
+    allow_not_supported |= "BIAS" in epilog_name
     allow_not_supported |= "BGRAD" in epilog_name
     allow_not_supported |= "DRELU" in epilog_name
     allow_not_supported |= "DGELU" in epilog_name
@@ -745,8 +746,8 @@ def test_validation_scales_shapes(m, n, k, atype, btype, ctype, dtype, a_err, b_
     """
     a, b, c, alpha, beta = generate_simple_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
 
-    ascales = torch.zeros(size=(a.nelement() // 32 + a_err,), dtype=torch.uint8)
-    bscales = torch.zeros(size=(a.nelement() // 32 + b_err,), dtype=torch.uint8)
+    ascales = torch.zeros(size=(a.nelement() // 32 + a_err,), dtype=torch.uint8, device=a.device)
+    bscales = torch.zeros(size=(a.nelement() // 32 + b_err,), dtype=torch.uint8, device=a.device)
     scales = {"a": ascales, "b": bscales}
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "block_scaling": True}
 
@@ -763,7 +764,7 @@ def test_validation_scalar_scales(atype, btype, ctype, dtype, use_cuda):
     a, b, c, alpha, beta = generate_simple_inputs(128, 128, 128, atype, btype, ctype, use_cuda=use_cuda)
     scales = {"a": 1, "b": 1}
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "block_scaling": True}
-    with pytest.raises(ValueError, match="A scalar tensor-wide scale factor is not allowed when block_scaling=True."):
+    with pytest.raises(ValueError, match="A scalar tensor-wide scale factor is not allowed for [AB] when block_scaling=True."):
         matmul(a, b, c=c, alpha=alpha, beta=beta, quantization_scales=scales, options=options)
 
 
@@ -784,5 +785,5 @@ def test_validation_scales_dtype(m, n, k, atype, btype, ctype, dtype, scale_dtyp
     scales = {"a": ascales, "b": bscales}
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "block_scaling": True}
 
-    with pytest.raises(ValueError, match="Block scales for (A|B) should be uint8 tensor"):
+    with pytest.raises(ValueError, match="Block scales for (A|B) must be uint8 tensor"):
         matmul(a, b, c=c, alpha=alpha, beta=beta, quantization_scales=scales, options=options)

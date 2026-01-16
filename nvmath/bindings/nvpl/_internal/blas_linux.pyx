@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -39,7 +39,7 @@ cdef extern from "<dlfcn.h>" nogil:
 cdef object __symbol_lock = threading.Lock()
 cdef bint __py_nvpl_blas_init = False
 cdef str __current_so_name = ""
-cdef tuple __lib_so_names = ("libnvpl_blas_ilp64_gomp.so.0", "libmkl_rt.so.2",  "libopenblas.so.0",)
+cdef tuple __lib_so_names = ("libnvpl_blas_lp64_gomp.so.0", "libmkl_rt.so.2",  "libopenblas.so.0",)
 
 
 cdef void* __MKL_Set_Num_Threads_Local = NULL
@@ -166,6 +166,7 @@ cdef void* load_library() except* with gil:
         if handle != NULL:
             global __current_so_name
             __current_so_name = env_lib_so_name
+            return handle
         else:
             error_msg = dlerror()
         raise RuntimeError(
@@ -180,7 +181,7 @@ cdef void* load_library() except* with gil:
         if handle != NULL:
             global __current_so_name
             __current_so_name = so_name
-            break  # stop at first successful open
+            return handle
         else:
             error_msg = dlerror()
             all_err_msg += f"\n{error_msg.decode()}"
@@ -191,6 +192,7 @@ cdef void* load_library() except* with gil:
             "Install/add one of these libraries to LD_LIBRARY_PATH or"
             f"use environment variable NVMATH_BLAS_CPU_LIBRARY to name a lib on the LD_LIBRARY_PATH. {all_err_msg}"
         )
+    return handle
 
 
 cdef int _check_or_init_nvpl_blas() except -1 nogil:
@@ -201,6 +203,10 @@ cdef int _check_or_init_nvpl_blas() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_nvpl_blas_init:
+            return 0
+
         # Load function
         global __MKL_Set_Num_Threads_Local
         __MKL_Set_Num_Threads_Local = dlsym(RTLD_DEFAULT, 'MKL_Set_Num_Threads_Local')

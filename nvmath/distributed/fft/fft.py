@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -497,7 +497,7 @@ def allocate_operand(
     if distributed_ctx is None:
         raise RuntimeError(
             "nvmath.distributed has not been initialized. Refer to "
-            "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
+            "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/runtime.html"
             " for more information."
         )
     if not distributed_ctx.nvshmem_available:
@@ -721,7 +721,7 @@ def _copy_operand_perhaps(
             return exec_space_copy, operand
         else:
             # In-place copy to existing pointer
-            tensor_wrapper.copy_([operand], [internal_operand], stream_holder)
+            internal_operand.copy_(operand, stream_holder=stream_holder)
             return internal_operand, operand
 
 
@@ -1035,7 +1035,7 @@ class FFT:
         if distributed_ctx is None:
             raise RuntimeError(
                 "nvmath.distributed has not been initialized. Refer to "
-                "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
+                "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/runtime.html"
                 " for more information."
             )
         if not distributed_ctx.nvshmem_available:

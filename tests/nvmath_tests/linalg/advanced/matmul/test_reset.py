@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,6 +12,38 @@ import pytest
 from ...utils import assert_tensors_equal, random_torch_complex, sample_matrix, skip_if_cublas_before
 
 
+def _clone(a, framework):
+    if framework == "numpy/cupy":
+        a_clone = a.copy()
+    elif framework == "torch":
+        a_clone = a.clone()
+    else:
+        raise AssertionError("Internal error: unrecognized framework.")
+
+    return a_clone
+
+
+def skip_test_reset(
+    framework,
+    dtype,
+    reset_a,
+    reset_b,
+    with_alpha,
+    reset_alpha,
+    with_c,
+    reset_c,
+    reset_beta,
+    with_epilog,
+    reset_epilog,
+    reset_to_none,
+    use_cuda,
+    inplace,
+):
+    # An inplace operation requires `c` to be specified.
+    return inplace and not with_c
+
+
+@pytest.mark.uncollect_if(func=skip_test_reset)
 @pytest.mark.parametrize("framework", ("numpy/cupy", "torch"))
 @pytest.mark.parametrize("dtype", ("float32",))
 @pytest.mark.parametrize(
@@ -46,6 +78,7 @@ from ...utils import assert_tensors_equal, random_torch_complex, sample_matrix, 
 )
 @pytest.mark.parametrize("reset_to_none", (True, False))
 @pytest.mark.parametrize("use_cuda", (True, False))
+@pytest.mark.parametrize("inplace", (True, False))
 def test_reset(
     framework,
     dtype,
@@ -60,6 +93,7 @@ def test_reset(
     reset_epilog,
     reset_to_none,
     use_cuda,
+    inplace,
 ):
     """
     Tests resetting particular operands
@@ -85,11 +119,16 @@ def test_reset(
     if with_alpha:
         matmul_kwargs["alpha"] = alpha
 
+    options = None
+    c_copy = c
     if with_c:
-        matmul_kwargs["c"] = c
+        if inplace:
+            options = {"inplace": True}
+            c_copy = _clone(c, framework)
+        matmul_kwargs["c"] = c_copy
         matmul_kwargs["beta"] = beta
 
-    with nvmath.linalg.advanced.Matmul(a, b, **matmul_kwargs) as mm:
+    with nvmath.linalg.advanced.Matmul(a, b, **matmul_kwargs, options=options) as mm:
         if with_epilog:
             mm.plan(epilog=epilog, epilog_inputs=epilog_inputs)
         else:
@@ -104,6 +143,9 @@ def test_reset(
         result1 = mm.execute()
         assert_tensors_equal(result1, reference1)
 
+        if inplace:
+            assert result1 is c_copy, "result1 != c for inplace=True"
+
         if reset_to_none:
             mm.reset_operands(None)
 
@@ -114,13 +156,17 @@ def test_reset(
         new_beta = 0.78
         new_epilog_inputs = {"bias": sample_matrix(framework, dtype, (m, 1), use_cuda)}
 
+        new_c_copy = new_c
+        if inplace:
+            new_c_copy = _clone(new_c, framework)
+
         reset_kwargs = {}
         if reset_a:
             reset_kwargs["a"] = new_a
         if reset_b:
             reset_kwargs["b"] = new_b
         if reset_c:
-            reset_kwargs["c"] = new_c
+            reset_kwargs["c"] = new_c_copy
         if reset_alpha:
             reset_kwargs["alpha"] = new_alpha
         if reset_beta:
@@ -138,12 +184,22 @@ def test_reset(
             reference2 = (new_a if reset_a else a) @ (new_b if reset_b else b)
             reference2 *= new_alpha if reset_alpha else alpha if with_alpha else 1
             if with_c:
-                reference2 += (new_c if reset_c else c) * (new_beta if reset_beta else beta)
+                if inplace:
+                    # Note that `c` is overwritten if not reset.
+                    reference2 += (new_c if reset_c else reference1) * (new_beta if reset_beta else beta)
+                else:
+                    reference2 += (new_c if reset_c else c) * (new_beta if reset_beta else beta)
             if with_epilog:
                 reference2 += new_epilog_inputs["bias"] if reset_epilog else epilog_inputs["bias"]
 
             result2 = mm.execute()
             assert_tensors_equal(result2, reference2)
+
+            if inplace:
+                if reset_c:
+                    assert result2 is new_c_copy, "result2 != c for inplace=True"
+                else:
+                    assert result2 is c_copy, "result2 != c for inplace=True"
 
 
 @pytest.mark.parametrize("framework", ("numpy/cupy",))
@@ -415,3 +471,30 @@ def test_conjugate_flag(b_conj_init, b_conj_reset):
 
         with pytest.raises(ValueError):
             mm.reset_operands(b=b)
+
+
+def test_device_mismatch():
+    """
+    Tests if resetting epilog inputs with device mismatching
+    that of original operand (CPU vs GPU) results in error.
+    """
+    torch = pytest.importorskip("torch")
+
+    m, n, k = 16, 32, 16
+
+    # Create initial operands on CUDA
+    a = torch.randn(m, k, dtype=torch.float32, device="cuda")
+    b = torch.randn(k, n, dtype=torch.float32, device="cuda")
+    bias_cuda = torch.randn(m, 1, dtype=torch.float32, device="cuda")
+
+    # Create CPU bias for reset
+    bias_cpu = torch.randn(m, 1, dtype=torch.float32, device="cpu")
+
+    # Test with reset_operands
+    with nvmath.linalg.advanced.Matmul(a, b) as mm:
+        skip_if_cublas_before(11501)  # Epilog inputs not fully supported
+        mm.plan(epilog=nvmath.linalg.advanced.MatmulEpilog.BIAS, epilog_inputs={"bias": bias_cuda})
+
+        # Attempt to reset with bias on wrong device should raise ValueError
+        with pytest.raises(ValueError, match="The operand bias is on device .*, but it should be on device .*"):
+            mm.reset_operands(epilog_inputs={"bias": bias_cpu})

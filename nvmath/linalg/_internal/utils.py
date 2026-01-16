@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,6 +16,7 @@ __all__ = [
     "pointer_aligned_to",
 ]
 
+import atexit
 import typing
 
 from nvmath.bindings import cublas
@@ -52,6 +53,17 @@ def destroy_handle(handle: int, binding="cublaslt"):
             cublaslt.destroy(handle)
 
 
+@atexit.register
+def _cleanup_handles():
+    """
+    Cleanup all cached handles on program exit.
+    """
+    for binding, device_handles in HANDLES.items():
+        for handle in device_handles.values():
+            destroy_handle(handle, binding=binding)
+        device_handles.clear()
+
+
 def get_handle(device_id: int, binding="cublaslt") -> int:
     """
     Retrieve the cuBLAS[lt] library handle for the specified device. If one doesn't exist,
@@ -60,8 +72,8 @@ def get_handle(device_id: int, binding="cublaslt") -> int:
     According to the docs for cublasLtHandle_t, any valid cublasHandle_t can be used in
     place of cublasLtHandle_t with a simple cast, so we use the same handle for both APIs.
 
-    We never cleanup these handles (allow them to leak) since we expect to have exactly one
-    handle per device / thread.
+    Handles are cached and automatically cleaned up on program exit via the atexit handler.
+    We expect to have exactly one handle per device / thread.
     """
     if device_id in HANDLES[binding]:
         handle = HANDLES[binding][device_id]
@@ -90,13 +102,17 @@ def axis_order_in_memory(strides):
     return axis_order
 
 
-def calculate_strides(shape: typing.Sequence[int], axis_order: typing.Sequence[int]):
+def calculate_strides(shape: typing.Sequence[int], axis_order: typing.Sequence[int], min_stride: int = 1):
     """
     Calculate the strides for the provided shape and axis order.
     """
+    assert len(axis_order) == len(shape), f"axis_order length ({len(axis_order)}) must equal shape length ({len(shape)})"
+    assert len(set(axis_order)) == len(axis_order), f"axis_order must not contain duplicates: {axis_order}"
+    assert set(axis_order) == set(range(len(shape))), f"axis_order must be permutation of range({len(shape)}): {axis_order}"
+
     strides: list[None | int] = [None] * len(shape)
 
-    stride = 1
+    stride = min_stride
     for axis in axis_order:
         strides[axis] = stride
         stride *= shape[axis]

@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,7 +14,10 @@ from nvmath.distributed.distribution import Slab, Box
 from .helpers import gather_array, generate_random_data, is_close, to_host
 from .helpers_fft import calc_slab_shape
 
-import cuda.core.experimental
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 
 package_name_to_package = {"numpy": np}
 
@@ -33,7 +36,11 @@ def nvmath_distributed():
     except ImportError:
         pass
 
-    device_id = MPI.COMM_WORLD.Get_rank() % cuda.core.experimental.system.num_devices
+    try:
+        num_devices = system.get_num_devices()
+    except AttributeError:
+        num_devices = system.num_devices
+    device_id = MPI.COMM_WORLD.Get_rank() % num_devices
     nvmath.distributed.initialize(device_id, MPI.COMM_WORLD, backends=["nvshmem"])
 
     yield
@@ -278,6 +285,35 @@ def generate_data_with_padding(
     return dist_wrap_operand(data_in_cpu), dist_wrap_operand(data_in)
 
 
+def skip_test_distributed_fft(
+    package,
+    global_shape,
+    input_memory_space,
+    fft_type,
+    reshape,
+    direction,
+    reset_inplace,
+    blocking,
+):
+    if input_memory_space == "cpu" and blocking == "auto":
+        # CPU is always blocking, already captured by blocking=True.
+        return True
+
+    if input_memory_space == "cpu" and reset_inplace:
+        # reset_inplace tests resetting operand's data without calling reset_operand, and is
+        # only for GPU operands.
+        return True
+
+    if isinstance(fft_type, tuple):
+        fft_type = fft_type[0]
+    if fft_type == "R2C" and direction == "inverse":
+        return True
+    if fft_type == "C2R" and direction == "forward":
+        return True
+
+
+# Uncollect invalid parameter combinations.
+@pytest.mark.uncollect_if(func=skip_test_distributed_fft)
 @pytest.mark.parametrize("package", ["numpy", "torch"])  # "numpy" value uses cupy for GPU
 @pytest.mark.parametrize(
     "global_shape", [(8, 9), (8, 8), (9, 11, 8), (11, 9, 8), (31, 31, 31), (128, 32), (128, 32, 64), (32, 32, 32)]
@@ -327,20 +363,6 @@ def test_distributed_fft(
         assert last_axis_parity in ("even", "odd")
 
     assert fft_type in ("C2C", "R2C", "C2R")
-
-    if input_memory_space == "cpu" and blocking == "auto":
-        # CPU is always blocking, already captured by blocking=True.
-        pytest.skip("redundant test: input_memory_space='cpu' and blocking='auto'")
-
-    if input_memory_space == "cpu" and reset_inplace:
-        # reset_inplace tests resetting operand's data without calling reset_operand, and is
-        # only for GPU operands.
-        pytest.skip("reset_inplace doesn't apply to CPU operands")
-
-    if fft_type == "R2C" and direction == "inverse":
-        pytest.skip("invalid test parameter combination: R2C and direction='inverse'")
-    if fft_type == "C2R" and direction == "forward":
-        pytest.skip("invalid test parameter combination: C2R and direction='forward'")
 
     try:
         pkg = package_name_to_package[package]

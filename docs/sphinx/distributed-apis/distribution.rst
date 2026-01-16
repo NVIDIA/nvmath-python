@@ -115,7 +115,7 @@ Using the ``nvmath.distributed`` APIs, you can specify the above distribution li
 .. note::
 
     Box is natively supported by cuFFTMp (:doc:`distributed FFT<fft/index>`
-    and :doc:`Reshape<reshape/index>` APIs).
+    and :ref:`Reshape <distributed-reshape-overview>` APIs).
     For further information, refer to the `cuFFTMp documentation
     <https://docs.nvidia.com/cuda/cufftmp/usage/api_usage.html
     #usage-with-custom-slabs-and-pencils-data-decompositions>`_.

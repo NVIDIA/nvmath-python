@@ -4,6 +4,10 @@
     "url": "https://docs.nvidia.com/cuda/nvmath-python/latest"
   },
   {
+    "version": "0.8.0",
+    "url": "https://docs.nvidia.com/cuda/nvmath-python/0.8.0"
+  },
+  {
     "version": "0.7.0",
     "url": "https://docs.nvidia.com/cuda/nvmath-python/0.7.0"
   },

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -173,11 +173,11 @@ def test_views_vector_load_store():
     assert len(ptx) == 1
     ptx = ptx[0]
 
-    assert "ld.global.u64" in ptx
-    assert "st.global.u64" in ptx
+    assert "ld.global.u64" in ptx or "ld.global.b64" in ptx
+    assert "st.global.u64" in ptx or "st.global.b64" in ptx
 
-    assert "ld.global.u16" not in ptx
-    assert "ld.global.u16" not in ptx
+    assert "ld.global.u16" not in ptx or "ld.global.b16" not in ptx
+    assert "ld.global.u16" not in ptx or "st.global.b16" not in ptx
 
     # Ensure that we *don't* get the right vectorized version without
     @cuda.jit
@@ -193,11 +193,11 @@ def test_views_vector_load_store():
     assert len(ptx) == 1
     ptx = ptx[0]
 
-    assert "ld.global.u64" not in ptx
-    assert "st.global.u64" not in ptx
+    assert "ld.global.u64" not in ptx or "ld.global.b64" not in ptx
+    assert "st.global.u64" not in ptx or "st.global.b64" not in ptx
 
-    assert "ld.global.u16" in ptx
-    assert "st.global.u16" in ptx
+    assert "ld.global.u16" in ptx or "ld.global.b16" in ptx
+    assert "st.global.u16" in ptx or "st.global.b16" in ptx
 
 
 @pytest.mark.parametrize(
@@ -271,8 +271,10 @@ def test_numba_type_alignment(dtype, expected_alignment):
 
     if expected_alignment < 16:
         expected_ld_st_inst = f"global.u{expected_alignment * 8}"
+        expected_ld_st_inst_b = f"global.b{expected_alignment * 8}"
     else:
         expected_ld_st_inst = f"global.v2.u{expected_alignment * 4}"
+        expected_ld_st_inst_b = f"global.v2.b{expected_alignment * 4}"
 
-    assert "ld." + expected_ld_st_inst in ptx
-    assert "st." + expected_ld_st_inst in ptx
+    assert "ld." + expected_ld_st_inst in ptx or "ld." + expected_ld_st_inst_b in ptx
+    assert "st." + expected_ld_st_inst in ptx or "st." + expected_ld_st_inst_b in ptx

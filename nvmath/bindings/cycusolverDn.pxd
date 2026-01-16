@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -19,9 +19,20 @@ from .cycusolver cimport *
 ctypedef enum cusolverDnFunction_t "cusolverDnFunction_t":
     CUSOLVERDN_GETRF "CUSOLVERDN_GETRF" = 0
     CUSOLVERDN_POTRF "CUSOLVERDN_POTRF" = 1
+    CUSOLVERDN_SYEVBATCHED "CUSOLVERDN_SYEVBATCHED" = 2
 
 
 # types
+cdef extern from *:
+    """
+    #include <library_types.h>
+    """
+    ctypedef int cudaEmulationStrategy_t 'cudaEmulationStrategy_t'
+    ctypedef int cudaEmulationMantissaControl_t 'cudaEmulationMantissaControl_t'
+    ctypedef int cudaEmulationMantissaControl 'cudaEmulationMantissaControl'
+    ctypedef int cudaEmulationSpecialValuesSupport_t 'cudaEmulationSpecialValuesSupport_t'
+    ctypedef int cudaEmulationSpecialValuesSupport 'cudaEmulationSpecialValuesSupport'
+
 ctypedef void* cusolverDnHandle_t 'cusolverDnHandle_t'
 ctypedef void* syevjInfo_t 'syevjInfo_t'
 ctypedef void* gesvdjInfo_t 'gesvdjInfo_t'
@@ -167,6 +178,8 @@ cdef cusolverStatus_t cusolverDnSpotri(cusolverDnHandle_t handle, cublasFillMode
 cdef cusolverStatus_t cusolverDnDpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, double* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnCpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, cuComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnZpotri(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, cuDoubleComplex* work, int lwork, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnXtrtri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnXtrtri(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnSlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnDlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnClauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
@@ -223,6 +236,8 @@ cdef cusolverStatus_t cusolverDnSsytrf(cusolverDnHandle_t handle, cublasFillMode
 cdef cusolverStatus_t cusolverDnDsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, int* ipiv, double* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnCsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, int* ipiv, cuComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnZsytrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuDoubleComplex* A, int lda, int* ipiv, cuDoubleComplex* work, int lwork, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnXsytrs_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnXsytrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnSsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnDsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnCsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, cuComplex* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
@@ -394,10 +409,6 @@ cdef cusolverStatus_t cusolverDnXgesvdp_bufferSize(cusolverDnHandle_t handle, cu
 cdef cusolverStatus_t cusolverDnXgesvdp(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, int econ, int64_t m, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeS, void* S, cudaDataType dataTypeU, void* U, int64_t ldu, cudaDataType dataTypeV, void* V, int64_t ldv, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info, double* h_err_sigma) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnXgesvdr_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeSrand, const void* Srand, cudaDataType dataTypeUrand, const void* Urand, int64_t ldUrand, cudaDataType dataTypeVrand, const void* Vrand, int64_t ldVrand, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnXgesvdr(cusolverDnHandle_t handle, cusolverDnParams_t params, signed char jobu, signed char jobv, int64_t m, int64_t n, int64_t k, int64_t p, int64_t niters, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeSrand, void* Srand, cudaDataType dataTypeUrand, void* Urand, int64_t ldUrand, cudaDataType dataTypeVrand, void* Vrand, int64_t ldVrand, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
-cdef cusolverStatus_t cusolverDnXsytrs_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
-cdef cusolverStatus_t cusolverDnXsytrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
-cdef cusolverStatus_t cusolverDnXtrtri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
-cdef cusolverStatus_t cusolverDnXtrtri(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnLoggerSetCallback(cusolverDnLoggerCallback_t callback) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnLoggerSetFile(FILE* file) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnLoggerOpenFile(const char* logFile) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
@@ -412,3 +423,7 @@ cdef cusolverStatus_t cusolverDnXsyevBatched_bufferSize(cusolverDnHandle_t handl
 cdef cusolverStatus_t cusolverDnXsyevBatched(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info, int64_t batchSize) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnXgeev_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeW, const void* W, cudaDataType dataTypeVL, const void* VL, int64_t ldvl, cudaDataType dataTypeVR, const void* VR, int64_t ldvr, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusolverStatus_t cusolverDnXgeev(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigMode_t jobvl, cusolverEigMode_t jobvr, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeW, void* W, cudaDataType dataTypeVL, void* VL, int64_t ldvl, cudaDataType dataTypeVR, void* VR, int64_t ldvr, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnSetMathMode(cusolverDnHandle_t handle, cusolverMathMode_t mode) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnGetMathMode(cusolverDnHandle_t handle, cusolverMathMode_t* mode) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnSetEmulationStrategy(cusolverDnHandle_t handle, cudaEmulationStrategy_t strategy) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusolverStatus_t cusolverDnGetEmulationStrategy(cusolverDnHandle_t handle, cudaEmulationStrategy_t* strategy) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil

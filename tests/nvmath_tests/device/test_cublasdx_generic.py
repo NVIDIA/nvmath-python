@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -485,19 +485,13 @@ class TestGetSharedStorageSize(NamedTuple):
                 expected_error=r"get_shared_storage_size\(\) takes either 0 or "
                 r"3 arguments\. If .*",
             ),
-            TestGetSharedStorageSize(
-                args=(1, 2),
-                expected_error=r"get_shared_storage_size_ab\(\) takes either 0 "
-                r"or 2 arguments\. If .*",
-            ),
+            TestGetSharedStorageSize(expected_size=64),
         ),
         (
             {"size": (1, 2, 3), "precision": np.float16, "alignment": (2, 4, 8)},
             TestGetSharedStorageSize(
-                args=(1, 2, 3, 4),
-                expected_error=r"get_shared_storage_size\(\) takes either 0 or "
-                r"3 arguments\. If .*",
-            ),
+                expected_size=28
+            ),  # If t is invalid, it would return and invalid t_ab test wouldn't be triggered
             TestGetSharedStorageSize(
                 args=(1, 2, 3),
                 expected_error=r"get_shared_storage_size_ab\(\) takes either 0 "
@@ -512,11 +506,7 @@ class TestGetSharedStorageSize(NamedTuple):
                 expected_error=r"get_shared_storage_size\(\) takes either 0 or "
                 r"3 arguments\. If .*",
             ),
-            TestGetSharedStorageSize(
-                args=(1, "2"),
-                expected_error=r"get_shared_storage_size_ab\(\) takes either 0 "
-                r"or 2 arguments\. If .*",
-            ),
+            TestGetSharedStorageSize(expected_size=28),
         ),
         (
             {
@@ -524,11 +514,7 @@ class TestGetSharedStorageSize(NamedTuple):
                 "precision": np.float16,
                 "alignment": (2, 4, 8),
             },
-            TestGetSharedStorageSize(
-                args=(1, 2, lambda MM: MM.get_layout_smem_c()),  # wrong type
-                expected_error=r"get_shared_storage_size\(\) takes either 0 or "
-                r"3 arguments\. If .*",
-            ),
+            TestGetSharedStorageSize(expected_size=28),
             TestGetSharedStorageSize(
                 args=(1, lambda MM: MM.get_layout_smem_b()),
                 expected_error=r"get_shared_storage_size_ab\(\) takes either 0 "
@@ -704,6 +690,14 @@ def test_alignment(dtype, alignment, expected, expected_error):
         ("leading_dimension", (1, 2), None),
         ("block_size", 128, "block_dim_conflict"),
         ("block_size", "suggested", "block_size_suggested"),
+        ("size", (16, -1, 16), None),
+        ("size", (16, 8, 0), None),
+        ("precision", np.complex64, None),
+        ("data_type", "integer", None),
+        ("execution", "Warp", None),
+        ("function", "GEMM", None),
+        ("static_block_dim", "1", None),
+        ("block_dim", (32, 32, 32), None),
     ],
 )
 def test_matmul_parameter_validation(param_name, param_value, special_case):

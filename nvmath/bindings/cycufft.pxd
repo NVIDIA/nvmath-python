@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.1. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 ###############################################################################
@@ -137,6 +137,7 @@ ctypedef struct cufftXt1dFactors 'cufftXt1dFactors':
     int substringShift
     int factor1Shift
     int factor2Shift
+
 ctypedef cufftComplex (*cufftCallbackLoadC 'cufftCallbackLoadC')(
     void* dataIn,
     size_t offset,

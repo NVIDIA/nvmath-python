@@ -1,3 +1,7 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations  # allows typehint of class methods to return the self class
 
 import copy
@@ -762,7 +766,7 @@ def _get_communicator():
     if distributed_ctx is None:
         raise RuntimeError(
             "nvmath.distributed has not been initialized. Refer to "
-            "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
+            "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/runtime.html"
             " for more information."
         )
     return distributed_ctx.communicator

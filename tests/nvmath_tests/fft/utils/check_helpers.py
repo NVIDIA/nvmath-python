@@ -1,8 +1,7 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import contextlib
 from itertools import accumulate
 import math
 import numpy as np
@@ -19,10 +18,18 @@ try:
 except ImportError:
     torch = None
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import Device
+except ImportError:
+    from cuda.core.experimental import Device
 
 import nvmath
 
+from nvmath_tests.helpers import (
+    use_stream as _use_stream,
+    record_event as _record_event,
+    wait_event as _wait_event,
+)
 from .common_axes import ExecBackend, MemBackend, Framework, DType, ShapeKind, OptFftType
 from .axes_utils import (
     TORCH_TENSOR,
@@ -257,14 +264,7 @@ def get_transposed(sample: np.ndarray | CP_NDARRAY | TORCH_TENSOR, d1: int, d2: 
 
 
 def use_stream(stream):
-    if stream is None or isinstance(stream, ccx.Stream):
-        return contextlib.nullcontext(stream)
-    if cp is not None and isinstance(stream, cp.cuda.Stream):
-        return stream
-    elif torch is not None and isinstance(stream, torch.cuda.Stream):
-        return torch.cuda.stream(stream)
-    else:
-        raise ValueError(f"Unknown stream type {type(stream)}")
+    return _use_stream(stream)
 
 
 def get_array_device_id(array) -> int:
@@ -318,23 +318,11 @@ def as_type(array, dtype: DType):
 
 
 def record_event(stream):
-    if isinstance(stream, ccx.Stream):
-        return stream.record()
-    if cp is not None and isinstance(stream, cp.cuda.Stream):
-        return stream.record()
-    elif torch is not None and isinstance(stream, torch.cuda.Stream):
-        return stream.record_event()
-    else:
-        raise ValueError(f"Unknown stream type {type(stream)}")
+    return _record_event(stream)
 
 
 def wait_event(stream, event):
-    if isinstance(stream, ccx.Stream):
-        stream.wait(event)
-    elif cp is not None and isinstance(stream, cp.cuda.Stream) or torch is not None and isinstance(stream, torch.cuda.Stream):
-        stream.wait_event(event)
-    else:
-        raise ValueError(f"Unknown stream type {type(stream)}")
+    return _wait_event(stream, event)
 
 
 def assert_all_close(a, b, rtol, atol):
@@ -654,7 +642,7 @@ def intercept_device_id(monkeypatch, *calls):
 
         def wrapper(*args, **kwargs):
             nonlocal device_ids
-            device_ids[name] = ccx.Device().device_id
+            device_ids[name] = Device().device_id
             return actual_method(*args, **kwargs)
 
         monkeypatch.setattr(module, name, wrapper)
@@ -748,7 +736,7 @@ def has_only_small_factors(shape, axes=None):
 
 
 def get_cc(device_id: int) -> int:
-    device = ccx.Device(device_id)
+    device = Device(device_id)
     return device.compute_capability.major * 10 + device.compute_capability.minor
 
 

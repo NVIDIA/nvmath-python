@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,6 +12,7 @@ from nvmath.bindings import curand
 from nvmath.bindings import cusolver
 from nvmath.bindings import cusolverDn
 from nvmath.bindings import cusparse
+from nvmath.bindings import cutensor
 
 try:
     # cufftMp is Linux-only.
@@ -36,12 +37,6 @@ try:
     from nvmath.bindings import cublasMp
 except ImportError:
     cublasMp = None
-
-try:
-    # cutensor binding is Linux-only for nvmath-python beta7.0.
-    from nvmath.bindings import cutensor
-except ImportError:
-    cutensor = None
 
 __all__ = [
     "cublas",

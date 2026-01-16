@@ -118,6 +118,8 @@ ctypedef enum cublasdxOperatorType "cublasdxOperatorType":
     CUBLASDX_OPERATOR_ARRANGEMENT "CUBLASDX_OPERATOR_ARRANGEMENT" = 10
     CUBLASDX_OPERATOR_ALIGNMENT "CUBLASDX_OPERATOR_ALIGNMENT" = 11
     CUBLASDX_OPERATOR_STATIC_BLOCK_DIM "CUBLASDX_OPERATOR_STATIC_BLOCK_DIM" = 12
+    CUBLASDX_OPERATOR_ENABLE_INPUT_STREAMING "CUBLASDX_OPERATOR_ENABLE_INPUT_STREAMING" = 13
+    CUBLASDX_OPERATOR_WITH_PIPELINE "CUBLASDX_OPERATOR_WITH_PIPELINE" = 14
 
 ctypedef enum cublasdxTraitType "cublasdxTraitType":
     CUBLASDX_TRAIT_VALUE_TYPE "CUBLASDX_TRAIT_VALUE_TYPE" = 0
@@ -143,6 +145,9 @@ ctypedef enum cublasdxTensorType "cublasdxTensorType":
     CUBLASDX_TENSOR_GMEM_A "CUBLASDX_TENSOR_GMEM_A" = 7
     CUBLASDX_TENSOR_GMEM_B "CUBLASDX_TENSOR_GMEM_B" = 8
     CUBLASDX_TENSOR_GMEM_C "CUBLASDX_TENSOR_GMEM_C" = 9
+    CUBLASDX_TENSOR_SUGGESTED_ACCUMULATOR_C "CUBLASDX_TENSOR_SUGGESTED_ACCUMULATOR_C" = 10
+    CUBLASDX_TENSOR_RMEM_C "CUBLASDX_TENSOR_RMEM_C" = 11
+    CUBLASDX_TENSOR_ACCUMULATOR_C "CUBLASDX_TENSOR_ACCUMULATOR_C" = 12
 
 ctypedef enum cublasdxTensorOption "cublasdxTensorOption":
     CUBLASDX_TENSOR_OPTION_ALIGNMENT_BYTES "CUBLASDX_TENSOR_OPTION_ALIGNMENT_BYTES" = 0
@@ -159,7 +164,9 @@ ctypedef enum cublasdxDeviceFunctionTrait "cublasdxDeviceFunctionTrait":
     CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL "CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL" = 1
 
 ctypedef enum cublasdxDeviceFunctionOption "cublasdxDeviceFunctionOption":
-    CUBLASDX_DEVICE_FUNCTION_OPTION_COPY_ALIGNMENT "CUBLASDX_DEVICE_FUNCTION_OPTION_COPY_ALIGNMENT" = 0
+    CUBLASDX_DEVICE_FUNCTION_OPTION_SYMBOL_NAME "CUBLASDX_DEVICE_FUNCTION_OPTION_SYMBOL_NAME" = 0
+    CUBLASDX_DEVICE_FUNCTION_OPTION_COPY_ALIGNMENT "CUBLASDX_DEVICE_FUNCTION_OPTION_COPY_ALIGNMENT" = 1
+    CUBLASDX_DEVICE_FUNCTION_OPTION_CALLBACK "CUBLASDX_DEVICE_FUNCTION_OPTION_CALLBACK" = 2
 
 ctypedef enum cublasdxDeviceFunctionType "cublasdxDeviceFunctionType":
     CUBLASDX_DEVICE_FUNCTION_EXECUTE "CUBLASDX_DEVICE_FUNCTION_EXECUTE" = 0
@@ -173,6 +180,10 @@ ctypedef enum cublasdxDeviceFunctionType "cublasdxDeviceFunctionType":
     CUBLASDX_DEVICE_FUNCTION_IS_THREAD_ACTIVE "CUBLASDX_DEVICE_FUNCTION_IS_THREAD_ACTIVE" = 8
     CUBLASDX_DEVICE_FUNCTION_IS_PREDICATED "CUBLASDX_DEVICE_FUNCTION_IS_PREDICATED" = 9
     CUBLASDX_DEVICE_FUNCTION_IS_INDEX_IN_BOUNDS "CUBLASDX_DEVICE_FUNCTION_IS_INDEX_IN_BOUNDS" = 10
+    CUBLASDX_DEVICE_FUNCTION_CREATE "CUBLASDX_DEVICE_FUNCTION_CREATE" = 11
+    CUBLASDX_DEVICE_FUNCTION_DESTROY "CUBLASDX_DEVICE_FUNCTION_DESTROY" = 12
+    CUBLASDX_DEVICE_FUNCTION_RESET "CUBLASDX_DEVICE_FUNCTION_RESET" = 13
+    CUBLASDX_DEVICE_FUNCTION_EPILOGUE "CUBLASDX_DEVICE_FUNCTION_EPILOGUE" = 14
 
 ctypedef enum cufftdxApi "cufftdxApi":
     CUFFTDX_API_LMEM "CUFFTDX_API_LMEM" = 0
@@ -250,6 +261,12 @@ ctypedef enum cusolverdxFunction "cusolverdxFunction":
     CUSOLVERDX_FUNCTION_POTRF "CUSOLVERDX_FUNCTION_POTRF" = 2
     CUSOLVERDX_FUNCTION_POTRS "CUSOLVERDX_FUNCTION_POTRS" = 3
     CUSOLVERDX_FUNCTION_TRSM "CUSOLVERDX_FUNCTION_TRSM" = 4
+    CUSOLVERDX_FUNCTION_GETRF_PARTIAL_PIVOT "CUSOLVERDX_FUNCTION_GETRF_PARTIAL_PIVOT" = 5
+    CUSOLVERDX_FUNCTION_GETRS_PARTIAL_PIVOT "CUSOLVERDX_FUNCTION_GETRS_PARTIAL_PIVOT" = 6
+    CUSOLVERDX_FUNCTION_GEQRF "CUSOLVERDX_FUNCTION_GEQRF" = 7
+    CUSOLVERDX_FUNCTION_UNMQR "CUSOLVERDX_FUNCTION_UNMQR" = 8
+    CUSOLVERDX_FUNCTION_GELQF "CUSOLVERDX_FUNCTION_GELQF" = 9
+    CUSOLVERDX_FUNCTION_UNMLQ "CUSOLVERDX_FUNCTION_UNMLQ" = 10
 
 ctypedef enum cusolverdxArrangement "cusolverdxArrangement":
     CUSOLVERDX_ARRANGEMENT_COL_MAJOR "CUSOLVERDX_ARRANGEMENT_COL_MAJOR" = 0
@@ -280,15 +297,51 @@ ctypedef enum cusolverdxOperatorType "cusolverdxOperatorType":
     CUSOLVERDX_OPERATOR_FILL_MODE "CUSOLVERDX_OPERATOR_FILL_MODE" = 9
     CUSOLVERDX_OPERATOR_SIDE "CUSOLVERDX_OPERATOR_SIDE" = 10
     CUSOLVERDX_OPERATOR_DIAG "CUSOLVERDX_OPERATOR_DIAG" = 11
+    CUSOLVERDX_OPERATOR_TRANSPOSE_MODE "CUSOLVERDX_OPERATOR_TRANSPOSE_MODE" = 12
+    CUSOLVERDX_OPERATOR_LEADING_DIMENSION "CUSOLVERDX_OPERATOR_LEADING_DIMENSION" = 13
+    CUSOLVERDX_OPERATOR_BATCHES_PER_BLOCK "CUSOLVERDX_OPERATOR_BATCHES_PER_BLOCK" = 14
 
 ctypedef enum cusolverdxTraitType "cusolverdxTraitType":
     CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE "CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE" = 1
     CUSOLVERDX_TRAIT_SYMBOL_NAME "CUSOLVERDX_TRAIT_SYMBOL_NAME" = 2
+    CUSOLVERDX_TRAIT_BLOCK_DIM "CUSOLVERDX_TRAIT_BLOCK_DIM" = 3
+    CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION "CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION" = 4
+    CUSOLVERDX_TRAIT_SUGGESTED_BLOCK_DIM "CUSOLVERDX_TRAIT_SUGGESTED_BLOCK_DIM" = 5
+    CUSOLVERDX_TRAIT_SUGGESTED_BATCHES_PER_BLOCK "CUSOLVERDX_TRAIT_SUGGESTED_BATCHES_PER_BLOCK" = 6
+
+ctypedef enum commondxArchModifier "commondxArchModifier":
+    COMMONDX_ARCH_MODIFIER_GENERIC "COMMONDX_ARCH_MODIFIER_GENERIC" = 0
+    COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC "COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC" = 1
+    COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC "COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC" = 2
+
+ctypedef enum cublasdxDevicePipelineType "cublasdxDevicePipelineType":
+    CUBLASDX_DEVICE_PIPELINE_SUGGESTED "CUBLASDX_DEVICE_PIPELINE_SUGGESTED" = 0
+
+ctypedef enum cublasdxTilePipelineType "cublasdxTilePipelineType":
+    CUBLASDX_TILE_PIPELINE_DEFAULT "CUBLASDX_TILE_PIPELINE_DEFAULT" = 0
+
+ctypedef enum cublasdxBlockSizeStrategy "cublasdxBlockSizeStrategy":
+    CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC "CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC" = 0
+    CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED "CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED" = 1
 
 ctypedef enum cublasdxMemorySpace "cublasdxMemorySpace":
     CUBLASDX_MEMORY_SPACE_RMEM "CUBLASDX_MEMORY_SPACE_RMEM" = 0
     CUBLASDX_MEMORY_SPACE_SMEM "CUBLASDX_MEMORY_SPACE_SMEM" = 1
     CUBLASDX_MEMORY_SPACE_GMEM "CUBLASDX_MEMORY_SPACE_GMEM" = 2
+    CUBLASDX_MEMORY_SPACE_ANY "CUBLASDX_MEMORY_SPACE_ANY" = 3
+
+ctypedef enum cublasdxPipelineTrait "cublasdxPipelineTrait":
+    CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES "CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES" = 0
+    CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES "CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES" = 1
+    CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE "CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE" = 2
+    CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES "CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES" = 3
+    CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME "CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME" = 4
+    CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM "CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM" = 5
+
+ctypedef enum cusolverdxTransposeMode "cusolverdxTransposeMode":
+    CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED" = 0
+    CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED" = 1
+    CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED" = 2
 
 # types
 ctypedef long long int commondxCode 'commondxCode'
@@ -297,6 +350,7 @@ ctypedef long long int cublasdxTensor 'cublasdxTensor'
 ctypedef long long int cublasdxDeviceFunction 'cublasdxDeviceFunction'
 ctypedef long long int cufftdxDescriptor 'cufftdxDescriptor'
 ctypedef long long int cusolverdxDescriptor 'cusolverdxDescriptor'
+ctypedef long long int cublasdxPipeline 'cublasdxPipeline'
 
 
 ###############################################################################
@@ -373,10 +427,23 @@ cdef commondxStatusType cusolverdxFinalizeCode(commondxCode code, cusolverdxDesc
 cdef commondxStatusType cusolverdxDestroyDescriptor(cusolverdxDescriptor handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef const char* cusolverdxOperatorTypeToStr(cusolverdxOperatorType op) except?NULL nogil
 cdef const char* cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NULL nogil
+cdef commondxStatusType commondxSetCodeOptionInt64s(commondxCode code, commondxOption option, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateTensorStrided(cublasdxMemorySpace memory_space, commondxValueType value_type, void* ptr, long long int rank, long long int* shape, long long int* stride, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxDestroyTensorNew(cublasdxTensor tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxDestroyPipeline(cublasdxPipeline pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateDevicePipeline(cublasdxDescriptor handle, cublasdxDevicePipelineType device_pipeline_type, long long int pipeline_depth, cublasdxBlockSizeStrategy block_size_strategy, cublasdxTensor tensor_a, cublasdxTensor tensor_b, cublasdxPipeline* device_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateTilePipeline(cublasdxDescriptor handle, cublasdxTilePipelineType tile_pipeline_type, cublasdxPipeline device_pipeline, cublasdxPipeline* tile_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxFinalizePipelines(size_t count, const cublasdxPipeline* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxFinalize(size_t countTensors, const cublasdxTensor* tensors, size_t countPipelines, const cublasdxPipeline* pipelines) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitInt64(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitInt64s(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t count, long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitStrSize(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitStr(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateDeviceFunctionWithPipelines(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t tensor_count, const cublasdxTensor* tensors, size_t pipeline_count, const cublasdxPipeline* pipelines, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cusolverdxGetTraitInt64s(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 
 cdef commondxStatusType cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil

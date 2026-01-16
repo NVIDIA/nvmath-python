@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,7 +17,8 @@ import typing
 
 from numba.core import types
 
-from numba.extending import overload, models, register_model, lower_builtin, as_numba_type, type_callable, lower_cast
+from numba.extending import models
+from numba.cuda.extending import overload, register_model, lower_builtin, as_numba_type, type_callable, lower_cast
 from numba.core.typeconv import Conversion
 from llvmlite import ir
 from numba.core.typing.templates import AttributeTemplate

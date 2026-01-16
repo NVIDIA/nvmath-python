@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,17 +17,39 @@ from .common import check_in, check_sm
 from .common_backend import (
     EXECUTION_STR_TO_MATHDX,
     NP_TYPES_TO_MATHDX_PRECISION,
+    NP_TYPES_TO_MATHDX_TYPES,
     NVARG_GEN_OPT_LTO,
     build_get_int_traits,
     build_get_str_trait,
     get_isa_version,
     get_lto,
+    get_mathdx_sm,
+    set_code_target_sm,
 )
 from .common_cuda import Code, CodeType, Dim3, ComputeCapability, ISAVersion
 from .common_backend import DescriptorWrapper
 from .types import REAL_NP_TYPES, INT_NP_TYPES
 
 from nvmath.bindings import mathdx
+
+try:
+    from cuda.core import (
+        ObjectCode,
+        ProgramOptions,
+        LinkerOptions,
+        Program,
+        Linker,
+        Kernel,
+    )
+except ImportError:
+    from cuda.core.experimental import (
+        ObjectCode,
+        ProgramOptions,
+        LinkerOptions,
+        Program,
+        Linker,
+        Kernel,
+    )
 
 
 _BLAS_API_STR_TO_MATHDX = {
@@ -49,6 +71,12 @@ _BLAS_FUNCTION_STR_TO_MATHDX = {
 _TENSOR_TYPE_STR_TO_MATHDX = {t.name.lower(): t for t in mathdx.CublasdxTensorType}
 
 
+def check_blas_sm(sm, library_name: str, var_name: str = "sm"):
+    check_sm(sm, library_name, var_name)
+    if sm.arch == "a" and sm.integer not in {900, 1000, 1030, 1100}:
+        raise ValueError(f"SM modifiers other than generic are only supported for SM 900, 1000, 1030, 1100, got {sm}")
+
+
 class LeadingDimension(namedtuple("LeadingDimension", ["a", "b", "c"])):
     """
     A namedtuple class that encapsulates the three leading dimensions in matrix
@@ -65,7 +93,7 @@ class LeadingDimension(namedtuple("LeadingDimension", ["a", "b", "c"])):
             ``C``.
     """
 
-    pass
+    __slots__ = ()
 
 
 class TransposeMode(namedtuple("TransposeMode", ["a", "b"])):
@@ -81,7 +109,7 @@ class TransposeMode(namedtuple("TransposeMode", ["a", "b"])):
             supports ``'non_transposed'``, ``'transposed'`` and ``'conj_transposed'``.
     """
 
-    pass
+    __slots__ = ()
 
 
 class Arrangement(NamedTuple):
@@ -153,11 +181,9 @@ class CublasdxTensors(NamedTuple):
 
 
 class CublasdxTensorsResponse:
-    gmem: CublasdxTensors
     target: CublasdxTensors
 
-    def __init__(self, gmem: CublasdxTensors, target: CublasdxTensors):
-        self.gmem = gmem
+    def __init__(self, target: CublasdxTensors):
         self.target = target
 
 
@@ -205,6 +231,8 @@ def validate(
     function,
     leading_dimension,
     static_block_dim,
+    with_pipeline,
+    enable_input_streaming,
 ):
     (m, n, k) = size
     if m <= 0 or n <= 0 or k <= 0:
@@ -217,7 +245,7 @@ def validate(
             f"precision should be an instance of {Precision} or a 3-sequence, and individual fields "
             f"should be one of {_ACCEPTED_PRECISION}. Instead got precision = {precision}"
         )
-    check_sm(sm, "sm")
+    check_blas_sm(sm, "sm")
     check_in("data_type", data_type, ["real", "complex"])
     check_in("execution", execution, ["Block", "Thread"])
     check_in("function", function, ["MM"])
@@ -266,6 +294,10 @@ def validate(
             f"leading_dimension should be None, a LeadingDimension instance or 'suggested'; "
             f"got leading_dimension = {leading_dimension}"
         )
+    if not isinstance(with_pipeline, bool):
+        raise ValueError(f"with_pipeline should be a bool; got with_pipeline = {with_pipeline}")
+    if not isinstance(enable_input_streaming, bool):
+        raise ValueError(f"enable_input_streaming should be a bool; got enable_input_streaming = {enable_input_streaming}")
 
 
 def validate_execute_api(execute_api):
@@ -333,6 +365,8 @@ def generate_MM(
     leading_dimension: LeadingDimension | None = None,
     execute_api: str | None = None,
     tensor_types: tuple[str, str, str] | None = None,
+    with_pipeline: bool = False,
+    enable_input_streaming: bool = False,
 ):
     """
     Generate a cuBLASDx descriptor for matrix multiplication.
@@ -359,7 +393,8 @@ def generate_MM(
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.EXECUTION, EXECUTION_STR_TO_MATHDX[execution])
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.TYPE, _BLAS_TYPE_STR_TO_MATHDX[data_type])
 
-    mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.SM, sm.major * 100 + sm.minor * 10)
+    sm_mathdx = get_mathdx_sm(sm)
+    mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.SM, len(sm_mathdx), sm_mathdx)
 
     if block_dim:
         mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.BLOCK_DIM, 3, block_dim)
@@ -396,18 +431,78 @@ def generate_MM(
             alignment,
         )
 
+    if with_pipeline:
+        mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.WITH_PIPELINE, 1)
+
+    if enable_input_streaming:
+        mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.ENABLE_INPUT_STREAMING, 1)
+
     return DescriptorWrapper(h, mathdx.cublasdx_destroy_descriptor)
+
+
+@lru_cache
+def generate_device_pipeline(
+    handle,
+    depth: int,
+    value_type_a: mathdx.CommondxValueType,
+    value_type_b: mathdx.CommondxValueType,
+    shape_a: list[int],
+    shape_b: list[int],
+    strides_a: list[int],
+    strides_b: list[int],
+) -> DescriptorWrapper:
+    assert len(shape_a) == len(strides_a)
+    assert len(shape_b) == len(strides_b)
+
+    big_gmem_a = mathdx.cublasdx_create_tensor_strided(
+        mathdx.CublasdxMemorySpace.GMEM, value_type_a, 0, len(shape_a), shape_a, strides_a
+    )
+    big_gmem_b = mathdx.cublasdx_create_tensor_strided(
+        mathdx.CublasdxMemorySpace.GMEM, value_type_b, 0, len(shape_b), shape_b, strides_b
+    )
+
+    device_pipeline = mathdx.cublasdx_create_device_pipeline(
+        handle,
+        mathdx.CublasdxDevicePipelineType.SUGGESTED,
+        depth,
+        # FIXED for accumulator, HEURISTIC for epilogue
+        mathdx.CublasdxBlockSizeStrategy.FIXED,
+        big_gmem_a,
+        big_gmem_b,
+    )
+
+    tensors = [big_gmem_a, big_gmem_b]
+    pipelines = [device_pipeline]
+
+    mathdx.cublasdx_finalize_pipelines(len(pipelines), pipelines)
+    mathdx.cublasdx_finalize_tensors(handle, len(tensors), tensors)
+
+    return DescriptorWrapper(device_pipeline, mathdx.cublasdx_destroy_pipeline)
+
+
+@lru_cache
+def generate_tile_pipeline(
+    handle,
+    device_pipeline_handle,
+):
+    tile_pipeline = mathdx.cublasdx_create_tile_pipeline(
+        handle,
+        mathdx.CublasdxTilePipelineType.PIPELINE_DEFAULT,
+        device_pipeline_handle,
+    )
+
+    pipelines = [tile_pipeline]
+
+    mathdx.cublasdx_finalize_pipelines(len(pipelines), pipelines)
+
+    return DescriptorWrapper(tile_pipeline, mathdx.cublasdx_destroy_pipeline)
 
 
 @lru_cache
 def generate_code(handle, version: ComputeCapability, device_functions: tuple | None = None):
     code = mathdx.commondx_create_code()
 
-    mathdx.commondx_set_code_option_int64(
-        code,
-        mathdx.CommondxOption.TARGET_SM,
-        version.integer,
-    )
+    set_code_target_sm(code, version)
     mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
     if device_functions:
         mathdx.cublasdx_finalize_device_functions(code, len(device_functions), list(device_functions))
@@ -437,14 +532,22 @@ def generate_tensor(h: int, tensor_type: str, gmem_alignment: int | None = None)
 
 
 @lru_cache
-def get_tensor_traits(tensor: int) -> tuple[int, int, int]:
-    """Get tensor traits: (uid, logical_size, storage_bytes)"""
+def generate_tensor_like(h: int, src_tensor: int, dtype: np.number) -> DescriptorWrapper:
+    dx_type = NP_TYPES_TO_MATHDX_TYPES[dtype]
+    dst_tensor = mathdx.cublasdx_make_tensor_like(src_tensor, dx_type)
+    mathdx.cublasdx_finalize_tensors(h, 1, [dst_tensor])
+
+    return DescriptorWrapper(dst_tensor, mathdx.cublasdx_destroy_tensor)
+
+
+@lru_cache
+def get_tensor_traits(tensor: int) -> tuple[int, int, int, int]:
+    """Get tensor traits: (uid, logical_size, storage_bytes, alignment)"""
     return (
         int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.UID)),
-        int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.LOGICAL_SIZE))
-        if mathdx.get_version_ex() >= (0, 3, 0)
-        else 0,
+        int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.LOGICAL_SIZE)),
         int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.STORAGE_BYTES)),
+        int(mathdx.cublasdx_get_tensor_trait_int64(tensor, mathdx.CublasdxTensorTrait.ALIGNMENT_BYTES)),
     )
 
 
@@ -452,6 +555,28 @@ def generate_function_code(
     MM_handler: int, function_type: mathdx.CublasdxDeviceFunctionType, args: Sequence[int], version: ISAVersion
 ):
     function_handler = mathdx.cublasdx_create_device_function(MM_handler, function_type, len(args), list(args))
+    symbol = get_str_device_trait(function_handler, mathdx.CublasdxDeviceFunctionTrait.SYMBOL)
+    code = generate_code(MM_handler, version, (function_handler,))
+
+    return code, symbol
+
+
+@lru_cache
+def generate_function_with_pipelines_code(
+    MM_handler: int,
+    function_type: mathdx.CublasdxDeviceFunctionType,
+    tensors: tuple[int],
+    pipelines: tuple[int],
+    version: ISAVersion,
+):
+    function_handler = mathdx.cublasdx_create_device_function_with_pipelines(
+        MM_handler,
+        function_type,
+        len(tensors),
+        list(tensors),
+        len(pipelines),
+        list(pipelines),
+    )
     symbol = get_str_device_trait(function_handler, mathdx.CublasdxDeviceFunctionTrait.SYMBOL)
     code = generate_code(MM_handler, version, (function_handler,))
 
@@ -476,49 +601,22 @@ def get_function_code(
 
 
 @lru_cache
-def generate_tensors(h, tensor_types, gmem_alignment: Alignment | None = None):
+def generate_tensors(h, tensor_types):
     type_mem_a = mathdx.cublasdx_create_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[0]])
     type_mem_b = mathdx.cublasdx_create_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[1]])
     type_mem_c = mathdx.cublasdx_create_tensor(h, _TENSOR_TYPE_STR_TO_MATHDX[tensor_types[2]])
-
-    gmem_a = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.GMEM_A)
-    gmem_b = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.GMEM_B)
-    gmem_c = mathdx.cublasdx_create_tensor(h, mathdx.CublasdxTensorType.GMEM_C)
-
-    if gmem_alignment:
-        mathdx.cublasdx_set_tensor_option_int64(
-            gmem_a,
-            mathdx.CublasdxTensorOption.ALIGNMENT_BYTES,
-            gmem_alignment.a,
-        )
-        mathdx.cublasdx_set_tensor_option_int64(
-            gmem_b,
-            mathdx.CublasdxTensorOption.ALIGNMENT_BYTES,
-            gmem_alignment.b,
-        )
-        mathdx.cublasdx_set_tensor_option_int64(
-            gmem_c,
-            mathdx.CublasdxTensorOption.ALIGNMENT_BYTES,
-            gmem_alignment.c,
-        )
 
     tensors = [
         type_mem_a,
         type_mem_b,
         type_mem_c,
-        gmem_a,
-        gmem_b,
-        gmem_c,
     ]
 
     mathdx.cublasdx_finalize_tensors(h, len(tensors), tensors)
 
     target_tensors = CublasdxTensors(type_mem_a, type_mem_b, type_mem_c)
-    gmem_tensors = CublasdxTensors(gmem_a, gmem_b, gmem_c)
+    resp = CublasdxTensorsResponse(target_tensors)
 
-    resp = CublasdxTensorsResponse(gmem_tensors, target_tensors)
-
-    weakref.finalize(resp, destroy_tensors, resp.gmem)
     weakref.finalize(resp, destroy_tensors, resp.target)
 
     return resp
@@ -540,14 +638,14 @@ def generate_copy_wait_lto(compute_capability: ComputeCapability):
 
 @lru_cache
 def generate_device_function_lto(compute_capability: ComputeCapability, function_type: mathdx.CublasdxDeviceFunctionType, args):
-    arch = compute_capability.integer
     # Create the cuBLASDx descriptor
     h = mathdx.cublasdx_create_descriptor()
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.FUNCTION, mathdx.CublasdxFunction.MM)
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.EXECUTION, mathdx.CommondxExecution.BLOCK)
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.API, mathdx.CublasdxApi.TENSORS)
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.PRECISION, mathdx.CommondxPrecision.F32)
-    mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.SM, arch)
+    sm_mathdx = get_mathdx_sm(compute_capability)
+    mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.SM, len(sm_mathdx), sm_mathdx)
     mathdx.cublasdx_set_operator_int64(h, mathdx.CublasdxOperatorType.TYPE, mathdx.CublasdxType.REAL)
     mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.BLOCK_DIM, 3, [32, 1, 1])
     mathdx.cublasdx_set_operator_int64s(h, mathdx.CublasdxOperatorType.SIZE, 3, [1, 1, 1])
@@ -557,7 +655,7 @@ def generate_device_function_lto(compute_capability: ComputeCapability, function
 
     # Compile the device function to lto
     code = mathdx.commondx_create_code()
-    mathdx.commondx_set_code_option_int64(code, mathdx.CommondxOption.TARGET_SM, arch)
+    set_code_target_sm(code, compute_capability)
     mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
     mathdx.cublasdx_finalize_device_functions(code, 1, [function])
 
@@ -571,3 +669,140 @@ def generate_device_function_lto(compute_capability: ComputeCapability, function
     mathdx.cublasdx_destroy_descriptor(h)
 
     return symbol, bytes(lto)
+
+
+def _compile_blas_device_pipeline_init(
+    mm_descriptor: int,
+    pipeline_descriptor: int,
+    code_type: CodeType,
+) -> tuple[Code, str]:
+    assert isinstance(code_type, CodeType)
+
+    code, symbol = generate_function_with_pipelines_code(
+        mm_descriptor,
+        mathdx.CublasdxDeviceFunctionType.CREATE,
+        (),
+        (pipeline_descriptor,),
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+@lru_cache
+def _compile_blas_device_pipeline_init_kernel(
+    mm_descriptor: int,
+    pipeline_descriptor: int,
+    code_type: CodeType,
+) -> Kernel:
+    lto, sym = _compile_blas_device_pipeline_init(mm_descriptor, pipeline_descriptor, code_type=code_type)
+    init_pipeline_func = ObjectCode.from_ltoir(lto.data)
+
+    # CUDA C source code for our kernel
+    init_pipeline_source = (
+        f"#define create_dev_pipe {sym}\n"
+        + """
+    struct libmathdx_tensor_0s_0s { void* ptr; };
+    struct libmathdx_pipeline { void* ptr; };
+
+    extern "C" __device__ void create_dev_pipe(libmathdx_pipeline, libmathdx_tensor_0s_0s, libmathdx_tensor_0s_0s);
+
+    extern "C" __global__ void create_device_pipeline(void* device_pipeline_ptr, void* ga_storage, void* gb_storage) {
+        auto ga = libmathdx_tensor_0s_0s { ga_storage };
+        auto gb = libmathdx_tensor_0s_0s { gb_storage };
+        auto device_pipeline = libmathdx_pipeline { device_pipeline_ptr };
+        create_dev_pipe(device_pipeline, ga, gb);
+    }
+    """
+    )
+
+    # Compiler arguments
+    arch = f"sm_{code_type.cc.major}{code_type.cc.minor}{code_type.cc.arch}"
+    program_options = ProgramOptions(link_time_optimization=True, arch=arch)
+    linker_options = LinkerOptions(link_time_optimization=True, arch=arch)
+
+    # Compile the CUDA code into a program
+    program = Program(init_pipeline_source, code_type="c++", options=program_options)
+    compiled_program = program.compile(target_type="ltoir")
+
+    linker = Linker(compiled_program, init_pipeline_func, options=linker_options)
+    linked_program = linker.link("cubin")
+
+    # Get the specific kernel function we want to use
+    kernel = linked_program.get_kernel("create_device_pipeline")
+
+    return kernel
+
+
+def _compile_blas_device_pipeline_destroy(
+    mm_descriptor: int,
+    pipeline_descriptor: int,
+    code_type: CodeType,
+) -> tuple[Code, str]:
+    code, symbol = generate_function_with_pipelines_code(
+        mm_descriptor,
+        mathdx.CublasdxDeviceFunctionType.DESTROY,
+        (),
+        (pipeline_descriptor,),
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+@lru_cache
+def _compile_blas_device_pipeline_destroy_kernel(
+    mm_descriptor: int,
+    pipeline_descriptor: int,
+    code_type: CodeType,
+) -> Kernel:
+    lto, sym = _compile_blas_device_pipeline_destroy(
+        mm_descriptor=mm_descriptor,
+        pipeline_descriptor=pipeline_descriptor,
+        code_type=code_type,
+    )
+    destroy_pipeline_func = ObjectCode.from_ltoir(lto.data)
+
+    # CUDA C source code for our kernel
+    destroy_pipeline_source = (
+        f"#define destroy_dev_pipe {sym}\n"
+        + """
+    struct libmathdx_pipeline { void* ptr; };
+
+    extern "C" __device__ void destroy_dev_pipe(libmathdx_pipeline);
+
+    extern "C" __global__ void destroy_device_pipeline(void* device_pipeline_ptr) {
+        auto device_pipeline = libmathdx_pipeline { device_pipeline_ptr };
+        destroy_dev_pipe(device_pipeline);
+    }
+    """
+    )
+
+    # Compiler arguments
+    arch = f"sm_{code_type.cc.major}{code_type.cc.minor}{code_type.cc.arch}"
+    program_options = ProgramOptions(link_time_optimization=True, arch=arch)
+    linker_options = LinkerOptions(link_time_optimization=True, arch=arch)
+
+    # Compile the CUDA code into a program
+    program = Program(destroy_pipeline_source, code_type="c++", options=program_options)
+    compiled_program = program.compile(target_type="ltoir")
+
+    linker = Linker(compiled_program, destroy_pipeline_func, options=linker_options)
+    linked_program = linker.link("cubin")
+
+    # Get the specific kernel function we want to use
+    kernel = linked_program.get_kernel("destroy_device_pipeline")
+
+    return kernel

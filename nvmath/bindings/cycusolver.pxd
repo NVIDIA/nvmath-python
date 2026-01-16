@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -110,6 +110,10 @@ ctypedef enum cusolverDirectMode_t "cusolverDirectMode_t":
 ctypedef enum cusolverDeterministicMode_t "cusolverDeterministicMode_t":
     CUSOLVER_DETERMINISTIC_RESULTS "CUSOLVER_DETERMINISTIC_RESULTS" = 1
     CUSOLVER_ALLOW_NON_DETERMINISTIC_RESULTS "CUSOLVER_ALLOW_NON_DETERMINISTIC_RESULTS" = 2
+
+ctypedef enum cusolverMathMode_t "cusolverMathMode_t":
+    CUSOLVER_DEFAULT_MATH "CUSOLVER_DEFAULT_MATH" = 1
+    CUSOLVER_FP32_EMULATED_BF16X9_MATH "CUSOLVER_FP32_EMULATED_BF16X9_MATH" = 2
 
 
 # types

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,7 +6,7 @@ from collections.abc import Callable
 import weakref
 import numpy as np
 
-from nvmath.device.common_cuda import ISAVersion
+from nvmath.device.common_cuda import ComputeCapability, ISAVersion
 from .types import complex32, complex64, complex128, half2, half4
 
 from nvmath.bindings import mathdx
@@ -116,3 +116,15 @@ def build_get_str_trait(
         return symbol_str
 
     return get_str_trait
+
+
+def get_mathdx_sm(version: ComputeCapability) -> list:
+    sm = [version.integer]
+    if version.arch == "a":
+        sm.append(mathdx.CommondxArchModifier.ARCH_SPECIFIC)
+    return sm
+
+
+def set_code_target_sm(code: int, version: ComputeCapability):
+    sm = get_mathdx_sm(version)
+    mathdx.commondx_set_code_option_int64s(code, mathdx.CommondxOption.TARGET_SM, len(sm), sm)

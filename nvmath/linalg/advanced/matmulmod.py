@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,13 +8,17 @@ import copy
 from collections import namedtuple
 from collections.abc import Sequence
 from dataclasses import dataclass
+import dataclasses
 import functools
 import logging
 import operator
 import typing
 import random
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import Device, EventOptions
+except ImportError:
+    from cuda.core.experimental import Device, EventOptions
 import numpy as np
 
 from nvmath import memory
@@ -122,6 +126,8 @@ class MMTraits:
     N: int
     K: int
     d_mm_shape: Sequence[int]
+    inplace: bool
+    c_layout: MatrixLayout
     a_layout_traits: LayoutTraits
     b_layout_traits: LayoutTraits
     c_layout_traits: LayoutTraits
@@ -209,7 +215,7 @@ def get_matrix_layout_traits(
     return order, ld, batch_offset
 
 
-def get_mm_traits(a_layout, b_layout, c_layout, logger):
+def get_mm_traits(a_layout, b_layout, c_layout, inplace, logger):
     """
     First check A and B compatibility:
 
@@ -226,9 +232,16 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
 
     Then check C:
 
-    C can be None. If C is passed in, it must be matrix. Batching rule is the
+    C can be None. If C is passed in, it must be a matrix. The batching rule is the
     same as above.
+
+    For the inplace option (result == C), C cannot be broadcast and so must have batch
+    dimensions (if batched).
     """
+    inplace_addendum = ""
+    if inplace:
+        inplace_addendum = "This is required for inplace operations."
+
     a_shape, a_strides = list(a_layout.shape), list(a_layout.strides)
     b_shape, b_strides = list(b_layout.shape), list(b_layout.strides)
 
@@ -344,30 +357,33 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
         if Mc != M0:
             raise ValueError(f"The M dimension of the C matrix ({Mc}) must match the M dimension of A.")
 
-        if Nc != 1 and Nc != N0:
-            raise ValueError(f"The N dimension of the C matrix ({Nc}) must match the N dimension of B.")
+        if (inplace and Nc != N0) or (Nc != 1 and Nc != N0):
+            raise ValueError(f"The N dimension of the C matrix ({Nc}) must match the N dimension of B. {inplace_addendum}")
 
-        if len(c_batch_shape) > 0:
+        # For the inplace option, C must be batched if an operand is batched.
+        if inplace or len(c_batch_shape) > 0:
             if c_batch_shape != batch_shape:
                 raise ValueError(
                     f"The batch dimension of operand C {c_batch_shape} must match with that of the other operands "
-                    f"{batch_shape}."
+                    f"{batch_shape}. {inplace_addendum}"
                 )
 
-            if (c_batch_axis_order := axis_order_in_memory(c_batch_strides)) != batch_axis_order:
+            if batch_shape and (c_batch_axis_order := axis_order_in_memory(c_batch_strides)) != batch_axis_order:
                 raise ValueError(
                     f"The batch axis order of operand C {c_batch_axis_order} must match with that of the other "
                     f"operands {batch_axis_order}."
                 )
 
-            if not check_batch_tileable(c_batch_shape, c_batch_strides):
+            if batch_shape and not check_batch_tileable(c_batch_shape, c_batch_strides):
                 message = (
                     f"The batch layout for C corresponding to shape = {c_batch_shape} and strides = "
                     f"{c_batch_strides} is currently not supported because it is not tileable."
                 )
                 raise ValueError(message)
 
-        c_order, c_ld, c_batch_offset = get_matrix_layout_traits(c_mm_shape, c_mm_strides, c_batch_strides, col_bcast=True)
+        c_order, c_ld, c_batch_offset = get_matrix_layout_traits(
+            c_mm_shape, c_mm_strides, c_batch_strides, col_bcast=not inplace
+        )
         c_layout_traits = LayoutTraits(order=c_order, ld=c_ld, batch_offset=c_batch_offset, is_conjugate=c_layout.is_conjugate)
         logger.debug(f"The layout order for operand C is {c_order.name}, with LD {c_ld}, and batch offset {c_batch_offset}.")
 
@@ -376,6 +392,8 @@ def get_mm_traits(a_layout, b_layout, c_layout, logger):
         N=N0,
         K=K0,
         d_mm_shape=d_mm_shape,
+        inplace=inplace,
+        c_layout=c_layout,
         batch_count=batch_count,
         batch_shape=batch_shape,
         batch_axis_order=batch_axis_order,
@@ -397,6 +415,14 @@ def get_result_traits(mm_traits: MMTraits, epilog_ordering: cublaslt.Order | Non
     The result batch dimensions must have the same extents and axis order as the inputs. The
     MM layout can be C or F.
     """
+
+    # For inplace=True, the result traits are essentially the same as for operand C except
+    # for conjugation.
+    if mm_traits.inplace:
+        result_shape, result_strides = mm_traits.c_layout.shape, mm_traits.c_layout.strides
+        d_layout_traits = dataclasses.replace(mm_traits.c_layout_traits, is_conjugate=False)
+        return ResultTraits(result_shape=result_shape, result_strides=result_strides, d_layout_traits=d_layout_traits)
+
     # The result shape is the batch shape + d_mm_shape.
     result_shape = (*mm_traits.batch_shape, *mm_traits.d_mm_shape)
 
@@ -483,7 +509,9 @@ operand `c` is specified.""".replace("\n", " "),
 Specify scale factors for the matrix multiplication as a :class:`~nvmath.linalg.advanced.MatmulQuantizationScales`
 object. Alternatively, a `dict` containing the parameters for the
 :class:`~nvmath.linalg.advanced.MatmulQuantizationScales`
-constructor can also be provided.
+constructor can also be provided. The scale factors can be provided as scalars or tensors.
+If a scale factor is provided as a tensor, it must be from the same package and on the same
+memory space (CPU or GPU device) as the operands of the matmul.
 Allowed and required only for narrow-precision (FP8 and lower) operations.""".replace("\n", " "),
         #
         "algorithms": """\
@@ -567,20 +595,22 @@ being the auxiliary output provided as a `dict`. """.replace("\n", " "),
         "semantics": """\
         .. _semantics:
 
-        The semantics of the matrix multiplication follows :func:`numpy.matmul` semantics, with some restrictions on
+        The semantics of the matrix multiplication follows :external:py:data:`numpy.matmul` semantics, with some restrictions on
         broadcasting. In addition, the semantics for the fused matrix addition are described below:
 
+        * For in-place matrix multiplication (where the result is written into `c`) the result has the same shape as `c`.
         * If arguments `a` and `b` are matrices, they are multiplied according to the rules of matrix multiplication.
         * If argument `a` is 1-D, it is promoted to a matrix by prefixing ``1`` to its dimensions. After matrix
-          multiplication, the prefixed ``1`` is removed from the result's dimensions.
+          multiplication, the prefixed ``1`` is removed from the result's dimensions if the operation is not in-place.
         * If argument `b` is 1-D, it is promoted to a matrix by appending ``1`` to its dimensions. After matrix
-          multiplication, the appended ``1`` is removed from the result's dimensions.
+          multiplication, the appended ``1`` is removed from the result's dimensions if the operation is not in-place.
         * If `a` or `b` is N-D (N > 2), then the operand is treated as a batch of matrices. If both `a` and `b` are N-D,
           their batch dimensions must match. If exactly one of `a` or `b` is N-D, the other operand is broadcast.
         * The operand for the matrix addition `c` may be a matrix of shape (M, 1) or (M, N), or the batched versions
           (..., M, 1) or (..., M, N). Here M and N are the dimensions of the result of the matrix multiplication. If N = 1, the
           columns of `c` are broadcast for the addition; the rows of `c` are never broadcast. If batch dimensions are not
-          present, `c` is broadcast across batches as needed.
+          present, `c` is broadcast across batches as needed. If the operation is in-place, `c` cannot be broadcast since
+          it must be large enough to hold the result.
         * Similarly, when operating on a batch, auxiliary outputs are 3-D for all epilogs. Therefore, epilogs that return 1-D
           vectors of length N in non-batched mode return 3-D matrices of size (batch, N, 1) in batched mode.
 """.strip(),
@@ -760,7 +790,17 @@ class Matmul:
         assert options is not None
         self.options = options
 
+        if c is None and options.inplace:
+            raise ValueError("The operation cannot be inplace if operand C is not provided.")
+
         self.logger = options.logger if options.logger is not None else logging.getLogger()
+
+        if options.inplace and options.result_type is not None:
+            self.logger.warning(
+                f"Matmul: The provided result type {options.result_type} in options is ignored since \
+the operation is in-place."
+            )
+        self.inplace = options.inplace
 
         def check_dtype(dtype, operand_name):
             if dtype not in SUPPORTED_TYPES:
@@ -773,6 +813,8 @@ class Matmul:
         check_dtype(a.dtype, "A")
         check_dtype(b.dtype, "B")
         self.logger.info("= SPECIFICATION PHASE =")
+        if self.inplace:
+            self.logger.info("The MM operation will be performed in-place (the result will be written into operand C).")
         self.logger.info(f"The data type of operand A is '{a.dtype}', and that of operand B is '{b.dtype}'.")
 
         self.num_operands = 2
@@ -826,8 +868,11 @@ class Matmul:
         stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
         self.logger.info(f"The specified stream for the Matmul ctor is {stream_holder.obj}.")
 
-        # Copy operands to device if needed.
+        # Copy operands to device (and store reference to CPU operand), if needed.
+        self.cpu_c_ref = None
         if self.memory_space == "cpu":
+            if self.inplace:
+                self.cpu_c_ref = self.operands[2]  # Hold reference, needed for inplace operations.
             self.operands = tensor_wrapper.to(self.operands, self.device_id, stream_holder)
 
         # Set qualifiers.
@@ -884,7 +929,7 @@ class Matmul:
         self.is_complex = "complex" in self.a_dtype_name or "complex" in self.b_dtype_name
 
         # Determine the data types for c and d.
-        self.d_dtype = options.result_type
+        self.d_dtype = None if self.inplace else options.result_type
         if self.num_operands == 3:
             self.c_dtype = typemaps.NAME_TO_DATA_TYPE[c.dtype]
             if self.d_dtype is None:
@@ -963,12 +1008,17 @@ class Matmul:
                     )
                 elif scale_type == st.CUDA_C_32F:
                     return abtype == "complex64"
-            elif compute_type in (ct.COMPUTE_32F_FAST_16F, ct.COMPUTE_32F_FAST_16BF, ct.COMPUTE_32F_FAST_TF32):
+            elif compute_type in (
+                ct.COMPUTE_32F_FAST_16F,
+                ct.COMPUTE_32F_FAST_16BF,
+                ct.COMPUTE_32F_FAST_TF32,
+                ct.COMPUTE_32F_EMULATED_16BFX9,
+            ):
                 if scale_type == st.CUDA_R_32F:
                     return abtype == "float32"
                 if scale_type == st.CUDA_C_32F:
                     return abtype == "complex64"
-            elif compute_type in (ct.COMPUTE_64F, ct.COMPUTE_64F_PEDANTIC):
+            elif compute_type in (ct.COMPUTE_64F, ct.COMPUTE_64F_PEDANTIC, ct.COMPUTE_64F_EMULATED_FIXEDPOINT):
                 if scale_type == st.CUDA_R_64F:
                     return abtype == "float64"
                 if scale_type == st.CUDA_C_64F:
@@ -1033,7 +1083,7 @@ class Matmul:
             )
 
         # Get the operation traits.
-        self.mm_traits = get_mm_traits(a_layout, b_layout, c_layout, self.logger)
+        self.mm_traits = get_mm_traits(a_layout, b_layout, c_layout, self.inplace, self.logger)
         self.result_traits = None  # Wait till planning to determine this based on the epilog.
         self.logger.info(
             f"The matrix multiplication attributes are M = {self.mm_traits.M}, N = {self.mm_traits.N}, and "
@@ -1293,19 +1343,95 @@ class Matmul:
         )
         return algo_ids
 
+    def _validate_scalar_scale(self, operand: str):
+        """
+        Validates a scalar scale.
+        """
+        if self.options.block_scaling:
+            raise ValueError(f"A scalar tensor-wide scale factor is not allowed for {operand.upper()} when block_scaling=True.")
+
+    def _validate_tensor_scale(self, scale, operand: str, operand_size=None):
+        """
+        Validates a tensor scale.
+
+        Args:
+            scale: The tensor scale to validate
+            operand: The operand name (a, b, c, d)
+            operand_size: Size of the operand (needed for block scaling shape validation)
+        """
+        # Package validation: Normalize "numpy" to "cuda" to match the behavior in __init__.
+        # When operands are NumPy on CPU, self.package is set to "cuda" (execution package),
+        # so we must also normalize NumPy scales to "cuda" to allow the same input format.
+        # This handles the NumPy <=> CuPy asymmetry where NumPy on CPU is accepted as input
+        # but internally converted to CuPy for CUDA execution.
+        scale_package = utils.infer_object_package(scale)
+        scale_package = "cuda" if scale_package == "numpy" else scale_package
+        if scale_package != self.package:
+            raise TypeError(
+                f"The quantization scaling tensor for {operand.upper()} must belong to the same package as the operands."
+            )
+
+        # Wrap temporarily since this is needed for validation
+        scale_wrapped = tensor_wrapper.wrap_operand(scale)
+
+        # Device/memory space validation
+        expected_device_id = "cpu" if self.memory_space == "cpu" else self.device_id
+        if expected_device_id != scale_wrapped.device_id:
+            raise ValueError(
+                f'The scale for {operand.upper()} is on device "{scale_wrapped.device_id}", '
+                f'but it should be on device "{expected_device_id}" to match the operands memory space.'
+            )
+
+        # Shape and dtype validation for non-block-scaling
+        if not self.options.block_scaling:
+            if scale_wrapped.shape not in ((1,), ()):
+                raise ValueError(
+                    f"The scale for {operand.upper()} must be of shape (1,) or (). Got {scale_wrapped.shape} instead."
+                )
+            if scale_wrapped.dtype != "float32":
+                raise ValueError(f"The scale for {operand.upper()} must be float32 type. Got {scale_wrapped.dtype} instead.")
+
+        # Shape and dtype validation for block-scaling
+        elif self.input_type_width == 8:
+            # Dtype validation (always possible)
+            if scale_wrapped.dtype != "uint8":
+                raise ValueError(f"Block scales for {operand.upper()} must be uint8 tensor.")
+
+            # Shape validation (only if operand_size is available)
+            if operand_size is not None:
+                expected_shape = (operand_size // 32,)
+                if scale_wrapped.shape != expected_shape:
+                    raise ValueError(
+                        f"Scales for {operand.upper()} should have shape {expected_shape}. Got {scale_wrapped.shape}."
+                    )
+        else:
+            raise ValueError("block_scaling == True is not supported for non-FP8 types.")
+
     def _validate_operand_scales(self, quantization_scales, all_required):
         """
-        Validates the user-provided quantization scales and wraps them converts them to
-        MatmulQuantizationScales if needed.
+        Validates quantization scales, wrapping them into a MatmulQuantizationScales
+        object if needed.
+
+        Args:
+            quantization_scales: The quantization scales to validate.
+            all_required: Whether all scales are required.
+
+        Returns:
+            A MatmulQuantizationScales object with the validated quantization scales.
         """
         if quantization_scales is None:
             raise ValueError(
-                "Scales are required for narrow-precision (FP8 and lower) operations. Please set `quantization_scales` "
-                "argument."
+                "Scales are required for narrow-precision (FP8 and lower) operations. "
+                "Please set `quantization_scales` argument."
             )
+
+        # wrap the quantization scales into a MatmulQuantizationScales object if needed
+        # otherwise, return the quantization scales as is
         quantization_scales = utils.check_or_create_options(
             _configuration.MatmulQuantizationScales, quantization_scales, "Scale factors"
         )
+
+        # Validate which scales are required/allowed
         expected_scales = "AB"
         if self.d_dtype_width <= 8 and not self.options.block_scaling:
             expected_scales += "D"
@@ -1316,16 +1442,36 @@ class Matmul:
                 raise ValueError(
                     "Quantization scaling is not supported for D when it is not a narrow-precision (FP8 and lower) type."
                 )
+
         if self.num_operands == 3 and self.c_dtype_width <= 8:
             expected_scales += "C"
         elif quantization_scales.c is not None:
             raise ValueError(
                 "Quantization scaling is not supported for C when it is not a narrow-precision (FP8 and lower) type."
             )
+
         if all_required:
             for operand in expected_scales:
                 if getattr(quantization_scales, operand.lower()) is None:
                     raise ValueError(f"Scale for {operand.upper()} is not specified")
+
+        # Validate each scale by delegating to scalar/tensor specific validators
+        for operand in "abcd":
+            scale = getattr(quantization_scales, operand)
+            if scale is None:
+                continue
+
+            if isinstance(scale, (int, float)):
+                self._validate_scalar_scale(operand)
+            else:
+                # For block scaling, pass operand size for shape validation
+                if self.options.block_scaling and operand in ("a", "b"):
+                    operand_idx = 0 if operand == "a" else 1
+                    operand_size = self.operands[operand_idx].size  # type: ignore[union-attr,index]
+                else:
+                    operand_size = None
+                self._validate_tensor_scale(scale, operand, operand_size)
+
         return quantization_scales
 
     def _validate_epilog_aux_scale(self, aux_quantization_scale, *, required):
@@ -1344,57 +1490,62 @@ class Matmul:
                 "narrow-precision type."
             )
 
-    def _prepare_quantization_scale(
-        self, scale, operand: str, cublas_operand, stream_holder: utils.StreamHolder, operand_size=None
-    ):
+        # Validate scalar vs tensor scale (same as for operand scales)
+        if aux_quantization_scale is not None:
+            if isinstance(aux_quantization_scale, (int, float)):
+                self._validate_scalar_scale("epilog_aux")
+            else:
+                # No operand_size for epilog_aux scales
+                self._validate_tensor_scale(aux_quantization_scale, "epilog_aux", operand_size=None)
+
+    def _prepare_validated_scalar_scale(self, scale: int | float, operand: str, stream_holder: utils.StreamHolder):
+        """
+        Converts validated scalar to float32 tensor and copies to GPU.
+        Assumes validation already done in _validate_scalar_scale.
+        """
+        # If it's a scalar, copy to GPU. Float32 is the only type allowed by
+        # cublasLtMatmulScale_t for tensor-wide scaling.
+        self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
+        scale_op = tensor_wrapper.wrap_operand(np.asarray([scale], dtype="float32"))
+        self.quantization_scales_device[operand] = scale_op.to(self.device_id, stream_holder)
+
+    def _prepare_validated_tensor_scale(self, scale, operand: str, stream_holder: utils.StreamHolder):
+        """
+        Wraps validated tensor and copies to GPU.
+        Assumes all validation already done in _validate_tensor_scale (called in __init__).
+        This is pure preparation - no validation here.
+
+        Note: We wrap the tensor a second time here (first wrap was for validation).
+        This is acceptable because wrapping is cheap and we get early error detection.
+        """
+        # Wrap the scale (second time - first was for validation in __init__)
+        self.quantization_scales_device[operand] = tensor_wrapper.wrap_operand(scale)
+
+        # Copy to GPU if on CPU (no validation, just preparation)
+        if self.quantization_scales_device[operand].device in (None, "cpu"):
+            self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
+            self.quantization_scales_device[operand] = self.quantization_scales_device[operand].to(
+                self.device_id, stream_holder
+            )
+
+    def _prepare_single_validated_scale(self, scale, operand: str, cublas_operand: str, stream_holder: utils.StreamHolder):
+        """
+        Prepares a single validated scale and sets its pointer/mode in mm_desc_ifc.
+        Used for both operand scales (a,b,c,d) and epilog scales (epilog_aux).
+        Assumes validation already done.
+        """
         if scale is None:
             return
-        elif isinstance(scale, int | float):
-            if self.options.block_scaling:
-                raise ValueError("A scalar tensor-wide scale factor is not allowed when block_scaling=True.")
-            # If it's a scalar, copy to GPU. Float32 is the only type allowed by
-            # cublasLtMatmulScale_t for tensor-wide scaling.
-            self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
-            scale_op = tensor_wrapper.wrap_operand(np.asarray([scale], dtype="float32"))
-            self.quantization_scales_device[operand] = scale_op.to(self.device_id, stream_holder)
+
+        # Delegate to specific preparer (validation already done)
+        if isinstance(scale, (int, float)):
+            self._prepare_validated_scalar_scale(scale, operand, stream_holder)
         else:
-            if utils.infer_object_package(scale) != self.package:
-                raise TypeError("The quantization scaling tensors must belong to the same package as the operands.")
-            self.quantization_scales_device[operand] = tensor_wrapper.wrap_operand(scale)
-            device_id = self.quantization_scales_device[operand].device_id
-            if device_id != "cpu" and self.device_id != device_id:
-                raise ValueError(f"The scales must be on the same device ({device_id}) as the operands ({self.device_id}).")
-            if self.quantization_scales_device[operand].device in (None, "cpu"):
-                # If it's on CPU, copy to GPU
-                self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
-                self.quantization_scales_device[operand] = self.quantization_scales_device[operand].to(
-                    self.device_id, stream_holder
-                )
-            if not self.options.block_scaling:
-                if self.quantization_scales_device[operand].shape not in ((1,), ()):
-                    raise ValueError(
-                        f"The provided {operand.upper()} scale tensor has to be of shape (1,) or (). "
-                        f"Got {self.quantization_scales_device[operand].shape} instead."
-                    )
-                if self.quantization_scales_device[operand].dtype != "float32":
-                    raise ValueError(
-                        f"The provided {operand.upper()} scale tensor has to be float32 type. "
-                        f"Got {self.quantization_scales_device[operand].dtype} instead."
-                    )
-            elif self.input_type_width == 8:
-                if operand_size is None:
-                    raise ValueError(f"Block scaling is not supported for {operand.upper()} scale.")
-                expected_shape = (operand_size // 32,)
-                if self.quantization_scales_device[operand].shape != expected_shape:
-                    raise ValueError(
-                        f"Scales for {operand.upper()} should have shape {expected_shape}. "
-                        f"Got {self.quantization_scales_device[operand].shape}."
-                    )
-                if self.quantization_scales_device[operand].dtype != "uint8":
-                    raise ValueError(f"Block scales for {operand.upper()} should be uint8 tensor.")
-            else:
-                raise ValueError("block_scaling == True is not supported for non-FP8 types.")
+            self._prepare_validated_tensor_scale(scale, operand, stream_holder)
+
+        # Set pointer and mode in descriptor
         setattr(self.mm_desc_ifc, f"{cublas_operand}_scale_pointer", self.quantization_scales_device[operand].data_ptr)
+
         if self.options.block_scaling:
             self.logger.debug(f"Using VEC32_UE8M0 scale mode for operand {operand.upper()}.")
             setattr(self.mm_desc_ifc, f"{cublas_operand}_scale_mode", cublaslt.MatmulMatrixScale.VEC32_UE8M0)
@@ -1404,19 +1555,12 @@ class Matmul:
 
     def _prepare_operand_quantization_scales(self, scales, stream_holder: utils.StreamHolder):
         """
-        Copies the scales to the GPU and updates the pointers in mm_desc_ifc.
+        Prepares validated operand scales (a,b,c,d).
+        Assumes scales are validated and wrapped into a MatmulQuantizationScales object.
         """
         for operand in "abcd":
             scale = getattr(scales, operand)
-            if self.options.block_scaling and operand == "a":
-                operand_size = self.operands[0].size  # type: ignore[union-attr,index]
-            elif self.options.block_scaling and operand == "b":
-                operand_size = self.operands[1].size  # type: ignore[union-attr,index]
-            else:
-                operand_size = None
-            self._prepare_quantization_scale(
-                scale, operand, cublas_operand=operand, operand_size=operand_size, stream_holder=stream_holder
-            )
+            self._prepare_single_validated_scale(scale, operand, cublas_operand=operand, stream_holder=stream_holder)
 
     @utils.precondition(_check_valid_matmul)
     @utils.atomic(_free_plan_resources, method=True)
@@ -1605,7 +1749,7 @@ class Matmul:
                 epilog_inputs.pop("aux_quantization_scale") if "aux_quantization_scale" in epilog_inputs else None
             )
             self._validate_epilog_aux_scale(aux_quantization_scale, required=True)
-            self._prepare_quantization_scale(
+            self._prepare_single_validated_scale(
                 aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux", stream_holder=stream_holder
             )
 
@@ -1776,7 +1920,7 @@ class Matmul:
         layout_d_ifc.batch_count = mm_traits.batch_count
         layout_d_ifc.strided_batch_offset = result_traits.d_layout_traits.batch_offset
 
-        if self.num_operands == 2:
+        if self.num_operands == 2:  # By defn, this cannot be inplace.
             if self.c_dtype == self.d_dtype:
                 # If C and D have equal types, reuse the layout.
                 self.c_layout_ptr = self.d_layout_ptr
@@ -1790,13 +1934,17 @@ class Matmul:
                 layout_c_ifc.batch_count = mm_traits.batch_count
                 layout_c_ifc.strided_batch_offset = result_traits.d_layout_traits.batch_offset
         else:
-            self.c_layout_ptr = cublaslt.matrix_layout_create(
-                self.c_dtype, rows=mm_traits.M, cols=mm_traits.N, ld=mm_traits.c_layout_traits.ld
-            )
-            layout_c_ifc = matrix_layout_ifc.MatrixLayoutInterface(self.c_layout_ptr)
-            layout_c_ifc.order = mm_traits.c_layout_traits.order
-            layout_c_ifc.batch_count = mm_traits.batch_count
-            layout_c_ifc.strided_batch_offset = mm_traits.c_layout_traits.batch_offset
+            # For inplace operation, use the same layout for C and D.
+            if self.inplace:
+                self.c_layout_ptr = self.d_layout_ptr
+            else:
+                self.c_layout_ptr = cublaslt.matrix_layout_create(
+                    self.c_dtype, rows=mm_traits.M, cols=mm_traits.N, ld=mm_traits.c_layout_traits.ld
+                )
+                layout_c_ifc = matrix_layout_ifc.MatrixLayoutInterface(self.c_layout_ptr)
+                layout_c_ifc.order = mm_traits.c_layout_traits.order
+                layout_c_ifc.batch_count = mm_traits.batch_count
+                layout_c_ifc.strided_batch_offset = mm_traits.c_layout_traits.batch_offset
 
         if (
             self.input_type_width == 8
@@ -1977,6 +2125,15 @@ class Matmul:
             raise ValueError(f"The provided operand {operand_name} has different conjugate flag than the original operand")
 
         device_id = operand.device_id
+        # When memory_space is "cpu", operands should be on CPU even though
+        # self.device_id is the execution device.
+        expected_device_id = "cpu" if self.memory_space == "cpu" else self.device_id
+        if expected_device_id != device_id:
+            raise ValueError(
+                f'The operand {operand_name} is on device "{device_id}", but it should be on device '
+                f'"{expected_device_id}" to match the original operand.'
+            )
+
         if device_id == "cpu":
             package = "cuda" if package == "numpy" else package  # Handle the NumPy <=> CuPy asymmetry.
             if self.package != package:
@@ -2000,19 +2157,16 @@ class Matmul:
             else:
                 # In-place copy to existing device pointer because the new operand is on the
                 # CPU.
-                tensor_wrapper.copy_([operand], [o], stream_holder)
+                o.copy_(operand, stream_holder=stream_holder)
+            if self.memory_space == "cpu" and operand_index == 2:
+                # Hold references, needed for inplace operations.
+                self.cpu_c_ref = operand
         else:
             if self.package != package:
                 message = f"Library package mismatch: '{self.package}' => '{package}'"
                 raise TypeError(message)
 
             utils.check_attribute_match(strides, operand.strides, "strides")
-
-            if self.device_id != device_id:
-                raise ValueError(
-                    f"The operand {operand_name} must be on the same device ({device_id}) as the original operand "
-                    f"({self.device_id})."
-                )
 
             # Finally, replace the original operand by the new one.
             if operand_index is not None:
@@ -2131,7 +2285,7 @@ class Matmul:
             )
 
         if a is None and b is None and c is None and epilog_inputs is None and alpha is None and beta is None:
-            self.operands = None
+            self.cpu_c_ref = self.operands = None
             self.epilog_operands = {}
             self.logger.info("The operands have been reset to None.")
             return
@@ -2203,7 +2357,7 @@ class Matmul:
             epilog_inputs = epilog_inputs.copy()
             aux_quantization_scale = epilog_inputs.pop("aux_quantization_scale")
             self._validate_epilog_aux_scale(aux_quantization_scale, required=False)
-            self._prepare_quantization_scale(
+            self._prepare_single_validated_scale(
                 aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux", stream_holder=stream_holder
             )
 
@@ -2336,23 +2490,45 @@ class Matmul:
             # Update the data pointer in the MM descriptor.
             handler.update_ptr(self.mm_desc_ifc, aux.data_ptr)
 
-        # Create empty tensor for the result.
+        # Take a copy of `c` for autotuning to avoid clobbering it if inplace=True.
+        c = None
+        if self.inplace:
+            # `c` is guaranteed to exist. Clone `c` and copy into it, since `tensor.to`
+            # returns the original tensor when the device ID is the same.
+            c = self.operands[2]
+            c = utils.create_empty_tensor(
+                c.__class__, c.shape, c.dtype, self.device_id, stream_holder, verify_strides=False, strides=c.strides
+            )
+            c.copy_(self.operands[2], stream_holder)
+            assert c.data_ptr != self.operands[2].data_ptr, "Internal error."
+        elif self.num_operands == 3:
+            c = self.operands[2]
+
+        # Create empty tensor for the result, if the operation is not in-place.
         assert self.result_traits is not None, "Internal Error. self.result_traits should have been set by self.plan()."
-        result = utils.create_empty_tensor(
-            self.result_class,
-            self.result_traits.result_shape,
-            self.d_dtype_name,
-            self.device_id,
-            stream_holder,
-            verify_strides=False,
-            strides=self.result_traits.result_strides,
-        )
+        if self.inplace:
+            result = c
+        else:
+            result = utils.create_empty_tensor(
+                self.result_class,
+                self.result_traits.result_shape,
+                self.d_dtype_name,
+                self.device_id,
+                stream_holder,
+                verify_strides=False,
+                strides=self.result_traits.result_strides,
+            )
         result_ptr = result.data_ptr
 
-        c_ptr = self.operands[2].data_ptr if self.num_operands == 3 else result_ptr
         a, b = self.operands[0], self.operands[1]
         raw_workspace_ptr = utils.get_ptr_from_memory_pointer(self.workspace_ptr)
         alpha_ptr, a_ptr, b_ptr, beta_ptr = self.alpha.ctypes.data, a.data_ptr, b.data_ptr, self.beta.ctypes.data
+        # If `c` is not provided, set c_ptr to nullptr.
+        if self.num_operands == 3:
+            c_ptr = c.data_ptr
+        else:
+            assert self.beta[0] == 0.0, "Internal error: beta must be zero if `c` is not specified."
+            c_ptr = 0
 
         def execute_matmul(algorithm_ptr):
             cublaslt.matmul(
@@ -2381,7 +2557,7 @@ class Matmul:
 
             @functools.cache
             def get_l2_cache_size(device_id):
-                device = ccx.Device(device_id)
+                device = Device(device_id)
                 return device.properties.l2_cache_size
 
             l2_cache_size = get_l2_cache_size(self.device_id)
@@ -2395,7 +2571,7 @@ class Matmul:
         ):
             gpu_times = np.empty(shape=(len(self.algorithms_buffer), iterations), dtype=float)
             algorithm_idxs = list(range(len(self.algorithms_buffer)))
-            timing_enabled_options = ccx.EventOptions(enable_timing=True)
+            timing_enabled_options = EventOptions(enable_timing=True)
             start0 = stream_holder.obj.device.create_event(options=timing_enabled_options)
             end0 = stream_holder.obj.device.create_event(options=timing_enabled_options)
             for i in range(iterations):
@@ -2411,6 +2587,9 @@ class Matmul:
                     # len(algorithms_buffer) Events and compute the elapsed time at the end.
                     end0.sync()
                     gpu_times[algorithm_idx, i] = end0 - start0
+                    # Avoid potential overflow for inplace operations.
+                    if self.inplace:
+                        c.copy_(self.operands[2], stream_holder)
                     flush_cache()
 
         gpu_times = np.median(gpu_times, axis=1)
@@ -2524,25 +2703,30 @@ class Matmul:
             # Update the data pointer in the MM descriptor.
             handler.update_ptr(self.mm_desc_ifc, aux.data_ptr)
 
-        # Create empty tensor for the result.
+        # Create empty tensor for the result, if the operation is not in-place.
         assert self.result_traits is not None, "Internal Error. self.result_traits should have been set by self.plan()"
-        if log_debug:
-            self.logger.debug("Beginning output (empty) tensor creation...")
-            self.logger.debug(
-                f"The output tensor shape = {self.result_traits.result_shape} with strides = "
-                f"{self.result_traits.result_strides} and data type '{self.d_dtype_name}'."
+        if self.inplace:
+            if log_debug:
+                self.logger.debug("The operation is in-place (operand C will be overwritten).")
+            self.result = self.operands[2]
+        else:
+            if log_debug:
+                self.logger.debug("Beginning output (empty) tensor creation...")
+                self.logger.debug(
+                    f"The output tensor shape = {self.result_traits.result_shape} with strides = "
+                    f"{self.result_traits.result_strides} and data type '{self.d_dtype_name}'."
+                )
+            self.result = utils.create_empty_tensor(
+                self.result_class,
+                self.result_traits.result_shape,
+                self.d_dtype_name,
+                self.device_id,
+                stream_holder,
+                verify_strides=False,
+                strides=self.result_traits.result_strides,
             )
-        self.result = utils.create_empty_tensor(
-            self.result_class,
-            self.result_traits.result_shape,
-            self.d_dtype_name,
-            self.device_id,
-            stream_holder,
-            verify_strides=False,
-            strides=self.result_traits.result_strides,
-        )
-        if log_debug:
-            self.logger.debug("The output (empty) tensor has been created.")
+            if log_debug:
+                self.logger.debug("The output (empty) tensor has been created.")
 
         self.aux_outputs = {}
 
@@ -2583,8 +2767,15 @@ class Matmul:
             if log_info:
                 self.logger.info(f"The specified algorithm (algorithm id = {algorithm.algorithm_id}) will be used.")
 
-        c_ptr = self.operands[2].data_ptr if self.num_operands == 3 else self.result.data_ptr
         a, b = self.operands[0], self.operands[1]
+
+        # If `c` is not provided, set c_ptr to nullptr.
+        if self.num_operands == 3:
+            c_ptr = self.operands[2].data_ptr
+        else:
+            assert self.beta[0] == 0.0, "Internal error: beta must be zero if `c` is not specified."
+            c_ptr = 0
+
         raw_workspace_ptr = utils.get_ptr_from_memory_pointer(self.workspace_ptr)
         if log_info:
             self.logger.info("Starting matrix multiplication...")
@@ -2622,7 +2813,14 @@ class Matmul:
         # Return the result and auxiliary outputs, if present.
         all_outputs = self.epilog_outputs | self.aux_outputs
         if self.memory_space == "cpu":
-            out = self.result.to("cpu", stream_holder=stream_holder).tensor
+            if self.inplace:
+                # Overwrite operand C.
+                assert self.cpu_c_ref is not None, "Internal error."
+                c = self.cpu_c_ref
+                c.copy_(self.result, stream_holder=stream_holder)
+                out = c.tensor
+            else:
+                out = self.result.to("cpu", stream_holder=stream_holder).tensor
             # Copy auxiliary output to CPU.
             aux = {name: all_outputs[name].to("cpu", stream_holder=stream_holder).tensor for name in all_outputs}
         else:
@@ -2665,6 +2863,12 @@ class Matmul:
             self._free_plan_resources()
 
             # We won't destroy the handle.
+
+            # Release references to operands and results to ensure proper reference counting
+            self.operands = None
+            self.cpu_c_ref = None
+            self.epilog_operands = {}
+            self.result = None
 
         except Exception as e:
             self.logger.critical("Internal error: only part of the Matmul object's resources have been released.")

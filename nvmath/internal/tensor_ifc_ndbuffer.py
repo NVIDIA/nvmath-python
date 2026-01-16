@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -115,7 +115,7 @@ class NDBufferTensor(TensorHolder[ndbuffer.NDBuffer]):
         Inplace copy of src (copy the data from src into self).
         """
         device_id = self.tensor.device_id
-        src_nd = src.asndbuffer()
+        src_nd = src._broadcast_to(self.shape).asndbuffer()
         if device_id == "cpu":
             device_id = src_nd.device_id
         if device_id == "cpu":
@@ -134,3 +134,10 @@ class NDBufferTensor(TensorHolder[ndbuffer.NDBuffer]):
         if copy:
             raise NotImplementedError("Reshape with copy is not supported for ndbuffer")
         return self.__class__(ndbuffer.reshaped_view(self.tensor, shape))
+
+    def _broadcast_to(self, shape):
+        if self.tensor.shape == shape:
+            return self
+        raise NotImplementedError(
+            f"_broadcast_to is not supported for ndbuffer. Current shape: {self.tensor.shape}, requested shape: {shape}."
+        )

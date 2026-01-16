@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,12 +18,7 @@ from nvmath import bindings  # noqa: E402
 from nvmath._utils import ComputeType  # noqa: E402
 from nvmath._utils import CudaDataType  # noqa: E402
 from nvmath._utils import LibraryPropertyType  # noqa: E402
-from nvmath._utils import PLATFORM_LINUX  # noqa: E402
-
-if PLATFORM_LINUX:
-    from nvmath import fft, linalg, sparse, tensor  # noqa: E402, F401
-else:
-    from nvmath import fft, linalg, sparse  # noqa: E402
+from nvmath import fft, linalg, sparse, tensor  # noqa: E402
 from nvmath.memory import BaseCUDAMemoryManager, BaseCUDAMemoryManagerAsync, MemoryPointer  # noqa: E402
 
 __all__ = [
@@ -37,8 +32,7 @@ __all__ = [
     "linalg",
     "MemoryPointer",
     "sparse",
+    "tensor",
 ]
-if PLATFORM_LINUX:
-    __all__.append("tensor")
 
 __version__ = importlib.metadata.version("nvmath-python")

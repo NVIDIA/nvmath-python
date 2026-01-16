@@ -1,9 +1,22 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import random
 import typing
+import sys
 
 from nvmath.sparse.advanced import DirectSolverMatrixType, DirectSolverMatrixViewType
 import nvmath
 import pytest
+
+try:
+    import cupy as cp
+    import cupyx.scipy.sparse as sp
+
+    HAS_CUPY_SPARSE = True
+except ImportError:
+    HAS_CUPY_SPARSE = False
 
 from .utils.common_axes import (
     Framework,
@@ -1756,3 +1769,42 @@ def test_batch_size_mismatch(
 
     with pytest.raises(TypeError, match="The batch (count|shapes).*must match"):
         nvmath.sparse.advanced.direct_solver(a, b, execution=exec_space.nvname)
+
+
+@pytest.mark.skipif(HAS_CUPY_SPARSE is False, reason="cupy.sparse is not available")
+@pytest.mark.parametrize("use_plan_solve", [False, True], ids=["no_plan", "with_plan"])
+def test_reference_count(use_plan_solve):
+    """
+    Test reference counts consistency before/after context manager.
+    Only need a single scenario with CuPy to test scenario when tensors reside on GPU.
+    """
+
+    # The number of equations.
+    n = 8
+    # Prepare sample input data.
+    # Create a diagonally-dominant random CSR matrix.
+    a = sp.random(n, n, density=0.5, format="csr", dtype="float64")
+    a += sp.diags([2.0] * n, format="csr", dtype="float64")
+    # Create the RHS, which can be a matrix or vector in column-major layout.
+    b = cp.ones((n,))
+
+    # Check initial reference counts
+    assert sys.getrefcount(a) - 1 == 1, f"pre op: {sys.getrefcount(a) - 1}"
+    assert sys.getrefcount(b) - 1 == 1, f"pre op: {sys.getrefcount(b) - 1}"
+
+    # Create and optionally solve
+    solver = nvmath.sparse.advanced.DirectSolver(a, b)
+    with solver:
+        if use_plan_solve:
+            solver.plan()
+            solver.factorize()
+            x = solver.solve()
+            cp.cuda.get_current_stream().synchronize()
+        else:
+            pass
+
+    # After exiting context manager, reference counts should return to 1
+    assert sys.getrefcount(a) - 1 == 1, f"post op: {sys.getrefcount(a) - 1}"
+    assert sys.getrefcount(b) - 1 == 1, f"post op: {sys.getrefcount(b) - 1}"
+    if use_plan_solve:
+        assert sys.getrefcount(x) - 1 == 1, f"post op: {sys.getrefcount(x) - 1}"

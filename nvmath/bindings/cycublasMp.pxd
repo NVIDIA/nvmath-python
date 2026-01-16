@@ -1,38 +1,20 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 0.5.0 to 0.6.0. Do not modify it directly.
+# This code was automatically generated across versions from 0.6.0 to 0.7.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t, uint32_t, uint64_t, intptr_t
 
+from .cycublas cimport (cublasComputeType_t, cublasOperation_t, cublasFillMode_t, cublasSideMode_t,
+                        cublasDiagType_t,)
 
 ###############################################################################
 # Types (structs, enums, ...)
 ###############################################################################
 
 # enums
-ctypedef enum cublasOperation_t "cublasOperation_t":
-    CUBLAS_OP_N "CUBLAS_OP_N" = 0
-    CUBLAS_OP_T "CUBLAS_OP_T" = 1
-    CUBLAS_OP_C "CUBLAS_OP_C" = 2
-    CUBLAS_OP_HERMITAN "CUBLAS_OP_HERMITAN" = 2
-    CUBLAS_OP_CONJG "CUBLAS_OP_CONJG" = 3
-
-ctypedef enum cublasComputeType_t "cublasComputeType_t":
-    CUBLAS_COMPUTE_16F "CUBLAS_COMPUTE_16F" = 64
-    CUBLAS_COMPUTE_16F_PEDANTIC "CUBLAS_COMPUTE_16F_PEDANTIC" = 65
-    CUBLAS_COMPUTE_32F "CUBLAS_COMPUTE_32F" = 68
-    CUBLAS_COMPUTE_32F_PEDANTIC "CUBLAS_COMPUTE_32F_PEDANTIC" = 69
-    CUBLAS_COMPUTE_32F_FAST_16F "CUBLAS_COMPUTE_32F_FAST_16F" = 74
-    CUBLAS_COMPUTE_32F_FAST_16BF "CUBLAS_COMPUTE_32F_FAST_16BF" = 75
-    CUBLAS_COMPUTE_32F_FAST_TF32 "CUBLAS_COMPUTE_32F_FAST_TF32" = 77
-    CUBLAS_COMPUTE_64F "CUBLAS_COMPUTE_64F" = 70
-    CUBLAS_COMPUTE_64F_PEDANTIC "CUBLAS_COMPUTE_64F_PEDANTIC" = 71
-    CUBLAS_COMPUTE_32I "CUBLAS_COMPUTE_32I" = 72
-    CUBLAS_COMPUTE_32I_PEDANTIC "CUBLAS_COMPUTE_32I_PEDANTIC" = 73
-
 ctypedef enum cublasMpStatus_t "cublasMpStatus_t":
     CUBLASMP_STATUS_SUCCESS "CUBLASMP_STATUS_SUCCESS" = 0
     CUBLASMP_STATUS_NOT_INITIALIZED "CUBLASMP_STATUS_NOT_INITIALIZED" = 1
@@ -74,6 +56,8 @@ ctypedef enum cublasMpMatmulDescriptorAttribute_t "cublasMpMatmulDescriptorAttri
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_POINTER "CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_POINTER" = 22
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_MODE "CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_MODE" = 23
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_AMAX_D_POINTER "CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_AMAX_D_POINTER" = 24
+    CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_POINTER "CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_POINTER" = 25
+    CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_MODE "CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_MODE" = 26
 
 ctypedef enum cublasMpMatmulAlgoType_t "cublasMpMatmulAlgoType_t":
     CUBLASMP_MATMUL_ALGO_TYPE_DEFAULT "CUBLASMP_MATMUL_ALGO_TYPE_DEFAULT" = 0
@@ -81,6 +65,7 @@ ctypedef enum cublasMpMatmulAlgoType_t "cublasMpMatmulAlgoType_t":
     CUBLASMP_MATMUL_ALGO_TYPE_SPLIT_MULTICAST "CUBLASMP_MATMUL_ALGO_TYPE_SPLIT_MULTICAST" = 2
     CUBLASMP_MATMUL_ALGO_TYPE_ATOMIC_P2P "CUBLASMP_MATMUL_ALGO_TYPE_ATOMIC_P2P" = 3
     CUBLASMP_MATMUL_ALGO_TYPE_ATOMIC_MULTICAST "CUBLASMP_MATMUL_ALGO_TYPE_ATOMIC_MULTICAST" = 4
+    CUBLASMP_MATMUL_ALGO_TYPE_NO_OVERLAP "CUBLASMP_MATMUL_ALGO_TYPE_NO_OVERLAP" = 5
 
 ctypedef enum cublasMpMatmulEpilogue_t "cublasMpMatmulEpilogue_t":
     CUBLASMP_MATMUL_EPILOGUE_DEFAULT "CUBLASMP_MATMUL_EPILOGUE_DEFAULT" = 0
@@ -108,6 +93,11 @@ ctypedef enum cublasMpMatmulMatrixScale_t "cublasMpMatmulMatrixScale_t":
     CUBLASMP_MATMUL_MATRIX_SCALE_OUTER_VEC_FP32 "CUBLASMP_MATMUL_MATRIX_SCALE_OUTER_VEC_FP32" = 3
     CUBLASMP_MATMUL_MATRIX_SCALE_VEC128_FP32 "CUBLASMP_MATMUL_MATRIX_SCALE_VEC128_FP32" = 4
     CUBLASMP_MATMUL_MATRIX_SCALE_BLK128x128_FP32 "CUBLASMP_MATMUL_MATRIX_SCALE_BLK128x128_FP32" = 5
+
+ctypedef enum cublasMpEmulationStrategy_t "cublasMpEmulationStrategy_t":
+    CUBLASMP_EMULATION_STRATEGY_DEFAULT "CUBLASMP_EMULATION_STRATEGY_DEFAULT" = 0
+    CUBLASMP_EMULATION_STRATEGY_PERFORMANT "CUBLASMP_EMULATION_STRATEGY_PERFORMANT" = 1
+    CUBLASMP_EMULATION_STRATEGY_EAGER "CUBLASMP_EMULATION_STRATEGY_EAGER" = 2
 
 
 # types
@@ -148,15 +138,34 @@ ctypedef void (*cublasMpLoggerCallback_t 'cublasMpLoggerCallback_t')(
 cdef cublasMpStatus_t cublasMpCreate(cublasMpHandle_t* handle, cudaStream_t stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpDestroy(cublasMpHandle_t handle) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpStreamSet(cublasMpHandle_t handle, cudaStream_t stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpStreamGet(cublasMpHandle_t handle, cudaStream_t* stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpGetVersion(int* version) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpGridCreate(int64_t nprow, int64_t npcol, cublasMpGridLayout_t layout, ncclComm_t comm, cublasMpGrid_t* grid) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpGridDestroy(cublasMpGrid_t grid) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatrixDescriptorCreate(int64_t m, int64_t n, int64_t mb, int64_t nb, int64_t rsrc, int64_t csrc, int64_t lld, cudaDataType_t type, cublasMpGrid_t grid, cublasMpMatrixDescriptor_t* desc) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatrixDescriptorDestroy(cublasMpMatrixDescriptor_t desc) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpMatrixDescriptorInit(int64_t m, int64_t n, int64_t mb, int64_t nb, int64_t rsrc, int64_t csrc, int64_t lld, cudaDataType_t type, cublasMpGrid_t grid, cublasMpMatrixDescriptor_t desc) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatmulDescriptorCreate(cublasMpMatmulDescriptor_t* matmulDesc, cublasComputeType_t computeType) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatmulDescriptorDestroy(cublasMpMatmulDescriptor_t matmulDesc) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpMatmulDescriptorInit(cublasMpMatmulDescriptor_t matmulDesc, cublasComputeType_t computeType) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatmulDescriptorAttributeSet(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatmulDescriptorAttributeGet(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpTrsm_bufferSize(cublasMpHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, cublasDiagType_t diag, int64_t m, int64_t n, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, cublasComputeType_t computeType, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpTrsm(cublasMpHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, cublasDiagType_t diag, int64_t m, int64_t n, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, cublasComputeType_t computeType, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpGemm_bufferSize(cublasMpHandle_t handle, cublasOperation_t transA, cublasOperation_t transB, int64_t m, int64_t n, int64_t k, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, cublasComputeType_t computeType, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpGemm(cublasMpHandle_t handle, cublasOperation_t transA, cublasOperation_t transB, int64_t m, int64_t n, int64_t k, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, cublasComputeType_t computeType, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatmul_bufferSize(cublasMpHandle_t handle, cublasMpMatmulDescriptor_t matmulDesc, int64_t m, int64_t n, int64_t k, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, const void* beta, const void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, void* d, int64_t id, int64_t jd, cublasMpMatrixDescriptor_t descD, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasMpStatus_t cublasMpMatmul(cublasMpHandle_t handle, cublasMpMatmulDescriptor_t matmulDesc, int64_t m, int64_t n, int64_t k, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, const void* beta, const void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, void* d, int64_t id, int64_t jd, cublasMpMatrixDescriptor_t descD, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpSyrk_bufferSize(cublasMpHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int64_t n, int64_t k, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, cublasComputeType_t computeType, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpSyrk(cublasMpHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int64_t n, int64_t k, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, cublasComputeType_t computeType, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef int64_t cublasMpNumroc(int64_t n, int64_t nb, uint32_t iproc, uint32_t isrcproc, uint32_t nprocs) except?-42 nogil
+cdef cublasMpStatus_t cublasMpGemr2D_bufferSize(cublasMpHandle_t handle, int64_t m, int64_t n, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost, ncclComm_t global_comm) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpGemr2D(cublasMpHandle_t handle, int64_t m, int64_t n, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost, ncclComm_t global_comm) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpTrmr2D_bufferSize(cublasMpHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t m, int64_t n, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost, ncclComm_t global_comm) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpTrmr2D(cublasMpHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t m, int64_t n, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost, ncclComm_t global_comm) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpGeadd_bufferSize(cublasMpHandle_t handle, cublasOperation_t trans, int64_t m, int64_t n, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpGeadd(cublasMpHandle_t handle, cublasOperation_t trans, int64_t m, int64_t n, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpTradd_bufferSize(cublasMpHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int64_t m, int64_t n, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpTradd(cublasMpHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int64_t m, int64_t n, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, const void* beta, void* c, int64_t ic, int64_t jc, cublasMpMatrixDescriptor_t descC, void* d_work, size_t workspaceSizeInBytesOnDevice, void* h_work, size_t workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpSetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasMpStatus_t cublasMpGetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t* emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil

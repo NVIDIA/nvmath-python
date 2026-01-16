@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -53,11 +53,11 @@ def test_types(framework, dtype, with_c, n, m, k, use_cuda):
     assert_tensors_equal(result, reference)
 
 
-@pytest.mark.parametrize("with_c", (True, False))
+@pytest.mark.parametrize("with_c, inplace", ((True, True), (True, False), (False, False)))
 @pytest.mark.parametrize("n", (1, 8, 64, 100, 200, 300))
 @pytest.mark.parametrize("m", (1, 8, 64, 100, 200, 300))
 @pytest.mark.parametrize("k", (1, 8, 64, 100, 200, 300))
-def test_shapes(with_c, n, m, k):
+def test_shapes(with_c, n, m, k, inplace):
     """
     Tests support for different input data shapes
     """
@@ -69,7 +69,11 @@ def test_shapes(with_c, n, m, k):
         pytest.skip(f"Unable to generate sample matrix: {str(e)}")
 
     if with_c:
-        result = matmul(a, b, c, alpha=0.5, beta=0.3)
+        options = {"inplace": inplace}
+        c_copy = c.copy() if inplace else c
+        result = matmul(a, b, c=c_copy, alpha=0.5, beta=0.3, options=options)
+        if inplace:
+            assert result is c_copy, "result != c for inplace=True"
         reference = 0.5 * to_numpy(a) @ to_numpy(b) + 0.3 * to_numpy(c)
     else:
         result = matmul(a, b, alpha=0.6)
@@ -117,6 +121,12 @@ def test_layouts(a_layout, b_layout, c_layout):
     assert compare_tensors(matmul(a, b, c, beta=0.2), np.matmul(a, b) + c * 0.2)
 
 
+def skip_test_batching(a_batch, b_batch, c_batch, out_batch, inplace, **kwargs):
+    # Broadcasting and inplace are mutually exclusive.
+    return inplace and (a_batch or b_batch) and not c_batch
+
+
+@pytest.mark.uncollect_if(func=skip_test_batching)
 @pytest.mark.parametrize(
     "a_batch,b_batch,c_batch,out_batch",
     (
@@ -128,9 +138,11 @@ def test_layouts(a_layout, b_layout, c_layout):
         ((6,), (), (6,), (6,)),
         ((), (7,), (7,), (7,)),
         ((10, 20), (10, 20), (10, 20), (10, 20)),
+        ((4, 3, 2), (4, 3, 2), (4, 3, 2), (4, 3, 2)),
     ),
 )
-def test_batching(a_batch, b_batch, c_batch, out_batch):
+@pytest.mark.parametrize("inplace", (True, False))
+def test_batching(a_batch, b_batch, c_batch, out_batch, inplace):
     """
     Tests if matmul works with different batch sizes.
     """
@@ -143,11 +155,26 @@ def test_batching(a_batch, b_batch, c_batch, out_batch):
     b = sample_batch(b_batch)
     c = sample_batch(c_batch)
 
-    result = matmul(a, b, c, beta=1)
+    options = None
+    c_copy = c
+    if inplace:
+        options = {"inplace": True}
+        c_copy = c.copy()
+
+    result = matmul(a, b, c=c_copy, beta=1, options=options)
     assert result.shape == (*out_batch, *matrix_shape)
     assert_tensors_equal(result, a @ b + c)
 
+    if inplace:
+        assert result is c_copy, "result != c for inplace=True"
 
+
+def skip_test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framework, use_cuda, inplace, **kwargs):
+    # `c` is required for inplace; broadcasting and inplace are mutually exclusive.
+    return c_desc in [None, "M1"] and inplace
+
+
+@pytest.mark.uncollect_if(func=skip_test_shape_promotion)
 @pytest.mark.parametrize("c_desc", (None, "M1", "MN"))
 @pytest.mark.parametrize("b_desc", ("K", "KN"))
 @pytest.mark.parametrize("a_desc", ("K", "MK"))
@@ -157,7 +184,8 @@ def test_batching(a_batch, b_batch, c_batch, out_batch):
 @pytest.mark.parametrize("framework", ("numpy/cupy", "torch"))
 @pytest.mark.parametrize("M,N,K", ((2, 3, 5),))
 @pytest.mark.parametrize("use_cuda", (True, False))
-def test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framework, use_cuda):
+@pytest.mark.parametrize("inplace", (True, False))
+def test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framework, use_cuda, inplace):
     """
     Test shape promotion rules for 1D inputs
     """
@@ -212,9 +240,20 @@ def test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framewo
         # If a vector is provided or N = 1, the columns of c are broadcast for the addition.
         c_promoted = get_framework(c_promoted).stack([c_promoted[..., 0]] * N, -1)
 
+    options = None
+    c_copy = c
+    if with_c and inplace:
+        options = {"inplace": True}
+        if framework == "numpy/cupy":
+            c_copy = c.copy()
+        elif framework == "torch":
+            c_copy = c.clone()
+        else:
+            raise AssertionError("Internal error: unrecognized framework.")
+
     alpha = 0.12
     beta = 0.34 if with_c else None
-    result = matmul(a, b, c=c, alpha=alpha, beta=beta)
+    result = matmul(a, b, c=c_copy, alpha=alpha, beta=beta, options=options)
     reference = matmul(a_promoted, b_promoted, c=c_promoted, alpha=alpha, beta=beta)
 
     if len(a_shape) == 1:
@@ -224,6 +263,10 @@ def test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framewo
     if len(b_shape) == 1:
         assert reference.shape[-1] == 1
         reference = reference.reshape(reference.shape[:-1])
+
+    if with_c and inplace:
+        assert result is c_copy, "result != c for inplace=True"
+        reference = reference.reshape(*c_shape)
 
     assert_tensors_equal(result, reference)
 

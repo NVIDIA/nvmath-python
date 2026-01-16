@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -30,7 +30,7 @@ class Code(namedtuple("Code", ("code_type", "isa_version", "data"))):
         data: The buffer pointer.
     """
 
-    pass
+    __slots__ = ()
 
 
 # CodeType = type + CC
@@ -43,7 +43,7 @@ class CodeType(namedtuple("CodeType", ("kind", "cc"))):
         cc (ComputeCapability): The current GPU compute capability.
     """
 
-    pass
+    __slots__ = ()
 
 
 # CC = e.g. SM 9.0 (Hopper)
@@ -54,10 +54,14 @@ class ComputeCapability(NamedTuple):
     Attributes:
         major (int): The major compute capability.
         minor (int): The minor compute capability.
+        arch (str): An optional string representing the GPU accelerated
+            architecture. Must be either empty or one of 'f' (for Family),
+            'a' (for Architecture).
     """
 
     major: int
     minor: int
+    arch: str = ""
 
     @property
     def integer(self) -> int:
@@ -66,9 +70,7 @@ class ComputeCapability(NamedTuple):
 
     def __str__(self):
         """String representation of the ComputeCapability"""
-        return f"{self.major}.{self.minor}"
-
-    pass
+        return f"{self.major}.{self.minor}{self.arch}"
 
 
 MIN_SUPPORTED_CC = ComputeCapability(7, 0)
@@ -85,7 +87,7 @@ class Dim3(namedtuple("Dim3", ("x", "y", "z"), defaults=(1, 1, 1))):
         z (int): The dimension in the z direction (default 1).
     """
 
-    pass
+    __slots__ = ()
 
 
 # ISAVersion = e.g. 12.3 (from CUDA 12.3)
@@ -121,6 +123,22 @@ def CHECK_CUDA(err):
         raise RuntimeError(f"CUDA Error: {str} ({err})")
 
 
+def get_current_device() -> int:
+    (err,) = cudadrv.cuInit(0)
+    CHECK_CUDA(err)
+    # Check if a context exist
+    err, pctx = cudadrv.cuCtxGetCurrent()
+    CHECK_CUDA(err)
+    if int(pctx) == 0:
+        # If not, return the CC of device 0
+        device = 0
+    else:
+        err, device = cudart.cudaGetDevice()
+        CHECK_CUDART(err)
+
+    return device
+
+
 def get_current_device_cc():
     (err,) = cudadrv.cuInit(0)
     CHECK_CUDA(err)
@@ -144,7 +162,10 @@ def get_current_device_cc():
         )
         major, minor = MAX_SUPPORTED_CC
     logging.info(f"Using device {device} for default compute capability, found cc = {prop.major}.{prop.minor}")
-    return ComputeCapability(major, minor)
+    arch = ""
+    if (major, minor) >= (9, 0):
+        arch = "a"
+    return ComputeCapability(major, minor, arch)
 
 
 def get_default_code_type() -> CodeType:

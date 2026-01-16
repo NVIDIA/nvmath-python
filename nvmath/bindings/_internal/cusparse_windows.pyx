@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -18,7 +18,7 @@ from libc.stddef cimport wchar_t
 from libc.stdint cimport uintptr_t
 from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
 
-from .utils import NotSupportedError
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "windows.h" nogil:
     ctypedef void* HMODULE
@@ -64,10 +64,10 @@ cdef int get_cuda_version():
         raise NotSupportedError('CUDA driver is not found')
     cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
     if cuDriverGetVersion == NULL:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in nvcuda.dll')
     err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
     if err != 0:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
 
     return driver_ver
 
@@ -89,6 +89,12 @@ cdef void* __cusparseSetStream = NULL
 cdef void* __cusparseGetStream = NULL
 cdef void* __cusparseGetPointerMode = NULL
 cdef void* __cusparseSetPointerMode = NULL
+cdef void* __cusparseLoggerSetCallback = NULL
+cdef void* __cusparseLoggerSetFile = NULL
+cdef void* __cusparseLoggerOpenFile = NULL
+cdef void* __cusparseLoggerSetLevel = NULL
+cdef void* __cusparseLoggerSetMask = NULL
+cdef void* __cusparseLoggerForceDisable = NULL
 cdef void* __cusparseCreateMatDescr = NULL
 cdef void* __cusparseDestroyMatDescr = NULL
 cdef void* __cusparseSetMatType = NULL
@@ -222,34 +228,60 @@ cdef void* __cusparseXcscsort = NULL
 cdef void* __cusparseCsr2cscEx2 = NULL
 cdef void* __cusparseCsr2cscEx2_bufferSize = NULL
 cdef void* __cusparseCreateSpVec = NULL
+cdef void* __cusparseCreateConstSpVec = NULL
 cdef void* __cusparseDestroySpVec = NULL
 cdef void* __cusparseSpVecGet = NULL
+cdef void* __cusparseConstSpVecGet = NULL
 cdef void* __cusparseSpVecGetIndexBase = NULL
 cdef void* __cusparseSpVecGetValues = NULL
+cdef void* __cusparseConstSpVecGetValues = NULL
 cdef void* __cusparseSpVecSetValues = NULL
 cdef void* __cusparseCreateDnVec = NULL
+cdef void* __cusparseCreateConstDnVec = NULL
 cdef void* __cusparseDestroyDnVec = NULL
 cdef void* __cusparseDnVecGet = NULL
+cdef void* __cusparseConstDnVecGet = NULL
 cdef void* __cusparseDnVecGetValues = NULL
+cdef void* __cusparseConstDnVecGetValues = NULL
 cdef void* __cusparseDnVecSetValues = NULL
 cdef void* __cusparseDestroySpMat = NULL
 cdef void* __cusparseSpMatGetFormat = NULL
 cdef void* __cusparseSpMatGetIndexBase = NULL
 cdef void* __cusparseSpMatGetValues = NULL
+cdef void* __cusparseConstSpMatGetValues = NULL
 cdef void* __cusparseSpMatSetValues = NULL
 cdef void* __cusparseSpMatGetSize = NULL
 cdef void* __cusparseSpMatGetStridedBatch = NULL
 cdef void* __cusparseCooSetStridedBatch = NULL
 cdef void* __cusparseCsrSetStridedBatch = NULL
+cdef void* __cusparseSpMatGetAttribute = NULL
+cdef void* __cusparseSpMatSetAttribute = NULL
 cdef void* __cusparseCreateCsr = NULL
+cdef void* __cusparseCreateConstCsr = NULL
+cdef void* __cusparseCreateCsc = NULL
+cdef void* __cusparseCreateConstCsc = NULL
 cdef void* __cusparseCsrGet = NULL
+cdef void* __cusparseConstCsrGet = NULL
+cdef void* __cusparseCscGet = NULL
+cdef void* __cusparseConstCscGet = NULL
 cdef void* __cusparseCsrSetPointers = NULL
+cdef void* __cusparseCscSetPointers = NULL
 cdef void* __cusparseCreateCoo = NULL
+cdef void* __cusparseCreateConstCoo = NULL
 cdef void* __cusparseCooGet = NULL
+cdef void* __cusparseConstCooGet = NULL
+cdef void* __cusparseCooSetPointers = NULL
+cdef void* __cusparseCreateBlockedEll = NULL
+cdef void* __cusparseCreateConstBlockedEll = NULL
+cdef void* __cusparseBlockedEllGet = NULL
+cdef void* __cusparseConstBlockedEllGet = NULL
 cdef void* __cusparseCreateDnMat = NULL
+cdef void* __cusparseCreateConstDnMat = NULL
 cdef void* __cusparseDestroyDnMat = NULL
 cdef void* __cusparseDnMatGet = NULL
+cdef void* __cusparseConstDnMatGet = NULL
 cdef void* __cusparseDnMatGetValues = NULL
+cdef void* __cusparseConstDnMatGetValues = NULL
 cdef void* __cusparseDnMatSetValues = NULL
 cdef void* __cusparseDnMatSetStridedBatch = NULL
 cdef void* __cusparseDnMatGetStridedBatch = NULL
@@ -258,31 +290,13 @@ cdef void* __cusparseGather = NULL
 cdef void* __cusparseScatter = NULL
 cdef void* __cusparseSpVV_bufferSize = NULL
 cdef void* __cusparseSpVV = NULL
-cdef void* __cusparseSpMV = NULL
-cdef void* __cusparseSpMV_bufferSize = NULL
-cdef void* __cusparseSpMM = NULL
-cdef void* __cusparseSpMM_bufferSize = NULL
-cdef void* __cusparseSpGEMM_createDescr = NULL
-cdef void* __cusparseSpGEMM_destroyDescr = NULL
-cdef void* __cusparseSpGEMM_workEstimation = NULL
-cdef void* __cusparseSpGEMM_compute = NULL
-cdef void* __cusparseSpGEMM_copy = NULL
-cdef void* __cusparseCreateCsc = NULL
-cdef void* __cusparseCscSetPointers = NULL
-cdef void* __cusparseCooSetPointers = NULL
 cdef void* __cusparseSparseToDense_bufferSize = NULL
 cdef void* __cusparseSparseToDense = NULL
 cdef void* __cusparseDenseToSparse_bufferSize = NULL
 cdef void* __cusparseDenseToSparse_analysis = NULL
 cdef void* __cusparseDenseToSparse_convert = NULL
-cdef void* __cusparseCreateBlockedEll = NULL
-cdef void* __cusparseBlockedEllGet = NULL
-cdef void* __cusparseSpMM_preprocess = NULL
-cdef void* __cusparseSDDMM_bufferSize = NULL
-cdef void* __cusparseSDDMM_preprocess = NULL
-cdef void* __cusparseSDDMM = NULL
-cdef void* __cusparseSpMatGetAttribute = NULL
-cdef void* __cusparseSpMatSetAttribute = NULL
+cdef void* __cusparseSpMV = NULL
+cdef void* __cusparseSpMV_bufferSize = NULL
 cdef void* __cusparseSpSV_createDescr = NULL
 cdef void* __cusparseSpSV_destroyDescr = NULL
 cdef void* __cusparseSpSV_bufferSize = NULL
@@ -293,40 +307,26 @@ cdef void* __cusparseSpSM_destroyDescr = NULL
 cdef void* __cusparseSpSM_bufferSize = NULL
 cdef void* __cusparseSpSM_analysis = NULL
 cdef void* __cusparseSpSM_solve = NULL
+cdef void* __cusparseSpMM_bufferSize = NULL
+cdef void* __cusparseSpMM_preprocess = NULL
+cdef void* __cusparseSpMM = NULL
+cdef void* __cusparseSpGEMM_createDescr = NULL
+cdef void* __cusparseSpGEMM_destroyDescr = NULL
+cdef void* __cusparseSpGEMM_workEstimation = NULL
+cdef void* __cusparseSpGEMM_getNumProducts = NULL
+cdef void* __cusparseSpGEMM_estimateMemory = NULL
+cdef void* __cusparseSpGEMM_compute = NULL
+cdef void* __cusparseSpGEMM_copy = NULL
 cdef void* __cusparseSpGEMMreuse_workEstimation = NULL
 cdef void* __cusparseSpGEMMreuse_nnz = NULL
 cdef void* __cusparseSpGEMMreuse_copy = NULL
 cdef void* __cusparseSpGEMMreuse_compute = NULL
-cdef void* __cusparseLoggerSetCallback = NULL
-cdef void* __cusparseLoggerSetFile = NULL
-cdef void* __cusparseLoggerOpenFile = NULL
-cdef void* __cusparseLoggerSetLevel = NULL
-cdef void* __cusparseLoggerSetMask = NULL
-cdef void* __cusparseLoggerForceDisable = NULL
+cdef void* __cusparseSDDMM_bufferSize = NULL
+cdef void* __cusparseSDDMM_preprocess = NULL
+cdef void* __cusparseSDDMM = NULL
 cdef void* __cusparseSpMMOp_createPlan = NULL
 cdef void* __cusparseSpMMOp = NULL
 cdef void* __cusparseSpMMOp_destroyPlan = NULL
-cdef void* __cusparseCscGet = NULL
-cdef void* __cusparseCreateConstSpVec = NULL
-cdef void* __cusparseConstSpVecGet = NULL
-cdef void* __cusparseConstSpVecGetValues = NULL
-cdef void* __cusparseCreateConstDnVec = NULL
-cdef void* __cusparseConstDnVecGet = NULL
-cdef void* __cusparseConstDnVecGetValues = NULL
-cdef void* __cusparseConstSpMatGetValues = NULL
-cdef void* __cusparseCreateConstCsr = NULL
-cdef void* __cusparseCreateConstCsc = NULL
-cdef void* __cusparseConstCsrGet = NULL
-cdef void* __cusparseConstCscGet = NULL
-cdef void* __cusparseCreateConstCoo = NULL
-cdef void* __cusparseConstCooGet = NULL
-cdef void* __cusparseCreateConstBlockedEll = NULL
-cdef void* __cusparseConstBlockedEllGet = NULL
-cdef void* __cusparseCreateConstDnMat = NULL
-cdef void* __cusparseConstDnMatGet = NULL
-cdef void* __cusparseConstDnMatGetValues = NULL
-cdef void* __cusparseSpGEMM_getNumProducts = NULL
-cdef void* __cusparseSpGEMM_estimateMemory = NULL
 cdef void* __cusparseBsrSetStridedBatch = NULL
 cdef void* __cusparseCreateBsr = NULL
 cdef void* __cusparseCreateConstBsr = NULL
@@ -352,6 +352,10 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         return 0
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cusparse_init:
+            return 0
+
         driver_ver = get_cuda_version()
 
         # Load library
@@ -387,6 +391,24 @@ cdef int _check_or_init_cusparse() except -1 nogil:
 
         global __cusparseSetPointerMode
         __cusparseSetPointerMode = GetProcAddress(handle, 'cusparseSetPointerMode')
+
+        global __cusparseLoggerSetCallback
+        __cusparseLoggerSetCallback = GetProcAddress(handle, 'cusparseLoggerSetCallback')
+
+        global __cusparseLoggerSetFile
+        __cusparseLoggerSetFile = GetProcAddress(handle, 'cusparseLoggerSetFile')
+
+        global __cusparseLoggerOpenFile
+        __cusparseLoggerOpenFile = GetProcAddress(handle, 'cusparseLoggerOpenFile')
+
+        global __cusparseLoggerSetLevel
+        __cusparseLoggerSetLevel = GetProcAddress(handle, 'cusparseLoggerSetLevel')
+
+        global __cusparseLoggerSetMask
+        __cusparseLoggerSetMask = GetProcAddress(handle, 'cusparseLoggerSetMask')
+
+        global __cusparseLoggerForceDisable
+        __cusparseLoggerForceDisable = GetProcAddress(handle, 'cusparseLoggerForceDisable')
 
         global __cusparseCreateMatDescr
         __cusparseCreateMatDescr = GetProcAddress(handle, 'cusparseCreateMatDescr')
@@ -787,11 +809,17 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseCreateSpVec
         __cusparseCreateSpVec = GetProcAddress(handle, 'cusparseCreateSpVec')
 
+        global __cusparseCreateConstSpVec
+        __cusparseCreateConstSpVec = GetProcAddress(handle, 'cusparseCreateConstSpVec')
+
         global __cusparseDestroySpVec
         __cusparseDestroySpVec = GetProcAddress(handle, 'cusparseDestroySpVec')
 
         global __cusparseSpVecGet
         __cusparseSpVecGet = GetProcAddress(handle, 'cusparseSpVecGet')
+
+        global __cusparseConstSpVecGet
+        __cusparseConstSpVecGet = GetProcAddress(handle, 'cusparseConstSpVecGet')
 
         global __cusparseSpVecGetIndexBase
         __cusparseSpVecGetIndexBase = GetProcAddress(handle, 'cusparseSpVecGetIndexBase')
@@ -799,11 +827,17 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseSpVecGetValues
         __cusparseSpVecGetValues = GetProcAddress(handle, 'cusparseSpVecGetValues')
 
+        global __cusparseConstSpVecGetValues
+        __cusparseConstSpVecGetValues = GetProcAddress(handle, 'cusparseConstSpVecGetValues')
+
         global __cusparseSpVecSetValues
         __cusparseSpVecSetValues = GetProcAddress(handle, 'cusparseSpVecSetValues')
 
         global __cusparseCreateDnVec
         __cusparseCreateDnVec = GetProcAddress(handle, 'cusparseCreateDnVec')
+
+        global __cusparseCreateConstDnVec
+        __cusparseCreateConstDnVec = GetProcAddress(handle, 'cusparseCreateConstDnVec')
 
         global __cusparseDestroyDnVec
         __cusparseDestroyDnVec = GetProcAddress(handle, 'cusparseDestroyDnVec')
@@ -811,8 +845,14 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseDnVecGet
         __cusparseDnVecGet = GetProcAddress(handle, 'cusparseDnVecGet')
 
+        global __cusparseConstDnVecGet
+        __cusparseConstDnVecGet = GetProcAddress(handle, 'cusparseConstDnVecGet')
+
         global __cusparseDnVecGetValues
         __cusparseDnVecGetValues = GetProcAddress(handle, 'cusparseDnVecGetValues')
+
+        global __cusparseConstDnVecGetValues
+        __cusparseConstDnVecGetValues = GetProcAddress(handle, 'cusparseConstDnVecGetValues')
 
         global __cusparseDnVecSetValues
         __cusparseDnVecSetValues = GetProcAddress(handle, 'cusparseDnVecSetValues')
@@ -829,6 +869,9 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseSpMatGetValues
         __cusparseSpMatGetValues = GetProcAddress(handle, 'cusparseSpMatGetValues')
 
+        global __cusparseConstSpMatGetValues
+        __cusparseConstSpMatGetValues = GetProcAddress(handle, 'cusparseConstSpMatGetValues')
+
         global __cusparseSpMatSetValues
         __cusparseSpMatSetValues = GetProcAddress(handle, 'cusparseSpMatSetValues')
 
@@ -844,23 +887,74 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseCsrSetStridedBatch
         __cusparseCsrSetStridedBatch = GetProcAddress(handle, 'cusparseCsrSetStridedBatch')
 
+        global __cusparseSpMatGetAttribute
+        __cusparseSpMatGetAttribute = GetProcAddress(handle, 'cusparseSpMatGetAttribute')
+
+        global __cusparseSpMatSetAttribute
+        __cusparseSpMatSetAttribute = GetProcAddress(handle, 'cusparseSpMatSetAttribute')
+
         global __cusparseCreateCsr
         __cusparseCreateCsr = GetProcAddress(handle, 'cusparseCreateCsr')
+
+        global __cusparseCreateConstCsr
+        __cusparseCreateConstCsr = GetProcAddress(handle, 'cusparseCreateConstCsr')
+
+        global __cusparseCreateCsc
+        __cusparseCreateCsc = GetProcAddress(handle, 'cusparseCreateCsc')
+
+        global __cusparseCreateConstCsc
+        __cusparseCreateConstCsc = GetProcAddress(handle, 'cusparseCreateConstCsc')
 
         global __cusparseCsrGet
         __cusparseCsrGet = GetProcAddress(handle, 'cusparseCsrGet')
 
+        global __cusparseConstCsrGet
+        __cusparseConstCsrGet = GetProcAddress(handle, 'cusparseConstCsrGet')
+
+        global __cusparseCscGet
+        __cusparseCscGet = GetProcAddress(handle, 'cusparseCscGet')
+
+        global __cusparseConstCscGet
+        __cusparseConstCscGet = GetProcAddress(handle, 'cusparseConstCscGet')
+
         global __cusparseCsrSetPointers
         __cusparseCsrSetPointers = GetProcAddress(handle, 'cusparseCsrSetPointers')
+
+        global __cusparseCscSetPointers
+        __cusparseCscSetPointers = GetProcAddress(handle, 'cusparseCscSetPointers')
 
         global __cusparseCreateCoo
         __cusparseCreateCoo = GetProcAddress(handle, 'cusparseCreateCoo')
 
+        global __cusparseCreateConstCoo
+        __cusparseCreateConstCoo = GetProcAddress(handle, 'cusparseCreateConstCoo')
+
         global __cusparseCooGet
         __cusparseCooGet = GetProcAddress(handle, 'cusparseCooGet')
 
+        global __cusparseConstCooGet
+        __cusparseConstCooGet = GetProcAddress(handle, 'cusparseConstCooGet')
+
+        global __cusparseCooSetPointers
+        __cusparseCooSetPointers = GetProcAddress(handle, 'cusparseCooSetPointers')
+
+        global __cusparseCreateBlockedEll
+        __cusparseCreateBlockedEll = GetProcAddress(handle, 'cusparseCreateBlockedEll')
+
+        global __cusparseCreateConstBlockedEll
+        __cusparseCreateConstBlockedEll = GetProcAddress(handle, 'cusparseCreateConstBlockedEll')
+
+        global __cusparseBlockedEllGet
+        __cusparseBlockedEllGet = GetProcAddress(handle, 'cusparseBlockedEllGet')
+
+        global __cusparseConstBlockedEllGet
+        __cusparseConstBlockedEllGet = GetProcAddress(handle, 'cusparseConstBlockedEllGet')
+
         global __cusparseCreateDnMat
         __cusparseCreateDnMat = GetProcAddress(handle, 'cusparseCreateDnMat')
+
+        global __cusparseCreateConstDnMat
+        __cusparseCreateConstDnMat = GetProcAddress(handle, 'cusparseCreateConstDnMat')
 
         global __cusparseDestroyDnMat
         __cusparseDestroyDnMat = GetProcAddress(handle, 'cusparseDestroyDnMat')
@@ -868,8 +962,14 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseDnMatGet
         __cusparseDnMatGet = GetProcAddress(handle, 'cusparseDnMatGet')
 
+        global __cusparseConstDnMatGet
+        __cusparseConstDnMatGet = GetProcAddress(handle, 'cusparseConstDnMatGet')
+
         global __cusparseDnMatGetValues
         __cusparseDnMatGetValues = GetProcAddress(handle, 'cusparseDnMatGetValues')
+
+        global __cusparseConstDnMatGetValues
+        __cusparseConstDnMatGetValues = GetProcAddress(handle, 'cusparseConstDnMatGetValues')
 
         global __cusparseDnMatSetValues
         __cusparseDnMatSetValues = GetProcAddress(handle, 'cusparseDnMatSetValues')
@@ -895,42 +995,6 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseSpVV
         __cusparseSpVV = GetProcAddress(handle, 'cusparseSpVV')
 
-        global __cusparseSpMV
-        __cusparseSpMV = GetProcAddress(handle, 'cusparseSpMV')
-
-        global __cusparseSpMV_bufferSize
-        __cusparseSpMV_bufferSize = GetProcAddress(handle, 'cusparseSpMV_bufferSize')
-
-        global __cusparseSpMM
-        __cusparseSpMM = GetProcAddress(handle, 'cusparseSpMM')
-
-        global __cusparseSpMM_bufferSize
-        __cusparseSpMM_bufferSize = GetProcAddress(handle, 'cusparseSpMM_bufferSize')
-
-        global __cusparseSpGEMM_createDescr
-        __cusparseSpGEMM_createDescr = GetProcAddress(handle, 'cusparseSpGEMM_createDescr')
-
-        global __cusparseSpGEMM_destroyDescr
-        __cusparseSpGEMM_destroyDescr = GetProcAddress(handle, 'cusparseSpGEMM_destroyDescr')
-
-        global __cusparseSpGEMM_workEstimation
-        __cusparseSpGEMM_workEstimation = GetProcAddress(handle, 'cusparseSpGEMM_workEstimation')
-
-        global __cusparseSpGEMM_compute
-        __cusparseSpGEMM_compute = GetProcAddress(handle, 'cusparseSpGEMM_compute')
-
-        global __cusparseSpGEMM_copy
-        __cusparseSpGEMM_copy = GetProcAddress(handle, 'cusparseSpGEMM_copy')
-
-        global __cusparseCreateCsc
-        __cusparseCreateCsc = GetProcAddress(handle, 'cusparseCreateCsc')
-
-        global __cusparseCscSetPointers
-        __cusparseCscSetPointers = GetProcAddress(handle, 'cusparseCscSetPointers')
-
-        global __cusparseCooSetPointers
-        __cusparseCooSetPointers = GetProcAddress(handle, 'cusparseCooSetPointers')
-
         global __cusparseSparseToDense_bufferSize
         __cusparseSparseToDense_bufferSize = GetProcAddress(handle, 'cusparseSparseToDense_bufferSize')
 
@@ -946,29 +1010,11 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseDenseToSparse_convert
         __cusparseDenseToSparse_convert = GetProcAddress(handle, 'cusparseDenseToSparse_convert')
 
-        global __cusparseCreateBlockedEll
-        __cusparseCreateBlockedEll = GetProcAddress(handle, 'cusparseCreateBlockedEll')
+        global __cusparseSpMV
+        __cusparseSpMV = GetProcAddress(handle, 'cusparseSpMV')
 
-        global __cusparseBlockedEllGet
-        __cusparseBlockedEllGet = GetProcAddress(handle, 'cusparseBlockedEllGet')
-
-        global __cusparseSpMM_preprocess
-        __cusparseSpMM_preprocess = GetProcAddress(handle, 'cusparseSpMM_preprocess')
-
-        global __cusparseSDDMM_bufferSize
-        __cusparseSDDMM_bufferSize = GetProcAddress(handle, 'cusparseSDDMM_bufferSize')
-
-        global __cusparseSDDMM_preprocess
-        __cusparseSDDMM_preprocess = GetProcAddress(handle, 'cusparseSDDMM_preprocess')
-
-        global __cusparseSDDMM
-        __cusparseSDDMM = GetProcAddress(handle, 'cusparseSDDMM')
-
-        global __cusparseSpMatGetAttribute
-        __cusparseSpMatGetAttribute = GetProcAddress(handle, 'cusparseSpMatGetAttribute')
-
-        global __cusparseSpMatSetAttribute
-        __cusparseSpMatSetAttribute = GetProcAddress(handle, 'cusparseSpMatSetAttribute')
+        global __cusparseSpMV_bufferSize
+        __cusparseSpMV_bufferSize = GetProcAddress(handle, 'cusparseSpMV_bufferSize')
 
         global __cusparseSpSV_createDescr
         __cusparseSpSV_createDescr = GetProcAddress(handle, 'cusparseSpSV_createDescr')
@@ -1000,6 +1046,36 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseSpSM_solve
         __cusparseSpSM_solve = GetProcAddress(handle, 'cusparseSpSM_solve')
 
+        global __cusparseSpMM_bufferSize
+        __cusparseSpMM_bufferSize = GetProcAddress(handle, 'cusparseSpMM_bufferSize')
+
+        global __cusparseSpMM_preprocess
+        __cusparseSpMM_preprocess = GetProcAddress(handle, 'cusparseSpMM_preprocess')
+
+        global __cusparseSpMM
+        __cusparseSpMM = GetProcAddress(handle, 'cusparseSpMM')
+
+        global __cusparseSpGEMM_createDescr
+        __cusparseSpGEMM_createDescr = GetProcAddress(handle, 'cusparseSpGEMM_createDescr')
+
+        global __cusparseSpGEMM_destroyDescr
+        __cusparseSpGEMM_destroyDescr = GetProcAddress(handle, 'cusparseSpGEMM_destroyDescr')
+
+        global __cusparseSpGEMM_workEstimation
+        __cusparseSpGEMM_workEstimation = GetProcAddress(handle, 'cusparseSpGEMM_workEstimation')
+
+        global __cusparseSpGEMM_getNumProducts
+        __cusparseSpGEMM_getNumProducts = GetProcAddress(handle, 'cusparseSpGEMM_getNumProducts')
+
+        global __cusparseSpGEMM_estimateMemory
+        __cusparseSpGEMM_estimateMemory = GetProcAddress(handle, 'cusparseSpGEMM_estimateMemory')
+
+        global __cusparseSpGEMM_compute
+        __cusparseSpGEMM_compute = GetProcAddress(handle, 'cusparseSpGEMM_compute')
+
+        global __cusparseSpGEMM_copy
+        __cusparseSpGEMM_copy = GetProcAddress(handle, 'cusparseSpGEMM_copy')
+
         global __cusparseSpGEMMreuse_workEstimation
         __cusparseSpGEMMreuse_workEstimation = GetProcAddress(handle, 'cusparseSpGEMMreuse_workEstimation')
 
@@ -1012,23 +1088,14 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseSpGEMMreuse_compute
         __cusparseSpGEMMreuse_compute = GetProcAddress(handle, 'cusparseSpGEMMreuse_compute')
 
-        global __cusparseLoggerSetCallback
-        __cusparseLoggerSetCallback = GetProcAddress(handle, 'cusparseLoggerSetCallback')
+        global __cusparseSDDMM_bufferSize
+        __cusparseSDDMM_bufferSize = GetProcAddress(handle, 'cusparseSDDMM_bufferSize')
 
-        global __cusparseLoggerSetFile
-        __cusparseLoggerSetFile = GetProcAddress(handle, 'cusparseLoggerSetFile')
+        global __cusparseSDDMM_preprocess
+        __cusparseSDDMM_preprocess = GetProcAddress(handle, 'cusparseSDDMM_preprocess')
 
-        global __cusparseLoggerOpenFile
-        __cusparseLoggerOpenFile = GetProcAddress(handle, 'cusparseLoggerOpenFile')
-
-        global __cusparseLoggerSetLevel
-        __cusparseLoggerSetLevel = GetProcAddress(handle, 'cusparseLoggerSetLevel')
-
-        global __cusparseLoggerSetMask
-        __cusparseLoggerSetMask = GetProcAddress(handle, 'cusparseLoggerSetMask')
-
-        global __cusparseLoggerForceDisable
-        __cusparseLoggerForceDisable = GetProcAddress(handle, 'cusparseLoggerForceDisable')
+        global __cusparseSDDMM
+        __cusparseSDDMM = GetProcAddress(handle, 'cusparseSDDMM')
 
         global __cusparseSpMMOp_createPlan
         __cusparseSpMMOp_createPlan = GetProcAddress(handle, 'cusparseSpMMOp_createPlan')
@@ -1038,69 +1105,6 @@ cdef int _check_or_init_cusparse() except -1 nogil:
 
         global __cusparseSpMMOp_destroyPlan
         __cusparseSpMMOp_destroyPlan = GetProcAddress(handle, 'cusparseSpMMOp_destroyPlan')
-
-        global __cusparseCscGet
-        __cusparseCscGet = GetProcAddress(handle, 'cusparseCscGet')
-
-        global __cusparseCreateConstSpVec
-        __cusparseCreateConstSpVec = GetProcAddress(handle, 'cusparseCreateConstSpVec')
-
-        global __cusparseConstSpVecGet
-        __cusparseConstSpVecGet = GetProcAddress(handle, 'cusparseConstSpVecGet')
-
-        global __cusparseConstSpVecGetValues
-        __cusparseConstSpVecGetValues = GetProcAddress(handle, 'cusparseConstSpVecGetValues')
-
-        global __cusparseCreateConstDnVec
-        __cusparseCreateConstDnVec = GetProcAddress(handle, 'cusparseCreateConstDnVec')
-
-        global __cusparseConstDnVecGet
-        __cusparseConstDnVecGet = GetProcAddress(handle, 'cusparseConstDnVecGet')
-
-        global __cusparseConstDnVecGetValues
-        __cusparseConstDnVecGetValues = GetProcAddress(handle, 'cusparseConstDnVecGetValues')
-
-        global __cusparseConstSpMatGetValues
-        __cusparseConstSpMatGetValues = GetProcAddress(handle, 'cusparseConstSpMatGetValues')
-
-        global __cusparseCreateConstCsr
-        __cusparseCreateConstCsr = GetProcAddress(handle, 'cusparseCreateConstCsr')
-
-        global __cusparseCreateConstCsc
-        __cusparseCreateConstCsc = GetProcAddress(handle, 'cusparseCreateConstCsc')
-
-        global __cusparseConstCsrGet
-        __cusparseConstCsrGet = GetProcAddress(handle, 'cusparseConstCsrGet')
-
-        global __cusparseConstCscGet
-        __cusparseConstCscGet = GetProcAddress(handle, 'cusparseConstCscGet')
-
-        global __cusparseCreateConstCoo
-        __cusparseCreateConstCoo = GetProcAddress(handle, 'cusparseCreateConstCoo')
-
-        global __cusparseConstCooGet
-        __cusparseConstCooGet = GetProcAddress(handle, 'cusparseConstCooGet')
-
-        global __cusparseCreateConstBlockedEll
-        __cusparseCreateConstBlockedEll = GetProcAddress(handle, 'cusparseCreateConstBlockedEll')
-
-        global __cusparseConstBlockedEllGet
-        __cusparseConstBlockedEllGet = GetProcAddress(handle, 'cusparseConstBlockedEllGet')
-
-        global __cusparseCreateConstDnMat
-        __cusparseCreateConstDnMat = GetProcAddress(handle, 'cusparseCreateConstDnMat')
-
-        global __cusparseConstDnMatGet
-        __cusparseConstDnMatGet = GetProcAddress(handle, 'cusparseConstDnMatGet')
-
-        global __cusparseConstDnMatGetValues
-        __cusparseConstDnMatGetValues = GetProcAddress(handle, 'cusparseConstDnMatGetValues')
-
-        global __cusparseSpGEMM_getNumProducts
-        __cusparseSpGEMM_getNumProducts = GetProcAddress(handle, 'cusparseSpGEMM_getNumProducts')
-
-        global __cusparseSpGEMM_estimateMemory
-        __cusparseSpGEMM_estimateMemory = GetProcAddress(handle, 'cusparseSpGEMM_estimateMemory')
 
         global __cusparseBsrSetStridedBatch
         __cusparseBsrSetStridedBatch = GetProcAddress(handle, 'cusparseBsrSetStridedBatch')
@@ -1170,6 +1174,24 @@ cpdef dict _inspect_function_pointers():
 
     global __cusparseSetPointerMode
     data["__cusparseSetPointerMode"] = <intptr_t>__cusparseSetPointerMode
+
+    global __cusparseLoggerSetCallback
+    data["__cusparseLoggerSetCallback"] = <intptr_t>__cusparseLoggerSetCallback
+
+    global __cusparseLoggerSetFile
+    data["__cusparseLoggerSetFile"] = <intptr_t>__cusparseLoggerSetFile
+
+    global __cusparseLoggerOpenFile
+    data["__cusparseLoggerOpenFile"] = <intptr_t>__cusparseLoggerOpenFile
+
+    global __cusparseLoggerSetLevel
+    data["__cusparseLoggerSetLevel"] = <intptr_t>__cusparseLoggerSetLevel
+
+    global __cusparseLoggerSetMask
+    data["__cusparseLoggerSetMask"] = <intptr_t>__cusparseLoggerSetMask
+
+    global __cusparseLoggerForceDisable
+    data["__cusparseLoggerForceDisable"] = <intptr_t>__cusparseLoggerForceDisable
 
     global __cusparseCreateMatDescr
     data["__cusparseCreateMatDescr"] = <intptr_t>__cusparseCreateMatDescr
@@ -1570,11 +1592,17 @@ cpdef dict _inspect_function_pointers():
     global __cusparseCreateSpVec
     data["__cusparseCreateSpVec"] = <intptr_t>__cusparseCreateSpVec
 
+    global __cusparseCreateConstSpVec
+    data["__cusparseCreateConstSpVec"] = <intptr_t>__cusparseCreateConstSpVec
+
     global __cusparseDestroySpVec
     data["__cusparseDestroySpVec"] = <intptr_t>__cusparseDestroySpVec
 
     global __cusparseSpVecGet
     data["__cusparseSpVecGet"] = <intptr_t>__cusparseSpVecGet
+
+    global __cusparseConstSpVecGet
+    data["__cusparseConstSpVecGet"] = <intptr_t>__cusparseConstSpVecGet
 
     global __cusparseSpVecGetIndexBase
     data["__cusparseSpVecGetIndexBase"] = <intptr_t>__cusparseSpVecGetIndexBase
@@ -1582,11 +1610,17 @@ cpdef dict _inspect_function_pointers():
     global __cusparseSpVecGetValues
     data["__cusparseSpVecGetValues"] = <intptr_t>__cusparseSpVecGetValues
 
+    global __cusparseConstSpVecGetValues
+    data["__cusparseConstSpVecGetValues"] = <intptr_t>__cusparseConstSpVecGetValues
+
     global __cusparseSpVecSetValues
     data["__cusparseSpVecSetValues"] = <intptr_t>__cusparseSpVecSetValues
 
     global __cusparseCreateDnVec
     data["__cusparseCreateDnVec"] = <intptr_t>__cusparseCreateDnVec
+
+    global __cusparseCreateConstDnVec
+    data["__cusparseCreateConstDnVec"] = <intptr_t>__cusparseCreateConstDnVec
 
     global __cusparseDestroyDnVec
     data["__cusparseDestroyDnVec"] = <intptr_t>__cusparseDestroyDnVec
@@ -1594,8 +1628,14 @@ cpdef dict _inspect_function_pointers():
     global __cusparseDnVecGet
     data["__cusparseDnVecGet"] = <intptr_t>__cusparseDnVecGet
 
+    global __cusparseConstDnVecGet
+    data["__cusparseConstDnVecGet"] = <intptr_t>__cusparseConstDnVecGet
+
     global __cusparseDnVecGetValues
     data["__cusparseDnVecGetValues"] = <intptr_t>__cusparseDnVecGetValues
+
+    global __cusparseConstDnVecGetValues
+    data["__cusparseConstDnVecGetValues"] = <intptr_t>__cusparseConstDnVecGetValues
 
     global __cusparseDnVecSetValues
     data["__cusparseDnVecSetValues"] = <intptr_t>__cusparseDnVecSetValues
@@ -1612,6 +1652,9 @@ cpdef dict _inspect_function_pointers():
     global __cusparseSpMatGetValues
     data["__cusparseSpMatGetValues"] = <intptr_t>__cusparseSpMatGetValues
 
+    global __cusparseConstSpMatGetValues
+    data["__cusparseConstSpMatGetValues"] = <intptr_t>__cusparseConstSpMatGetValues
+
     global __cusparseSpMatSetValues
     data["__cusparseSpMatSetValues"] = <intptr_t>__cusparseSpMatSetValues
 
@@ -1627,23 +1670,74 @@ cpdef dict _inspect_function_pointers():
     global __cusparseCsrSetStridedBatch
     data["__cusparseCsrSetStridedBatch"] = <intptr_t>__cusparseCsrSetStridedBatch
 
+    global __cusparseSpMatGetAttribute
+    data["__cusparseSpMatGetAttribute"] = <intptr_t>__cusparseSpMatGetAttribute
+
+    global __cusparseSpMatSetAttribute
+    data["__cusparseSpMatSetAttribute"] = <intptr_t>__cusparseSpMatSetAttribute
+
     global __cusparseCreateCsr
     data["__cusparseCreateCsr"] = <intptr_t>__cusparseCreateCsr
+
+    global __cusparseCreateConstCsr
+    data["__cusparseCreateConstCsr"] = <intptr_t>__cusparseCreateConstCsr
+
+    global __cusparseCreateCsc
+    data["__cusparseCreateCsc"] = <intptr_t>__cusparseCreateCsc
+
+    global __cusparseCreateConstCsc
+    data["__cusparseCreateConstCsc"] = <intptr_t>__cusparseCreateConstCsc
 
     global __cusparseCsrGet
     data["__cusparseCsrGet"] = <intptr_t>__cusparseCsrGet
 
+    global __cusparseConstCsrGet
+    data["__cusparseConstCsrGet"] = <intptr_t>__cusparseConstCsrGet
+
+    global __cusparseCscGet
+    data["__cusparseCscGet"] = <intptr_t>__cusparseCscGet
+
+    global __cusparseConstCscGet
+    data["__cusparseConstCscGet"] = <intptr_t>__cusparseConstCscGet
+
     global __cusparseCsrSetPointers
     data["__cusparseCsrSetPointers"] = <intptr_t>__cusparseCsrSetPointers
+
+    global __cusparseCscSetPointers
+    data["__cusparseCscSetPointers"] = <intptr_t>__cusparseCscSetPointers
 
     global __cusparseCreateCoo
     data["__cusparseCreateCoo"] = <intptr_t>__cusparseCreateCoo
 
+    global __cusparseCreateConstCoo
+    data["__cusparseCreateConstCoo"] = <intptr_t>__cusparseCreateConstCoo
+
     global __cusparseCooGet
     data["__cusparseCooGet"] = <intptr_t>__cusparseCooGet
 
+    global __cusparseConstCooGet
+    data["__cusparseConstCooGet"] = <intptr_t>__cusparseConstCooGet
+
+    global __cusparseCooSetPointers
+    data["__cusparseCooSetPointers"] = <intptr_t>__cusparseCooSetPointers
+
+    global __cusparseCreateBlockedEll
+    data["__cusparseCreateBlockedEll"] = <intptr_t>__cusparseCreateBlockedEll
+
+    global __cusparseCreateConstBlockedEll
+    data["__cusparseCreateConstBlockedEll"] = <intptr_t>__cusparseCreateConstBlockedEll
+
+    global __cusparseBlockedEllGet
+    data["__cusparseBlockedEllGet"] = <intptr_t>__cusparseBlockedEllGet
+
+    global __cusparseConstBlockedEllGet
+    data["__cusparseConstBlockedEllGet"] = <intptr_t>__cusparseConstBlockedEllGet
+
     global __cusparseCreateDnMat
     data["__cusparseCreateDnMat"] = <intptr_t>__cusparseCreateDnMat
+
+    global __cusparseCreateConstDnMat
+    data["__cusparseCreateConstDnMat"] = <intptr_t>__cusparseCreateConstDnMat
 
     global __cusparseDestroyDnMat
     data["__cusparseDestroyDnMat"] = <intptr_t>__cusparseDestroyDnMat
@@ -1651,8 +1745,14 @@ cpdef dict _inspect_function_pointers():
     global __cusparseDnMatGet
     data["__cusparseDnMatGet"] = <intptr_t>__cusparseDnMatGet
 
+    global __cusparseConstDnMatGet
+    data["__cusparseConstDnMatGet"] = <intptr_t>__cusparseConstDnMatGet
+
     global __cusparseDnMatGetValues
     data["__cusparseDnMatGetValues"] = <intptr_t>__cusparseDnMatGetValues
+
+    global __cusparseConstDnMatGetValues
+    data["__cusparseConstDnMatGetValues"] = <intptr_t>__cusparseConstDnMatGetValues
 
     global __cusparseDnMatSetValues
     data["__cusparseDnMatSetValues"] = <intptr_t>__cusparseDnMatSetValues
@@ -1678,42 +1778,6 @@ cpdef dict _inspect_function_pointers():
     global __cusparseSpVV
     data["__cusparseSpVV"] = <intptr_t>__cusparseSpVV
 
-    global __cusparseSpMV
-    data["__cusparseSpMV"] = <intptr_t>__cusparseSpMV
-
-    global __cusparseSpMV_bufferSize
-    data["__cusparseSpMV_bufferSize"] = <intptr_t>__cusparseSpMV_bufferSize
-
-    global __cusparseSpMM
-    data["__cusparseSpMM"] = <intptr_t>__cusparseSpMM
-
-    global __cusparseSpMM_bufferSize
-    data["__cusparseSpMM_bufferSize"] = <intptr_t>__cusparseSpMM_bufferSize
-
-    global __cusparseSpGEMM_createDescr
-    data["__cusparseSpGEMM_createDescr"] = <intptr_t>__cusparseSpGEMM_createDescr
-
-    global __cusparseSpGEMM_destroyDescr
-    data["__cusparseSpGEMM_destroyDescr"] = <intptr_t>__cusparseSpGEMM_destroyDescr
-
-    global __cusparseSpGEMM_workEstimation
-    data["__cusparseSpGEMM_workEstimation"] = <intptr_t>__cusparseSpGEMM_workEstimation
-
-    global __cusparseSpGEMM_compute
-    data["__cusparseSpGEMM_compute"] = <intptr_t>__cusparseSpGEMM_compute
-
-    global __cusparseSpGEMM_copy
-    data["__cusparseSpGEMM_copy"] = <intptr_t>__cusparseSpGEMM_copy
-
-    global __cusparseCreateCsc
-    data["__cusparseCreateCsc"] = <intptr_t>__cusparseCreateCsc
-
-    global __cusparseCscSetPointers
-    data["__cusparseCscSetPointers"] = <intptr_t>__cusparseCscSetPointers
-
-    global __cusparseCooSetPointers
-    data["__cusparseCooSetPointers"] = <intptr_t>__cusparseCooSetPointers
-
     global __cusparseSparseToDense_bufferSize
     data["__cusparseSparseToDense_bufferSize"] = <intptr_t>__cusparseSparseToDense_bufferSize
 
@@ -1729,29 +1793,11 @@ cpdef dict _inspect_function_pointers():
     global __cusparseDenseToSparse_convert
     data["__cusparseDenseToSparse_convert"] = <intptr_t>__cusparseDenseToSparse_convert
 
-    global __cusparseCreateBlockedEll
-    data["__cusparseCreateBlockedEll"] = <intptr_t>__cusparseCreateBlockedEll
+    global __cusparseSpMV
+    data["__cusparseSpMV"] = <intptr_t>__cusparseSpMV
 
-    global __cusparseBlockedEllGet
-    data["__cusparseBlockedEllGet"] = <intptr_t>__cusparseBlockedEllGet
-
-    global __cusparseSpMM_preprocess
-    data["__cusparseSpMM_preprocess"] = <intptr_t>__cusparseSpMM_preprocess
-
-    global __cusparseSDDMM_bufferSize
-    data["__cusparseSDDMM_bufferSize"] = <intptr_t>__cusparseSDDMM_bufferSize
-
-    global __cusparseSDDMM_preprocess
-    data["__cusparseSDDMM_preprocess"] = <intptr_t>__cusparseSDDMM_preprocess
-
-    global __cusparseSDDMM
-    data["__cusparseSDDMM"] = <intptr_t>__cusparseSDDMM
-
-    global __cusparseSpMatGetAttribute
-    data["__cusparseSpMatGetAttribute"] = <intptr_t>__cusparseSpMatGetAttribute
-
-    global __cusparseSpMatSetAttribute
-    data["__cusparseSpMatSetAttribute"] = <intptr_t>__cusparseSpMatSetAttribute
+    global __cusparseSpMV_bufferSize
+    data["__cusparseSpMV_bufferSize"] = <intptr_t>__cusparseSpMV_bufferSize
 
     global __cusparseSpSV_createDescr
     data["__cusparseSpSV_createDescr"] = <intptr_t>__cusparseSpSV_createDescr
@@ -1783,6 +1829,36 @@ cpdef dict _inspect_function_pointers():
     global __cusparseSpSM_solve
     data["__cusparseSpSM_solve"] = <intptr_t>__cusparseSpSM_solve
 
+    global __cusparseSpMM_bufferSize
+    data["__cusparseSpMM_bufferSize"] = <intptr_t>__cusparseSpMM_bufferSize
+
+    global __cusparseSpMM_preprocess
+    data["__cusparseSpMM_preprocess"] = <intptr_t>__cusparseSpMM_preprocess
+
+    global __cusparseSpMM
+    data["__cusparseSpMM"] = <intptr_t>__cusparseSpMM
+
+    global __cusparseSpGEMM_createDescr
+    data["__cusparseSpGEMM_createDescr"] = <intptr_t>__cusparseSpGEMM_createDescr
+
+    global __cusparseSpGEMM_destroyDescr
+    data["__cusparseSpGEMM_destroyDescr"] = <intptr_t>__cusparseSpGEMM_destroyDescr
+
+    global __cusparseSpGEMM_workEstimation
+    data["__cusparseSpGEMM_workEstimation"] = <intptr_t>__cusparseSpGEMM_workEstimation
+
+    global __cusparseSpGEMM_getNumProducts
+    data["__cusparseSpGEMM_getNumProducts"] = <intptr_t>__cusparseSpGEMM_getNumProducts
+
+    global __cusparseSpGEMM_estimateMemory
+    data["__cusparseSpGEMM_estimateMemory"] = <intptr_t>__cusparseSpGEMM_estimateMemory
+
+    global __cusparseSpGEMM_compute
+    data["__cusparseSpGEMM_compute"] = <intptr_t>__cusparseSpGEMM_compute
+
+    global __cusparseSpGEMM_copy
+    data["__cusparseSpGEMM_copy"] = <intptr_t>__cusparseSpGEMM_copy
+
     global __cusparseSpGEMMreuse_workEstimation
     data["__cusparseSpGEMMreuse_workEstimation"] = <intptr_t>__cusparseSpGEMMreuse_workEstimation
 
@@ -1795,23 +1871,14 @@ cpdef dict _inspect_function_pointers():
     global __cusparseSpGEMMreuse_compute
     data["__cusparseSpGEMMreuse_compute"] = <intptr_t>__cusparseSpGEMMreuse_compute
 
-    global __cusparseLoggerSetCallback
-    data["__cusparseLoggerSetCallback"] = <intptr_t>__cusparseLoggerSetCallback
+    global __cusparseSDDMM_bufferSize
+    data["__cusparseSDDMM_bufferSize"] = <intptr_t>__cusparseSDDMM_bufferSize
 
-    global __cusparseLoggerSetFile
-    data["__cusparseLoggerSetFile"] = <intptr_t>__cusparseLoggerSetFile
+    global __cusparseSDDMM_preprocess
+    data["__cusparseSDDMM_preprocess"] = <intptr_t>__cusparseSDDMM_preprocess
 
-    global __cusparseLoggerOpenFile
-    data["__cusparseLoggerOpenFile"] = <intptr_t>__cusparseLoggerOpenFile
-
-    global __cusparseLoggerSetLevel
-    data["__cusparseLoggerSetLevel"] = <intptr_t>__cusparseLoggerSetLevel
-
-    global __cusparseLoggerSetMask
-    data["__cusparseLoggerSetMask"] = <intptr_t>__cusparseLoggerSetMask
-
-    global __cusparseLoggerForceDisable
-    data["__cusparseLoggerForceDisable"] = <intptr_t>__cusparseLoggerForceDisable
+    global __cusparseSDDMM
+    data["__cusparseSDDMM"] = <intptr_t>__cusparseSDDMM
 
     global __cusparseSpMMOp_createPlan
     data["__cusparseSpMMOp_createPlan"] = <intptr_t>__cusparseSpMMOp_createPlan
@@ -1821,69 +1888,6 @@ cpdef dict _inspect_function_pointers():
 
     global __cusparseSpMMOp_destroyPlan
     data["__cusparseSpMMOp_destroyPlan"] = <intptr_t>__cusparseSpMMOp_destroyPlan
-
-    global __cusparseCscGet
-    data["__cusparseCscGet"] = <intptr_t>__cusparseCscGet
-
-    global __cusparseCreateConstSpVec
-    data["__cusparseCreateConstSpVec"] = <intptr_t>__cusparseCreateConstSpVec
-
-    global __cusparseConstSpVecGet
-    data["__cusparseConstSpVecGet"] = <intptr_t>__cusparseConstSpVecGet
-
-    global __cusparseConstSpVecGetValues
-    data["__cusparseConstSpVecGetValues"] = <intptr_t>__cusparseConstSpVecGetValues
-
-    global __cusparseCreateConstDnVec
-    data["__cusparseCreateConstDnVec"] = <intptr_t>__cusparseCreateConstDnVec
-
-    global __cusparseConstDnVecGet
-    data["__cusparseConstDnVecGet"] = <intptr_t>__cusparseConstDnVecGet
-
-    global __cusparseConstDnVecGetValues
-    data["__cusparseConstDnVecGetValues"] = <intptr_t>__cusparseConstDnVecGetValues
-
-    global __cusparseConstSpMatGetValues
-    data["__cusparseConstSpMatGetValues"] = <intptr_t>__cusparseConstSpMatGetValues
-
-    global __cusparseCreateConstCsr
-    data["__cusparseCreateConstCsr"] = <intptr_t>__cusparseCreateConstCsr
-
-    global __cusparseCreateConstCsc
-    data["__cusparseCreateConstCsc"] = <intptr_t>__cusparseCreateConstCsc
-
-    global __cusparseConstCsrGet
-    data["__cusparseConstCsrGet"] = <intptr_t>__cusparseConstCsrGet
-
-    global __cusparseConstCscGet
-    data["__cusparseConstCscGet"] = <intptr_t>__cusparseConstCscGet
-
-    global __cusparseCreateConstCoo
-    data["__cusparseCreateConstCoo"] = <intptr_t>__cusparseCreateConstCoo
-
-    global __cusparseConstCooGet
-    data["__cusparseConstCooGet"] = <intptr_t>__cusparseConstCooGet
-
-    global __cusparseCreateConstBlockedEll
-    data["__cusparseCreateConstBlockedEll"] = <intptr_t>__cusparseCreateConstBlockedEll
-
-    global __cusparseConstBlockedEllGet
-    data["__cusparseConstBlockedEllGet"] = <intptr_t>__cusparseConstBlockedEllGet
-
-    global __cusparseCreateConstDnMat
-    data["__cusparseCreateConstDnMat"] = <intptr_t>__cusparseCreateConstDnMat
-
-    global __cusparseConstDnMatGet
-    data["__cusparseConstDnMatGet"] = <intptr_t>__cusparseConstDnMatGet
-
-    global __cusparseConstDnMatGetValues
-    data["__cusparseConstDnMatGetValues"] = <intptr_t>__cusparseConstDnMatGetValues
-
-    global __cusparseSpGEMM_getNumProducts
-    data["__cusparseSpGEMM_getNumProducts"] = <intptr_t>__cusparseSpGEMM_getNumProducts
-
-    global __cusparseSpGEMM_estimateMemory
-    data["__cusparseSpGEMM_estimateMemory"] = <intptr_t>__cusparseSpGEMM_estimateMemory
 
     global __cusparseBsrSetStridedBatch
     data["__cusparseBsrSetStridedBatch"] = <intptr_t>__cusparseBsrSetStridedBatch
@@ -2022,6 +2026,66 @@ cdef cusparseStatus_t _cusparseSetPointerMode(cusparseHandle_t handle, cusparseP
             raise FunctionNotFoundError("function cusparseSetPointerMode is not found")
     return (<cusparseStatus_t (*)(cusparseHandle_t, cusparsePointerMode_t) noexcept nogil>__cusparseSetPointerMode)(
         handle, mode)
+
+
+cdef cusparseStatus_t _cusparseLoggerSetCallback(cusparseLoggerCallback_t callback) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseLoggerSetCallback
+    _check_or_init_cusparse()
+    if __cusparseLoggerSetCallback == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseLoggerSetCallback is not found")
+    return (<cusparseStatus_t (*)(cusparseLoggerCallback_t) noexcept nogil>__cusparseLoggerSetCallback)(
+        callback)
+
+
+cdef cusparseStatus_t _cusparseLoggerSetFile(FILE* file) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseLoggerSetFile
+    _check_or_init_cusparse()
+    if __cusparseLoggerSetFile == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseLoggerSetFile is not found")
+    return (<cusparseStatus_t (*)(FILE*) noexcept nogil>__cusparseLoggerSetFile)(
+        file)
+
+
+cdef cusparseStatus_t _cusparseLoggerOpenFile(const char* logFile) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseLoggerOpenFile
+    _check_or_init_cusparse()
+    if __cusparseLoggerOpenFile == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseLoggerOpenFile is not found")
+    return (<cusparseStatus_t (*)(const char*) noexcept nogil>__cusparseLoggerOpenFile)(
+        logFile)
+
+
+cdef cusparseStatus_t _cusparseLoggerSetLevel(int level) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseLoggerSetLevel
+    _check_or_init_cusparse()
+    if __cusparseLoggerSetLevel == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseLoggerSetLevel is not found")
+    return (<cusparseStatus_t (*)(int) noexcept nogil>__cusparseLoggerSetLevel)(
+        level)
+
+
+cdef cusparseStatus_t _cusparseLoggerSetMask(int mask) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseLoggerSetMask
+    _check_or_init_cusparse()
+    if __cusparseLoggerSetMask == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseLoggerSetMask is not found")
+    return (<cusparseStatus_t (*)(int) noexcept nogil>__cusparseLoggerSetMask)(
+        mask)
+
+
+cdef cusparseStatus_t _cusparseLoggerForceDisable() except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseLoggerForceDisable
+    _check_or_init_cusparse()
+    if __cusparseLoggerForceDisable == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseLoggerForceDisable is not found")
+    return (<cusparseStatus_t (*)() noexcept nogil>__cusparseLoggerForceDisable)(
+        )
 
 
 cdef cusparseStatus_t _cusparseCreateMatDescr(cusparseMatDescr_t* descrA) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -3354,6 +3418,16 @@ cdef cusparseStatus_t _cusparseCreateSpVec(cusparseSpVecDescr_t* spVecDescr, int
         spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
 
 
+cdef cusparseStatus_t _cusparseCreateConstSpVec(cusparseConstSpVecDescr_t* spVecDescr, int64_t size, int64_t nnz, const void* indices, const void* values, cusparseIndexType_t idxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateConstSpVec
+    _check_or_init_cusparse()
+    if __cusparseCreateConstSpVec == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateConstSpVec is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t*, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstSpVec)(
+        spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
+
+
 cdef cusparseStatus_t _cusparseDestroySpVec(cusparseConstSpVecDescr_t spVecDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDestroySpVec
     _check_or_init_cusparse()
@@ -3371,6 +3445,16 @@ cdef cusparseStatus_t _cusparseSpVecGet(cusparseSpVecDescr_t spVecDescr, int64_t
         with gil:
             raise FunctionNotFoundError("function cusparseSpVecGet is not found")
     return (<cusparseStatus_t (*)(cusparseSpVecDescr_t, int64_t*, int64_t*, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseSpVecGet)(
+        spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseConstSpVecGet(cusparseConstSpVecDescr_t spVecDescr, int64_t* size, int64_t* nnz, const void** indices, const void** values, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstSpVecGet
+    _check_or_init_cusparse()
+    if __cusparseConstSpVecGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstSpVecGet is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstSpVecGet)(
         spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
 
 
@@ -3394,6 +3478,16 @@ cdef cusparseStatus_t _cusparseSpVecGetValues(cusparseSpVecDescr_t spVecDescr, v
         spVecDescr, values)
 
 
+cdef cusparseStatus_t _cusparseConstSpVecGetValues(cusparseConstSpVecDescr_t spVecDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstSpVecGetValues
+    _check_or_init_cusparse()
+    if __cusparseConstSpVecGetValues == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstSpVecGetValues is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, const void**) noexcept nogil>__cusparseConstSpVecGetValues)(
+        spVecDescr, values)
+
+
 cdef cusparseStatus_t _cusparseSpVecSetValues(cusparseSpVecDescr_t spVecDescr, void* values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpVecSetValues
     _check_or_init_cusparse()
@@ -3411,6 +3505,16 @@ cdef cusparseStatus_t _cusparseCreateDnVec(cusparseDnVecDescr_t* dnVecDescr, int
         with gil:
             raise FunctionNotFoundError("function cusparseCreateDnVec is not found")
     return (<cusparseStatus_t (*)(cusparseDnVecDescr_t*, int64_t, void*, cudaDataType) noexcept nogil>__cusparseCreateDnVec)(
+        dnVecDescr, size, values, valueType)
+
+
+cdef cusparseStatus_t _cusparseCreateConstDnVec(cusparseConstDnVecDescr_t* dnVecDescr, int64_t size, const void* values, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateConstDnVec
+    _check_or_init_cusparse()
+    if __cusparseCreateConstDnVec == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateConstDnVec is not found")
+    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t*, int64_t, const void*, cudaDataType) noexcept nogil>__cusparseCreateConstDnVec)(
         dnVecDescr, size, values, valueType)
 
 
@@ -3434,6 +3538,16 @@ cdef cusparseStatus_t _cusparseDnVecGet(cusparseDnVecDescr_t dnVecDescr, int64_t
         dnVecDescr, size, values, valueType)
 
 
+cdef cusparseStatus_t _cusparseConstDnVecGet(cusparseConstDnVecDescr_t dnVecDescr, int64_t* size, const void** values, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstDnVecGet
+    _check_or_init_cusparse()
+    if __cusparseConstDnVecGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstDnVecGet is not found")
+    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, int64_t*, const void**, cudaDataType*) noexcept nogil>__cusparseConstDnVecGet)(
+        dnVecDescr, size, values, valueType)
+
+
 cdef cusparseStatus_t _cusparseDnVecGetValues(cusparseDnVecDescr_t dnVecDescr, void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnVecGetValues
     _check_or_init_cusparse()
@@ -3441,6 +3555,16 @@ cdef cusparseStatus_t _cusparseDnVecGetValues(cusparseDnVecDescr_t dnVecDescr, v
         with gil:
             raise FunctionNotFoundError("function cusparseDnVecGetValues is not found")
     return (<cusparseStatus_t (*)(cusparseDnVecDescr_t, void**) noexcept nogil>__cusparseDnVecGetValues)(
+        dnVecDescr, values)
+
+
+cdef cusparseStatus_t _cusparseConstDnVecGetValues(cusparseConstDnVecDescr_t dnVecDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstDnVecGetValues
+    _check_or_init_cusparse()
+    if __cusparseConstDnVecGetValues == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstDnVecGetValues is not found")
+    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, const void**) noexcept nogil>__cusparseConstDnVecGetValues)(
         dnVecDescr, values)
 
 
@@ -3494,6 +3618,16 @@ cdef cusparseStatus_t _cusparseSpMatGetValues(cusparseSpMatDescr_t spMatDescr, v
         spMatDescr, values)
 
 
+cdef cusparseStatus_t _cusparseConstSpMatGetValues(cusparseConstSpMatDescr_t spMatDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstSpMatGetValues
+    _check_or_init_cusparse()
+    if __cusparseConstSpMatGetValues == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstSpMatGetValues is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, const void**) noexcept nogil>__cusparseConstSpMatGetValues)(
+        spMatDescr, values)
+
+
 cdef cusparseStatus_t _cusparseSpMatSetValues(cusparseSpMatDescr_t spMatDescr, void* values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMatSetValues
     _check_or_init_cusparse()
@@ -3544,6 +3678,26 @@ cdef cusparseStatus_t _cusparseCsrSetStridedBatch(cusparseSpMatDescr_t spMatDesc
         spMatDescr, batchCount, offsetsBatchStride, columnsValuesBatchStride)
 
 
+cdef cusparseStatus_t _cusparseSpMatGetAttribute(cusparseConstSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMatGetAttribute
+    _check_or_init_cusparse()
+    if __cusparseSpMatGetAttribute == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMatGetAttribute is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) noexcept nogil>__cusparseSpMatGetAttribute)(
+        spMatDescr, attribute, data, dataSize)
+
+
+cdef cusparseStatus_t _cusparseSpMatSetAttribute(cusparseSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMatSetAttribute
+    _check_or_init_cusparse()
+    if __cusparseSpMatSetAttribute == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMatSetAttribute is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) noexcept nogil>__cusparseSpMatSetAttribute)(
+        spMatDescr, attribute, data, dataSize)
+
+
 cdef cusparseStatus_t _cusparseCreateCsr(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* csrRowOffsets, void* csrColInd, void* csrValues, cusparseIndexType_t csrRowOffsetsType, cusparseIndexType_t csrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateCsr
     _check_or_init_cusparse()
@@ -3552,6 +3706,36 @@ cdef cusparseStatus_t _cusparseCreateCsr(cusparseSpMatDescr_t* spMatDescr, int64
             raise FunctionNotFoundError("function cusparseCreateCsr is not found")
     return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateCsr)(
         spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseCreateConstCsr(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* csrRowOffsets, const void* csrColInd, const void* csrValues, cusparseIndexType_t csrRowOffsetsType, cusparseIndexType_t csrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateConstCsr
+    _check_or_init_cusparse()
+    if __cusparseCreateConstCsr == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateConstCsr is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCsr)(
+        spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* cscColOffsets, void* cscRowInd, void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateCsc
+    _check_or_init_cusparse()
+    if __cusparseCreateCsc == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateCsc is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateCsc)(
+        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseCreateConstCsc(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cscColOffsets, const void* cscRowInd, const void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateConstCsc
+    _check_or_init_cusparse()
+    if __cusparseCreateConstCsc == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateConstCsc is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCsc)(
+        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
 
 
 cdef cusparseStatus_t _cusparseCsrGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** csrRowOffsets, void** csrColInd, void** csrValues, cusparseIndexType_t* csrRowOffsetsType, cusparseIndexType_t* csrColIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -3564,6 +3748,36 @@ cdef cusparseStatus_t _cusparseCsrGet(cusparseSpMatDescr_t spMatDescr, int64_t* 
         spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
 
 
+cdef cusparseStatus_t _cusparseConstCsrGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** csrRowOffsets, const void** csrColInd, const void** csrValues, cusparseIndexType_t* csrRowOffsetsType, cusparseIndexType_t* csrColIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstCsrGet
+    _check_or_init_cusparse()
+    if __cusparseConstCsrGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstCsrGet is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCsrGet)(
+        spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseCscGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** cscColOffsets, void** cscRowInd, void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCscGet
+    _check_or_init_cusparse()
+    if __cusparseCscGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCscGet is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseCscGet)(
+        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseConstCscGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cscColOffsets, const void** cscRowInd, const void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstCscGet
+    _check_or_init_cusparse()
+    if __cusparseConstCscGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstCscGet is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCscGet)(
+        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
+
+
 cdef cusparseStatus_t _cusparseCsrSetPointers(cusparseSpMatDescr_t spMatDescr, void* csrRowOffsets, void* csrColInd, void* csrValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCsrSetPointers
     _check_or_init_cusparse()
@@ -3574,6 +3788,16 @@ cdef cusparseStatus_t _cusparseCsrSetPointers(cusparseSpMatDescr_t spMatDescr, v
         spMatDescr, csrRowOffsets, csrColInd, csrValues)
 
 
+cdef cusparseStatus_t _cusparseCscSetPointers(cusparseSpMatDescr_t spMatDescr, void* cscColOffsets, void* cscRowInd, void* cscValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCscSetPointers
+    _check_or_init_cusparse()
+    if __cusparseCscSetPointers == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCscSetPointers is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) noexcept nogil>__cusparseCscSetPointers)(
+        spMatDescr, cscColOffsets, cscRowInd, cscValues)
+
+
 cdef cusparseStatus_t _cusparseCreateCoo(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* cooRowInd, void* cooColInd, void* cooValues, cusparseIndexType_t cooIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateCoo
     _check_or_init_cusparse()
@@ -3581,6 +3805,16 @@ cdef cusparseStatus_t _cusparseCreateCoo(cusparseSpMatDescr_t* spMatDescr, int64
         with gil:
             raise FunctionNotFoundError("function cusparseCreateCoo is not found")
     return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateCoo)(
+        spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, cooIdxType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseCreateConstCoo(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cooRowInd, const void* cooColInd, const void* cooValues, cusparseIndexType_t cooIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateConstCoo
+    _check_or_init_cusparse()
+    if __cusparseCreateConstCoo == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateConstCoo is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCoo)(
         spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, cooIdxType, idxBase, valueType)
 
 
@@ -3594,6 +3828,66 @@ cdef cusparseStatus_t _cusparseCooGet(cusparseSpMatDescr_t spMatDescr, int64_t* 
         spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, idxType, idxBase, valueType)
 
 
+cdef cusparseStatus_t _cusparseConstCooGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cooRowInd, const void** cooColInd, const void** cooValues, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstCooGet
+    _check_or_init_cusparse()
+    if __cusparseConstCooGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstCooGet is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCooGet)(
+        spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, idxType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseCooSetPointers(cusparseSpMatDescr_t spMatDescr, void* cooRows, void* cooColumns, void* cooValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCooSetPointers
+    _check_or_init_cusparse()
+    if __cusparseCooSetPointers == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCooSetPointers is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) noexcept nogil>__cusparseCooSetPointers)(
+        spMatDescr, cooRows, cooColumns, cooValues)
+
+
+cdef cusparseStatus_t _cusparseCreateBlockedEll(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, void* ellColInd, void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateBlockedEll
+    _check_or_init_cusparse()
+    if __cusparseCreateBlockedEll == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateBlockedEll is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateBlockedEll)(
+        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseCreateConstBlockedEll(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, const void* ellColInd, const void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateConstBlockedEll
+    _check_or_init_cusparse()
+    if __cusparseCreateConstBlockedEll == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateConstBlockedEll is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstBlockedEll)(
+        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseBlockedEllGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, void** ellColInd, void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseBlockedEllGet
+    _check_or_init_cusparse()
+    if __cusparseBlockedEllGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseBlockedEllGet is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseBlockedEllGet)(
+        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
+
+
+cdef cusparseStatus_t _cusparseConstBlockedEllGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, const void** ellColInd, const void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstBlockedEllGet
+    _check_or_init_cusparse()
+    if __cusparseConstBlockedEllGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstBlockedEllGet is not found")
+    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstBlockedEllGet)(
+        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
+
+
 cdef cusparseStatus_t _cusparseCreateDnMat(cusparseDnMatDescr_t* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, void* values, cudaDataType valueType, cusparseOrder_t order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseCreateDnMat
     _check_or_init_cusparse()
@@ -3601,6 +3895,16 @@ cdef cusparseStatus_t _cusparseCreateDnMat(cusparseDnMatDescr_t* dnMatDescr, int
         with gil:
             raise FunctionNotFoundError("function cusparseCreateDnMat is not found")
     return (<cusparseStatus_t (*)(cusparseDnMatDescr_t*, int64_t, int64_t, int64_t, void*, cudaDataType, cusparseOrder_t) noexcept nogil>__cusparseCreateDnMat)(
+        dnMatDescr, rows, cols, ld, values, valueType, order)
+
+
+cdef cusparseStatus_t _cusparseCreateConstDnMat(cusparseConstDnMatDescr_t* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, const void* values, cudaDataType valueType, cusparseOrder_t order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseCreateConstDnMat
+    _check_or_init_cusparse()
+    if __cusparseCreateConstDnMat == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseCreateConstDnMat is not found")
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t*, int64_t, int64_t, int64_t, const void*, cudaDataType, cusparseOrder_t) noexcept nogil>__cusparseCreateConstDnMat)(
         dnMatDescr, rows, cols, ld, values, valueType, order)
 
 
@@ -3624,6 +3928,16 @@ cdef cusparseStatus_t _cusparseDnMatGet(cusparseDnMatDescr_t dnMatDescr, int64_t
         dnMatDescr, rows, cols, ld, values, type, order)
 
 
+cdef cusparseStatus_t _cusparseConstDnMatGet(cusparseConstDnMatDescr_t dnMatDescr, int64_t* rows, int64_t* cols, int64_t* ld, const void** values, cudaDataType* type, cusparseOrder_t* order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstDnMatGet
+    _check_or_init_cusparse()
+    if __cusparseConstDnMatGet == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstDnMatGet is not found")
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, cudaDataType*, cusparseOrder_t*) noexcept nogil>__cusparseConstDnMatGet)(
+        dnMatDescr, rows, cols, ld, values, type, order)
+
+
 cdef cusparseStatus_t _cusparseDnMatGetValues(cusparseDnMatDescr_t dnMatDescr, void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseDnMatGetValues
     _check_or_init_cusparse()
@@ -3631,6 +3945,16 @@ cdef cusparseStatus_t _cusparseDnMatGetValues(cusparseDnMatDescr_t dnMatDescr, v
         with gil:
             raise FunctionNotFoundError("function cusparseDnMatGetValues is not found")
     return (<cusparseStatus_t (*)(cusparseDnMatDescr_t, void**) noexcept nogil>__cusparseDnMatGetValues)(
+        dnMatDescr, values)
+
+
+cdef cusparseStatus_t _cusparseConstDnMatGetValues(cusparseConstDnMatDescr_t dnMatDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseConstDnMatGetValues
+    _check_or_init_cusparse()
+    if __cusparseConstDnMatGetValues == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseConstDnMatGetValues is not found")
+    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, const void**) noexcept nogil>__cusparseConstDnMatGetValues)(
         dnMatDescr, values)
 
 
@@ -3714,126 +4038,6 @@ cdef cusparseStatus_t _cusparseSpVV(cusparseHandle_t handle, cusparseOperation_t
         handle, opX, vecX, vecY, result, computeType, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseSpMV(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpMV
-    _check_or_init_cusparse()
-    if __cusparseSpMV == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpMV is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, void*) noexcept nogil>__cusparseSpMV)(
-        handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, externalBuffer)
-
-
-cdef cusparseStatus_t _cusparseSpMV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpMV_bufferSize
-    _check_or_init_cusparse()
-    if __cusparseSpMV_bufferSize == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpMV_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, size_t*) noexcept nogil>__cusparseSpMV_bufferSize)(
-        handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, bufferSize)
-
-
-cdef cusparseStatus_t _cusparseSpMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpMM
-    _check_or_init_cusparse()
-    if __cusparseSpMM == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpMM is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) noexcept nogil>__cusparseSpMM)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
-
-
-cdef cusparseStatus_t _cusparseSpMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpMM_bufferSize
-    _check_or_init_cusparse()
-    if __cusparseSpMM_bufferSize == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpMM_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, size_t*) noexcept nogil>__cusparseSpMM_bufferSize)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, bufferSize)
-
-
-cdef cusparseStatus_t _cusparseSpGEMM_createDescr(cusparseSpGEMMDescr_t* descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpGEMM_createDescr
-    _check_or_init_cusparse()
-    if __cusparseSpGEMM_createDescr == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpGEMM_createDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t*) noexcept nogil>__cusparseSpGEMM_createDescr)(
-        descr)
-
-
-cdef cusparseStatus_t _cusparseSpGEMM_destroyDescr(cusparseSpGEMMDescr_t descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpGEMM_destroyDescr
-    _check_or_init_cusparse()
-    if __cusparseSpGEMM_destroyDescr == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpGEMM_destroyDescr is not found")
-    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t) noexcept nogil>__cusparseSpGEMM_destroyDescr)(
-        descr)
-
-
-cdef cusparseStatus_t _cusparseSpGEMM_workEstimation(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize1, void* externalBuffer1) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpGEMM_workEstimation
-    _check_or_init_cusparse()
-    if __cusparseSpGEMM_workEstimation == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpGEMM_workEstimation is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMM_workEstimation)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, bufferSize1, externalBuffer1)
-
-
-cdef cusparseStatus_t _cusparseSpGEMM_compute(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize2, void* externalBuffer2) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpGEMM_compute
-    _check_or_init_cusparse()
-    if __cusparseSpGEMM_compute == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpGEMM_compute is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMM_compute)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, bufferSize2, externalBuffer2)
-
-
-cdef cusparseStatus_t _cusparseSpGEMM_copy(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpGEMM_copy
-    _check_or_init_cusparse()
-    if __cusparseSpGEMM_copy == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpGEMM_copy is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t) noexcept nogil>__cusparseSpGEMM_copy)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr)
-
-
-cdef cusparseStatus_t _cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, void* cscColOffsets, void* cscRowInd, void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateCsc
-    _check_or_init_cusparse()
-    if __cusparseCreateCsc == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateCsc is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, void*, void*, void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateCsc)(
-        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseCscSetPointers(cusparseSpMatDescr_t spMatDescr, void* cscColOffsets, void* cscRowInd, void* cscValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCscSetPointers
-    _check_or_init_cusparse()
-    if __cusparseCscSetPointers == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCscSetPointers is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) noexcept nogil>__cusparseCscSetPointers)(
-        spMatDescr, cscColOffsets, cscRowInd, cscValues)
-
-
-cdef cusparseStatus_t _cusparseCooSetPointers(cusparseSpMatDescr_t spMatDescr, void* cooRows, void* cooColumns, void* cooValues) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCooSetPointers
-    _check_or_init_cusparse()
-    if __cusparseCooSetPointers == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCooSetPointers is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, void*, void*, void*) noexcept nogil>__cusparseCooSetPointers)(
-        spMatDescr, cooRows, cooColumns, cooValues)
-
-
 cdef cusparseStatus_t _cusparseSparseToDense_bufferSize(cusparseHandle_t handle, cusparseConstSpMatDescr_t matA, cusparseDnMatDescr_t matB, cusparseSparseToDenseAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSparseToDense_bufferSize
     _check_or_init_cusparse()
@@ -3884,84 +4088,24 @@ cdef cusparseStatus_t _cusparseDenseToSparse_convert(cusparseHandle_t handle, cu
         handle, matA, matB, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseCreateBlockedEll(cusparseSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, void* ellColInd, void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateBlockedEll
+cdef cusparseStatus_t _cusparseSpMV(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMV
     _check_or_init_cusparse()
-    if __cusparseCreateBlockedEll == NULL:
+    if __cusparseSpMV == NULL:
         with gil:
-            raise FunctionNotFoundError("function cusparseCreateBlockedEll is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, void*, void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateBlockedEll)(
-        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
+            raise FunctionNotFoundError("function cusparseSpMV is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, void*) noexcept nogil>__cusparseSpMV)(
+        handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseBlockedEllGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, void** ellColInd, void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseBlockedEllGet
+cdef cusparseStatus_t _cusparseSpMV_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMV_bufferSize
     _check_or_init_cusparse()
-    if __cusparseBlockedEllGet == NULL:
+    if __cusparseSpMV_bufferSize == NULL:
         with gil:
-            raise FunctionNotFoundError("function cusparseBlockedEllGet is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, void**, void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseBlockedEllGet)(
-        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseSpMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpMM_preprocess
-    _check_or_init_cusparse()
-    if __cusparseSpMM_preprocess == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpMM_preprocess is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) noexcept nogil>__cusparseSpMM_preprocess)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
-
-
-cdef cusparseStatus_t _cusparseSDDMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSDDMM_bufferSize
-    _check_or_init_cusparse()
-    if __cusparseSDDMM_bufferSize == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSDDMM_bufferSize is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, size_t*) noexcept nogil>__cusparseSDDMM_bufferSize)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, bufferSize)
-
-
-cdef cusparseStatus_t _cusparseSDDMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSDDMM_preprocess
-    _check_or_init_cusparse()
-    if __cusparseSDDMM_preprocess == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSDDMM_preprocess is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) noexcept nogil>__cusparseSDDMM_preprocess)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
-
-
-cdef cusparseStatus_t _cusparseSDDMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSDDMM
-    _check_or_init_cusparse()
-    if __cusparseSDDMM == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSDDMM is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) noexcept nogil>__cusparseSDDMM)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
-
-
-cdef cusparseStatus_t _cusparseSpMatGetAttribute(cusparseConstSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpMatGetAttribute
-    _check_or_init_cusparse()
-    if __cusparseSpMatGetAttribute == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpMatGetAttribute is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) noexcept nogil>__cusparseSpMatGetAttribute)(
-        spMatDescr, attribute, data, dataSize)
-
-
-cdef cusparseStatus_t _cusparseSpMatSetAttribute(cusparseSpMatDescr_t spMatDescr, cusparseSpMatAttribute_t attribute, void* data, size_t dataSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpMatSetAttribute
-    _check_or_init_cusparse()
-    if __cusparseSpMatSetAttribute == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpMatSetAttribute is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, cusparseSpMatAttribute_t, void*, size_t) noexcept nogil>__cusparseSpMatSetAttribute)(
-        spMatDescr, attribute, data, dataSize)
+            raise FunctionNotFoundError("function cusparseSpMV_bufferSize is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, const void*, cusparseDnVecDescr_t, cudaDataType, cusparseSpMVAlg_t, size_t*) noexcept nogil>__cusparseSpMV_bufferSize)(
+        handle, opA, alpha, matA, vecX, beta, vecY, computeType, alg, bufferSize)
 
 
 cdef cusparseStatus_t _cusparseSpSV_createDescr(cusparseSpSVDescr_t* descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -4064,6 +4208,106 @@ cdef cusparseStatus_t _cusparseSpSM_solve(cusparseHandle_t handle, cusparseOpera
         handle, opA, opB, alpha, matA, matB, matC, computeType, alg, spsmDescr)
 
 
+cdef cusparseStatus_t _cusparseSpMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMM_bufferSize
+    _check_or_init_cusparse()
+    if __cusparseSpMM_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMM_bufferSize is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, size_t*) noexcept nogil>__cusparseSpMM_bufferSize)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, bufferSize)
+
+
+cdef cusparseStatus_t _cusparseSpMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMM_preprocess
+    _check_or_init_cusparse()
+    if __cusparseSpMM_preprocess == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMM_preprocess is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) noexcept nogil>__cusparseSpMM_preprocess)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
+
+
+cdef cusparseStatus_t _cusparseSpMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMM
+    _check_or_init_cusparse()
+    if __cusparseSpMM == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMM is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMAlg_t, void*) noexcept nogil>__cusparseSpMM)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
+
+
+cdef cusparseStatus_t _cusparseSpGEMM_createDescr(cusparseSpGEMMDescr_t* descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpGEMM_createDescr
+    _check_or_init_cusparse()
+    if __cusparseSpGEMM_createDescr == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpGEMM_createDescr is not found")
+    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t*) noexcept nogil>__cusparseSpGEMM_createDescr)(
+        descr)
+
+
+cdef cusparseStatus_t _cusparseSpGEMM_destroyDescr(cusparseSpGEMMDescr_t descr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpGEMM_destroyDescr
+    _check_or_init_cusparse()
+    if __cusparseSpGEMM_destroyDescr == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpGEMM_destroyDescr is not found")
+    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t) noexcept nogil>__cusparseSpGEMM_destroyDescr)(
+        descr)
+
+
+cdef cusparseStatus_t _cusparseSpGEMM_workEstimation(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize1, void* externalBuffer1) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpGEMM_workEstimation
+    _check_or_init_cusparse()
+    if __cusparseSpGEMM_workEstimation == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpGEMM_workEstimation is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMM_workEstimation)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, bufferSize1, externalBuffer1)
+
+
+cdef cusparseStatus_t _cusparseSpGEMM_getNumProducts(cusparseSpGEMMDescr_t spgemmDescr, int64_t* num_prods) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpGEMM_getNumProducts
+    _check_or_init_cusparse()
+    if __cusparseSpGEMM_getNumProducts == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpGEMM_getNumProducts is not found")
+    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t, int64_t*) noexcept nogil>__cusparseSpGEMM_getNumProducts)(
+        spgemmDescr, num_prods)
+
+
+cdef cusparseStatus_t _cusparseSpGEMM_estimateMemory(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, float chunk_fraction, size_t* bufferSize3, void* externalBuffer3, size_t* bufferSize2) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpGEMM_estimateMemory
+    _check_or_init_cusparse()
+    if __cusparseSpGEMM_estimateMemory == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpGEMM_estimateMemory is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, float, size_t*, void*, size_t*) noexcept nogil>__cusparseSpGEMM_estimateMemory)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, chunk_fraction, bufferSize3, externalBuffer3, bufferSize2)
+
+
+cdef cusparseStatus_t _cusparseSpGEMM_compute(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize2, void* externalBuffer2) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpGEMM_compute
+    _check_or_init_cusparse()
+    if __cusparseSpGEMM_compute == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpGEMM_compute is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, size_t*, void*) noexcept nogil>__cusparseSpGEMM_compute)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, bufferSize2, externalBuffer2)
+
+
+cdef cusparseStatus_t _cusparseSpGEMM_copy(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpGEMM_copy
+    _check_or_init_cusparse()
+    if __cusparseSpGEMM_copy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpGEMM_copy is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t) noexcept nogil>__cusparseSpGEMM_copy)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr)
+
+
 cdef cusparseStatus_t _cusparseSpGEMMreuse_workEstimation(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, cusparseSpMatDescr_t matC, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, size_t* bufferSize1, void* externalBuffer1) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpGEMMreuse_workEstimation
     _check_or_init_cusparse()
@@ -4104,74 +4348,44 @@ cdef cusparseStatus_t _cusparseSpGEMMreuse_compute(cusparseHandle_t handle, cusp
         handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr)
 
 
-cdef cusparseStatus_t _cusparseLoggerSetCallback(cusparseLoggerCallback_t callback) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseLoggerSetCallback
+cdef cusparseStatus_t _cusparseSDDMM_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSDDMM_bufferSize
     _check_or_init_cusparse()
-    if __cusparseLoggerSetCallback == NULL:
+    if __cusparseSDDMM_bufferSize == NULL:
         with gil:
-            raise FunctionNotFoundError("function cusparseLoggerSetCallback is not found")
-    return (<cusparseStatus_t (*)(cusparseLoggerCallback_t) noexcept nogil>__cusparseLoggerSetCallback)(
-        callback)
+            raise FunctionNotFoundError("function cusparseSDDMM_bufferSize is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, size_t*) noexcept nogil>__cusparseSDDMM_bufferSize)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, bufferSize)
 
 
-cdef cusparseStatus_t _cusparseLoggerSetFile(FILE* file) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseLoggerSetFile
+cdef cusparseStatus_t _cusparseSDDMM_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSDDMM_preprocess
     _check_or_init_cusparse()
-    if __cusparseLoggerSetFile == NULL:
+    if __cusparseSDDMM_preprocess == NULL:
         with gil:
-            raise FunctionNotFoundError("function cusparseLoggerSetFile is not found")
-    return (<cusparseStatus_t (*)(FILE*) noexcept nogil>__cusparseLoggerSetFile)(
-        file)
+            raise FunctionNotFoundError("function cusparseSDDMM_preprocess is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) noexcept nogil>__cusparseSDDMM_preprocess)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseLoggerOpenFile(const char* logFile) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseLoggerOpenFile
+cdef cusparseStatus_t _cusparseSDDMM(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstDnMatDescr_t matA, cusparseConstDnMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSDDMMAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSDDMM
     _check_or_init_cusparse()
-    if __cusparseLoggerOpenFile == NULL:
+    if __cusparseSDDMM == NULL:
         with gil:
-            raise FunctionNotFoundError("function cusparseLoggerOpenFile is not found")
-    return (<cusparseStatus_t (*)(const char*) noexcept nogil>__cusparseLoggerOpenFile)(
-        logFile)
+            raise FunctionNotFoundError("function cusparseSDDMM is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstDnMatDescr_t, cusparseConstDnMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSDDMMAlg_t, void*) noexcept nogil>__cusparseSDDMM)(
+        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, externalBuffer)
 
 
-cdef cusparseStatus_t _cusparseLoggerSetLevel(int level) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseLoggerSetLevel
-    _check_or_init_cusparse()
-    if __cusparseLoggerSetLevel == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseLoggerSetLevel is not found")
-    return (<cusparseStatus_t (*)(int) noexcept nogil>__cusparseLoggerSetLevel)(
-        level)
-
-
-cdef cusparseStatus_t _cusparseLoggerSetMask(int mask) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseLoggerSetMask
-    _check_or_init_cusparse()
-    if __cusparseLoggerSetMask == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseLoggerSetMask is not found")
-    return (<cusparseStatus_t (*)(int) noexcept nogil>__cusparseLoggerSetMask)(
-        mask)
-
-
-cdef cusparseStatus_t _cusparseLoggerForceDisable() except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseLoggerForceDisable
-    _check_or_init_cusparse()
-    if __cusparseLoggerForceDisable == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseLoggerForceDisable is not found")
-    return (<cusparseStatus_t (*)() noexcept nogil>__cusparseLoggerForceDisable)(
-        )
-
-
-cdef cusparseStatus_t _cusparseSpMMOp_createPlan(cusparseHandle_t handle, cusparseSpMMOpPlan_t* plan, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMOpAlg_t alg, const void* addOperationNvvmBuffer, size_t addOperationBufferSize, const void* mulOperationNvvmBuffer, size_t mulOperationBufferSize, const void* epilogueNvvmBuffer, size_t epilogueBufferSize, size_t* SpMMWorkspaceSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+cdef cusparseStatus_t _cusparseSpMMOp_createPlan(cusparseHandle_t handle, cusparseSpMMOpPlan_t* plan, cusparseOperation_t opA, cusparseOperation_t opB, cusparseConstSpMatDescr_t matA, cusparseConstDnMatDescr_t matB, cusparseDnMatDescr_t matC, cudaDataType computeType, cusparseSpMMOpAlg_t alg, const void* addOperationLtoirBuffer, size_t addOperationBufferSize, const void* mulOperationLtoirBuffer, size_t mulOperationBufferSize, const void* epilogueLtoirBuffer, size_t epilogueBufferSize, size_t* SpMMWorkspaceSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusparseSpMMOp_createPlan
     _check_or_init_cusparse()
     if __cusparseSpMMOp_createPlan == NULL:
         with gil:
             raise FunctionNotFoundError("function cusparseSpMMOp_createPlan is not found")
     return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpMMOpPlan_t*, cusparseOperation_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstDnMatDescr_t, cusparseDnMatDescr_t, cudaDataType, cusparseSpMMOpAlg_t, const void*, size_t, const void*, size_t, const void*, size_t, size_t*) noexcept nogil>__cusparseSpMMOp_createPlan)(
-        handle, plan, opA, opB, matA, matB, matC, computeType, alg, addOperationNvvmBuffer, addOperationBufferSize, mulOperationNvvmBuffer, mulOperationBufferSize, epilogueNvvmBuffer, epilogueBufferSize, SpMMWorkspaceSize)
+        handle, plan, opA, opB, matA, matB, matC, computeType, alg, addOperationLtoirBuffer, addOperationBufferSize, mulOperationLtoirBuffer, mulOperationBufferSize, epilogueLtoirBuffer, epilogueBufferSize, SpMMWorkspaceSize)
 
 
 cdef cusparseStatus_t _cusparseSpMMOp(cusparseSpMMOpPlan_t plan, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -4192,216 +4406,6 @@ cdef cusparseStatus_t _cusparseSpMMOp_destroyPlan(cusparseSpMMOpPlan_t plan) exc
             raise FunctionNotFoundError("function cusparseSpMMOp_destroyPlan is not found")
     return (<cusparseStatus_t (*)(cusparseSpMMOpPlan_t) noexcept nogil>__cusparseSpMMOp_destroyPlan)(
         plan)
-
-
-cdef cusparseStatus_t _cusparseCscGet(cusparseSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, void** cscColOffsets, void** cscRowInd, void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCscGet
-    _check_or_init_cusparse()
-    if __cusparseCscGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCscGet is not found")
-    return (<cusparseStatus_t (*)(cusparseSpMatDescr_t, int64_t*, int64_t*, int64_t*, void**, void**, void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseCscGet)(
-        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseCreateConstSpVec(cusparseConstSpVecDescr_t* spVecDescr, int64_t size, int64_t nnz, const void* indices, const void* values, cusparseIndexType_t idxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateConstSpVec
-    _check_or_init_cusparse()
-    if __cusparseCreateConstSpVec == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateConstSpVec is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t*, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstSpVec)(
-        spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstSpVecGet(cusparseConstSpVecDescr_t spVecDescr, int64_t* size, int64_t* nnz, const void** indices, const void** values, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstSpVecGet
-    _check_or_init_cusparse()
-    if __cusparseConstSpVecGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstSpVecGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstSpVecGet)(
-        spVecDescr, size, nnz, indices, values, idxType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstSpVecGetValues(cusparseConstSpVecDescr_t spVecDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstSpVecGetValues
-    _check_or_init_cusparse()
-    if __cusparseConstSpVecGetValues == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstSpVecGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpVecDescr_t, const void**) noexcept nogil>__cusparseConstSpVecGetValues)(
-        spVecDescr, values)
-
-
-cdef cusparseStatus_t _cusparseCreateConstDnVec(cusparseConstDnVecDescr_t* dnVecDescr, int64_t size, const void* values, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateConstDnVec
-    _check_or_init_cusparse()
-    if __cusparseCreateConstDnVec == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateConstDnVec is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t*, int64_t, const void*, cudaDataType) noexcept nogil>__cusparseCreateConstDnVec)(
-        dnVecDescr, size, values, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstDnVecGet(cusparseConstDnVecDescr_t dnVecDescr, int64_t* size, const void** values, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstDnVecGet
-    _check_or_init_cusparse()
-    if __cusparseConstDnVecGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstDnVecGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, int64_t*, const void**, cudaDataType*) noexcept nogil>__cusparseConstDnVecGet)(
-        dnVecDescr, size, values, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstDnVecGetValues(cusparseConstDnVecDescr_t dnVecDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstDnVecGetValues
-    _check_or_init_cusparse()
-    if __cusparseConstDnVecGetValues == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstDnVecGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnVecDescr_t, const void**) noexcept nogil>__cusparseConstDnVecGetValues)(
-        dnVecDescr, values)
-
-
-cdef cusparseStatus_t _cusparseConstSpMatGetValues(cusparseConstSpMatDescr_t spMatDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstSpMatGetValues
-    _check_or_init_cusparse()
-    if __cusparseConstSpMatGetValues == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstSpMatGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, const void**) noexcept nogil>__cusparseConstSpMatGetValues)(
-        spMatDescr, values)
-
-
-cdef cusparseStatus_t _cusparseCreateConstCsr(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* csrRowOffsets, const void* csrColInd, const void* csrValues, cusparseIndexType_t csrRowOffsetsType, cusparseIndexType_t csrColIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateConstCsr
-    _check_or_init_cusparse()
-    if __cusparseCreateConstCsr == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateConstCsr is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCsr)(
-        spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseCreateConstCsc(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cscColOffsets, const void* cscRowInd, const void* cscValues, cusparseIndexType_t cscColOffsetsType, cusparseIndexType_t cscRowIndType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateConstCsc
-    _check_or_init_cusparse()
-    if __cusparseCreateConstCsc == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateConstCsc is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCsc)(
-        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstCsrGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** csrRowOffsets, const void** csrColInd, const void** csrValues, cusparseIndexType_t* csrRowOffsetsType, cusparseIndexType_t* csrColIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstCsrGet
-    _check_or_init_cusparse()
-    if __cusparseConstCsrGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstCsrGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCsrGet)(
-        spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstCscGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cscColOffsets, const void** cscRowInd, const void** cscValues, cusparseIndexType_t* cscColOffsetsType, cusparseIndexType_t* cscRowIndType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstCscGet
-    _check_or_init_cusparse()
-    if __cusparseConstCscGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstCscGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCscGet)(
-        spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseCreateConstCoo(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t nnz, const void* cooRowInd, const void* cooColInd, const void* cooValues, cusparseIndexType_t cooIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateConstCoo
-    _check_or_init_cusparse()
-    if __cusparseCreateConstCoo == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateConstCoo is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, const void*, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstCoo)(
-        spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, cooIdxType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstCooGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* nnz, const void** cooRowInd, const void** cooColInd, const void** cooValues, cusparseIndexType_t* idxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstCooGet
-    _check_or_init_cusparse()
-    if __cusparseConstCooGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstCooGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstCooGet)(
-        spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, idxType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseCreateConstBlockedEll(cusparseConstSpMatDescr_t* spMatDescr, int64_t rows, int64_t cols, int64_t ellBlockSize, int64_t ellCols, const void* ellColInd, const void* ellValue, cusparseIndexType_t ellIdxType, cusparseIndexBase_t idxBase, cudaDataType valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateConstBlockedEll
-    _check_or_init_cusparse()
-    if __cusparseCreateConstBlockedEll == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateConstBlockedEll is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t*, int64_t, int64_t, int64_t, int64_t, const void*, const void*, cusparseIndexType_t, cusparseIndexBase_t, cudaDataType) noexcept nogil>__cusparseCreateConstBlockedEll)(
-        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseConstBlockedEllGet(cusparseConstSpMatDescr_t spMatDescr, int64_t* rows, int64_t* cols, int64_t* ellBlockSize, int64_t* ellCols, const void** ellColInd, const void** ellValue, cusparseIndexType_t* ellIdxType, cusparseIndexBase_t* idxBase, cudaDataType* valueType) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstBlockedEllGet
-    _check_or_init_cusparse()
-    if __cusparseConstBlockedEllGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstBlockedEllGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstSpMatDescr_t, int64_t*, int64_t*, int64_t*, int64_t*, const void**, const void**, cusparseIndexType_t*, cusparseIndexBase_t*, cudaDataType*) noexcept nogil>__cusparseConstBlockedEllGet)(
-        spMatDescr, rows, cols, ellBlockSize, ellCols, ellColInd, ellValue, ellIdxType, idxBase, valueType)
-
-
-cdef cusparseStatus_t _cusparseCreateConstDnMat(cusparseConstDnMatDescr_t* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, const void* values, cudaDataType valueType, cusparseOrder_t order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseCreateConstDnMat
-    _check_or_init_cusparse()
-    if __cusparseCreateConstDnMat == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseCreateConstDnMat is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t*, int64_t, int64_t, int64_t, const void*, cudaDataType, cusparseOrder_t) noexcept nogil>__cusparseCreateConstDnMat)(
-        dnMatDescr, rows, cols, ld, values, valueType, order)
-
-
-cdef cusparseStatus_t _cusparseConstDnMatGet(cusparseConstDnMatDescr_t dnMatDescr, int64_t* rows, int64_t* cols, int64_t* ld, const void** values, cudaDataType* type, cusparseOrder_t* order) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstDnMatGet
-    _check_or_init_cusparse()
-    if __cusparseConstDnMatGet == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstDnMatGet is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, int64_t*, int64_t*, int64_t*, const void**, cudaDataType*, cusparseOrder_t*) noexcept nogil>__cusparseConstDnMatGet)(
-        dnMatDescr, rows, cols, ld, values, type, order)
-
-
-cdef cusparseStatus_t _cusparseConstDnMatGetValues(cusparseConstDnMatDescr_t dnMatDescr, const void** values) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseConstDnMatGetValues
-    _check_or_init_cusparse()
-    if __cusparseConstDnMatGetValues == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseConstDnMatGetValues is not found")
-    return (<cusparseStatus_t (*)(cusparseConstDnMatDescr_t, const void**) noexcept nogil>__cusparseConstDnMatGetValues)(
-        dnMatDescr, values)
-
-
-cdef cusparseStatus_t _cusparseSpGEMM_getNumProducts(cusparseSpGEMMDescr_t spgemmDescr, int64_t* num_prods) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpGEMM_getNumProducts
-    _check_or_init_cusparse()
-    if __cusparseSpGEMM_getNumProducts == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpGEMM_getNumProducts is not found")
-    return (<cusparseStatus_t (*)(cusparseSpGEMMDescr_t, int64_t*) noexcept nogil>__cusparseSpGEMM_getNumProducts)(
-        spgemmDescr, num_prods)
-
-
-cdef cusparseStatus_t _cusparseSpGEMM_estimateMemory(cusparseHandle_t handle, cusparseOperation_t opA, cusparseOperation_t opB, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstSpMatDescr_t matB, const void* beta, cusparseSpMatDescr_t matC, cudaDataType computeType, cusparseSpGEMMAlg_t alg, cusparseSpGEMMDescr_t spgemmDescr, float chunk_fraction, size_t* bufferSize3, void* externalBuffer3, size_t* bufferSize2) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusparseSpGEMM_estimateMemory
-    _check_or_init_cusparse()
-    if __cusparseSpGEMM_estimateMemory == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusparseSpGEMM_estimateMemory is not found")
-    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseOperation_t, const void*, cusparseConstSpMatDescr_t, cusparseConstSpMatDescr_t, const void*, cusparseSpMatDescr_t, cudaDataType, cusparseSpGEMMAlg_t, cusparseSpGEMMDescr_t, float, size_t*, void*, size_t*) noexcept nogil>__cusparseSpGEMM_estimateMemory)(
-        handle, opA, opB, alpha, matA, matB, beta, matC, computeType, alg, spgemmDescr, chunk_fraction, bufferSize3, externalBuffer3, bufferSize2)
 
 
 cdef cusparseStatus_t _cusparseBsrSetStridedBatch(cusparseSpMatDescr_t spMatDescr, int batchCount, int64_t offsetsBatchStride, int64_t columnsBatchStride, int64_t ValuesBatchStride) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:

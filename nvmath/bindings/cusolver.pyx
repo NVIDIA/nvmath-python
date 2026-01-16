@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -118,6 +118,11 @@ class DeterministicMode(_IntEnum):
     DETERMINISTIC_RESULTS = CUSOLVER_DETERMINISTIC_RESULTS
     ALLOW_NON_DETERMINISTIC_RESULTS = CUSOLVER_ALLOW_NON_DETERMINISTIC_RESULTS
 
+class MathMode(_IntEnum):
+    """See `cusolverMathMode_t`."""
+    DEFAULT_MATH = CUSOLVER_DEFAULT_MATH
+    FP32_EMULATED_BF16X9_MATH = CUSOLVER_FP32_EMULATED_BF16X9_MATH
+
 
 ###############################################################################
 # Error handling
@@ -143,8 +148,8 @@ cpdef int get_property(int type) except? -1:
     """See `cusolverGetProperty`."""
     cdef int value
     with nogil:
-        status = cusolverGetProperty(<LibraryPropertyType>type, &value)
-    check_status(status)
+        __status__ = cusolverGetProperty(<LibraryPropertyType>type, &value)
+    check_status(__status__)
     return value
 
 
@@ -152,6 +157,6 @@ cpdef int get_version() except? -1:
     """See `cusolverGetVersion`."""
     cdef int version
     with nogil:
-        status = cusolverGetVersion(&version)
-    check_status(status)
+        __status__ = cusolverGetVersion(&version)
+    check_status(__status__)
     return version

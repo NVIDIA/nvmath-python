@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 """Concept exploration for NumPy custom-dtype-backed MatrixQualifiers."""
@@ -42,7 +42,7 @@ def test_matrix_qualifier_set_ranges():
     print(q)
     q[...] = GeneralMatrixQualifier.create(conjugate=True)
     print(q)
-    q[6] = HermitianMatrixQualifier.create(conjugate=False, transpose=True)
+    q[6] = HermitianMatrixQualifier.create(conjugate=False)
     print(q)
 
     print(q["abbreviation"])
@@ -72,11 +72,9 @@ def test_matrix_qualifier_validity():
 def test_matrix_qualifier_attributes():
     t = TriangularMatrixQualifier.create(
         conjugate=False,
-        transpose=True,
         uplo=cublas.FillMode.UPPER,
         diag=cublas.DiagType.UNIT,
     )
-    assert t["transpose"]
     assert not t["conjugate"]
     assert t["uplo"] == cublas.FillMode.UPPER
     assert t["diag"] == cublas.DiagType.UNIT

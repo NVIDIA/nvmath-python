@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,7 +16,10 @@ The inputs as well as the result are NumPy ndarrays.
 
 import numpy as np
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 
 from nvmath.tensor import ExecutionCUDA, binary_contraction
 
@@ -31,7 +34,10 @@ result = binary_contraction("ijkl,klmn->ijmn", a, b, execution="cuda")
 assert np.allclose(result, np.einsum("ijkl,klmn->ijmn", a, b))
 
 # Execution can also be provided as an ExecutionCUDA object
-num_devices = ccx.system.num_devices
+try:
+    num_devices = system.get_num_devices()
+except AttributeError:
+    num_devices = system.num_devices
 
 for device_id in range(num_devices):
     execution = ExecutionCUDA(device_id=device_id)

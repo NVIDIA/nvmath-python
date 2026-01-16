@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -82,7 +82,7 @@ The re for the filter must contain the named group 'option_name'."""
     fields.append(field)
 
     # Create the options class.
-    options_class = dataclasses.make_dataclass(options_class_name, fields)
+    options_class = dataclasses.make_dataclass(options_class_name, fields, slots=True)
     options_class.__doc__ = doc
 
     return options_class

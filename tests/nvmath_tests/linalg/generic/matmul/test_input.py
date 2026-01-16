@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,10 +6,18 @@
 This set of tests checks matmul's behavior for different kinds of inputs.
 """
 
-from nvmath.linalg.generic import matmul, matrix_qualifiers_dtype, GeneralMatrixQualifier
+from nvmath.linalg.generic import (
+    matmul,
+    matrix_qualifiers_dtype,
+    GeneralMatrixQualifier,
+    TriangularMatrixQualifier,
+    SymmetricMatrixQualifier,
+    HermitianMatrixQualifier,
+)
 import numpy as np
 import pytest
 from nvmath.bindings import cublasLt as cublaslt
+from nvmath.bindings import cublas
 
 try:
     import cupy as cp
@@ -132,14 +140,14 @@ def test_layouts(a_layout, b_layout, c_layout):
     "a_batch,b_batch,c_batch,out_batch",
     (
         ((), (), (), ()),
-        # TODO: Uncomment when batched inputs are supported.
-        # ((8,), (8,), (8,), (8,)),
-        # ((3,), (), (), (3,)), # TODO: For generic matmul broadcasting is unsupported
-        # ((), (4,), (), (4,)), # TODO: For generic matmul broadcasting is unsupported
-        # ((), (), (5,), (5,)), # TODO: Should we support batched C?
-        # ((6,), (), (6,), (6,)), # TODO: For generic matmul broadcasting is unsupported
-        # ((), (7,), (7,), (7,)), # TODO: For generic matmul broadcasting is unsupported
-        # ((10, 20), (10, 20), (10, 20), (10, 20)),
+        ((8,), (8,), (8,), (8,)),
+        ((3,), (), (), (3,)),
+        ((), (4,), (), (4,)),
+        ((), (), (5,), (5,)),
+        ((6,), (), (6,), (6,)),
+        ((), (7,), (7,), (7,)),
+        ((10, 20), (10, 20), (10, 20), (10, 20)),
+        ((4, 3, 2), (4, 3, 2), (4, 3, 2), (4, 3, 2)),
     ),
 )
 @pytest.mark.parametrize("use_cuda", use_cuda_options)
@@ -294,7 +302,6 @@ def test_sliced(slices, framework, use_cuda):
     assert_tensors_equal(matmul(a, b, c, beta=0.2), a @ b + 0.2 * c)
 
 
-@pytest.mark.skip(reason="Batched inputs are not supported for generic matmul yet.")
 @pytest.mark.parametrize(
     "slices",
     (
@@ -491,23 +498,19 @@ def test_unsupported_float8():
             matmul(a, b, quantization_scales={"a": 1, "b": 1, "d": 1})
 
 
-@pytest.mark.skip(reason="FIXME: Error messagages for batch dimensions should be aligned.")
 @pytest.mark.skipif(not CUBLAS_AVAILABLE, reason="This test requires cuBLAS")
 @pytest.mark.parametrize(
     "test_case,expected_error",
     [
-        ("not_tileable_a", "batch layout for A .* is not tileable"),
-        ("not_tileable_b", "batch layout for B .* is not tileable"),
-        ("batch_shape_mismatch", "batch dimensions of operands A .* and B .* must match"),
-        ("batch_order_mismatch", "batch order of operands A .* and B .* must match"),
-        ("c_m_dimension_mismatch", "The M dimension of the C matrix .* must match the M dimension of A"),
-        ("c_n_dimension_mismatch", "The N dimension of the C matrix .* must match the N dimension of B"),
-        ("c_batch_shape_mismatch", "The batch dimension of operand C .* must match with that of the other operands"),
-        ("c_batch_order_mismatch", "The batch axis order of operand C .* must match with that of the other"),
-        (
-            "c_not_tileable",
-            "The batch layout for C corresponding to shape .* is currently not supported because it is not tileable",
-        ),
+        ("not_tileable_a", "batch layout for .* is not tileable"),
+        ("not_tileable_b", "batch layout for .* is not tileable"),
+        ("batch_shape_mismatch", "Batch dimensions .* and .* are not compatible"),
+        ("batch_order_mismatch", "Batch order .* and .* are not compatible"),
+        ("c_m_dimension_mismatch", "The 'M' extent must match .* operand A is not equal to .* in operand C."),
+        ("c_n_dimension_mismatch", "The 'N' extent must match .* operand B is not equal to .* in operand C."),
+        ("c_batch_shape_mismatch", "Batch dimensions .* and .* are not compatible"),
+        ("c_batch_order_mismatch", "Batch order .* and .* are not compatible"),
+        ("c_not_tileable", "batch layout for .* is not tileable"),
     ],
 )
 def test_batch_matrix_negative(test_case, expected_error):
@@ -570,3 +573,167 @@ def test_batch_matrix_negative(test_case, expected_error):
             matmul(a, b)
         else:
             matmul(a, b, c, beta=1.0)
+
+
+def make_matrix(shape, dtype, matrix_type=None, uplo=None, diag=None, use_cuda=False):
+    """Create a matrix of specified type in COL order.
+
+    Args:
+        shape: Tuple for general matrix, or int for square special matrix.
+        dtype: NumPy dtype.
+        matrix_type: None/"general", "triangular", "symmetric", or "hermitian".
+        uplo: Fill mode for triangular/symmetric/hermitian matrices.
+        diag: Diagonal type for triangular matrices.
+        use_cuda: If True, return cupy array; if False, return numpy array.
+    """
+    if isinstance(shape, int):
+        shape = (shape, shape)
+
+    a = np.random.rand(*shape).astype(dtype)
+    if np.issubdtype(dtype, np.complexfloating):
+        a = a + 1j * np.random.rand(*shape).astype(dtype)
+
+    if matrix_type is None or matrix_type == "general":
+        a = np.asfortranarray(a)
+    else:
+        # Special matrices require square shape
+        assert shape[0] == shape[1], "Special matrices must be square"
+
+        if matrix_type == "triangular":
+            if uplo == cublas.FillMode.UPPER:
+                a = np.triu(a)
+            else:
+                a = np.tril(a)
+            if diag == cublas.DiagType.UNIT:
+                np.fill_diagonal(a, 1.0)
+        elif matrix_type == "symmetric":
+            a = np.tril(a) + np.triu(a.T, 1)
+        elif matrix_type == "hermitian":
+            a = 0.5 * (a + np.conj(a.T))
+
+        a = np.asfortranarray(a)
+
+    if use_cuda:
+        if cp is None:
+            pytest.skip("cupy required for CUDA tests")
+        return cp.asarray(a)
+    return a
+
+
+@pytest.mark.parametrize("n", (4, 8))
+@pytest.mark.parametrize("m", (4, 8))
+@pytest.mark.parametrize("dtype", ("float32", "float64", "complex64", "complex128"))
+@pytest.mark.parametrize("uplo", (cublas.FillMode.LOWER, cublas.FillMode.UPPER))
+@pytest.mark.parametrize("diag", (cublas.DiagType.NON_UNIT, cublas.DiagType.UNIT))
+@pytest.mark.parametrize("is_left_side", (True, False))
+@pytest.mark.parametrize("use_cuda", use_cuda_options)
+def test_trmm(n, m, dtype, uplo, diag, is_left_side, use_cuda):
+    """
+    Test triangular matrix multiplication (trmm).
+    """
+    if not use_cuda:
+        pytest.skip("trmm is not currently supported with NVPL.")
+
+    dtype_np = getattr(np, dtype)
+
+    if is_left_side:
+        # A: (n, n) triangular, B: (n, m) general -> C: (n, m)
+        a = make_matrix(n, dtype_np, "triangular", uplo, diag, use_cuda)
+        b = make_matrix((n, m), dtype_np, use_cuda=use_cuda)
+        c = make_matrix((n, m), dtype_np, use_cuda=use_cuda)
+    else:
+        # A: (m, n) general, B: (n, n) triangular -> C: (m, n)
+        a = make_matrix((m, n), dtype_np, use_cuda=use_cuda)
+        b = make_matrix(n, dtype_np, "triangular", uplo, diag, use_cuda)
+        c = make_matrix((m, n), dtype_np, use_cuda=use_cuda)
+
+    qualifiers = np.empty(3, dtype=matrix_qualifiers_dtype)
+    if is_left_side:
+        qualifiers[0] = TriangularMatrixQualifier.create(uplo=uplo, diag=diag)
+        qualifiers[1] = GeneralMatrixQualifier.create()
+    else:
+        qualifiers[0] = GeneralMatrixQualifier.create()
+        qualifiers[1] = TriangularMatrixQualifier.create(uplo=uplo, diag=diag)
+    qualifiers[2] = GeneralMatrixQualifier.create()
+
+    result = matmul(a, b, c=c, alpha=1.5, beta=0.0, qualifiers=qualifiers)
+    assert_tensors_equal(result, 1.5 * (to_numpy(a) @ to_numpy(b)))
+
+
+@pytest.mark.parametrize("n", (4, 8))
+@pytest.mark.parametrize("m", (4, 8))
+@pytest.mark.parametrize(
+    "dtype,matrix_type",
+    [
+        ("float32", "symmetric"),
+        ("float64", "symmetric"),
+        ("complex64", "hermitian"),
+        ("complex128", "hermitian"),
+    ],
+)
+@pytest.mark.parametrize("uplo", (cublas.FillMode.LOWER, cublas.FillMode.UPPER))
+@pytest.mark.parametrize("is_left_side", (True, False))
+@pytest.mark.parametrize("use_cuda", use_cuda_options)
+def test_symm_hemm(n, m, dtype, matrix_type, uplo, is_left_side, use_cuda):
+    """
+    Test symmetric/Hermitian matrix multiplication (symm/hemm).
+    """
+    dtype_np = getattr(np, dtype)
+    is_complex = np.issubdtype(dtype_np, np.complexfloating)
+
+    if is_left_side:
+        # Special matrix on left: (n, n) @ (n, m) -> (n, m)
+        a = make_matrix(n, dtype_np, matrix_type, uplo, use_cuda=use_cuda)
+        b = make_matrix((n, m), dtype_np, use_cuda=use_cuda)
+        c = make_matrix((n, m), dtype_np, use_cuda=use_cuda)
+    else:
+        # Special matrix on right: (m, n) @ (n, n) -> (m, n)
+        a = make_matrix((m, n), dtype_np, use_cuda=use_cuda)
+        b = make_matrix(n, dtype_np, matrix_type, uplo, use_cuda=use_cuda)
+        c = make_matrix((m, n), dtype_np, use_cuda=use_cuda)
+
+    qualifiers = np.empty(3, dtype=matrix_qualifiers_dtype)
+    QualifierClass = HermitianMatrixQualifier if matrix_type == "hermitian" else SymmetricMatrixQualifier
+    if is_left_side:
+        qualifiers[0] = QualifierClass.create(uplo=uplo)
+        qualifiers[1] = GeneralMatrixQualifier.create()
+    else:
+        qualifiers[0] = GeneralMatrixQualifier.create()
+        qualifiers[1] = QualifierClass.create(uplo=uplo)
+    qualifiers[2] = GeneralMatrixQualifier.create()
+
+    alpha = (0.5 + 0.1j) if is_complex else 0.5
+    beta = (0.3 + 0.2j) if is_complex else 0.3
+
+    result = matmul(a, b, c=c, alpha=alpha, beta=beta, qualifiers=qualifiers)
+    assert_tensors_equal(result, alpha * (to_numpy(a) @ to_numpy(b)) + beta * to_numpy(c))
+
+
+@pytest.mark.parametrize("use_cuda", use_cuda_options)
+def test_hemm_transpose_not_supported(use_cuda):
+    """
+    Test that Hermitian matrix with ROW order (which triggers transpose) raises error.
+    """
+    n, m = 4, 6
+    dtype = np.complex64
+
+    # Create Hermitian matrix in COL order (numpy), then convert to ROW order
+    # to trigger transpose
+    a_col = make_matrix(n, dtype, "hermitian", cublas.FillMode.LOWER, use_cuda=False)
+    a_row = np.ascontiguousarray(a_col)  # Convert to ROW order
+    if use_cuda:
+        if cp is None:
+            pytest.skip("cupy required for CUDA tests")
+        a = cp.asarray(a_row)
+    else:
+        a = a_row
+    b = make_matrix((n, m), dtype, use_cuda=use_cuda)
+    c = make_matrix((n, m), dtype, use_cuda=use_cuda)
+
+    qualifiers = np.empty(3, dtype=matrix_qualifiers_dtype)
+    qualifiers[0] = HermitianMatrixQualifier.create(uplo=cublas.FillMode.LOWER)
+    qualifiers[1] = GeneralMatrixQualifier.create()
+    qualifiers[2] = GeneralMatrixQualifier.create()
+
+    with pytest.raises(ValueError, match="Transpose on operand A is not supported"):
+        matmul(a, b, c=c, alpha=1.0, beta=0.0, qualifiers=qualifiers)

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,6 +24,7 @@ import numpy as _np
 from nvmath.bindings import cublas  # type: ignore
 from nvmath.bindings import cublasLt as cublaslt  # type: ignore
 from nvmath.internal import enum_utils
+from nvmath.internal.tensor_ifc import AnyTensor
 from nvmath.internal.utils import check_or_create_options
 from nvmath.internal.mem_limit import check_memory_str
 from nvmath.memory import BaseCUDAMemoryManager, BaseCUDAMemoryManagerAsync
@@ -40,6 +41,11 @@ class MatmulOptions:
     function :func:`matmul`.
 
     Attributes:
+        inplace: Whether the matrix multiplication is performed in-place (operand C is
+            overwritten); ``inplace=True`` implies that operand C cannot be broadcast (in
+            the batch as well as the N-dimension) since it must be large enough to
+            hold the result of the computation. The default is ``inplace=False``.
+
         compute_type (nvmath.linalg.ComputeType): CUDA compute type. A suitable compute type
             will be selected if not specified.
 
@@ -99,6 +105,7 @@ class MatmulOptions:
        :class:`Matmul`, :func:`matmul`
     """
 
+    inplace: bool = False
     compute_type: int | None = None
     scale_type: int | None = None
     result_type: int | None = None
@@ -277,23 +284,27 @@ class MatmulQuantizationScales:
     tensor will be interpreted as UE8M0 values. This means that a value :math:`x` in the
     scaling tensor will cause cuBLAS to multiply the respective block by :math:`2^{x-127}`.
 
+    .. note::
+       When scales are provided as tensors, they must be from the same package
+       and on the same memory space (CPU or GPU device) as the operands of the matmul.
+
     Attributes:
-        a (float or Tensor) : Scale for matrix A.
+        a (int, float, or Tensor) : Scale for matrix A.
 
-        b (float or Tensor) : Scale for matrix B.
+        b (int, float, or Tensor) : Scale for matrix B.
 
-        c (float or Tensor) : Scale for matrix C.
+        c (int, float, or Tensor) : Scale for matrix C.
 
-        d (float or Tensor) : Scale for matrix D.
+        d (int, float, or Tensor) : Scale for matrix D.
 
     .. seealso::
        :class:`Matmul`, :func:`matmul`
     """
 
-    a: float | None = None
-    b: float | None = None
-    c: float | None = None
-    d: float | None = None
+    a: int | float | AnyTensor | None = None
+    b: int | float | AnyTensor | None = None
+    c: int | float | AnyTensor | None = None
+    d: int | float | AnyTensor | None = None
 
 
 _create_options = enum_utils.create_options_class_from_enum

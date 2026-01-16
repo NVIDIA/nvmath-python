@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +8,11 @@ import math
 from ast import literal_eval
 
 import pytest
-import cuda.core.experimental as ccx
+
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 
 try:
     import cupy as cp
@@ -131,7 +135,7 @@ def allow_to_fail_compund_shape(e, shape, axes):
         and not has_only_small_factors(shape, axes)
     ):
         raise pytest.skip(f"CUFFT_NOT_SUPPORTED: Unsupported {shape} comprising primes larger than 127")
-    raise
+    raise e
 
 
 def skip_numpy_with_filter(framework, exec_backend):
@@ -166,7 +170,11 @@ def skip_unsupported_device(fn=None, dev_count=1, min_cc=70):
 
             return test_skipped
 
-        actual_dev_count = ccx.system.num_devices
+        try:
+            num_devices = system.get_num_devices()
+        except AttributeError:
+            num_devices = system.num_devices
+        actual_dev_count = num_devices
 
         if actual_dev_count < dev_count:
 
@@ -210,7 +218,7 @@ if _skip_cufft_jit_callback and _has_dependencies:
 
     @pytest.mark.parametrize(("callbacks",), [(callbacks,) for callbacks in LtoCallback])
     def test_error_unsupported(callbacks):
-        signal = get_random_input_data(Framework.numpy, (16,), DType.complex64, MemBackend.cpu, seed=42)
+        signal = get_random_input_data(Framework.numpy, (16,), DType.complex64, MemBackend.cpu)
 
         cb_kwargs = {
             cb: {"ltoir": b""}
@@ -343,6 +351,7 @@ if _skip_cufft_jit_callback and _has_dependencies:
     ],
 )
 def test_operand_shape_fft_ifft(
+    seeder,
     shape_kind,
     shape,
     batch,
@@ -369,7 +378,7 @@ def test_operand_shape_fft_ifft(
     else:
         assert batch == "batch_none"
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=42)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     signal_copy = copy_array(signal) if inplace else signal
 
     def prolog_cb(data, offset, filter_data, unused):
@@ -519,6 +528,7 @@ def test_operand_shape_fft_ifft(
     ],
 )
 def test_operand_shape_ifft_c2r(
+    seeder,
     shape,
     axes,
     framework,
@@ -533,7 +543,7 @@ def test_operand_shape_ifft_c2r(
     shape = literal_eval(shape)
     axes = literal_eval(axes)
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=42)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft_in = copy_array(get_fft_ref(signal, axes=axes))
     fft_dtype = get_fft_dtype(dtype)
 
@@ -638,6 +648,7 @@ def test_operand_shape_ifft_c2r(
     ],
 )
 def test_sliced_operand(
+    seeder,
     shape_base,
     shape_slice_start,
     shape_slice_size,
@@ -672,7 +683,7 @@ def test_sliced_operand(
     else:
         assert batch == "batch_none"
 
-    signal_base = get_random_input_data(framework, shape_base, dtype, mem_backend, seed=43)
+    signal_base = get_random_input_data(framework, shape_base, dtype, mem_backend)
     signal = signal_base[tuple(slice(s, s + e) for s, e in zip(shape_slice_start, shape_slice_size, strict=True))]
 
     def prolog_cb(data, offset, filter_data, unused):
@@ -785,6 +796,7 @@ def test_sliced_operand(
     ],
 )
 def test_overlapping_stride_operand(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -800,7 +812,7 @@ def test_overlapping_stride_operand(
     axes = literal_eval(axes)
     unfold_args = literal_eval(unfold_args)
     unfold_dim, unfold_window_size, unfold_step = unfold_args
-    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend)
     signal = unfold(signal_base, unfold_dim, unfold_window_size, unfold_step)
 
     def prolog_cb(data, offset, filter_data, unused):
@@ -924,6 +936,7 @@ def test_overlapping_stride_operand(
     ],
 )
 def test_permuted_stride_operand(
+    seeder,
     fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
@@ -948,7 +961,7 @@ def test_permuted_stride_operand(
     assert len(base_shape) == len(permutation)
 
     if fft_type != OptFftType.c2r:
-        signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+        signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend)
         signal = get_permuted(signal_base, permutation)
         signal_shape = tuple(base_shape[p] for p in permutation)
         if fft_type == OptFftType.c2c:
@@ -958,7 +971,7 @@ def test_permuted_stride_operand(
     else:
         real_type = get_ifft_dtype(dtype, fft_type)
         assert not is_complex(real_type)
-        signal_base = get_random_input_data(framework, base_shape, real_type, mem_backend, seed=105)
+        signal_base = get_random_input_data(framework, base_shape, real_type, mem_backend)
         signal_base = copy_array(get_fft_ref(signal_base, axes=base_axes))
         signal = get_permuted(signal_base, permutation)
         signal_shape = list(base_shape)
@@ -973,10 +986,10 @@ def test_permuted_stride_operand(
     check_layouts, *_ = fx_last_operand_layout
 
     if fft_type != OptFftType.c2r:
-        prolog_filter = get_random_input_data(framework, signal_shape, dtype, MemBackend.cuda, seed=243)
+        prolog_filter = get_random_input_data(framework, signal_shape, dtype, MemBackend.cuda)
     else:
         # assure the required symmetry in the input
-        prolog_filter = get_random_input_data(framework, output_shape, real_type, mem_backend, seed=243)
+        prolog_filter = get_random_input_data(framework, output_shape, real_type, mem_backend)
         prolog_filter = copy_array(get_fft_ref(prolog_filter, axes=axes))
     assert get_dtype_from_array(prolog_filter) == dtype
     assert prolog_filter.shape == signal_shape
@@ -985,7 +998,7 @@ def test_permuted_stride_operand(
         epilog_dtype = get_fft_dtype(dtype)
     else:
         epilog_dtype = get_ifft_dtype(dtype, fft_type)
-    epilog_filter = get_random_input_data(framework, output_shape, epilog_dtype, MemBackend.cuda, seed=143)
+    epilog_filter = get_random_input_data(framework, output_shape, epilog_dtype, MemBackend.cuda)
 
     def prolog_cb(data, offset, filter_data, unused):
         return data[offset] * filter_data[offset]
@@ -1096,17 +1109,17 @@ def _operand_filter_dtype_shape_fft_ifft_case(
     axes = literal_eval(axes)
     last_axis_parity = "odd" if shape[axes[-1]] % 2 else "even"
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=101)
-    prolog_filter = get_random_input_data(framework, shape, prolog_filter_dtype, mem_backend, seed=243)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
+    prolog_filter = get_random_input_data(framework, shape, prolog_filter_dtype, mem_backend)
     if is_complex(dtype):
-        epilog_filter = get_random_input_data(framework, shape, epilog_filter_dtype, mem_backend, seed=143)
+        epilog_filter = get_random_input_data(framework, shape, epilog_filter_dtype, mem_backend)
     else:
         # make sure the data we multiply in the forward epilog/
         # inverse prolog have the required hermitian symmetry
         epilog_real_dtype = (
             epilog_filter_dtype if not is_complex(epilog_filter_dtype) else get_ifft_dtype(epilog_filter_dtype, OptFftType.c2r)
         )
-        epilog_filter_base = get_random_input_data(framework, shape, epilog_real_dtype, mem_backend, seed=143)
+        epilog_filter_base = get_random_input_data(framework, shape, epilog_real_dtype, mem_backend)
         # copy array to make sure it is dense
         epilog_filter_complex = copy_array(get_fft_ref(epilog_filter_base, axes=axes))
         if is_complex(epilog_filter_dtype):
@@ -1309,6 +1322,7 @@ def _operand_filter_dtype_shape_fft_ifft_case(
     ],
 )
 def test_operand_and_filter_dtypes_fft_ifft(
+    seeder,
     dtype,
     prolog_filter_dtype,
     epilog_filter_dtype,
@@ -1403,6 +1417,7 @@ def test_operand_and_filter_dtypes_fft_ifft(
     ],
 )
 def test_operand_and_filter_shapes_fft_ifft(
+    seeder,
     shape,
     axes,
     dtype,
@@ -1500,6 +1515,7 @@ def test_operand_and_filter_shapes_fft_ifft(
     ],
 )
 def test_two_plans_different_cbs(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -1526,16 +1542,16 @@ def test_two_plans_different_cbs(
     epilog_shape_0 = shape_0 if is_complex(dtype_0) else r2c_shape(shape_0, axes=axes_0)
     epilog_shape_1 = shape_1 if is_complex(dtype_1) else r2c_shape(shape_1, axes=axes_1)
 
-    signal_0 = get_random_input_data(framework, shape_0, dtype_0, mem_backend, seed=10)
-    signal_1 = get_random_input_data(framework, shape_1, dtype_1, mem_backend, seed=13)
+    signal_0 = get_random_input_data(framework, shape_0, dtype_0, mem_backend)
+    signal_1 = get_random_input_data(framework, shape_1, dtype_1, mem_backend)
 
     epilog_dtype_0 = get_fft_dtype(dtype_0)
     epilog_dtype_1 = get_fft_dtype(dtype_1)
     filters = {
-        "prolog_0": get_random_input_data(framework, shape_0, dtype_0, mem_backend, seed=101),
-        "epilog_0": get_random_input_data(framework, epilog_shape_0, epilog_dtype_0, mem_backend, seed=102),
-        "prolog_1": get_random_input_data(framework, shape_1, dtype_1, mem_backend, seed=103),
-        "epilog_1": get_random_input_data(framework, epilog_shape_1, epilog_dtype_1, mem_backend, seed=104),
+        "prolog_0": get_random_input_data(framework, shape_0, dtype_0, mem_backend),
+        "epilog_0": get_random_input_data(framework, epilog_shape_0, epilog_dtype_0, mem_backend),
+        "prolog_1": get_random_input_data(framework, shape_1, dtype_1, mem_backend),
+        "epilog_1": get_random_input_data(framework, epilog_shape_1, epilog_dtype_1, mem_backend),
     }
     dev_filters = {k: (to_gpu(v) if mem_backend == MemBackend.cpu else v) for k, v in filters.items()}
 
@@ -1675,6 +1691,7 @@ def test_two_plans_different_cbs(
     ],
 )
 def test_custom_stream(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -1698,9 +1715,9 @@ def test_custom_stream(
     epilog_shape = shape if is_complex(dtype) else r2c_shape(shape, axes=axes)
 
     with use_stream(s0):
-        signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
-        p_filt = get_random_input_data(framework, shape, dtype, mem_backend, seed=45)
-        e_filt = get_random_input_data(framework, epilog_shape, epilog_dtype, mem_backend, seed=46)
+        signal = get_random_input_data(framework, shape, dtype, mem_backend)
+        p_filt = get_random_input_data(framework, shape, dtype, mem_backend)
+        e_filt = get_random_input_data(framework, epilog_shape, epilog_dtype, mem_backend)
         p_filt_dev = p_filt if mem_backend == MemBackend.cuda else to_gpu(p_filt)
         e_filt_dev = e_filt if mem_backend == MemBackend.cuda else to_gpu(e_filt)
 
@@ -1802,7 +1819,7 @@ def test_custom_stream(
         for callbacks in LtoCallback
     ],
 )
-def test_another_device(framework, exec_backend, mem_backend, dtype, shape, axes, callbacks):
+def test_another_device(seeder, framework, exec_backend, mem_backend, dtype, shape, axes, callbacks):
     skip_numpy_with_filter(framework, exec_backend)
 
     device_id = 1
@@ -1817,14 +1834,13 @@ def test_another_device(framework, exec_backend, mem_backend, dtype, shape, axes
     epilog_dtype = get_fft_dtype(dtype)
 
     in_device_id = None if mem_backend == MemBackend.cpu else device_id
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=42, device_id=in_device_id)
-    p_filt = get_random_input_data(framework, shape, dtype, mem_backend, seed=101, device_id=in_device_id)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend, device_id=in_device_id)
+    p_filt = get_random_input_data(framework, shape, dtype, mem_backend, device_id=in_device_id)
     e_filt = get_random_input_data(
         framework,
         epilog_shape,
         epilog_dtype,
         mem_backend,
-        seed=102,
         device_id=in_device_id,
     )
     p_filt_dev = p_filt if mem_backend == MemBackend.cuda else to_gpu(p_filt, device_id=device_id)
@@ -1925,6 +1941,7 @@ def test_another_device(framework, exec_backend, mem_backend, dtype, shape, axes
     ],
 )
 def test_two_devices(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -1966,15 +1983,14 @@ def test_two_devices(
         data_out[offset] = value * filter_data[offset] * 7
 
     in_device_id_0, in_device_id_1 = (None, None) if mem_backend == MemBackend.cpu else (device_id_0, device_id_1)
-    signal_0 = get_random_input_data(framework, shape_0, dtype, mem_backend, seed=13, device_id=in_device_id_0)
-    signal_1 = get_random_input_data(framework, shape_1, dtype, mem_backend, seed=21, device_id=in_device_id_1)
+    signal_0 = get_random_input_data(framework, shape_0, dtype, mem_backend, device_id=in_device_id_0)
+    signal_1 = get_random_input_data(framework, shape_1, dtype, mem_backend, device_id=in_device_id_1)
 
     pro_0 = get_random_input_data(
         framework,
         shape_0,
         dtype,
         mem_backend,
-        seed=34,
         device_id=in_device_id_0,
     )
     ep_0 = get_random_input_data(
@@ -1982,7 +1998,6 @@ def test_two_devices(
         epilog_shape_0,
         epilog_dtype,
         mem_backend,
-        seed=55,
         device_id=in_device_id_0,
     )
     pro_1 = get_random_input_data(
@@ -1990,7 +2005,6 @@ def test_two_devices(
         shape_1,
         dtype,
         mem_backend,
-        seed=89,
         device_id=in_device_id_1,
     )
     ep_1 = get_random_input_data(
@@ -1998,7 +2012,6 @@ def test_two_devices(
         epilog_shape_1,
         epilog_dtype,
         mem_backend,
-        seed=144,
         device_id=in_device_id_1,
     )
 
@@ -2246,7 +2259,7 @@ def test_mismatched_operand_type(framework, exec_backend, mem_backend, callback,
         cb_kwargs["epilog"] = {"ltoir": nvmath.fft.compile_epilog(epilog_fn, declared_dtype.name, declared_dtype.name)}
 
     shape = (16,)
-    signal = get_random_input_data(framework, shape, actual_dtype, mem_backend, seed=101)
+    signal = get_random_input_data(framework, shape, actual_dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(actual_dtype) else nvmath.fft.rfft
     with pytest.raises(nvmath.bindings.cufft.cuFFTError, match="CUFFT_INTERNAL_ERROR"):
         fn(signal, execution=exec_backend.nvname, **cb_kwargs)
@@ -2291,7 +2304,7 @@ def test_prolog_epilog_unsupported_exec(framework, exec_backend, mem_backend, ca
         cb_kwargs["epilog"] = {"ltoir": nvmath.fft.compile_epilog(epilog_fn, dtype.name, dtype.name)}
 
     shape = (16,)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=189)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
     with pytest.raises(

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,7 +16,12 @@ import weakref
 import nvmath.device
 from nvmath.device import curand_kernel, random_helpers
 from nvmath.device import random_states as states
-from cuda.core.experimental import ObjectCode, Program, ProgramOptions
+
+try:
+    from cuda.core import ObjectCode, Program, ProgramOptions
+except ImportError:
+    from cuda.core.experimental import ObjectCode, Program, ProgramOptions
+
 from cuda import pathfinder
 
 # Common APIs (initialization, bit generation).
@@ -435,6 +440,6 @@ class Compile:
         return states_arg_handlers
 
 
-__all__ = ["Compile", "random_helpers"] + _COMMON_APIS + _SAMPLERS + _SKIPPERS + _STATES
+__all__ = ["Compile", "random_helpers"] + _COMMON_APIS + _SAMPLERS + _SKIPPERS + _STATES  # type: ignore  # noqa: PLE0605
 
 del functools, re, curand_kernel, states

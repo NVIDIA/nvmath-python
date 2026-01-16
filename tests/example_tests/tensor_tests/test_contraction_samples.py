@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,12 +7,11 @@ import os
 
 import pytest
 
-import cuda.core.experimental as ccx
 
 from nvmath.bindings import cutensor
 from nvmath.bindings._internal.utils import NotSupportedError, FunctionNotFoundError
 
-from ..test_utils import run_sample
+from ..test_utils import run_sample, cc
 
 
 try:
@@ -26,7 +25,7 @@ sample_files = glob.glob(samples_path + "**/*.py", recursive=True)
 
 
 @pytest.mark.skipif(not HAS_CUTENSOR, reason="cuTensor is not available")
-@pytest.mark.skipif(ccx.Device().compute_capability <= (7, 0), reason="cuTensor 2.3.1+ requires compute capability > 7.0")
+@pytest.mark.skipif(cc <= (7, 0), reason="cuTensor 2.3.1+ requires compute capability > 7.0")
 @pytest.mark.parametrize("sample", sample_files)
 class TestContractionSamples:
     def test_sample(self, sample):

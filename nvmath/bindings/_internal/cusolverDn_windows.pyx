@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -21,7 +21,7 @@ from libc.stddef cimport wchar_t
 from libc.stdint cimport uintptr_t
 from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
 
-from .utils import NotSupportedError
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "windows.h" nogil:
     ctypedef void* HMODULE
@@ -67,10 +67,10 @@ cdef int get_cuda_version():
         raise NotSupportedError('CUDA driver is not found')
     cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
     if cuDriverGetVersion == NULL:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in nvcuda.dll')
     err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
     if err != 0:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
 
     return driver_ver
 
@@ -211,6 +211,8 @@ cdef void* __cusolverDnSpotri = NULL
 cdef void* __cusolverDnDpotri = NULL
 cdef void* __cusolverDnCpotri = NULL
 cdef void* __cusolverDnZpotri = NULL
+cdef void* __cusolverDnXtrtri_bufferSize = NULL
+cdef void* __cusolverDnXtrtri = NULL
 cdef void* __cusolverDnSlauum_bufferSize = NULL
 cdef void* __cusolverDnDlauum_bufferSize = NULL
 cdef void* __cusolverDnClauum_bufferSize = NULL
@@ -267,6 +269,8 @@ cdef void* __cusolverDnSsytrf = NULL
 cdef void* __cusolverDnDsytrf = NULL
 cdef void* __cusolverDnCsytrf = NULL
 cdef void* __cusolverDnZsytrf = NULL
+cdef void* __cusolverDnXsytrs_bufferSize = NULL
+cdef void* __cusolverDnXsytrs = NULL
 cdef void* __cusolverDnSsytri_bufferSize = NULL
 cdef void* __cusolverDnDsytri_bufferSize = NULL
 cdef void* __cusolverDnCsytri_bufferSize = NULL
@@ -438,10 +442,6 @@ cdef void* __cusolverDnXgesvdp_bufferSize = NULL
 cdef void* __cusolverDnXgesvdp = NULL
 cdef void* __cusolverDnXgesvdr_bufferSize = NULL
 cdef void* __cusolverDnXgesvdr = NULL
-cdef void* __cusolverDnXsytrs_bufferSize = NULL
-cdef void* __cusolverDnXsytrs = NULL
-cdef void* __cusolverDnXtrtri_bufferSize = NULL
-cdef void* __cusolverDnXtrtri = NULL
 cdef void* __cusolverDnLoggerSetCallback = NULL
 cdef void* __cusolverDnLoggerSetFile = NULL
 cdef void* __cusolverDnLoggerOpenFile = NULL
@@ -456,6 +456,10 @@ cdef void* __cusolverDnXsyevBatched_bufferSize = NULL
 cdef void* __cusolverDnXsyevBatched = NULL
 cdef void* __cusolverDnXgeev_bufferSize = NULL
 cdef void* __cusolverDnXgeev = NULL
+cdef void* __cusolverDnSetMathMode = NULL
+cdef void* __cusolverDnGetMathMode = NULL
+cdef void* __cusolverDnSetEmulationStrategy = NULL
+cdef void* __cusolverDnGetEmulationStrategy = NULL
 
 
 cdef inline list get_site_packages():
@@ -472,6 +476,10 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
         return 0
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cusolverDn_init:
+            return 0
+
         driver_ver = get_cuda_version()
 
         # Load library
@@ -862,6 +870,12 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
         global __cusolverDnZpotri
         __cusolverDnZpotri = GetProcAddress(handle, 'cusolverDnZpotri')
 
+        global __cusolverDnXtrtri_bufferSize
+        __cusolverDnXtrtri_bufferSize = GetProcAddress(handle, 'cusolverDnXtrtri_bufferSize')
+
+        global __cusolverDnXtrtri
+        __cusolverDnXtrtri = GetProcAddress(handle, 'cusolverDnXtrtri')
+
         global __cusolverDnSlauum_bufferSize
         __cusolverDnSlauum_bufferSize = GetProcAddress(handle, 'cusolverDnSlauum_bufferSize')
 
@@ -1029,6 +1043,12 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
 
         global __cusolverDnZsytrf
         __cusolverDnZsytrf = GetProcAddress(handle, 'cusolverDnZsytrf')
+
+        global __cusolverDnXsytrs_bufferSize
+        __cusolverDnXsytrs_bufferSize = GetProcAddress(handle, 'cusolverDnXsytrs_bufferSize')
+
+        global __cusolverDnXsytrs
+        __cusolverDnXsytrs = GetProcAddress(handle, 'cusolverDnXsytrs')
 
         global __cusolverDnSsytri_bufferSize
         __cusolverDnSsytri_bufferSize = GetProcAddress(handle, 'cusolverDnSsytri_bufferSize')
@@ -1543,18 +1563,6 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
         global __cusolverDnXgesvdr
         __cusolverDnXgesvdr = GetProcAddress(handle, 'cusolverDnXgesvdr')
 
-        global __cusolverDnXsytrs_bufferSize
-        __cusolverDnXsytrs_bufferSize = GetProcAddress(handle, 'cusolverDnXsytrs_bufferSize')
-
-        global __cusolverDnXsytrs
-        __cusolverDnXsytrs = GetProcAddress(handle, 'cusolverDnXsytrs')
-
-        global __cusolverDnXtrtri_bufferSize
-        __cusolverDnXtrtri_bufferSize = GetProcAddress(handle, 'cusolverDnXtrtri_bufferSize')
-
-        global __cusolverDnXtrtri
-        __cusolverDnXtrtri = GetProcAddress(handle, 'cusolverDnXtrtri')
-
         global __cusolverDnLoggerSetCallback
         __cusolverDnLoggerSetCallback = GetProcAddress(handle, 'cusolverDnLoggerSetCallback')
 
@@ -1596,6 +1604,18 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
 
         global __cusolverDnXgeev
         __cusolverDnXgeev = GetProcAddress(handle, 'cusolverDnXgeev')
+
+        global __cusolverDnSetMathMode
+        __cusolverDnSetMathMode = GetProcAddress(handle, 'cusolverDnSetMathMode')
+
+        global __cusolverDnGetMathMode
+        __cusolverDnGetMathMode = GetProcAddress(handle, 'cusolverDnGetMathMode')
+
+        global __cusolverDnSetEmulationStrategy
+        __cusolverDnSetEmulationStrategy = GetProcAddress(handle, 'cusolverDnSetEmulationStrategy')
+
+        global __cusolverDnGetEmulationStrategy
+        __cusolverDnGetEmulationStrategy = GetProcAddress(handle, 'cusolverDnGetEmulationStrategy')
 
         __py_cusolverDn_init = True
         return 0
@@ -1996,6 +2016,12 @@ cpdef dict _inspect_function_pointers():
     global __cusolverDnZpotri
     data["__cusolverDnZpotri"] = <intptr_t>__cusolverDnZpotri
 
+    global __cusolverDnXtrtri_bufferSize
+    data["__cusolverDnXtrtri_bufferSize"] = <intptr_t>__cusolverDnXtrtri_bufferSize
+
+    global __cusolverDnXtrtri
+    data["__cusolverDnXtrtri"] = <intptr_t>__cusolverDnXtrtri
+
     global __cusolverDnSlauum_bufferSize
     data["__cusolverDnSlauum_bufferSize"] = <intptr_t>__cusolverDnSlauum_bufferSize
 
@@ -2163,6 +2189,12 @@ cpdef dict _inspect_function_pointers():
 
     global __cusolverDnZsytrf
     data["__cusolverDnZsytrf"] = <intptr_t>__cusolverDnZsytrf
+
+    global __cusolverDnXsytrs_bufferSize
+    data["__cusolverDnXsytrs_bufferSize"] = <intptr_t>__cusolverDnXsytrs_bufferSize
+
+    global __cusolverDnXsytrs
+    data["__cusolverDnXsytrs"] = <intptr_t>__cusolverDnXsytrs
 
     global __cusolverDnSsytri_bufferSize
     data["__cusolverDnSsytri_bufferSize"] = <intptr_t>__cusolverDnSsytri_bufferSize
@@ -2677,18 +2709,6 @@ cpdef dict _inspect_function_pointers():
     global __cusolverDnXgesvdr
     data["__cusolverDnXgesvdr"] = <intptr_t>__cusolverDnXgesvdr
 
-    global __cusolverDnXsytrs_bufferSize
-    data["__cusolverDnXsytrs_bufferSize"] = <intptr_t>__cusolverDnXsytrs_bufferSize
-
-    global __cusolverDnXsytrs
-    data["__cusolverDnXsytrs"] = <intptr_t>__cusolverDnXsytrs
-
-    global __cusolverDnXtrtri_bufferSize
-    data["__cusolverDnXtrtri_bufferSize"] = <intptr_t>__cusolverDnXtrtri_bufferSize
-
-    global __cusolverDnXtrtri
-    data["__cusolverDnXtrtri"] = <intptr_t>__cusolverDnXtrtri
-
     global __cusolverDnLoggerSetCallback
     data["__cusolverDnLoggerSetCallback"] = <intptr_t>__cusolverDnLoggerSetCallback
 
@@ -2730,6 +2750,18 @@ cpdef dict _inspect_function_pointers():
 
     global __cusolverDnXgeev
     data["__cusolverDnXgeev"] = <intptr_t>__cusolverDnXgeev
+
+    global __cusolverDnSetMathMode
+    data["__cusolverDnSetMathMode"] = <intptr_t>__cusolverDnSetMathMode
+
+    global __cusolverDnGetMathMode
+    data["__cusolverDnGetMathMode"] = <intptr_t>__cusolverDnGetMathMode
+
+    global __cusolverDnSetEmulationStrategy
+    data["__cusolverDnSetEmulationStrategy"] = <intptr_t>__cusolverDnSetEmulationStrategy
+
+    global __cusolverDnGetEmulationStrategy
+    data["__cusolverDnGetEmulationStrategy"] = <intptr_t>__cusolverDnGetEmulationStrategy
 
     func_ptrs = data
     return data
@@ -4026,6 +4058,26 @@ cdef cusolverStatus_t _cusolverDnZpotri(cusolverDnHandle_t handle, cublasFillMod
         handle, uplo, n, A, lda, work, lwork, devInfo)
 
 
+cdef cusolverStatus_t _cusolverDnXtrtri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXtrtri_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXtrtri_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXtrtri_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, size_t*, size_t*) noexcept nogil>__cusolverDnXtrtri_bufferSize)(
+        handle, uplo, diag, n, dataTypeA, A, lda, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXtrtri(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXtrtri
+    _check_or_init_cusolverDn()
+    if __cusolverDnXtrtri == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXtrtri is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXtrtri)(
+        handle, uplo, diag, n, dataTypeA, A, lda, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, devInfo)
+
+
 cdef cusolverStatus_t _cusolverDnSlauum_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnSlauum_bufferSize
     _check_or_init_cusolverDn()
@@ -4584,6 +4636,26 @@ cdef cusolverStatus_t _cusolverDnZsytrf(cusolverDnHandle_t handle, cublasFillMod
             raise FunctionNotFoundError("function cusolverDnZsytrf is not found")
     return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int, cuDoubleComplex*, int, int*, cuDoubleComplex*, int, int*) noexcept nogil>__cusolverDnZsytrf)(
         handle, uplo, n, A, lda, ipiv, work, lwork, info)
+
+
+cdef cusolverStatus_t _cusolverDnXsytrs_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXsytrs_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsytrs_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsytrs_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, size_t*, size_t*) noexcept nogil>__cusolverDnXsytrs_bufferSize)(
+        handle, uplo, n, nrhs, dataTypeA, A, lda, ipiv, dataTypeB, B, ldb, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXsytrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXsytrs
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsytrs == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsytrs is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXsytrs)(
+        handle, uplo, n, nrhs, dataTypeA, A, lda, ipiv, dataTypeB, B, ldb, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
 
 
 cdef cusolverStatus_t _cusolverDnSsytri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A, int lda, const int* ipiv, int* lwork) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -6296,46 +6368,6 @@ cdef cusolverStatus_t _cusolverDnXgesvdr(cusolverDnHandle_t handle, cusolverDnPa
         handle, params, jobu, jobv, m, n, k, p, niters, dataTypeA, A, lda, dataTypeSrand, Srand, dataTypeUrand, Urand, ldUrand, dataTypeVrand, Vrand, ldVrand, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, d_info)
 
 
-cdef cusolverStatus_t _cusolverDnXsytrs_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusolverDnXsytrs_bufferSize
-    _check_or_init_cusolverDn()
-    if __cusolverDnXsytrs_bufferSize == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusolverDnXsytrs_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, size_t*, size_t*) noexcept nogil>__cusolverDnXsytrs_bufferSize)(
-        handle, uplo, n, nrhs, dataTypeA, A, lda, ipiv, dataTypeB, B, ldb, workspaceInBytesOnDevice, workspaceInBytesOnHost)
-
-
-cdef cusolverStatus_t _cusolverDnXsytrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int64_t n, int64_t nrhs, cudaDataType dataTypeA, const void* A, int64_t lda, const int64_t* ipiv, cudaDataType dataTypeB, void* B, int64_t ldb, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusolverDnXsytrs
-    _check_or_init_cusolverDn()
-    if __cusolverDnXsytrs == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusolverDnXsytrs is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, const int64_t*, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXsytrs)(
-        handle, uplo, n, nrhs, dataTypeA, A, lda, ipiv, dataTypeB, B, ldb, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
-
-
-cdef cusolverStatus_t _cusolverDnXtrtri_bufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusolverDnXtrtri_bufferSize
-    _check_or_init_cusolverDn()
-    if __cusolverDnXtrtri_bufferSize == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusolverDnXtrtri_bufferSize is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, size_t*, size_t*) noexcept nogil>__cusolverDnXtrtri_bufferSize)(
-        handle, uplo, diag, n, dataTypeA, A, lda, workspaceInBytesOnDevice, workspaceInBytesOnHost)
-
-
-cdef cusolverStatus_t _cusolverDnXtrtri(cusolverDnHandle_t handle, cublasFillMode_t uplo, cublasDiagType_t diag, int64_t n, cudaDataType dataTypeA, void* A, int64_t lda, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* devInfo) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cusolverDnXtrtri
-    _check_or_init_cusolverDn()
-    if __cusolverDnXtrtri == NULL:
-        with gil:
-            raise FunctionNotFoundError("function cusolverDnXtrtri is not found")
-    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cublasFillMode_t, cublasDiagType_t, int64_t, cudaDataType, void*, int64_t, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXtrtri)(
-        handle, uplo, diag, n, dataTypeA, A, lda, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, devInfo)
-
-
 cdef cusolverStatus_t _cusolverDnLoggerSetCallback(cusolverDnLoggerCallback_t callback) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cusolverDnLoggerSetCallback
     _check_or_init_cusolverDn()
@@ -6474,3 +6506,43 @@ cdef cusolverStatus_t _cusolverDnXgeev(cusolverDnHandle_t handle, cusolverDnPara
             raise FunctionNotFoundError("function cusolverDnXgeev is not found")
     return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigMode_t, cusolverEigMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXgeev)(
         handle, params, jobvl, jobvr, n, dataTypeA, A, lda, dataTypeW, W, dataTypeVL, VL, ldvl, dataTypeVR, VR, ldvr, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
+
+
+cdef cusolverStatus_t _cusolverDnSetMathMode(cusolverDnHandle_t handle, cusolverMathMode_t mode) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnSetMathMode
+    _check_or_init_cusolverDn()
+    if __cusolverDnSetMathMode == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnSetMathMode is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverMathMode_t) noexcept nogil>__cusolverDnSetMathMode)(
+        handle, mode)
+
+
+cdef cusolverStatus_t _cusolverDnGetMathMode(cusolverDnHandle_t handle, cusolverMathMode_t* mode) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnGetMathMode
+    _check_or_init_cusolverDn()
+    if __cusolverDnGetMathMode == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnGetMathMode is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverMathMode_t*) noexcept nogil>__cusolverDnGetMathMode)(
+        handle, mode)
+
+
+cdef cusolverStatus_t _cusolverDnSetEmulationStrategy(cusolverDnHandle_t handle, cudaEmulationStrategy_t strategy) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnSetEmulationStrategy
+    _check_or_init_cusolverDn()
+    if __cusolverDnSetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnSetEmulationStrategy is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaEmulationStrategy_t) noexcept nogil>__cusolverDnSetEmulationStrategy)(
+        handle, strategy)
+
+
+cdef cusolverStatus_t _cusolverDnGetEmulationStrategy(cusolverDnHandle_t handle, cudaEmulationStrategy_t* strategy) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnGetEmulationStrategy
+    _check_or_init_cusolverDn()
+    if __cusolverDnGetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnGetEmulationStrategy is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaEmulationStrategy_t*) noexcept nogil>__cusolverDnGetEmulationStrategy)(
+        handle, strategy)

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -185,7 +185,7 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
         Inplace copy of src (copy the data from src into self).
         """
         with utils.device_ctx(self.device_id):
-            ndbuffer.copy_into(self.asndbuffer(), src.asndbuffer(), stream_holder)
+            ndbuffer.copy_into(self.asndbuffer(), src._broadcast_to(self.shape).asndbuffer(), stream_holder)
 
     def istensor(self):
         """
@@ -204,6 +204,10 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
                 raise ValueError(f"Could not reshape cupy array without copy: current shape={self.shape}, new shape={shape}")
         else:
             reshaped_tensor = self.tensor.reshape(shape)
+        return self.__class__(reshaped_tensor)
+
+    def _broadcast_to(self, shape):
+        reshaped_tensor = cupy.broadcast_to(self.tensor, shape)
         return self.__class__(reshaped_tensor)
 
 

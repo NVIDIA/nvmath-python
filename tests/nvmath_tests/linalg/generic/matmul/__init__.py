@@ -1,3 +1,7 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 try:
     from nvmath.linalg._internal.utils import get_handle
 

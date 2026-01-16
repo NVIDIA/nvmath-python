@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,6 +6,7 @@ import numpy as np
 import cupy
 
 from nvmath.device import TransposeMode
+from nvmath.device.common_cuda import ComputeCapability
 from .cpp_gemm_loop import MatmulLoopCpp
 from .cpp_gemm_batched import MatmulBatchedCpp
 from .numba_gemm_loop import NumbaGemmLoop
@@ -40,6 +41,8 @@ def test_batched_gemm_perf():
         m, n, k = size
         ncycles = 1
         SM = set_device()
+        if SM.major * 100 + SM.minor * 10 not in {900, 1000, 1030, 1100}:
+            SM = ComputeCapability(SM.major, SM.minor)
 
         a = random_real((batch, m, k), np.float32, module=cupy)
         b = random_real((batch, k, n), np.float32, module=cupy)
@@ -85,6 +88,8 @@ def test_gemm_loop_perf():
         print(f"Numba vs CUDA C++ (gemm loop), size = {size}, repeat = {repeat}")
 
         SM = set_device()
+        if SM.major * 100 + SM.minor * 10 not in {900, 1000, 1030, 1100}:
+            SM = ComputeCapability(SM.major, SM.minor)
         m, n, k = size
         block_size = 128
         trans = TransposeMode("non_transposed", "non_transposed")

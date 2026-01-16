@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -81,12 +81,6 @@ def get_ext_modules() -> list[Extension]:
     ext_nvmath_internal_modules = [calculate_ext(m) for m in nvmath_internal_modules]
 
     return ext_modules + ext_nvmath_internal_modules
-
-
-# WAR: cython compilation
-# https://github.com/cython/cython/issues/7122#issuecomment-3240416121
-# TODO: remove with next cython release (3.1.4+)
-sys.setrecursionlimit(50000)
 
 
 nthreads = os.cpu_count()

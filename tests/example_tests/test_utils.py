@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +8,12 @@ import re
 import subprocess
 import sys
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import Device, system
+    from cuda.core._utils.cuda_utils import CUDAError
+except ImportError:
+    from cuda.core.experimental import Device, system
+    from cuda.core.experimental._utils.cuda_utils import CUDAError
 
 try:
     import cupy as cp
@@ -24,7 +29,19 @@ else:
     matplotlib.use("Agg")
 import pytest
 
-DEVICE_COUNT = ccx.system.num_devices
+try:
+    try:
+        num_devices = system.get_num_devices()
+    except AttributeError:
+        num_devices = system.num_devices
+    DEVICE_COUNT = num_devices
+except CUDAError:
+    DEVICE_COUNT = 0
+
+try:
+    cc = tuple(Device().compute_capability)
+except RuntimeError:
+    cc = (0, 0)
 
 
 class SampleTestError(Exception):
@@ -43,7 +60,7 @@ def parse_python_script(filepath):
 def run_sample(samples_path, filename, env=None, use_subprocess=False, use_mpi=False):
     requires_mgpu = filename.endswith("_mgpu.py")
     if DEVICE_COUNT == 0 and "cpu_execution" not in filename:
-        raise SystemError("No active device found")
+        pytest.skip(f"Sample ({filename}) skipped because 0 CUDA devices were found.")
     if requires_mgpu and DEVICE_COUNT == 1:
         pytest.skip(f"Sample ({filename}) skipped due to limited device counts : ({DEVICE_COUNT})")
     fullpath = os.path.join(samples_path, filename)

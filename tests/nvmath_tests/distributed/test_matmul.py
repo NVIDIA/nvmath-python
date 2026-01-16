@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 import random
 import re
-import cuda.core.experimental as ccx
 from collections.abc import Sequence
 
 from pathlib import Path
@@ -30,7 +29,10 @@ from nvmath.distributed.distribution import ProcessGrid, BlockNonCyclic, BlockCy
 
 from nvmath.bindings import cublasMp
 
-import cuda.core.experimental
+try:
+    from cuda.core import Device, system
+except ImportError:
+    from cuda.core.experimental import Device, system
 
 package_name_to_package = {"numpy": np}
 
@@ -56,7 +58,11 @@ def nvmath_distributed():
     except ImportError:
         pass
 
-    device_id = MPI.COMM_WORLD.Get_rank() % cuda.core.experimental.system.num_devices
+    try:
+        num_devices = system.get_num_devices()
+    except AttributeError:
+        num_devices = system.num_devices
+    device_id = MPI.COMM_WORLD.Get_rank() % num_devices
     nvmath.distributed.initialize(device_id, MPI.COMM_WORLD, backends=["nvshmem", "nccl"])
 
     yield
@@ -246,14 +252,35 @@ def generate_process_grids(only_2d=False):
     return process_grids
 
 
-def read_algo_from_log(logfile_path) -> int | None:
+algo_str_to_enum = {
+    "fallback Matmul": 0,
+    "generic Matmul": 1,  # SUMMA algo
+    "Matmul + ReduceScatter": 2,
+    "AllGather + Matmul": 3,
+    "Matmul + AllReduce": 4,
+    "local Matmul": 5,
+}
+
+
+def read_algo_from_log(logfile_path, cublasMp_version) -> int | None:
     with open(logfile_path) as logfile:
         # NOTE: need to call mm.execute() to see this printed to the logfile.
-        regexAlgo = re.compile(r"\[cublasMpMatmul\] using matmul algo (\d+)$")
+        if cublasMp_version >= 700:
+            regexAlgo = re.compile(r"\[cublasMpMatmul\] Using (.*)$")
+        else:
+            regexAlgo = re.compile(r"\[cublasMpMatmul\] using matmul algo (\d+)$")
         for line in logfile:
             m = regexAlgo.search(line)
             if m:
-                return int(m.group(1))
+                if cublasMp_version >= 700:
+                    algo = m.group(1)
+                    if algo not in algo_str_to_enum:
+                        # The regex pattern for cuBLASMp 0.7+ is very generic, so
+                        # continue searching just in case.
+                        continue
+                    return algo_str_to_enum[algo]
+                else:
+                    return int(m.group(1))
     return None
 
 
@@ -330,6 +357,8 @@ def test_uniform_1d_distributions(
     assert K % nranks == 0
 
     assert all(d in ("C", "R") for d in (A_distribution, B_distribution, C_distribution))
+
+    cublasMp_version = cublasMp.get_version()
 
     if nranks == 1:
         # With nranks=1 cuBLASMp always does a local GEMM.
@@ -510,12 +539,13 @@ def test_uniform_1d_distributions(
                         "Gathered result doesn't match single-GPU matmul"
                     )
 
-                    algo = read_algo_from_log(cublasmp_logfile_with_cleanup)
-                    assert algo is not None, "Couldn't determine the distributed matmul algorithm used"
-                    assert algo == expected_algo, (
-                        f"cuBLASMp didn't run the expected distributed algorithm: algo is {algo}, "
-                        f"expected algo is {expected_algo}"
-                    )
+                    if os.environ.get("CUBLASMP_ALGO_CHECK") == "1":
+                        algo = read_algo_from_log(cublasmp_logfile_with_cleanup, cublasMp_version)
+                        assert algo is not None, "Couldn't determine the distributed matmul algorithm used"
+                        assert algo == expected_algo, (
+                            f"cuBLASMp didn't run the expected distributed algorithm: algo is {algo}, "
+                            f"expected algo is {expected_algo}"
+                        )
 
                     comm.bcast(None)
 
@@ -581,6 +611,8 @@ def test_2d_block(
     assert M % nranks == 0
     assert N % nranks == 0
     assert K % nranks == 0
+
+    cublasMp_version = cublasMp.get_version()
 
     # Use the same process grid for A, B and C/D.
     process_grid = ProcessGrid(shape=process_grid[0], layout=process_grid[1])
@@ -656,12 +688,13 @@ def test_2d_block(
                 "Gathered result doesn't match single-GPU matmul"
             )
 
-            algo = read_algo_from_log(cublasmp_logfile_with_cleanup)
-            assert algo is not None, "Couldn't determine the distributed matmul algorithm used"
-            expected_algo = 1 if cyclic else 0  # 0 is naive, 1 is SUMMA.
-            assert algo == expected_algo, (
-                f"cuBLASMp didn't run the expected distributed algorithm: algo is {algo}, expected algo is {expected_algo}"
-            )
+            if os.environ.get("CUBLASMP_ALGO_CHECK") == "1":
+                algo = read_algo_from_log(cublasmp_logfile_with_cleanup, cublasMp_version)
+                assert algo is not None, "Couldn't determine the distributed matmul algorithm used"
+                expected_algo = 1 if cyclic else 0  # 0 is naive, 1 is SUMMA.
+                assert algo == expected_algo, (
+                    f"cuBLASMp didn't run the expected distributed algorithm: algo is {algo}, expected algo is {expected_algo}"
+                )
 
             comm.bcast(None)
 
@@ -798,10 +831,17 @@ def is_invalid_compute_and_dtype_combination(compute_type, a_dtype, b_dtype, c_d
     if compute_type in ("COMPUTE_16F", "COMPUTE_16F_PEDANTIC") and a_dtype != "float16":
         return True
 
-    if (compute_type in ("COMPUTE_64F", "COMPUTE_64F_PEDANTIC")) ^ (a_dtype in ("float64", "complex128")):
+    if (compute_type in ("COMPUTE_64F", "COMPUTE_64F_PEDANTIC", "COMPUTE_64F_EMULATED_FIXEDPOINT")) ^ (
+        a_dtype in ("float64", "complex128")
+    ):
         return True
 
-    if compute_type in ("COMPUTE_32F_FAST_16F", "COMPUTE_32F_FAST_16BF", "COMPUTE_32F_FAST_TF32"):
+    if compute_type in (
+        "COMPUTE_32F_FAST_16F",
+        "COMPUTE_32F_FAST_16BF",
+        "COMPUTE_32F_FAST_TF32",
+        "COMPUTE_32F_EMULATED_16BFX9",
+    ):
         if a_dtype not in ("float32", "complex64"):
             return True
         if not (a_dtype == b_dtype == d_dtype):
@@ -877,6 +917,17 @@ def test_dtypes(
 
     # TODO: c_dtype != None
 
+    version = nvmath.bindings.cublasLt.get_version()
+    if version < 120900 and compute_type == "COMPUTE_32F_EMULATED_16BFX9":
+        pytest.skip("COMPUTE_32F_EMULATED_16BFX9 requires CTK >= 12.9.0 (cuBLASLt >= 12.9.0).")
+    if cublasMp.get_version() < 700 and compute_type == "COMPUTE_32F_EMULATED_16BFX9":
+        pytest.skip("COMPUTE_32F_EMULATED_16BFX9 requires cuBLASMp >= 0.7.")
+
+    if version < 130200 and compute_type == "COMPUTE_64F_EMULATED_FIXEDPOINT":
+        pytest.skip("COMPUTE_64F_EMULATED_FIXEDPOINT requires CTK >= 13.1.0 (cuBLASLt >= 13.2.0).")
+    if cublasMp.get_version() < 900 and compute_type == "COMPUTE_64F_EMULATED_FIXEDPOINT":
+        pytest.skip("COMPUTE_64F_EMULATED_FIXEDPOINT is not supported in this version of cuBLASMp.")
+
     compute_type = MatmulComputeType[compute_type]
     dtypes = (a_dtype, b_dtype, c_dtype, d_dtype)
 
@@ -934,7 +985,7 @@ def test_dtypes(
         if c_dtype is not None:
             raise NotImplementedError
 
-    cc = ccx.Device(device_id).compute_capability
+    cc = Device(device_id).compute_capability
     if any(NAME_TO_DATA_WIDTH[dt] <= 8 for dt in dtypes if dt is not None) and cc < (8, 9):
         pytest.skip("FP8 requires compute capability >= 8.9")
 

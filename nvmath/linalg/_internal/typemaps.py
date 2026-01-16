@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -62,8 +62,10 @@ def create_compute_type_to_scale_type_map(is_complex):
     scale_type_map[ct.COMPUTE_32F_FAST_16F] = f32
     scale_type_map[ct.COMPUTE_32F_FAST_16BF] = f32
     scale_type_map[ct.COMPUTE_32F_FAST_TF32] = f32
+    scale_type_map[ct.COMPUTE_32F_EMULATED_16BFX9] = f32
     scale_type_map[ct.COMPUTE_64F] = f64
     scale_type_map[ct.COMPUTE_64F_PEDANTIC] = f64
+    scale_type_map[ct.COMPUTE_64F_EMULATED_FIXEDPOINT] = f64
 
     return scale_type_map
 
@@ -89,7 +91,7 @@ def create_scale_type_to_compute_type_map():
 def create_compute_type_map():
     """
     Map the data type name to the corresponding CUDA data type that's appropriate for
-    default scale.
+    default compute type.
     """
 
     ct = cublas.ComputeType

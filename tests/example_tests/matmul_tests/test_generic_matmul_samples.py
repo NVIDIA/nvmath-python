@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,10 +8,8 @@ import re
 
 import pytest
 
-import cuda.core.experimental as ccx
-
 from nvmath import bindings
-from ..test_utils import run_sample
+from ..test_utils import run_sample, cc
 
 
 samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "linalg", "generic", "matmul")
@@ -26,12 +24,13 @@ min_cublas_version = {}
 min_cc = {}
 
 test_requires_nvpl = {
-    "example04_stateful_torch_cpu.py": True,
+    "example01_numpy_cpu_execution.py": True,
+    "example04_stateful_torch_cpu_execution.py": True,
 }
-
-cublas_version = bindings.cublasLt.get_version()
-device_properties = ccx.Device().properties
-cc = (device_properties.compute_capability_major, device_properties.compute_capability_minor)
+try:
+    cublas_version = bindings.cublasLt.get_version()
+except:
+    cublas_version = 0
 
 try:
     from nvmath.bindings.nvpl.blas import get_version

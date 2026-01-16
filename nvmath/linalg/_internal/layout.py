@@ -1,15 +1,24 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
-Defines dataclasses for tracking matrix layout and traits specifically for wranging inputs
+Defines dataclasses for tracking matrix layout and traits specifically for wrangling inputs
 into a form accepted by matrix multiplication operations in BLAS APIs.
 
-The module defines two classes: BLASMatrixTraits which tracks a single matrix, and
-BLASMMTraits which tracks a collection of BLASMatrixTraits to be used together in a matrix
-multiplication.
+The module defines three classes: BLASMatrixTraits which represents a single matrix,
+InputMMTraits which represents a collection of BLASMatrixTraits to be used together in a
+matrix multiplication, and BLASMMTraitsView which represents a view of the InputMMTraits
+that is compatible with the BLAS API.
 """
 
+from __future__ import annotations
+
+import itertools
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
+import typing
 
 import nvmath.bindings.cublasLt as cublaslt
 import nvmath.bindings.cublas as cublas
@@ -40,7 +49,7 @@ def check_strides(strides: Sequence[int], name: str):
 
 @dataclass(slots=True)
 class BLASMatrixTraits:
-    """Manages a tensor's layout and its compatibility with BLAS API mamtuls.
+    """Manages a tensor's layout and its compatibility with BLAS API matmuls.
 
     :class:`BLASMatrixTraits` encapsulates attributes and methods to handle single matrix
     layouts, including memory order, operations (e.g., transpose, conjugation), and
@@ -81,10 +90,6 @@ class BLASMatrixTraits:
         assert all(stride >= 0 for stride in self.strides), (
             "Internal Error: BLASMatrixTraits supports only non-negative strides."
         )
-        # Set strides for singleton dimensions to zero. The stride length of singleton
-        # dimensions is unused because we don't travel along it, but non-zero strides will
-        # confuse us when we try to guess the ordering of the matrix.
-        self.strides = tuple(0 if extent == 1 else stride for extent, stride in zip(self.shape, self.strides, strict=True))
 
     @property
     def order(self) -> cublaslt.Order:
@@ -93,11 +98,11 @@ class BLASMatrixTraits:
             # For vectors and scalars we return COL-order because COL is the default.
             return cublaslt.Order.COL
         msg = f"Unsupported layout for shape: {self.shape} strides: {self.strides}. At least one dimension must be contiguous."
-        if 1 not in self.strides and 0 not in self.strides:
+        if (strides_contiguous_perhaps := self.strides_contiguous_perhaps) is None:
             raise ValueError(msg)
-        if self.shape[0] * self.strides[0] <= self.strides[1]:
+        if self.shape[0] * strides_contiguous_perhaps[0] <= strides_contiguous_perhaps[1]:
             return cublaslt.Order.COL
-        if self.shape[1] * self.strides[1] <= self.strides[0]:
+        if self.shape[1] * strides_contiguous_perhaps[1] <= strides_contiguous_perhaps[0]:
             return cublaslt.Order.ROW
         raise ValueError(msg)
 
@@ -110,14 +115,17 @@ class BLASMatrixTraits:
         assert len(self.shape) == 2, (
             f"Internal Error: {self.__class__.__name__}.ld should only be accessed if the matrix is 2D."
         )
-        if any(stride == 0 and extent != 1 for extent, stride in zip(self.shape, self.strides, strict=True)):
-            raise ValueError(
+        if self.shape == (1, 1):
+            return 1  # A special case where the strides don't matter
+        if self.strides[0] == 0 and self.shape[0] != 1 or self.strides[1] == 0 and self.shape[1] != 1:
+            raise ValueError("The leading dimension cannot be 0 for a non-singleton dimension.")
+        if (strides_contiguous_perhaps := self.strides_contiguous_perhaps) is None:
+            msg = (
                 f"Unsupported layout for shape: {self.shape} strides: {self.strides}. "
-                "Only singleton dimensions may have zero stride."
+                "At least one dimension must be contiguous."
             )
-        if self.shape[1] == 1:
-            return self.shape[0]  # extent = 1 strides cannot be trusted
-        return self.strides[1]
+            raise ValueError(msg)
+        return strides_contiguous_perhaps[1]
 
     @property
     def operation(self) -> cublas.Operation:
@@ -134,18 +142,57 @@ class BLASMatrixTraits:
             case _:
                 raise NotImplementedError("Conjugate and transpose flags must be python booleans.")
 
-    def mm_shape(self) -> Sequence[int]:
-        """The shape of the matrix after applying operations."""
-        if len(self.shape) == 2:
-            return self.shape[::-1] if self.is_transpose else self.shape
-        raise NotImplementedError("mm_shape only implemented for 2D matrices.")
+    @property
+    def is_contiguous(self) -> bool:
+        """Whether the matrix is contiguous in memory."""
+        return 1 in self.strides or 0 in self.strides or len(self.shape) == 0
 
-    def transpose_and_reorder(self, logger: logging.Logger):
-        """Return a new :class:`BLASMatrixTraits` that has been transposed and reordered.
+    @property
+    def has_contiguous_view(self) -> bool:
+        """Whether the matrix can be viewed as contiguous in memory.
 
-        Simultaneous transpose and reorder is a non-operation because the data does not need
-        to move.
+        A view/slice of a non-contiguous matrix can be contiguous if the matrix is a vector
+        or a scalar.
         """
+        return self.is_contiguous or 1 in self.shape or 0 in self.shape
+
+    @property
+    def strides_contiguous_perhaps(self) -> Sequence[int] | None:
+        """A contiguous view of the matrix's strides if the matrix can be viewed as
+        contiguous in memory, otherwise None.
+        """
+        if self.is_contiguous:
+            return self.strides
+        if self.has_contiguous_view:
+            new_strides = tuple(
+                0 if shape in (0, 1) else stride for shape, stride in zip(self.shape, self.strides, strict=True)
+            )
+            return new_strides
+        return None
+
+    @property
+    def has_a_contiguous_dim(self) -> bool:
+        """Whether the matrix has at least one contiguous dimension in memory."""
+        return 1 in self.strides or 0 in self.strides or len(self.shape) == 0
+
+    @property
+    def has_singleton_dim(self) -> bool:
+        """Whether the matrix has a dimension that can be viewed as contiguous in memory.
+
+        A view/slice of a non-contiguous matrix can be contiguous if the matrix is a vector
+        or a scalar.
+        """
+        return 1 in self.shape or 0 in self.shape
+
+    def transpose_and_reorder(self, logger: logging.Logger) -> BLASMatrixTraits:
+        """Return a new :class:`BLASMatrixTraits` that has been transposed, reordered,
+        and the transpose flag flipped.
+
+        Simultaneous transpose and reorder is a useful operation because the data does not
+        need to move, but we can change the layout order of the matrix. Flipping the
+        transpose flag makes the matrix the same shape as the original.
+        """
+        assert self.has_contiguous_view, "Internal Error: transpose_and_reorder only supports for contiguous matrices."
         new = BLASMatrixTraits(
             dtype=self.dtype,
             shape=self.shape[::-1],
@@ -157,7 +204,20 @@ class BLASMatrixTraits:
         logger.debug("The matrix was transposed and reordered from %s to %s.", self.order.name, new.order.name)
         return new
 
-    def promote_left(self, logger: logging.Logger, ndim: int = 2):
+    def flip_transpose_flag(self, logger: logging.Logger) -> BLASMatrixTraits:
+        """Return a new :class:`BLASMatrixTraits` with the transpose flag flipped."""
+        new = BLASMatrixTraits(
+            dtype=self.dtype,
+            shape=self.shape,
+            strides=self.strides,
+            is_conjugate=self.is_conjugate,
+            is_transpose=not self.is_transpose,
+            is_lower=self.is_lower,
+        )
+        logger.debug("The matrix was transposed.")
+        return new
+
+    def promote_left(self, logger: logging.Logger, ndim: int = 2) -> BLASMatrixTraits:
         """Return a new :class:`BLASMatrixTraits` with new singleton dimensions added to
         the left side of `shape` until the matrix has at least `ndim` dimensions."""
         add = max(ndim - len(self.shape), 0)
@@ -173,22 +233,7 @@ class BLASMatrixTraits:
             logger.debug("The matrix was promoted from shape %s to shape %s", self.shape, promoted.shape)
         return promoted
 
-    def blas_A_compatible(self, logger: logging.Logger):
-        """Return ``self`` or a new :class:`BLASMatrixTraits` that is compatible with the
-        BLAS API's A matrices."""
-        if len(self.shape) < 2:
-            return self.promote_left(logger).blas_A_compatible(logger)
-        if self.order == cublaslt.Order.ROW:
-            return self.transpose_and_reorder(logger).blas_A_compatible(logger)
-        # else self.order is COL
-        if self.is_conjugate and not self.is_transpose:
-            # We can only perform conjugate transpose; conjugate non-tranpose is not an
-            # option.
-            msg = f"BLAS APIs only accept COL-order matrix for A. {self} was not convertible to a valid A."
-            raise ValueError(msg)
-        return self
-
-    def promote_right(self, logger: logging.Logger, ndim: int = 2):
+    def promote_right(self, logger: logging.Logger, ndim: int = 2) -> BLASMatrixTraits:
         """Return a new :class:`BLASMatrixTraits` with new singleton dimensions added to
         the right side of `shape` until the matrix has at least `ndim` dimensions."""
         add = max(ndim - len(self.shape), 0)
@@ -204,86 +249,45 @@ class BLASMatrixTraits:
             logger.debug("The matrix was promoted from shape %s to shape %s", self.shape, promoted.shape)
         return promoted
 
-    def blas_B_compatible(self, logger: logging.Logger):
-        """Return ``self`` or a new :class:`BLASMatrixTraits` that is compatible with the
-        BLAS API's B matrices."""
-        if len(self.shape) < 2:
-            return self.promote_right(logger).blas_B_compatible(logger)
-        if self.order == cublaslt.Order.ROW:
-            return self.transpose_and_reorder(logger).blas_B_compatible(logger)
-        # else self.order is COL
-        if self.is_conjugate and not self.is_transpose:
-            # We can only perform conjugate transpose; conjugate non-tranpose is not an
-            # option.
-            msg = f"BLAS APIs only accept COL-order matrix for B. {self} was not convertible to a valid B."
-            raise ValueError(msg)
-        return self
-
-    def blas_C_compatible(self, logger: logging.Logger):
-        """Return ``self`` or a new :class:`BLASMatrixTraits` that is compatible with the
-        BLAS API's C matrix."""
-        if len(self.shape) < 2:
-            return self.promote_right(logger).blas_C_compatible(logger)
-        match (self.order, self.is_conjugate, self.is_transpose):
-            case (cublaslt.Order.COL, False, False):
-                return self
-            case (cublaslt.Order.ROW, False, True):
-                return self.transpose_and_reorder(logger)
-            case _:
-                msg = (
-                    "BLAS APIs only accept COL-order, non-tranpose, non-conjugate matrices for C. "
-                    f"{self} was not convertible to a valid C."
-                )
-                raise ValueError(msg)
-
-    def trim_strides(self):
-        """Return ``self`` or a new :class:`BLASMatrixTraits` with strides adjusted so
-        the matrix is contiguous and dense along all dimensions."""
-        match len(self.shape):
-            case 0:
-                new_strides = ()
-            case 1:
-                new_strides = (1,)
-            case 2:
-                if self.order == cublaslt.Order.COL:
-                    new_strides = (1, self.shape[0])
-                else:  # self.order == cublaslt.Order.ROW
-                    new_strides = (self.shape[1], 1)
-        if self.strides == new_strides:
-            return self
-        return BLASMatrixTraits(
-            dtype=self.dtype,
-            shape=self.shape,
-            strides=new_strides,
-            is_conjugate=self.is_conjugate,
-            is_transpose=self.is_transpose,
-            is_lower=self.is_lower,
-        )
+    def __str__(self):
+        match self.is_conjugate, self.is_transpose:
+            case (True, True):
+                operation = "CONJ-TRAN"
+            case (True, False):
+                operation = "CONJ"
+            case (False, True):
+                operation = "TRAN"
+            case (False, False):
+                operation = "NONE"
+        return f"shape {self.shape} strides {self.strides} order {self.order.name} and operation {operation}"
 
 
-@dataclass(slots=True)
-class BLASMMTraits:
+@dataclass(slots=True, frozen=True)
+class InputMMTraits:
     """
-    BLASMMTraits represents the traits required for describing BLAS-compatible matrix
-    multiplications, including operand A, operand B, and an optional operand C. It ensures
-    that the operands comply with specific BLAS API compatibility rules, such as
-    broadcasting, promotion of dimensions, and swapping of A and B when required.
+    InputMMTraits represents the traits of the input and output matrices for BLAS-compatible
+    matrix multiplications, including operand A, operand B, an optional operand C, and the
+    result matrix, D. It ensures that the operands are compatible with each other.
 
     Attributes:
+
         M : The number of rows in the resulting matrix multiplication.
 
         N : The number of columns in the resulting matrix multiplication.
 
         K : The shared dimension between operands A and B for matrix multiplication.
 
-        a_layout_traits : Layout traits for operand A.
+        a_layout_traits : Layout traits of operand A.
 
-        b_layout_traits : Layout traits for operand B.
+        b_layout_traits : Layout traits of operand B.
 
-        c_layout_traits : Layout traits for operand C.
+        c_layout_traits : Layout traits of operand C.
 
-        is_swapped_AB : Indicates if operands A and B were swapped in order to ensure
-            compatibility.
+        d_layout_traits : Layout traits of the result tensor or operand C if inplace.
+
+        inplace: whether the result will overwrite operand C or the result will be copied
+            into a new memory-compact array, D, the same shape as C, but potentially
+            different strides.
     """
 
     M: int | None
@@ -292,39 +296,41 @@ class BLASMMTraits:
     a_layout_traits: BLASMatrixTraits
     b_layout_traits: BLASMatrixTraits
     c_layout_traits: BLASMatrixTraits
-    is_swapped_AB: bool
+    d_layout_traits: BLASMatrixTraits
+    inplace: bool
 
     @staticmethod
     def from_layouts(
         a_layout: BLASMatrixTraits,
         b_layout: BLASMatrixTraits,
         c_layout: BLASMatrixTraits | None,
+        inplace: bool,
         logger: logging.Logger,
     ):
-        """Create a `BLASMMTraits` from 2 or 3 `BLASMatrixTraits`.
+        """Create a `InputMMTraits` from 2 or 3 `BLASMatrixTraits`.
 
         See nvmath.linalg.advanced.matmulmod semantics docstring for matrix promotion and
         broadcasting rules.
         """
-        logger.debug("Constructing a BLASMMTraits.")
-        logger.debug(f"Operand A is shape {a_layout.shape} with strides {a_layout.strides} and order {a_layout.order.name}.")
-        logger.debug(f"Operand B is shape {b_layout.shape} with strides {b_layout.strides} and order {b_layout.order.name}.")
+        logger.debug("Checking Matmul operands for layout compatibility.")
         match len(a_layout.shape):
             case 0:
                 M0, K0 = None, None
             case 1:
                 M0, K0 = None, a_layout.shape[0]
             case _:
-                M0, K0 = a_layout.mm_shape()
+                M0, K0 = a_layout.shape[::-1] if a_layout.is_transpose else a_layout.shape
         match len(b_layout.shape):
             case 0:
                 K1, N0 = None, None
             case 1:
                 K1, N0 = b_layout.shape[0], None
             case _:
-                K1, N0 = b_layout.mm_shape()
-        if c_layout is None:
-            logger.debug("Operand C was not provided.")
+                K1, N0 = b_layout.shape[::-1] if b_layout.is_transpose else b_layout.shape
+        if inplace:
+            assert c_layout is not None, "Internal Error: Cannot have inplace operation without C."
+            d_layout = c_layout
+        else:
             shape: Sequence[int]
             strides: Sequence[int]
             if M0 is None and N0 is not None:
@@ -335,33 +341,38 @@ class BLASMMTraits:
                 strides = (1,)
             elif M0 is not None and N0 is not None:
                 shape = (M0, N0)
-                strides = (N0, 1) if a_layout.order == cublaslt.Order.ROW and b_layout.order == cublaslt.Order.ROW else (1, M0)
+                # Match order of input C by default.
+                # If input C is None, ROW if all ROW else COL
+                order = (
+                    (a_layout.order == cublaslt.Order.ROW and b_layout.order == cublaslt.Order.ROW)
+                    if c_layout is None
+                    else c_layout.order
+                )
+                strides = (N0, 1) if order == cublaslt.Order.ROW else (1, M0)
             else:  # both are None
                 shape = ()
                 strides = ()
-            c_layout_ = BLASMatrixTraits(
+            d_layout = BLASMatrixTraits(
                 dtype=a_layout.dtype,
                 shape=shape,
-                # Create COL-order tensor by default, but match orders if all ROW
                 strides=strides,
                 is_transpose=False,
                 is_conjugate=False,
                 is_lower=True,
             )
-        else:
-            c_layout_ = c_layout
-        logger.debug(f"Operand C is shape {c_layout_.shape} with strides {c_layout_.strides} and order {c_layout_.order.name}.")
-
-        match len(c_layout_.shape):
+            logger.debug("Out-of-place result has traits of %s", d_layout)
+        if c_layout is None:
+            c_layout = d_layout
+        match len(c_layout.shape):
             case 0:
                 M1, N1 = None, None
             case 1:
                 if len(a_layout.shape) <= 1:
-                    M1, N1 = c_layout_.shape[0], None
+                    M1, N1 = c_layout.shape[0], None
                 else:
-                    M1, N1 = None, c_layout_.shape[0]
+                    M1, N1 = None, c_layout.shape[0]
             case _:
-                M1, N1 = c_layout_.mm_shape()
+                M1, N1 = c_layout.shape[::-1] if c_layout.is_transpose else c_layout.shape
         if K0 != K1:
             raise ValueError(
                 f"The 'K' extent must match for the operands: K={K0} in operand A is not equal to K={K1} in operand B."
@@ -389,93 +400,225 @@ class BLASMMTraits:
                 raise ValueError(
                     f"The 'N' extent must match for the operands: N={N0} in operand B is not equal to N={N1} in operand C."
                 )
+        logger.debug("Matmul operands are layout compatible.")
 
-        return BLASMMTraits(
-            M=M0,
-            N=N0,
-            K=K0,
-            a_layout_traits=a_layout,
-            b_layout_traits=b_layout,
-            c_layout_traits=c_layout_,
-            is_swapped_AB=False,
-        )
+        if not (a_layout.has_singleton_dim or a_layout.has_a_contiguous_dim):
+            raise ValueError("Unsupported layout: Operand A is not contiguous.")
+        if not (b_layout.has_singleton_dim or b_layout.has_a_contiguous_dim):
+            raise ValueError("Unsupported layout: Operand B is not contiguous.")
+        if not (c_layout.has_singleton_dim or c_layout.has_a_contiguous_dim):
+            raise ValueError("Unsupported layout: Operand C is not contiguous.")
 
-    def blas_compatible(self, logger: logging.Logger, inplace: bool):
-        """Return ``self`` or a new :class:`BLASMMTraits` that is compatible with the
-        BLAS API.
-
-        Args
-        ----
-        inplace: Whether C will be inplace or copied into a memory-compact array of the same
-            shape, but potentially different strides.
-        """
-        logger.debug("Making a BLAS compatible BLASMMTraits.")
-        a_layout = self.a_layout_traits
-        b_layout = self.b_layout_traits
-        c_layout = self.c_layout_traits
-        is_swapped_AB = False
-
-        logger.debug("Making a BLAS compatible view of operand C.")
-        if len(a_layout.shape) < 2 and len(c_layout.shape) < 2:
-            c_layout = c_layout.promote_left(logger)
-        if c_layout.order == cublaslt.Order.ROW:
-            c_layout = c_layout.transpose_and_reorder(logger)
-        if not inplace:
-            c_layout = c_layout.trim_strides()
-        if c_layout.is_transpose:
-            # We can use property of transpose that (A @ B).T = B.T @ A.T to remove
-            # transpose operation from C.
-            a_layout, b_layout = b_layout, a_layout
-            is_swapped_AB = True
-            a_layout.is_transpose = not a_layout.is_transpose
-            b_layout.is_transpose = not b_layout.is_transpose
-            c_layout.is_transpose = not c_layout.is_transpose
-            logger.debug("Operands A, B will be swapped and transposed in order to transpose C.")
-        c_layout = c_layout.blas_C_compatible(logger)
-        logger.debug(
-            f"The BLAS operand C is shape {c_layout.shape} with strides {c_layout.strides} and order {c_layout.order.name}."
-        )
-        logger.debug("The matrix multiplication will be performed with %s for operand C.", c_layout.operation.name)
-
-        logger.debug("Making a BLAS compatible view of operand A.")
-        a_layout = a_layout.blas_A_compatible(logger)
-        logger.debug(
-            f"The BLAS operand A is shape {a_layout.shape} with strides {a_layout.strides} and order {a_layout.order.name}."
-        )
-        logger.debug("The matrix multiplication will be performed with %s for operand A.", a_layout.operation.name)
-
-        logger.debug("Making a BLAS compatible view of operand B.")
-        b_layout = b_layout.blas_B_compatible(logger)
-        logger.debug(
-            f"The BLAS operand B is shape {b_layout.shape} with strides {b_layout.strides} and order {b_layout.order.name}."
-        )
-        logger.debug("The matrix multiplication will be performed with %s for operand B.", b_layout.operation.name)
-
-        M0, K0 = a_layout.mm_shape()
-        K1, N0 = b_layout.mm_shape()
-        M1, N1 = c_layout.mm_shape()
-        assert M0 is not None
-        assert K0 is not None
-        assert N0 is not None
-        if K0 != K1:
-            raise ValueError(
-                f"The 'K' extent must match for the operands: K={K0} in operand A is not equal to K={K1} in operand B."
-            )
-        if M0 != M1:
-            raise ValueError(
-                f"The 'M' extent must match for the operands: M={M0} in operand A is not equal to M={M1} in operand C."
-            )
-        if N0 != N1:
-            raise ValueError(
-                f"The 'N' extent must match for the operands: N={N0} in operand B is not equal to N={N1} in operand C."
-            )
-
-        return BLASMMTraits(
+        return InputMMTraits(
             M=M0,
             N=N0,
             K=K0,
             a_layout_traits=a_layout,
             b_layout_traits=b_layout,
             c_layout_traits=c_layout,
-            is_swapped_AB=is_swapped_AB,
+            d_layout_traits=d_layout,
+            inplace=inplace,
         )
+
+
+@dataclass(slots=True, frozen=True)
+class BLASMMTraitsView:
+    """
+    BLASMMTraitsView represents a view of the InputMMTraits that is compatible with the BLAS
+    API. i.e. one where all operands are COL order.
+
+    A series of no-op (no data movement required) transformations are applied to the
+    InputMMTraits to create a BLASMMTraitsView.
+
+    Attributes:
+
+        M : The number of rows in the resulting matrix multiplication.
+
+        N : The number of columns in the resulting matrix multiplication.
+
+        K : The shared dimension between operands A and B for matrix multiplication.
+
+        a_layout_traits : A BLAS compatible view of operand A.
+
+        b_layout_traits : A BLAS compatible view of operand B.
+
+        c_layout_traits : A BLAS compatible view of operand C.
+
+        is_swapped_AB : Indicates if operands A and B were swapped in order to ensure
+            compatibility.
+    """
+
+    M: int
+    N: int
+    K: int
+    a_layout_traits: BLASMatrixTraits
+    b_layout_traits: BLASMatrixTraits
+    c_layout_traits: BLASMatrixTraits
+    is_swapped_AB: bool
+
+    @staticmethod
+    def from_input_traits(
+        input_traits: InputMMTraits,
+        layout_checker: MMLayoutChecker,
+        logger: logging.Logger,
+        lookup_table_table: dict[MMLayoutChecker, MMLayoutCheckerLookupTable] | None = None,
+    ) -> BLASMMTraitsView:
+        logger.debug("Creating a BLAS compatible view of Matmul operands.")
+
+        a_layout_traits = input_traits.a_layout_traits.promote_left(logger)
+        b_layout_traits = input_traits.b_layout_traits.promote_right(logger)
+        if input_traits.M is None:
+            c_layout_traits = input_traits.d_layout_traits.promote_left(logger)
+        else:
+            c_layout_traits = input_traits.d_layout_traits.promote_right(logger)
+        M0, K0 = a_layout_traits.shape[::-1] if a_layout_traits.is_transpose else a_layout_traits.shape
+        K1, N0 = b_layout_traits.shape[::-1] if b_layout_traits.is_transpose else b_layout_traits.shape
+        M1, N1 = c_layout_traits.shape[::-1] if c_layout_traits.is_transpose else c_layout_traits.shape
+        assert M0 == M1, "Internal Error: M must match."
+        assert K0 == K1, "Internal Error: K must match."
+        assert N0 == N1, "Internal Error: N must match."
+
+        supported_layout = BLASMMTraitsView(
+            M=M0,
+            N=N0,
+            K=K0,
+            a_layout_traits=a_layout_traits,
+            b_layout_traits=b_layout_traits,
+            c_layout_traits=c_layout_traits,
+            is_swapped_AB=False,
+        ).lookup_supported_layout(layout_checker, lookup_table_table, logger)
+        logger.debug("A BLAS compatible view of the operands was created.")
+        return supported_layout  # type: ignore[return-value]
+
+    def swap_AB_and_transpose_ABC(self, logger: logging.Logger) -> BLASMMTraitsView:
+        """Return a new :class:`BLASMMTraits` with operands A and B swapped."""
+        logger.debug("Operands A, B will be swapped and transposed in order to transpose C.")
+        return BLASMMTraitsView(
+            M=self.N,
+            N=self.M,
+            K=self.K,
+            a_layout_traits=self.b_layout_traits.flip_transpose_flag(logger),
+            b_layout_traits=self.a_layout_traits.flip_transpose_flag(logger),
+            c_layout_traits=self.c_layout_traits.flip_transpose_flag(logger),
+            is_swapped_AB=not self.is_swapped_AB,
+        )
+
+    def transpose_and_reorder_A(self, logger: logging.Logger) -> BLASMMTraitsView:
+        """Return a new :class:`BLASMMTraits` with operand A transposed and reordered."""
+        logger.debug("Operand A was transposed and reordered.")
+        return BLASMMTraitsView(
+            M=self.M,
+            N=self.N,
+            K=self.K,
+            a_layout_traits=self.a_layout_traits.transpose_and_reorder(logger),
+            b_layout_traits=self.b_layout_traits,
+            c_layout_traits=self.c_layout_traits,
+            is_swapped_AB=self.is_swapped_AB,
+        )
+
+    def transpose_and_reorder_B(self, logger: logging.Logger) -> BLASMMTraitsView:
+        """Return a new :class:`BLASMMTraits` with operand B transposed and reordered."""
+        logger.debug("Operand B was transposed and reordered.")
+        return BLASMMTraitsView(
+            M=self.M,
+            N=self.N,
+            K=self.K,
+            a_layout_traits=self.a_layout_traits,
+            b_layout_traits=self.b_layout_traits.transpose_and_reorder(logger),
+            c_layout_traits=self.c_layout_traits,
+            is_swapped_AB=self.is_swapped_AB,
+        )
+
+    def transpose_and_reorder_C(self, logger: logging.Logger) -> BLASMMTraitsView:
+        """Return a new :class:`BLASMMTraits` with operand C transposed and reordered."""
+        logger.debug("Operand C was transposed and reordered.")
+        return BLASMMTraitsView(
+            M=self.M,
+            N=self.N,
+            K=self.K,
+            a_layout_traits=self.a_layout_traits,
+            b_layout_traits=self.b_layout_traits,
+            c_layout_traits=self.c_layout_traits.transpose_and_reorder(logger),
+            is_swapped_AB=self.is_swapped_AB,
+        )
+
+    def find_supported_layout(self, layout_checker: MMLayoutChecker, logger: logging.Logger) -> BLASMMTraitsView:
+        # If we assume that A, B, C are all non-transposed, but may be conjugate and may be
+        # either ROW or COL, then the input space for the matmul is 2 * 2 = 4 for EACH
+        # operand (two layouts and either conjugate or not). That makes the total input
+        # space 4 * 4 * 4 = 64 possible input combinations which is too large to enumerate.
+        #
+        # The operations we are allowed to apply to the operands are:
+        # - Transpose and reorder A
+        # - Transpose and reorder B
+        # - Transpose and reorder C
+        # - Swap A, B and transpose A, B, C
+        #
+        # The order in which the operations are applied does not matter, and applying each
+        # operation twice is a no-op. Therefore we only care about whether to apply each
+        # operation or not.
+        #
+        # That makes the possible search space of applying each of these operations 2
+        # * 2 * 2 * 2 = 16 which is much smaller than 64. We just need check whether the
+        # result of applying each of the 16 combinations results in a supported layout.
+        allowed_operations = [
+            "transpose_and_reorder_A",
+            "transpose_and_reorder_B",
+            "transpose_and_reorder_C",
+            "swap_AB_and_transpose_ABC",
+        ]
+        # Prioritize the simplest cases: when operands are all COL (apply no operations) or
+        # all are ROW (apply all operations)
+        for search_depth in [0, 4, 1, 2, 3]:
+            for combination in itertools.combinations(allowed_operations, search_depth):
+                new_traits = self
+                logger.debug("Trying combination: %s", combination)
+                for operation in combination:
+                    new_traits = getattr(new_traits, operation)(logger)
+                if layout_checker(new_traits):
+                    return new_traits  # type: ignore[return-value]
+        raise ValueError("No BLAS compatible view of the operands was found.")
+
+    def lookup_supported_layout(
+        self,
+        layout_checker: MMLayoutChecker,
+        lookup_table_table: dict[MMLayoutChecker, MMLayoutCheckerLookupTable] | None,
+        logger: logging.Logger,
+    ) -> BLASMMTraitsView:
+        if lookup_table_table is None or layout_checker not in lookup_table_table:
+            logger.debug("No cached layout lookup table found for layout checker; performing exhaustive search.")
+            return self.find_supported_layout(layout_checker, logger)
+        lookup_table = lookup_table_table[layout_checker]
+        key = (
+            self.a_layout_traits.order,
+            self.b_layout_traits.order,
+            self.c_layout_traits.order,
+            self.a_layout_traits.is_conjugate,
+            self.b_layout_traits.is_conjugate,
+            self.c_layout_traits.is_conjugate,
+        )
+        assert not self.a_layout_traits.is_transpose, "Internal Error: A must be non-transpose."
+        assert not self.b_layout_traits.is_transpose, "Internal Error: B must be non-transpose."
+        assert not self.c_layout_traits.is_transpose, "Internal Error: C must be non-transpose."
+        try:
+            operations = lookup_table[key]
+            logger.debug("Layout lookup table contains a mapping.")
+        except KeyError:
+            # We have to fall back to the exhaustive search because ambigously ordered
+            # matrices (vectors/scalars) miss the cache
+            logger.debug("Layout lookup table does not contain a mapping; performing exhaustive search.")
+            return self.find_supported_layout(layout_checker, logger)
+        new_traits = self
+        for operation in operations:
+            new_traits = getattr(new_traits, operation)(logger)
+        assert layout_checker(new_traits), "Internal Error: Layout checker returned False for a supported layout."
+        return new_traits  # type: ignore[return-value]
+
+
+"""A function which checks if a layout is supported for a BLAS matrix multiplication."""
+MMLayoutChecker: typing.TypeAlias = typing.Callable[[BLASMMTraitsView], bool]
+
+"""Maps from input traits to the operations needed to get a supported layout."""
+MMLayoutCheckerLookupTable: typing.TypeAlias = dict[
+    tuple[cublaslt.Order, cublaslt.Order, cublaslt.Order, bool, bool, bool], list[str]
+]

@@ -53,7 +53,13 @@ ctypedef cusolverdxSide _CusolverdxSide
 ctypedef cusolverdxDiag _CusolverdxDiag
 ctypedef cusolverdxOperatorType _CusolverdxOperatorType
 ctypedef cusolverdxTraitType _CusolverdxTraitType
+ctypedef commondxArchModifier _CommondxArchModifier
+ctypedef cublasdxDevicePipelineType _CublasdxDevicePipelineType
+ctypedef cublasdxTilePipelineType _CublasdxTilePipelineType
+ctypedef cublasdxBlockSizeStrategy _CublasdxBlockSizeStrategy
 ctypedef cublasdxMemorySpace _CublasdxMemorySpace
+ctypedef cublasdxPipelineTrait _CublasdxPipelineTrait
+ctypedef cusolverdxTransposeMode _CusolverdxTransposeMode
 
 
 ###############################################################################
@@ -130,11 +136,24 @@ cpdef cusolverdx_finalize_code(long long int code, long long int handle)
 cpdef cusolverdx_destroy_descriptor(long long int handle)
 cpdef str cusolverdx_operator_type_to_str(int op)
 cpdef str cusolverdx_trait_type_to_str(int trait)
+cpdef commondx_set_code_option_int64s(long long int code, int option, size_t count, values)
 cpdef long long int cublasdx_create_tensor_new(long long int handle, int tensor_type) except? 0
+cpdef long long int cublasdx_create_tensor_strided(int memory_space, int value_type, intptr_t ptr, long long int rank, shape, stride) except? 0
 cpdef long long int cublasdx_make_tensor_like(long long int input, int value_type) except? 0
 cpdef cublasdx_destroy_tensor_new(long long int tensor)
+cpdef cublasdx_destroy_pipeline(long long int pipeline)
+cpdef long long int cublasdx_create_device_pipeline(long long int handle, int device_pipeline_type, long long int pipeline_depth, int block_size_strategy, long long int tensor_a, long long int tensor_b) except? 0
+cpdef long long int cublasdx_create_tile_pipeline(long long int handle, int tile_pipeline_type, long long int device_pipeline) except? 0
+cpdef cublasdx_finalize_pipelines(size_t count, array)
+cpdef cublasdx_finalize(size_t count_tensors, tensors, size_t count_pipelines, pipelines)
+cpdef long long int cublasdx_get_pipeline_trait_int64(long long int pipeline, int trait) except? 0
+cpdef cublasdx_get_pipeline_trait_int64s(long long int pipeline, int trait, size_t count, array)
+cpdef size_t cublasdx_get_pipeline_trait_str_size(long long int pipeline, int trait) except? 0
+cpdef cublasdx_get_pipeline_trait_str(long long int pipeline, int trait, size_t size, value)
 cpdef long long int cublasdx_create_device_function_new(long long int handle, int device_function_type, size_t count, array) except? 0
 cpdef cublasdx_destroy_device_function_new(long long int device_function)
+cpdef long long int cublasdx_create_device_function_with_pipelines(long long int handle, int device_function_type, size_t tensor_count, tensors, size_t pipeline_count, pipelines) except? 0
+cpdef cusolverdx_get_trait_int64s(long long int handle, int trait, size_t count, values)
 
 # 0.2 - 0.3 compatibility layer
 cpdef cublasdx_finalize_tensors203(long long int handle, size_t count, array)

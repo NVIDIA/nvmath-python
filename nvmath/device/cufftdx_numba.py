@@ -1,10 +1,11 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 from numba import cuda
 from numba.core import typing, cgutils
-from numba.extending import typeof_impl, overload_method, types, utils, overload
+from numba.extending import types, utils
+from numba.cuda.extending import typeof_impl, overload_method, overload
 from numba.cuda.cudaimpl import lower_constant, registry as cuda_registry
 from numba.cuda.models import register_model
 
@@ -85,12 +86,12 @@ for attribute in _FFT_DEFINITION_ARGS + _FFT_COMPILED_ARGS:
 # https://github.com/numba/numba/issues/9980
 # https://github.com/numba/numba/issues/9979
 # https://github.com/numba/numba/issues/10143
-@overload_method(FFTType, "execute", target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload_method(FFTType, "execute", jit_options={"forceinline": True}, strict=False)
 def ol_fft_numba_execute(fft_numba: FFTType, _arg1, _arg2=None):
     return ol_fft_numba(fft_numba, _arg1, _arg2)
 
 
-@overload_method(FFTType, "__call__", target="cuda", strict=False)
+@overload_method(FFTType, "__call__", strict=False)
 def ol_fft_numba_call(fft_numba: FFTType, _arg1, _arg2=None):
     return ol_fft_numba(fft_numba, _arg1, _arg2)
 

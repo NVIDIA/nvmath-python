@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from ..cycublas cimport *
 
@@ -518,3 +518,13 @@ cdef cublasStatus_t _cublasGemmGroupedBatchedEx(cublasHandle_t handle, const cub
 cdef cublasStatus_t _cublasGemmGroupedBatchedEx_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const void* alpha_array, const void* const Aarray[], cudaDataType_t Atype, const int64_t lda_array[], const void* const Barray[], cudaDataType_t Btype, const int64_t ldb_array[], const void* beta_array, void* const Carray[], cudaDataType_t Ctype, const int64_t ldc_array[], int64_t group_count, const int64_t group_size[], cublasComputeType_t computeType) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasStatus_t _cublasGetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t* emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasStatus_t _cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasGetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport* mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasSetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasGetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl* mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasSetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasGetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int* maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasSetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasGetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int* mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasSetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasGetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int** mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasSetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int* mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil

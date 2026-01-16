@@ -51,12 +51,12 @@ needed; the dependencies are pulled via extras).
      - Description
    * - ``pip install nvmath-python[cu12]``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (wheels for cuBLAS/cuFFT/... and CuPy) to support
+       dependencies (wheels for cuBLAS/cuFFT/...) to support
        nvmath host APIs.
    * - ``pip install nvmath-python[cu12-dx]``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (wheels for cuBLAS/cuFFT/..., CuPy, Numba, ...) to support
-       nvmath host & device APIs (which only supports CUDA 12) [8]_.
+       dependencies (wheels for cuBLAS/cuFFT/..., Numba, ...) to support
+       nvmath host & device APIs [8]_.
    * - ``pip install nvmath-python[cpu]``
      - Install nvmath-python along with all CPU optional dependencies
        (wheels for NVPL or MKL) to support optimized CPU FFT APIs. [1]_
@@ -102,13 +102,13 @@ themselves. The following assumes that **system CTK is installed**.
    * - Command
      - Description
    * - ``pip install nvmath-python[sysctk12]``
-     - Install nvmath-python along with CuPy for CUDA 12 to support
+     - Install nvmath-python for CUDA 12 to support
        nvmath host APIs.
 
        **Note**: Set ``LD_LIBRARY_PATH`` to include the CUDA libraries.
 
    * - ``pip install nvmath-python[sysctk12-dx]``
-     - Install nvmath-python along with CuPy for CUDA 12 to support
+     - Install nvmath-python for CUDA 12 to support
        nvmath host & device APIs.
 
        **Note**:
@@ -140,13 +140,13 @@ Conda packages can be installed from the `conda-forge <https://conda-forge.org>`
      - Description
    * - ``conda install -c conda-forge nvmath-python cuda-version=12``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (packages for cuBLAS/cuFFT/... and CuPy) to support
+       dependencies (packages for cuBLAS/cuFFT/...) to support
        nvmath host APIs.
    * - ``conda install -c conda-forge nvmath-python-dx
        cuda-version=12``
      - Install nvmath-python along with all CUDA 12 optional
-       dependencies (packages for cuBLAS/cuFFT/..., CuPy, Numba, ...) to support
-       nvmath host & device APIs (which only supports CUDA 12).
+       dependencies (packages for cuBLAS/cuFFT/..., Numba, ...) to support
+       nvmath host & device APIs.
 
        **Note**:
 
@@ -310,7 +310,7 @@ dependency is *required* unless stated otherwise.
      -
      -
    * - Cython
-     - >=3.0.4,<3.1
+     - >=3.2.0
      -
      -
      -
@@ -327,10 +327,10 @@ dependency is *required* unless stated otherwise.
      - CUDA >=12.0
    * - cuda-pathfinder
      -
-     - >=1.2.1
-     - >=1.2.1
-     - >=1.2.1
-     - >=1.2.1
+     - >=1.3.2,<2.0
+     - >=1.3.2,<2.0
+     - >=1.3.2,<2.0
+     - >=1.3.2,<2.0
    * - cuda-core
      -
      - >=0.3.2
@@ -360,14 +360,14 @@ dependency is *required* unless stated otherwise.
    * - libmathdx (cuBLASDx, cuFFTDx, ...)
      -
      -
-     - >=0.2.3,<0.3
+     - >=0.3.1,<0.4.0
      -
      -
    * - numba-cuda
      -
      -
-     - >=0.18.1
-     - >=0.18.1
+     - >=0.24.0
+     - >=0.24.0
      -
    * - Math Kernel Library (MKL)
      -
@@ -381,6 +381,13 @@ dependency is *required* unless stated otherwise.
      -
      -
      -
+   * - Distributed Libraries
+     -
+     -
+     -
+     -
+     - | cuFFTMp >=11.4.0
+       | cuBLASMp >=0.6
 
 
 Test Configuration

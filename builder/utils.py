@@ -1,9 +1,10 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import os
 import sys
+import warnings
 
 from setuptools.command.build_ext import build_ext as _build_ext
 
@@ -18,9 +19,9 @@ def detect_cuda_paths():
     # headers, and in the wheel case they are scattered in two wheels. When build
     # isolation is on, the build prefix is added to sys.path, but this is the only
     # implementation detail that we rely on.
+    # TODO: move to cuda.pathfinder.
     potential_build_prefixes = (
-        [os.path.join(p, "nvidia/cuda_runtime") for p in sys.path]
-        + [os.path.join(p, "nvidia/cuda_nvcc") for p in sys.path]
+        [os.path.join(p, "nvidia/cu13") for p in sys.path]
         # internal/bindings depends on cuda_bindings cydriver,
         # which introduces dependency on cudaProfiler.h
         + [os.path.join(p, "nvidia/cuda_profiler_api") for p in sys.path]
@@ -36,7 +37,12 @@ def detect_cuda_paths():
                     cuda_paths.append(prefix)
                 break
         else:
-            raise RuntimeError(f"{header} not found")
+            searched_paths = "\n    ".join(potential_build_prefixes)
+            warnings.warn(
+                f"include/{header} not found in any of these paths:\n    "
+                f"{searched_paths}\n"
+                "Compilation of nvmath-python may fail. Set CUDA_PATH to suppress this warning."
+            )
 
     check_path("cuda.h")
     check_path("crt/host_defines.h")

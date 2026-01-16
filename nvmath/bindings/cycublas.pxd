@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -107,6 +107,7 @@ ctypedef enum cublasMath_t "cublasMath_t":
     CUBLAS_PEDANTIC_MATH "CUBLAS_PEDANTIC_MATH" = 2
     CUBLAS_TF32_TENSOR_OP_MATH "CUBLAS_TF32_TENSOR_OP_MATH" = 3
     CUBLAS_FP32_EMULATED_BF16X9_MATH "CUBLAS_FP32_EMULATED_BF16X9_MATH" = 4
+    CUBLAS_FP64_EMULATED_FIXEDPOINT_MATH "CUBLAS_FP64_EMULATED_FIXEDPOINT_MATH" = 8
     CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION "CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION" = 16
 
 ctypedef enum cublasComputeType_t "cublasComputeType_t":
@@ -120,6 +121,7 @@ ctypedef enum cublasComputeType_t "cublasComputeType_t":
     CUBLAS_COMPUTE_32F_EMULATED_16BFX9 "CUBLAS_COMPUTE_32F_EMULATED_16BFX9" = 78
     CUBLAS_COMPUTE_64F "CUBLAS_COMPUTE_64F" = 70
     CUBLAS_COMPUTE_64F_PEDANTIC "CUBLAS_COMPUTE_64F_PEDANTIC" = 71
+    CUBLAS_COMPUTE_64F_EMULATED_FIXEDPOINT "CUBLAS_COMPUTE_64F_EMULATED_FIXEDPOINT" = 79
     CUBLAS_COMPUTE_32I "CUBLAS_COMPUTE_32I" = 72
     CUBLAS_COMPUTE_32I_PEDANTIC "CUBLAS_COMPUTE_32I_PEDANTIC" = 73
 
@@ -139,6 +141,11 @@ cdef extern from *:
     ctypedef void* cudaStream_t 'cudaStream_t'
     ctypedef int cudaDataType_t 'cudaDataType_t'
     ctypedef int cudaDataType 'cudaDataType'
+    ctypedef int cudaEmulationStrategy_t 'cudaEmulationStrategy_t'
+    ctypedef int cudaEmulationMantissaControl_t 'cudaEmulationMantissaControl_t'
+    ctypedef int cudaEmulationMantissaControl 'cudaEmulationMantissaControl'
+    ctypedef int cudaEmulationSpecialValuesSupport_t 'cudaEmulationSpecialValuesSupport_t'
+    ctypedef int cudaEmulationSpecialValuesSupport 'cudaEmulationSpecialValuesSupport'
     ctypedef int libraryPropertyType_t 'libraryPropertyType_t'
     ctypedef int libraryPropertyType 'libraryPropertyType'
 
@@ -665,3 +672,13 @@ cdef cublasStatus_t cublasGemmGroupedBatchedEx(cublasHandle_t handle, const cubl
 cdef cublasStatus_t cublasGemmGroupedBatchedEx_64(cublasHandle_t handle, const cublasOperation_t transa_array[], const cublasOperation_t transb_array[], const int64_t m_array[], const int64_t n_array[], const int64_t k_array[], const void* alpha_array, const void* const Aarray[], cudaDataType_t Atype, const int64_t lda_array[], const void* const Barray[], cudaDataType_t Btype, const int64_t ldb_array[], const void* beta_array, void* const Carray[], cudaDataType_t Ctype, const int64_t ldc_array[], int64_t group_count, const int64_t group_size[], cublasComputeType_t computeType) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasStatus_t cublasGetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t* emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasStatus_t cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasGetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport* mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasSetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasGetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl* mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasSetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasGetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int* maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasSetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasGetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int* mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasSetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasGetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int** mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t cublasSetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int* mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil

@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from ._internal cimport cublasLt as _cublasLt
 
@@ -173,3 +173,23 @@ cdef cublasStatus_t cublasLtHeuristicsCacheSetCapacity(size_t capacity) except?_
 
 cdef unsigned cublasLtDisableCpuInstructionsSetMask(unsigned mask) except?0 nogil:
     return _cublasLt._cublasLtDisableCpuInstructionsSetMask(mask)
+
+
+cdef cublasStatus_t cublasLtGroupedMatrixLayoutCreate(cublasLtMatrixLayout_t* matLayout, cudaDataType type, int groupCount, const void* rows_array, const void* cols_array, const void* ld_array) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasLt._cublasLtGroupedMatrixLayoutCreate(matLayout, type, groupCount, rows_array, cols_array, ld_array)
+
+
+cdef cublasStatus_t cublasLtEmulationDescCreate(cublasLtEmulationDesc_t* emulationDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasLt._cublasLtEmulationDescCreate(emulationDesc)
+
+
+cdef cublasStatus_t cublasLtEmulationDescDestroy(cublasLtEmulationDesc_t emulationDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasLt._cublasLtEmulationDescDestroy(emulationDesc)
+
+
+cdef cublasStatus_t cublasLtEmulationDescSetAttribute(cublasLtEmulationDesc_t emulationDesc, cublasLtEmulationDescAttributes_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasLt._cublasLtEmulationDescSetAttribute(emulationDesc, attr, buf, sizeInBytes)
+
+
+cdef cublasStatus_t cublasLtEmulationDescGetAttribute(cublasLtEmulationDesc_t emulationDesc, cublasLtEmulationDescAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasLt._cublasLtEmulationDescGetAttribute(emulationDesc, attr, buf, sizeInBytes, sizeWritten)

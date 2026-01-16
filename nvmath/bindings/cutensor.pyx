@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -7,12 +7,14 @@
 cimport cython  # NOQA
 cimport cpython
 from libcpp.vector cimport vector
+from cuda.pathfinder import load_nvidia_dynamic_lib
 
 from ._internal.utils cimport get_resource_ptr, get_resource_ptrs, nullable_unique_ptr
 
 from enum import IntEnum as _IntEnum
 
 import ctypes
+import sys
 import threading
 import numpy as _numpy
 
@@ -33,7 +35,11 @@ def _load_cutensor_compute_descriptors():
 
     with __symbol_lock:
         try:
-            lib = ctypes.CDLL("libcutensor.so.2")
+            lib_handle = load_nvidia_dynamic_lib("cutensor")
+            if sys.platform == "win32":
+                lib = ctypes.WinDLL(lib_handle.abs_path)
+            else:
+                lib = ctypes.CDLL(lib_handle.abs_path)
             global _COMPUTE_DESC_16F, _COMPUTE_DESC_16BF, _COMPUTE_DESC_TF32, _COMPUTE_DESC_3XTF32, _COMPUTE_DESC_32F, _COMPUTE_DESC_64F
             _COMPUTE_DESC_16F = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_16F").value
             _COMPUTE_DESC_16BF = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_16BF").value

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,7 +14,10 @@ try:
 except ImportError:
     torch = None
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import Device
+except ImportError:
+    from cuda.core.experimental import Device
 
 from nvmath.tensor import ComputeDesc, ContractionJitMode, ContractionAlgo
 
@@ -73,7 +76,7 @@ class JitOption(Enum):
         yield cls.off
         # https://docs.nvidia.com/cuda/cutensor/latest/api/types.html#_CPPv4N17cutensorJitMode_t25CUTENSOR_JIT_MODE_DEFAULTE  # noqa
         # Only supported for GPUs with compute capability >= 8.0
-        device = ccx.Device()
+        device = Device()
 
         if device.compute_capability.major >= 8:
             yield cls.on

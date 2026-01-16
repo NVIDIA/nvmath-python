@@ -1,3 +1,7 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 BLAS function wrapper utilities for dynamically loading and wrapping Level-3 matrix
 multiplication functions from cuBLAS and NVPL BLAS backends. Handles data type to BLAS
@@ -93,7 +97,7 @@ def cublas_mm_function(
 
         wrapped_with_handle_and_stream.__name__ = function.__name__
 
-        logger.info("Loaded a cuBLAS API function named %s", function.__name__)
+        logger.debug("Loaded a cuBLAS API function named %s", function.__name__)
         return wrapped_with_handle_and_stream
     except (AttributeError, FunctionNotFoundError) as e:
         # The user may try to call a newer function with older cuBLAS.
@@ -178,7 +182,7 @@ def nvpl_mm_function(
 
         wrapped_with_threads_and_stream.__name__ = function.__name__
 
-        logger.info("Loaded a NVPL BLAS API function named %s", function.__name__)
+        logger.debug("Loaded a NVPL BLAS API function named %s", function.__name__)
         return wrapped_with_threads_and_stream
     except (AttributeError, FunctionNotFoundError) as e:
         # The user may try to call a newer function with older cuBLAS.

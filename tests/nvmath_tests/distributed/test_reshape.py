@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -15,7 +15,10 @@ from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wra
 from .helpers import calculate_strides, gather_array, generate_random_data, is_close, to_host
 from .helpers_fft import calc_slab_shape
 
-import cuda.core.experimental
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 
 package_name_to_package = {"numpy": np}
 
@@ -34,7 +37,11 @@ def nvmath_distributed():
     except ImportError:
         pass
 
-    device_id = MPI.COMM_WORLD.Get_rank() % cuda.core.experimental.system.num_devices
+    try:
+        num_devices = system.get_num_devices()
+    except AttributeError:
+        num_devices = system.num_devices
+    device_id = MPI.COMM_WORLD.Get_rank() % num_devices
     nvmath.distributed.initialize(device_id, MPI.COMM_WORLD, backends=["nvshmem"])
 
     yield

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -65,10 +65,13 @@ st = nvmath.CudaDataType
         ("float32", ct.COMPUTE_32F_FAST_16F, None),
         ("float32", ct.COMPUTE_32F_FAST_16BF, None),
         ("float32", ct.COMPUTE_32F_FAST_TF32, None),
+        ("float32", ct.COMPUTE_32F_EMULATED_16BFX9, None),
         ("float64", ct.COMPUTE_64F, None),
         ("float64", ct.COMPUTE_64F_PEDANTIC, None),
+        ("float64", ct.COMPUTE_64F_EMULATED_FIXEDPOINT, None),
         ("complex128", ct.COMPUTE_64F, None),
         ("complex128", ct.COMPUTE_64F_PEDANTIC, None),
+        ("complex128", ct.COMPUTE_64F_EMULATED_FIXEDPOINT, None),
         # Only scale type specified
         ("float16", None, st.CUDA_R_16F),
         ("float16", None, st.CUDA_R_32F),
@@ -92,13 +95,21 @@ st = nvmath.CudaDataType
         ("float32", ct.COMPUTE_32F_FAST_16F, st.CUDA_R_32F),
         ("float32", ct.COMPUTE_32F_FAST_16BF, st.CUDA_R_32F),
         ("float32", ct.COMPUTE_32F_FAST_TF32, st.CUDA_R_32F),
+        ("float32", ct.COMPUTE_32F_EMULATED_16BFX9, st.CUDA_R_32F),
         ("float64", ct.COMPUTE_64F, st.CUDA_R_64F),
         ("float64", ct.COMPUTE_64F_PEDANTIC, st.CUDA_R_64F),
+        ("float64", ct.COMPUTE_64F_EMULATED_FIXEDPOINT, st.CUDA_R_64F),
         ("complex128", ct.COMPUTE_64F, st.CUDA_C_64F),
         ("complex128", ct.COMPUTE_64F_PEDANTIC, st.CUDA_C_64F),
+        ("complex128", ct.COMPUTE_64F_EMULATED_FIXEDPOINT, st.CUDA_C_64F),
     ),
 )
 def test_compute_scale_type(dtype, compute_type, scale_type):
+    version = nvmath.bindings.cublasLt.get_version()
+    if version < 120900 and compute_type == ct.COMPUTE_32F_EMULATED_16BFX9:
+        pytest.skip("COMPUTE_32F_EMULATED_16BFX9 requires CTK >= 12.9.0 (cuBLASLt >= 12.9.0).")
+    if version < 130200 and compute_type == ct.COMPUTE_64F_EMULATED_FIXEDPOINT:
+        pytest.skip("COMPUTE_64F_EMULATED_FIXEDPOINT requires CTK >= 13.1.0 (cuBLASLt >= 13.2.0).")
     check_matmul_with_options(
         2,
         MatmulOptions(compute_type=compute_type, scale_type=scale_type),

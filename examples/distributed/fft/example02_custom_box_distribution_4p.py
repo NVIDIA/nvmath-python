@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,21 +12,29 @@ symmetric memory to process them with cuFFTMp.
 The input as well as the result from the FFT operations are NumPy ndarrays, resulting
 in effortless interoperability between nvmath-python and NumPy.
 
-$ mpiexec -n 4 python example02_custom_box_distribution.py
+$ mpiexec -n 4 python example02_custom_box_distribution_4p.py
 """
 
 import numpy as np
-import cuda.core.experimental
+
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 from mpi4py import MPI
 
 import nvmath.distributed
 from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
+try:
+    num_devices = system.get_num_devices()
+except AttributeError:
+    num_devices = system.num_devices
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
-device_id = rank % cuda.core.experimental.system.num_devices
+device_id = rank % num_devices
 nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 if nranks != 4:

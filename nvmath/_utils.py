@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -93,12 +93,7 @@ def module_init_force_cupy_lib_load():
     """
     from nvmath.bindings import _internal
 
-    # cutensor windows binding is not available for nvmath-python beta7.0.
-    libs = (
-        ("cublas", "cufft", "curand", "cusolverDn", "cusparse", "cutensor")
-        if PLATFORM_LINUX
-        else ("cublas", "cufft", "curand", "cusolverDn", "cusparse")
-    )
+    libs = ("cublas", "cufft", "curand", "cusolverDn", "cusparse", "cutensor")
     for lib in libs:
         try:
             mod = getattr(_internal, lib)
@@ -114,7 +109,10 @@ def module_init_force_cupy_lib_load():
 
 @cache
 def get_nvrtc_build_id(minimal=True) -> int:
-    from cuda.core.experimental import ObjectCode, Program, ProgramOptions
+    try:
+        from cuda.core import ObjectCode, Program, ProgramOptions
+    except ImportError:
+        from cuda.core.experimental import ObjectCode, Program, ProgramOptions
 
     code = r"""
     extern "C" __global__ void get_build_id(int* build_id) {

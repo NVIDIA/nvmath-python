@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +9,7 @@ with compatible Slab distribution.
 We will perform a forward and an inverse FFT operation to demonstrate how to recover the
 original input operand.
 
-$ mpiexec -n 4 python example06_stateful_reset_box_distribution.py
+$ mpiexec -n 4 python example06_stateful_reset_box_distribution_4p.py
 """
 
 import cupy as cp

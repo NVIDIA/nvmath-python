@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -18,7 +18,7 @@ from libc.stddef cimport wchar_t
 from libc.stdint cimport uintptr_t
 from cpython cimport PyUnicode_AsWideCharString, PyMem_Free
 
-from .utils import NotSupportedError
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "windows.h" nogil:
     ctypedef void* HMODULE
@@ -64,10 +64,10 @@ cdef int get_cuda_version():
         raise NotSupportedError('CUDA driver is not found')
     cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
     if cuDriverGetVersion == NULL:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in nvcuda.dll')
     err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
     if err != 0:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
 
     return driver_ver
 
@@ -585,6 +585,16 @@ cdef void* __cublasGemmGroupedBatchedEx = NULL
 cdef void* __cublasGemmGroupedBatchedEx_64 = NULL
 cdef void* __cublasGetEmulationStrategy = NULL
 cdef void* __cublasSetEmulationStrategy = NULL
+cdef void* __cublasGetEmulationSpecialValuesSupport = NULL
+cdef void* __cublasSetEmulationSpecialValuesSupport = NULL
+cdef void* __cublasGetFixedPointEmulationMantissaControl = NULL
+cdef void* __cublasSetFixedPointEmulationMantissaControl = NULL
+cdef void* __cublasGetFixedPointEmulationMaxMantissaBitCount = NULL
+cdef void* __cublasSetFixedPointEmulationMaxMantissaBitCount = NULL
+cdef void* __cublasGetFixedPointEmulationMantissaBitOffset = NULL
+cdef void* __cublasSetFixedPointEmulationMantissaBitOffset = NULL
+cdef void* __cublasGetFixedPointEmulationMantissaBitCountPointer = NULL
+cdef void* __cublasSetFixedPointEmulationMantissaBitCountPointer = NULL
 
 
 cdef inline list get_site_packages():
@@ -601,6 +611,10 @@ cdef int _check_or_init_cublas() except -1 nogil:
         return 0
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cublas_init:
+            return 0
+
         driver_ver = get_cuda_version()
 
         # Load library
@@ -2124,6 +2138,36 @@ cdef int _check_or_init_cublas() except -1 nogil:
 
         global __cublasSetEmulationStrategy
         __cublasSetEmulationStrategy = GetProcAddress(handle, 'cublasSetEmulationStrategy')
+
+        global __cublasGetEmulationSpecialValuesSupport
+        __cublasGetEmulationSpecialValuesSupport = GetProcAddress(handle, 'cublasGetEmulationSpecialValuesSupport')
+
+        global __cublasSetEmulationSpecialValuesSupport
+        __cublasSetEmulationSpecialValuesSupport = GetProcAddress(handle, 'cublasSetEmulationSpecialValuesSupport')
+
+        global __cublasGetFixedPointEmulationMantissaControl
+        __cublasGetFixedPointEmulationMantissaControl = GetProcAddress(handle, 'cublasGetFixedPointEmulationMantissaControl')
+
+        global __cublasSetFixedPointEmulationMantissaControl
+        __cublasSetFixedPointEmulationMantissaControl = GetProcAddress(handle, 'cublasSetFixedPointEmulationMantissaControl')
+
+        global __cublasGetFixedPointEmulationMaxMantissaBitCount
+        __cublasGetFixedPointEmulationMaxMantissaBitCount = GetProcAddress(handle, 'cublasGetFixedPointEmulationMaxMantissaBitCount')
+
+        global __cublasSetFixedPointEmulationMaxMantissaBitCount
+        __cublasSetFixedPointEmulationMaxMantissaBitCount = GetProcAddress(handle, 'cublasSetFixedPointEmulationMaxMantissaBitCount')
+
+        global __cublasGetFixedPointEmulationMantissaBitOffset
+        __cublasGetFixedPointEmulationMantissaBitOffset = GetProcAddress(handle, 'cublasGetFixedPointEmulationMantissaBitOffset')
+
+        global __cublasSetFixedPointEmulationMantissaBitOffset
+        __cublasSetFixedPointEmulationMantissaBitOffset = GetProcAddress(handle, 'cublasSetFixedPointEmulationMantissaBitOffset')
+
+        global __cublasGetFixedPointEmulationMantissaBitCountPointer
+        __cublasGetFixedPointEmulationMantissaBitCountPointer = GetProcAddress(handle, 'cublasGetFixedPointEmulationMantissaBitCountPointer')
+
+        global __cublasSetFixedPointEmulationMantissaBitCountPointer
+        __cublasSetFixedPointEmulationMantissaBitCountPointer = GetProcAddress(handle, 'cublasSetFixedPointEmulationMantissaBitCountPointer')
 
         __py_cublas_init = True
         return 0
@@ -3657,6 +3701,36 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasSetEmulationStrategy
     data["__cublasSetEmulationStrategy"] = <intptr_t>__cublasSetEmulationStrategy
+
+    global __cublasGetEmulationSpecialValuesSupport
+    data["__cublasGetEmulationSpecialValuesSupport"] = <intptr_t>__cublasGetEmulationSpecialValuesSupport
+
+    global __cublasSetEmulationSpecialValuesSupport
+    data["__cublasSetEmulationSpecialValuesSupport"] = <intptr_t>__cublasSetEmulationSpecialValuesSupport
+
+    global __cublasGetFixedPointEmulationMantissaControl
+    data["__cublasGetFixedPointEmulationMantissaControl"] = <intptr_t>__cublasGetFixedPointEmulationMantissaControl
+
+    global __cublasSetFixedPointEmulationMantissaControl
+    data["__cublasSetFixedPointEmulationMantissaControl"] = <intptr_t>__cublasSetFixedPointEmulationMantissaControl
+
+    global __cublasGetFixedPointEmulationMaxMantissaBitCount
+    data["__cublasGetFixedPointEmulationMaxMantissaBitCount"] = <intptr_t>__cublasGetFixedPointEmulationMaxMantissaBitCount
+
+    global __cublasSetFixedPointEmulationMaxMantissaBitCount
+    data["__cublasSetFixedPointEmulationMaxMantissaBitCount"] = <intptr_t>__cublasSetFixedPointEmulationMaxMantissaBitCount
+
+    global __cublasGetFixedPointEmulationMantissaBitOffset
+    data["__cublasGetFixedPointEmulationMantissaBitOffset"] = <intptr_t>__cublasGetFixedPointEmulationMantissaBitOffset
+
+    global __cublasSetFixedPointEmulationMantissaBitOffset
+    data["__cublasSetFixedPointEmulationMantissaBitOffset"] = <intptr_t>__cublasSetFixedPointEmulationMantissaBitOffset
+
+    global __cublasGetFixedPointEmulationMantissaBitCountPointer
+    data["__cublasGetFixedPointEmulationMantissaBitCountPointer"] = <intptr_t>__cublasGetFixedPointEmulationMantissaBitCountPointer
+
+    global __cublasSetFixedPointEmulationMantissaBitCountPointer
+    data["__cublasSetFixedPointEmulationMantissaBitCountPointer"] = <intptr_t>__cublasSetFixedPointEmulationMantissaBitCountPointer
 
     func_ptrs = data
     return data
@@ -8731,3 +8805,103 @@ cdef cublasStatus_t _cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmu
             raise FunctionNotFoundError("function cublasSetEmulationStrategy is not found")
     return (<cublasStatus_t (*)(cublasHandle_t, cublasEmulationStrategy_t) noexcept nogil>__cublasSetEmulationStrategy)(
         handle, emulationStrategy)
+
+
+cdef cublasStatus_t _cublasGetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport* mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasGetEmulationSpecialValuesSupport
+    _check_or_init_cublas()
+    if __cublasGetEmulationSpecialValuesSupport == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGetEmulationSpecialValuesSupport is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cudaEmulationSpecialValuesSupport*) noexcept nogil>__cublasGetEmulationSpecialValuesSupport)(
+        handle, mask)
+
+
+cdef cublasStatus_t _cublasSetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasSetEmulationSpecialValuesSupport
+    _check_or_init_cublas()
+    if __cublasSetEmulationSpecialValuesSupport == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSetEmulationSpecialValuesSupport is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cudaEmulationSpecialValuesSupport) noexcept nogil>__cublasSetEmulationSpecialValuesSupport)(
+        handle, mask)
+
+
+cdef cublasStatus_t _cublasGetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl* mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasGetFixedPointEmulationMantissaControl
+    _check_or_init_cublas()
+    if __cublasGetFixedPointEmulationMantissaControl == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGetFixedPointEmulationMantissaControl is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cudaEmulationMantissaControl*) noexcept nogil>__cublasGetFixedPointEmulationMantissaControl)(
+        handle, mantissaControl)
+
+
+cdef cublasStatus_t _cublasSetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasSetFixedPointEmulationMantissaControl
+    _check_or_init_cublas()
+    if __cublasSetFixedPointEmulationMantissaControl == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSetFixedPointEmulationMantissaControl is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, cudaEmulationMantissaControl) noexcept nogil>__cublasSetFixedPointEmulationMantissaControl)(
+        handle, mantissaControl)
+
+
+cdef cublasStatus_t _cublasGetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int* maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasGetFixedPointEmulationMaxMantissaBitCount
+    _check_or_init_cublas()
+    if __cublasGetFixedPointEmulationMaxMantissaBitCount == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGetFixedPointEmulationMaxMantissaBitCount is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, int*) noexcept nogil>__cublasGetFixedPointEmulationMaxMantissaBitCount)(
+        handle, maxMantissaBitCount)
+
+
+cdef cublasStatus_t _cublasSetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasSetFixedPointEmulationMaxMantissaBitCount
+    _check_or_init_cublas()
+    if __cublasSetFixedPointEmulationMaxMantissaBitCount == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSetFixedPointEmulationMaxMantissaBitCount is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, int) noexcept nogil>__cublasSetFixedPointEmulationMaxMantissaBitCount)(
+        handle, maxMantissaBitCount)
+
+
+cdef cublasStatus_t _cublasGetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int* mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasGetFixedPointEmulationMantissaBitOffset
+    _check_or_init_cublas()
+    if __cublasGetFixedPointEmulationMantissaBitOffset == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGetFixedPointEmulationMantissaBitOffset is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, int*) noexcept nogil>__cublasGetFixedPointEmulationMantissaBitOffset)(
+        handle, mantissaBitOffset)
+
+
+cdef cublasStatus_t _cublasSetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasSetFixedPointEmulationMantissaBitOffset
+    _check_or_init_cublas()
+    if __cublasSetFixedPointEmulationMantissaBitOffset == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSetFixedPointEmulationMantissaBitOffset is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, int) noexcept nogil>__cublasSetFixedPointEmulationMantissaBitOffset)(
+        handle, mantissaBitOffset)
+
+
+cdef cublasStatus_t _cublasGetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int** mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasGetFixedPointEmulationMantissaBitCountPointer
+    _check_or_init_cublas()
+    if __cublasGetFixedPointEmulationMantissaBitCountPointer == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasGetFixedPointEmulationMantissaBitCountPointer is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, int**) noexcept nogil>__cublasGetFixedPointEmulationMantissaBitCountPointer)(
+        handle, mantissaBitCount)
+
+
+cdef cublasStatus_t _cublasSetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int* mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasSetFixedPointEmulationMantissaBitCountPointer
+    _check_or_init_cublas()
+    if __cublasSetFixedPointEmulationMantissaBitCountPointer == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasSetFixedPointEmulationMantissaBitCountPointer is not found")
+    return (<cublasStatus_t (*)(cublasHandle_t, int*) noexcept nogil>__cublasSetFixedPointEmulationMantissaBitCountPointer)(
+        handle, mantissaBitCount)

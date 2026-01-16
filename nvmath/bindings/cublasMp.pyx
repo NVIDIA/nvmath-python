@@ -1,8 +1,8 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 0.5.0 to 0.6.0. Do not modify it directly.
+# This code was automatically generated across versions from 0.6.0 to 0.7.0. Do not modify it directly.
 
 cimport cython  # NOQA
 from libc.stdint cimport int64_t
@@ -15,28 +15,6 @@ import numpy as _numpy
 ###############################################################################
 # Enum
 ###############################################################################
-
-class Operation(_IntEnum):
-    """See `cublasOperation_t`."""
-    N = CUBLAS_OP_N
-    T = CUBLAS_OP_T
-    C = CUBLAS_OP_C
-    HERMITAN = CUBLAS_OP_HERMITAN
-    CONJG = CUBLAS_OP_CONJG
-
-class ComputeType(_IntEnum):
-    """See `cublasComputeType_t`."""
-    COMPUTE_16F = CUBLAS_COMPUTE_16F
-    COMPUTE_16F_PEDANTIC = CUBLAS_COMPUTE_16F_PEDANTIC
-    COMPUTE_32F = CUBLAS_COMPUTE_32F
-    COMPUTE_32F_PEDANTIC = CUBLAS_COMPUTE_32F_PEDANTIC
-    COMPUTE_32F_FAST_16F = CUBLAS_COMPUTE_32F_FAST_16F
-    COMPUTE_32F_FAST_16BF = CUBLAS_COMPUTE_32F_FAST_16BF
-    COMPUTE_32F_FAST_TF32 = CUBLAS_COMPUTE_32F_FAST_TF32
-    COMPUTE_64F = CUBLAS_COMPUTE_64F
-    COMPUTE_64F_PEDANTIC = CUBLAS_COMPUTE_64F_PEDANTIC
-    COMPUTE_32I = CUBLAS_COMPUTE_32I
-    COMPUTE_32I_PEDANTIC = CUBLAS_COMPUTE_32I_PEDANTIC
 
 class Status(_IntEnum):
     """See `cublasMpStatus_t`."""
@@ -81,6 +59,8 @@ class MatmulDescriptorAttribute(_IntEnum):
     D_SCALE_POINTER = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_POINTER
     D_SCALE_MODE = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_MODE
     AMAX_D_POINTER = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_AMAX_D_POINTER
+    D_OUT_SCALE_POINTER = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_POINTER
+    D_OUT_SCALE_MODE = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_MODE
 
 class MatmulAlgoType(_IntEnum):
     """See `cublasMpMatmulAlgoType_t`."""
@@ -89,6 +69,7 @@ class MatmulAlgoType(_IntEnum):
     SPLIT_MULTICAST = CUBLASMP_MATMUL_ALGO_TYPE_SPLIT_MULTICAST
     ATOMIC_P2P = CUBLASMP_MATMUL_ALGO_TYPE_ATOMIC_P2P
     ATOMIC_MULTICAST = CUBLASMP_MATMUL_ALGO_TYPE_ATOMIC_MULTICAST
+    NO_OVERLAP = CUBLASMP_MATMUL_ALGO_TYPE_NO_OVERLAP
 
 class MatmulEpilogue(_IntEnum):
     """See `cublasMpMatmulEpilogue_t`."""
@@ -118,6 +99,12 @@ class MatmulMatrixScale(_IntEnum):
     OUTER_VEC_FP32 = CUBLASMP_MATMUL_MATRIX_SCALE_OUTER_VEC_FP32
     VEC128_FP32 = CUBLASMP_MATMUL_MATRIX_SCALE_VEC128_FP32
     BLK128x128_FP32 = CUBLASMP_MATMUL_MATRIX_SCALE_BLK128x128_FP32
+
+class EmulationStrategy(_IntEnum):
+    """See `cublasMpEmulationStrategy_t`."""
+    DEFAULT = CUBLASMP_EMULATION_STRATEGY_DEFAULT
+    PERFORMANT = CUBLASMP_EMULATION_STRATEGY_PERFORMANT
+    EAGER = CUBLASMP_EMULATION_STRATEGY_EAGER
 
 
 ###############################################################################
@@ -170,6 +157,15 @@ cpdef stream_set(intptr_t handle, intptr_t stream):
     check_status(__status__)
 
 
+cpdef intptr_t stream_get(intptr_t handle) except? 0:
+    """See `cublasMpStreamGet`."""
+    cdef Stream stream
+    with nogil:
+        __status__ = cublasMpStreamGet(<Handle>handle, &stream)
+    check_status(__status__)
+    return <intptr_t>stream
+
+
 cpdef int get_version() except? 0:
     """See `cublasMpGetVersion`."""
     cdef int version
@@ -211,11 +207,18 @@ cpdef matrix_descriptor_destroy(intptr_t desc):
     check_status(__status__)
 
 
+cpdef matrix_descriptor_init(int64_t m, int64_t n, int64_t mb, int64_t nb, int64_t rsrc, int64_t csrc, int64_t lld, int type, intptr_t grid, intptr_t desc):
+    """See `cublasMpMatrixDescriptorInit`."""
+    with nogil:
+        __status__ = cublasMpMatrixDescriptorInit(m, n, mb, nb, rsrc, csrc, lld, <DataType>type, <Grid>grid, <MatrixDescriptor>desc)
+    check_status(__status__)
+
+
 cpdef intptr_t matmul_descriptor_create(int compute_type) except? 0:
     """See `cublasMpMatmulDescriptorCreate`."""
     cdef MatmulDescriptor matmul_desc
     with nogil:
-        __status__ = cublasMpMatmulDescriptorCreate(&matmul_desc, <_ComputeType>compute_type)
+        __status__ = cublasMpMatmulDescriptorCreate(&matmul_desc, <cublasComputeType_t>compute_type)
     check_status(__status__)
     return <intptr_t>matmul_desc
 
@@ -224,6 +227,13 @@ cpdef matmul_descriptor_destroy(intptr_t matmul_desc):
     """See `cublasMpMatmulDescriptorDestroy`."""
     with nogil:
         __status__ = cublasMpMatmulDescriptorDestroy(<MatmulDescriptor>matmul_desc)
+    check_status(__status__)
+
+
+cpdef matmul_descriptor_init(intptr_t matmul_desc, int compute_type):
+    """See `cublasMpMatmulDescriptorInit`."""
+    with nogil:
+        __status__ = cublasMpMatmulDescriptorInit(<MatmulDescriptor>matmul_desc, <cublasComputeType_t>compute_type)
     check_status(__status__)
 
 
@@ -255,6 +265,8 @@ cdef dict matmul_descriptor_attribute_sizes = {
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_POINTER: _numpy.intp,
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_SCALE_MODE: _numpy.int32,
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_AMAX_D_POINTER: _numpy.intp,
+    CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_POINTER: _numpy.intp,
+    CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_MODE: _numpy.int32,
 }
 
 cpdef get_matmul_descriptor_attribute_dtype(int attr):
@@ -288,6 +300,40 @@ cpdef matmul_descriptor_attribute_get(intptr_t matmul_desc, int attr, intptr_t b
     check_status(__status__)
 
 
+cpdef tuple trsm_buffer_size(intptr_t handle, int side, int uplo, int trans, int diag, int64_t m, int64_t n, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, int compute_type):
+    """See `cublasMpTrsm_bufferSize`."""
+    cdef size_t workspace_size_in_bytes_on_device
+    cdef size_t workspace_size_in_bytes_on_host
+    with nogil:
+        __status__ = cublasMpTrsm_bufferSize(<Handle>handle, <cublasSideMode_t>side, <cublasFillMode_t>uplo, <cublasOperation_t>trans, <cublasDiagType_t>diag, m, n, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <void*>b, ib, jb, <MatrixDescriptor>desc_b, <cublasComputeType_t>compute_type, &workspace_size_in_bytes_on_device, &workspace_size_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_size_in_bytes_on_device, workspace_size_in_bytes_on_host)
+
+
+cpdef trsm(intptr_t handle, int side, int uplo, int trans, int diag, int64_t m, int64_t n, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, int compute_type, intptr_t d_work, size_t workspace_size_in_bytes_on_device, intptr_t h_work, size_t workspace_size_in_bytes_on_host):
+    """See `cublasMpTrsm`."""
+    with nogil:
+        __status__ = cublasMpTrsm(<Handle>handle, <cublasSideMode_t>side, <cublasFillMode_t>uplo, <cublasOperation_t>trans, <cublasDiagType_t>diag, m, n, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <void*>b, ib, jb, <MatrixDescriptor>desc_b, <cublasComputeType_t>compute_type, <void*>d_work, workspace_size_in_bytes_on_device, <void*>h_work, workspace_size_in_bytes_on_host)
+    check_status(__status__)
+
+
+cpdef tuple gemm_buffer_size(intptr_t handle, int trans_a, int trans_b, int64_t m, int64_t n, int64_t k, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c, int compute_type):
+    """See `cublasMpGemm_bufferSize`."""
+    cdef size_t workspace_size_in_bytes_on_device
+    cdef size_t workspace_size_in_bytes_on_host
+    with nogil:
+        __status__ = cublasMpGemm_bufferSize(<Handle>handle, <cublasOperation_t>trans_a, <cublasOperation_t>trans_b, m, n, k, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>b, ib, jb, <MatrixDescriptor>desc_b, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, <cublasComputeType_t>compute_type, &workspace_size_in_bytes_on_device, &workspace_size_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_size_in_bytes_on_device, workspace_size_in_bytes_on_host)
+
+
+cpdef gemm(intptr_t handle, int trans_a, int trans_b, int64_t m, int64_t n, int64_t k, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c, int compute_type, intptr_t d_work, size_t workspace_size_in_bytes_on_device, intptr_t h_work, size_t workspace_size_in_bytes_on_host):
+    """See `cublasMpGemm`."""
+    with nogil:
+        __status__ = cublasMpGemm(<Handle>handle, <cublasOperation_t>trans_a, <cublasOperation_t>trans_b, m, n, k, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>b, ib, jb, <MatrixDescriptor>desc_b, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, <cublasComputeType_t>compute_type, <void*>d_work, workspace_size_in_bytes_on_device, <void*>h_work, workspace_size_in_bytes_on_host)
+    check_status(__status__)
+
+
 cpdef tuple matmul_buffer_size(intptr_t handle, intptr_t matmul_desc, int64_t m, int64_t n, int64_t k, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c, intptr_t d, int64_t id, int64_t jd, intptr_t desc_d):
     """See `cublasMpMatmul_bufferSize`."""
     cdef size_t workspace_size_in_bytes_on_device
@@ -305,6 +351,107 @@ cpdef matmul(intptr_t handle, intptr_t matmul_desc, int64_t m, int64_t n, int64_
     check_status(__status__)
 
 
+cpdef tuple syrk_buffer_size(intptr_t handle, int uplo, int trans, int64_t n, int64_t k, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c, int compute_type):
+    """See `cublasMpSyrk_bufferSize`."""
+    cdef size_t workspace_size_in_bytes_on_device
+    cdef size_t workspace_size_in_bytes_on_host
+    with nogil:
+        __status__ = cublasMpSyrk_bufferSize(<Handle>handle, <cublasFillMode_t>uplo, <cublasOperation_t>trans, n, k, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, <cublasComputeType_t>compute_type, &workspace_size_in_bytes_on_device, &workspace_size_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_size_in_bytes_on_device, workspace_size_in_bytes_on_host)
+
+
+cpdef syrk(intptr_t handle, int uplo, int trans, int64_t n, int64_t k, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c, int compute_type, intptr_t d_work, size_t workspace_size_in_bytes_on_device, intptr_t h_work, size_t workspace_size_in_bytes_on_host):
+    """See `cublasMpSyrk`."""
+    with nogil:
+        __status__ = cublasMpSyrk(<Handle>handle, <cublasFillMode_t>uplo, <cublasOperation_t>trans, n, k, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, <cublasComputeType_t>compute_type, <void*>d_work, workspace_size_in_bytes_on_device, <void*>h_work, workspace_size_in_bytes_on_host)
+    check_status(__status__)
+
+
 cpdef int64_t numroc(int64_t n, int64_t nb, uint32_t iproc, uint32_t isrcproc, uint32_t nprocs) except? -1:
     """See `cublasMpNumroc`."""
     return cublasMpNumroc(n, nb, iproc, isrcproc, nprocs)
+
+
+cpdef tuple gemr2d_buffer_size(intptr_t handle, int64_t m, int64_t n, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t global_comm):
+    """See `cublasMpGemr2D_bufferSize`."""
+    cdef size_t workspace_size_in_bytes_on_device
+    cdef size_t workspace_size_in_bytes_on_host
+    with nogil:
+        __status__ = cublasMpGemr2D_bufferSize(<Handle>handle, m, n, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <void*>b, ib, jb, <MatrixDescriptor>desc_b, &workspace_size_in_bytes_on_device, &workspace_size_in_bytes_on_host, <ncclComm>global_comm)
+    check_status(__status__)
+    return (workspace_size_in_bytes_on_device, workspace_size_in_bytes_on_host)
+
+
+cpdef gemr2d(intptr_t handle, int64_t m, int64_t n, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t d_work, size_t workspace_size_in_bytes_on_device, intptr_t h_work, size_t workspace_size_in_bytes_on_host, intptr_t global_comm):
+    """See `cublasMpGemr2D`."""
+    with nogil:
+        __status__ = cublasMpGemr2D(<Handle>handle, m, n, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <void*>b, ib, jb, <MatrixDescriptor>desc_b, <void*>d_work, workspace_size_in_bytes_on_device, <void*>h_work, workspace_size_in_bytes_on_host, <ncclComm>global_comm)
+    check_status(__status__)
+
+
+cpdef tuple trmr2d_buffer_size(intptr_t handle, int uplo, int diag, int64_t m, int64_t n, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t global_comm):
+    """See `cublasMpTrmr2D_bufferSize`."""
+    cdef size_t workspace_size_in_bytes_on_device
+    cdef size_t workspace_size_in_bytes_on_host
+    with nogil:
+        __status__ = cublasMpTrmr2D_bufferSize(<Handle>handle, <cublasFillMode_t>uplo, <cublasDiagType_t>diag, m, n, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <void*>b, ib, jb, <MatrixDescriptor>desc_b, &workspace_size_in_bytes_on_device, &workspace_size_in_bytes_on_host, <ncclComm>global_comm)
+    check_status(__status__)
+    return (workspace_size_in_bytes_on_device, workspace_size_in_bytes_on_host)
+
+
+cpdef trmr2d(intptr_t handle, int uplo, int diag, int64_t m, int64_t n, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t d_work, size_t workspace_size_in_bytes_on_device, intptr_t h_work, size_t workspace_size_in_bytes_on_host, intptr_t global_comm):
+    """See `cublasMpTrmr2D`."""
+    with nogil:
+        __status__ = cublasMpTrmr2D(<Handle>handle, <cublasFillMode_t>uplo, <cublasDiagType_t>diag, m, n, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <void*>b, ib, jb, <MatrixDescriptor>desc_b, <void*>d_work, workspace_size_in_bytes_on_device, <void*>h_work, workspace_size_in_bytes_on_host, <ncclComm>global_comm)
+    check_status(__status__)
+
+
+cpdef tuple geadd_buffer_size(intptr_t handle, int trans, int64_t m, int64_t n, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c):
+    """See `cublasMpGeadd_bufferSize`."""
+    cdef size_t workspace_size_in_bytes_on_device
+    cdef size_t workspace_size_in_bytes_on_host
+    with nogil:
+        __status__ = cublasMpGeadd_bufferSize(<Handle>handle, <cublasOperation_t>trans, m, n, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, &workspace_size_in_bytes_on_device, &workspace_size_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_size_in_bytes_on_device, workspace_size_in_bytes_on_host)
+
+
+cpdef geadd(intptr_t handle, int trans, int64_t m, int64_t n, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c, intptr_t d_work, size_t workspace_size_in_bytes_on_device, intptr_t h_work, size_t workspace_size_in_bytes_on_host):
+    """See `cublasMpGeadd`."""
+    with nogil:
+        __status__ = cublasMpGeadd(<Handle>handle, <cublasOperation_t>trans, m, n, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, <void*>d_work, workspace_size_in_bytes_on_device, <void*>h_work, workspace_size_in_bytes_on_host)
+    check_status(__status__)
+
+
+cpdef tuple tradd_buffer_size(intptr_t handle, int uplo, int trans, int64_t m, int64_t n, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c):
+    """See `cublasMpTradd_bufferSize`."""
+    cdef size_t workspace_size_in_bytes_on_device
+    cdef size_t workspace_size_in_bytes_on_host
+    with nogil:
+        __status__ = cublasMpTradd_bufferSize(<Handle>handle, <cublasFillMode_t>uplo, <cublasOperation_t>trans, m, n, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, &workspace_size_in_bytes_on_device, &workspace_size_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_size_in_bytes_on_device, workspace_size_in_bytes_on_host)
+
+
+cpdef tradd(intptr_t handle, int uplo, int trans, int64_t m, int64_t n, intptr_t alpha, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t beta, intptr_t c, int64_t ic, int64_t jc, intptr_t desc_c, intptr_t d_work, size_t workspace_size_in_bytes_on_device, intptr_t h_work, size_t workspace_size_in_bytes_on_host):
+    """See `cublasMpTradd`."""
+    with nogil:
+        __status__ = cublasMpTradd(<Handle>handle, <cublasFillMode_t>uplo, <cublasOperation_t>trans, m, n, <const void*>alpha, <const void*>a, ia, ja, <MatrixDescriptor>desc_a, <const void*>beta, <void*>c, ic, jc, <MatrixDescriptor>desc_c, <void*>d_work, workspace_size_in_bytes_on_device, <void*>h_work, workspace_size_in_bytes_on_host)
+    check_status(__status__)
+
+
+cpdef set_emulation_strategy(intptr_t handle, int emulation_strategy):
+    """See `cublasMpSetEmulationStrategy`."""
+    with nogil:
+        __status__ = cublasMpSetEmulationStrategy(<Handle>handle, <_EmulationStrategy>emulation_strategy)
+    check_status(__status__)
+
+
+cpdef int get_emulation_strategy(intptr_t handle) except? -1:
+    """See `cublasMpGetEmulationStrategy`."""
+    cdef _EmulationStrategy emulation_strategy
+    with nogil:
+        __status__ = cublasMpGetEmulationStrategy(<Handle>handle, &emulation_strategy)
+    check_status(__status__)
+    return <int>emulation_strategy

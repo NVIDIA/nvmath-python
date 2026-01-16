@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -40,7 +40,7 @@ from .utils.check_helpers import (
         if not is_half(dtype)
     ],
 )
-def test_default_backend(monkeypatch, framework, exec_backend, mem_backend, dtype):
+def test_default_backend(seeder, monkeypatch, framework, exec_backend, mem_backend, dtype):
     import sys
 
     if not sys.platform.startswith("linux"):
@@ -61,7 +61,7 @@ def test_default_backend(monkeypatch, framework, exec_backend, mem_backend, dtyp
 
     shape = (45, 13)
     axes = (0,)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=55)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     out = fft_fn(signal, axes=axes)
     assert_array_type(out, framework, mem_backend, get_fft_dtype(dtype))

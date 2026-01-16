@@ -1,38 +1,53 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["matmul", "TransposeMode", "Matmul", "SharedStorageCalc"]
+__all__ = ["matmul", "TransposeMode", "Matmul", "SharedStorageCalc", "Accumulator", "DevicePipeline", "TilePipeline"]
 
+from abc import abstractmethod
 from functools import cached_property
 import itertools
 from collections.abc import Sequence
 import re
 from typing import Any, overload
 from warnings import warn
+import weakref
+
+from nvmath._utils import get_nvrtc_version
+from nvmath.device.common_opaque_tensor import _LIBMATHDX_RUNTIME, OpaqueLayout
 
 from .common import (
     Layout,
-    Partitioner,
+    OpaqueTensor,
     check_code_type,
     check_in,
     SHARED_DEVICE_DOCSTRINGS,
     pad_or_truncate,
     parse_sm,
 )
-from .common_backend import MATHDX_TYPES_TO_NP, get_isa_version, get_lto
+from .common_backend import MATHDX_TYPES_TO_NP, NP_TYPES_TO_MATHDX_TYPES, DescriptorWrapper, get_isa_version, get_lto
 from .common_cuda import (
     Code,
     CodeType,
+    ComputeCapability,
     Dim3,
+    get_current_device,
+    get_current_device_cc,
+    get_default_code_type,
 )
 from .cublasdx_backend import (
     Alignment,
     Arrangement,
     Precision,
+    _compile_blas_device_pipeline_destroy_kernel,
+    _compile_blas_device_pipeline_init_kernel,
     generate_MM,
     generate_code,
+    generate_device_pipeline,
+    generate_tensor_like,
+    generate_tile_pipeline,
     generate_function_code,
+    generate_function_with_pipelines_code,
     generate_tensor,
     generate_tensors,
     get_function_code,
@@ -42,7 +57,6 @@ from .cublasdx_backend import (
     validate,
     LeadingDimension,
     TransposeMode,
-    validate_alignment,
     validate_execute_api,
     validate_tensor_types,
     MAX_ALIGNMENT,  # noqa: F401
@@ -52,6 +66,21 @@ from nvmath.internal.utils import docstring_decorator
 
 from nvmath.bindings import mathdx
 import numpy
+
+try:
+    from cuda.core import (
+        Device,
+        Buffer,
+        LaunchConfig,
+        launch,
+    )
+except ImportError:
+    from cuda.core.experimental import (
+        Device,
+        Buffer,
+        LaunchConfig,
+        launch,
+    )
 
 CUBLASDX_DOCSTRING = SHARED_DEVICE_DOCSTRINGS.copy()
 CUBLASDX_DOCSTRING.update(
@@ -156,6 +185,272 @@ class SharedStorageCalc:
         return self._memory
 
 
+class Partitioner:
+    """
+    Partitioner is an abstraction for partitioning a global memory tensor into a
+    partitioned tensor.
+
+    .. note:: Do not create directly, use
+        :py:func:`nvmath.device.Matmul.suggest_partitioner`.
+
+    Refer to the cuBLASDx documentation for more details on how to use this class:
+    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#partitioner-register-tensor-other-label
+    """
+
+    def __init__(self, *args):
+        raise RuntimeError("Partitioner should not be called directly")
+
+    def partition_like_C(self, gmem_c: OpaqueTensor) -> OpaqueTensor:
+        """
+        Partitions the given global memory tensor `gmem_c` into a partitioned tensor.
+        The partitioned tensor is used for accessing the C matrix when working
+        with register fragment.
+        """
+        raise RuntimeError("partition_like_C is a device function")
+
+    def map_fragment_index(self, fragment_index: int) -> tuple[int, int]:
+        """
+        Maps the given fragment index to a global memory index.
+        This is used to access the correct element in the partitioned tensor.
+        """
+        raise RuntimeError("map_fragment_index is a device function")
+
+    def is_thread_active(self) -> bool:
+        """
+        Checks if the current thread takes part in GEMM.
+        """
+        raise RuntimeError("is_thread_active is a device function")
+
+    def is_predicated(self) -> bool:
+        """
+        Checks if the current thread is predicated.
+        This is used to determine if the thread should execute the kernel.
+        """
+        raise RuntimeError("is_predicated is a device function")
+
+    def is_index_in_bounds(self, index: int) -> bool:
+        """
+        Checks if the given index is within the bounds of the partitioned tensor.
+        This is used to prevent out-of-bounds access in the kernel.
+        """
+        raise RuntimeError("is_index_in_bounds is a device function")
+
+    def get_alignment(self) -> int:
+        raise NotImplementedError("not implemented")
+
+    def make_empty_fragment(self) -> OpaqueTensor:
+        """Creates an empty fragment tensor in register memory. Fragment layout
+        is same as accumulator layout."""
+        raise RuntimeError("make_empty_fragment is a device function")
+
+    def partition_and_copy(self, src: OpaqueTensor, dst: OpaqueTensor):
+        """Partition gmem tensor and copy to rmem fragment."""
+        raise RuntimeError("partition_and_copy is a device function")
+
+    def make_partition_and_copy(self, src: OpaqueTensor) -> OpaqueTensor:
+        """Same as partition_and_copy but returns the partitioned rmem tensor."""
+        raise RuntimeError("make_partition_and_copy is a device function")
+
+
+class Accumulator(Partitioner):
+    """Accumulator is an abstraction that provides the link between the
+    global memory and register layouts. It offers operations like partitioning,
+    copying data, and mapping register indices to matrix coordinates.
+
+    Refer to the cuBLASDx documentation for more details on how to use this class:
+    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#accumulator-and-register-fragment-tensors
+    """
+
+    def get_results(self, out=None) -> OpaqueTensor:
+        raise RuntimeError("get_results is a device function")
+
+    def partition_and_store(self, tensor: OpaqueTensor):
+        raise NotImplementedError("not implemented")
+
+    def clear(self):
+        raise NotImplementedError("not implemented")
+
+    def size(self):
+        raise NotImplementedError("not implemented")
+
+    def axpby(self):
+        raise NotImplementedError("not implemented")
+
+
+class DevicePipeline:
+    """DevicePipeline allows users to optimally configure kernel calls for pipelined
+    matrix multiplication. It also provides an access point for getting a
+    :class:`TilePipeline` object within a kernel.
+
+    Refer to the cuBLASDx documentation for more details on how to use this class:
+    https://docs.nvidia.com/cuda/cublasdx/using_pipelines.html
+    """
+
+    def __init__(self, mm: "Matmul", pipeline_depth: int, a: numpy.ndarray, b: numpy.ndarray):
+        self.mm = mm
+        self.pipeline_depth = pipeline_depth
+
+        # TODO: assert that arrays are on device memory
+        self.a = a
+        self.b = b
+        self.pipeline_depth = pipeline_depth
+
+        h = _blas_device_pipeline_handle(self)
+
+        self._storage_bytes = int(mathdx.cublasdx_get_pipeline_trait_int64(h, mathdx.CublasdxPipelineTrait.STORAGE_BYTES))
+        self._storage_alignment_bytes = int(
+            mathdx.cublasdx_get_pipeline_trait_int64(h, mathdx.CublasdxPipelineTrait.STORAGE_ALIGNMENT_BYTES)
+        )
+        self._buffer_size = int(mathdx.cublasdx_get_pipeline_trait_int64(h, mathdx.CublasdxPipelineTrait.BUFFER_SIZE))
+        self._buffer_alignment_bytes = int(
+            mathdx.cublasdx_get_pipeline_trait_int64(h, mathdx.CublasdxPipelineTrait.BUFFER_ALIGNMENT_BYTES)
+        )
+        block_dim = numpy.zeros(3, dtype=numpy.int64)
+        mathdx.cublasdx_get_pipeline_trait_int64s(
+            h, mathdx.CublasdxPipelineTrait.BLOCK_DIM, len(block_dim), block_dim.ctypes.data
+        )
+        self._block_dim = Dim3(*block_dim.tolist())
+
+        device = Device(get_current_device())
+        device.set_current()
+
+        # We do not need _storage_alignment_bytes here as device allocated
+        # memory is maximum aligned.
+        self._storage: Buffer = device.allocate(self._storage_bytes)
+
+        self._init_kernel_launch(a, b, device)
+
+        mm_descriptor = _blas_tensors_handle(self.mm)
+        pipeline_descriptor = _blas_device_pipeline_handle(self)
+        self._finalizer = weakref.finalize(
+            self, DevicePipeline._destruct_kernel_execute, mm_descriptor, pipeline_descriptor, self._storage, device
+        )
+
+    @property
+    def buffer_alignment(self) -> int:
+        return self._buffer_alignment_bytes
+
+    @property
+    def buffer_size(self) -> int:
+        return self._buffer_size
+
+    @property
+    def storage_bytes(self) -> int:
+        return self._storage_bytes
+
+    @property
+    def storage_alignment(self) -> int:
+        return self._storage_alignment_bytes
+
+    @property
+    def block_dim(self) -> Dim3:
+        return self._block_dim
+
+    def get_tile(self, smem: numpy.ndarray, blockIdx_x: int, blockIdx_y: int) -> "TilePipeline":
+        raise RuntimeError("get_tile is a device function")
+
+    def reset_tile(self, tile_pipeline: "TilePipeline", idx: int | tuple[int, int], idy: int | tuple[int, int]):
+        raise RuntimeError("reset_tile is a device function")
+
+    @cached_property
+    def a_strides(self):
+        a = self.a
+        for s in a.strides:
+            assert s % numpy.dtype(a.dtype).itemsize == 0
+        return tuple(s // numpy.dtype(a.dtype).itemsize for s in a.strides)
+
+    @cached_property
+    def b_strides(self):
+        b = self.b
+        for s in b.strides:
+            assert s % numpy.dtype(b.dtype).itemsize == 0
+        return tuple(s // numpy.dtype(b.dtype).itemsize for s in b.strides)
+
+    def _debug_print(self):
+        import cupy
+
+        vhex = numpy.vectorize(hex)
+        tma_cp = cupy.from_dlpack(self._storage).view(dtype=numpy.uint8)
+
+        print(f"A_ptr: 0x{int(self.a.gpu_data.device_pointer):x}")
+        print(f"B_ptr: 0x{int(self.b.gpu_data.device_pointer):x}")
+        print("Device pipeline buffer:", vhex(cupy.asnumpy(tma_cp)))
+
+    def _init_kernel_launch(self, a, b, device: Device):
+        mm_descriptor = _blas_tensors_handle(self.mm)
+        pipeline_descriptor = _blas_device_pipeline_handle(self)
+        kernel = _compile_blas_device_pipeline_init_kernel(
+            mm_descriptor, pipeline_descriptor, code_type=get_default_code_type()
+        )
+
+        # Create the launch configuration
+        config = LaunchConfig(grid=(1,), block=(1,))
+        ker_args = (int(self._storage.handle), int(a.gpu_data.device_pointer), int(b.gpu_data.device_pointer))
+        # TODO: add support for cupy array
+        # ker_args = (int(self._storage.handle), int(a.data.ptr), int(b.data.ptr))
+
+        # Launch the kernel
+        launch(device.default_stream, config, kernel, *ker_args)
+        device.default_stream.sync()
+
+    @staticmethod
+    def _destruct_kernel_execute(mm_descriptor: int, pipeline_descriptor: int, storage: Buffer, device: Device):
+        kernel = _compile_blas_device_pipeline_destroy_kernel(
+            mm_descriptor, pipeline_descriptor, code_type=get_default_code_type()
+        )
+
+        # Create the launch configuration
+        config = LaunchConfig(grid=(1,), block=(1,))
+        ker_args = (int(storage.handle),)
+
+        # Launch the kernel
+        device.set_current()
+        launch(device.default_stream, config, kernel, *ker_args)
+        device.default_stream.sync()
+
+
+class TilePipeline:
+    """TilePipeline allows users to execute an pipelined matrix multiplication
+    with partial tile results accumulated into an acuumulator.
+
+    Refer to the cuBLASDx documentation for more details on how to use this class:
+    https://docs.nvidia.com/cuda/cublasdx/using_pipelines.html
+    """
+
+    def __init__(self, device_pipeline: DevicePipeline):
+        self.device_pipeline = device_pipeline
+
+        MM_descriptor = _blas_tensors_handle(device_pipeline.mm)
+        device_pipeline_descriptor = _blas_device_pipeline_handle(device_pipeline)
+        h = generate_tile_pipeline(
+            MM_descriptor,
+            device_pipeline_descriptor,
+        )
+        self._storage_bytes = int(
+            mathdx.cublasdx_get_pipeline_trait_int64(h.descriptor, mathdx.CublasdxPipelineTrait.STORAGE_BYTES)
+        )
+        self._storage_alignment_bytes = int(
+            mathdx.cublasdx_get_pipeline_trait_int64(h.descriptor, mathdx.CublasdxPipelineTrait.STORAGE_ALIGNMENT_BYTES)
+        )
+
+    def _init(self, device_pipeline: DevicePipeline, smem, idx: int, idy: int):
+        raise RuntimeError("_init is a device function")
+
+    def _del(self):
+        raise RuntimeError("_del is a device function")
+
+    @property
+    def storage_bytes(self) -> int:
+        return self._storage_bytes
+
+    @property
+    def storage_alignment(self) -> int:
+        return self._storage_alignment_bytes
+
+    def execute(self, accumulator):
+        raise RuntimeError("execute is a device function")
+
+
 @docstring_decorator(CUBLASDX_DOCSTRING, skip_missing=False)
 class Matmul:
     """
@@ -225,8 +520,13 @@ class Matmul:
         function="MM",
         static_block_dim=False,
         execution="Block",
+        with_pipeline: bool = False,
+        enable_input_streaming: bool = False,
     ):
         sm = parse_sm(sm)
+        if sm.integer not in {900, 1000, 1030, 1100}:
+            # remove arch modifier
+            sm = ComputeCapability(sm.major, sm.minor)
 
         if transpose_mode is not None:
             warn(
@@ -303,6 +603,8 @@ class Matmul:
             function=function,
             execution=execution,
             static_block_dim=static_block_dim,
+            with_pipeline=with_pipeline,
+            enable_input_streaming=enable_input_streaming,
         )
 
         #
@@ -321,6 +623,8 @@ class Matmul:
         self._execution = execution
         self._leading_dimension = leading_dimension
         self._static_block_dim = static_block_dim
+        self._with_pipeline = with_pipeline
+        self._enable_input_streaming = enable_input_streaming
 
         #
         # Update suggested traits
@@ -394,6 +698,14 @@ class Matmul:
         if self._leading_dimension is None:
             return self._traits.leading_dimension
         return self._leading_dimension
+
+    @property
+    def with_pipeline(self) -> bool:
+        return self._with_pipeline
+
+    @property
+    def enable_input_streaming(self) -> bool:
+        return self._enable_input_streaming
 
     #
     # Extensions
@@ -531,7 +843,7 @@ class Matmul:
         return self.c_value_type
 
     @cached_property
-    def a_dim(self):
+    def a_dim(self) -> tuple[int, int]:
         (m, _, k) = self.size
 
         dim = (m, k)
@@ -541,7 +853,7 @@ class Matmul:
         return dim
 
     @cached_property
-    def b_dim(self):
+    def b_dim(self) -> tuple[int, int]:
         (_, n, k) = self.size
 
         dim = (k, n)
@@ -551,7 +863,7 @@ class Matmul:
         return dim
 
     @cached_property
-    def c_dim(self):
+    def c_dim(self) -> tuple[int, int]:
         (m, n, _) = self.size
         return (m, n)
 
@@ -568,19 +880,19 @@ class Matmul:
         return tuple(x * y for x, y in zip(ld, non_ld, strict=True))
 
     @cached_property
-    def _abc_sizes(self):
+    def _abc_sizes(self) -> tuple[int, int, int]:
         return self._calculate_abc_sizes(self.leading_dimension)
 
     @property
-    def a_size(self):
+    def a_size(self) -> int:
         return self._abc_sizes[0]
 
     @property
-    def b_size(self):
+    def b_size(self) -> int:
         return self._abc_sizes[1]
 
     @property
-    def c_size(self):
+    def c_size(self) -> int:
         return self._abc_sizes[2]
 
     @property
@@ -665,37 +977,59 @@ class Matmul:
         return size
 
     def get_layout_gmem_a(self, leading_dimension: int | None = None) -> Layout:
-        return _BlasLayout(self, "get_layout_gmem_a", leading_dimension)
+        return _BlasMatmulLayout(self, "get_layout_gmem_a", leading_dimension)
 
     def get_layout_gmem_b(self, leading_dimension: int | None = None) -> Layout:
-        return _BlasLayout(self, "get_layout_gmem_b", leading_dimension)
+        return _BlasMatmulLayout(self, "get_layout_gmem_b", leading_dimension)
 
     def get_layout_gmem_c(self, leading_dimension: int | None = None) -> Layout:
-        return _BlasLayout(self, "get_layout_gmem_c", leading_dimension)
+        return _BlasMatmulLayout(self, "get_layout_gmem_c", leading_dimension)
 
     def get_layout_smem_a(self) -> Layout:
-        return _BlasLayout(self, "get_layout_smem_a")
+        return _BlasMatmulLayout(self, "get_layout_smem_a")
 
     def get_layout_smem_b(self) -> Layout:
-        return _BlasLayout(self, "get_layout_smem_b")
+        return _BlasMatmulLayout(self, "get_layout_smem_b")
 
     def get_layout_smem_c(self) -> Layout:
-        return _BlasLayout(self, "get_layout_smem_c")
+        return _BlasMatmulLayout(self, "get_layout_smem_c")
 
     def suggest_layout_smem_a(self) -> Layout:
-        return _BlasLayout(self, "suggest_layout_smem_a")
+        return _BlasMatmulLayout(self, "suggest_layout_smem_a")
 
     def suggest_layout_smem_b(self) -> Layout:
-        return _BlasLayout(self, "suggest_layout_smem_b")
+        return _BlasMatmulLayout(self, "suggest_layout_smem_b")
 
     def suggest_layout_smem_c(self) -> Layout:
-        return _BlasLayout(self, "suggest_layout_smem_c")
+        return _BlasMatmulLayout(self, "suggest_layout_smem_c")
 
     def suggest_layout_rmem_c(self) -> Layout:
-        return _BlasLayout(self, "suggest_layout_rmem_c")
+        return _BlasMatmulLayout(self, "suggest_layout_rmem_c")
 
-    def suggest_partitioner(self) -> Partitioner:
-        raise RuntimeError("suggest_partitioner should not be called directly outside of a numba.cuda.jit(...) kernel.")
+    def get_layout_rmem_c(self) -> Layout:
+        return _BlasMatmulLayout(self, "get_layout_rmem_c")
+
+    def _suggest_accumulator_c(self) -> Layout:
+        return _BlasMatmulLayout(self, "suggest_accumulator_c")
+
+    def _get_accumulator_c(self) -> Layout:
+        return _BlasMatmulLayout(self, "get_accumulator_c")
+
+    def get_accumulator(self) -> Accumulator:
+        raise RuntimeError("get_accumulator is a device function")
+
+    def suggest_accumulator(self) -> Accumulator:
+        raise RuntimeError("suggest_accumulator is a device function")
+
+    def suggest_device_pipeline(self, pipeline_depth: int, a: numpy.ndarray, b: numpy.ndarray) -> DevicePipeline:
+        cc = get_current_device_cc()
+        ctk_version = get_nvrtc_version()
+        if ctk_version < (13, 0, 0):
+            raise RuntimeError("DevicePipeline requires CUDA Toolkit 13.0 or higher.")
+        if cc.major >= 10 and ctk_version < (13, 1, 0):
+            raise RuntimeError("DevicePipeline on compute capability 10.0 and higher requires CUDA Toolkit 13.1 or higher.")
+
+        return DevicePipeline(self, pipeline_depth, a, b)
 
     @deprecated("Calling MM(...) directly is deprecated, please use MM.execute(...) method instead.")
     def __call__(self, *args):
@@ -732,6 +1066,8 @@ class _MatmulTraits:
             static_block_dim=mm._static_block_dim,
             leading_dimension=mm._leading_dimension,
             execution=mm._execution,
+            with_pipeline=mm._with_pipeline,
+            enable_input_streaming=mm._enable_input_streaming,
         ).descriptor
 
         self.value_types = tuple(MATHDX_TYPES_TO_NP[vt] for vt in get_int_traits(h, mathdx.CublasdxTraitType.VALUE_TYPE, 3))
@@ -746,36 +1082,13 @@ class _MatmulTraits:
 
 
 def compile_blas_execute(
-    blas: Matmul,
-    code_type: Any,
-    execute_api: str | None = None,
-    tensor_types: Sequence[str] | None = None,
-    global_memory_alignment: Sequence[int] | None = None,
+    blas: Matmul, code_type: Any, execute_api: str | None = None, tensor_types: Sequence[str] | None = None
 ) -> tuple[Code, str]:
-    if global_memory_alignment is not None:
-        if not isinstance(global_memory_alignment, Sequence) or len(global_memory_alignment) != 3:
-            raise ValueError(
-                "global_memory_alignment should be an instance of Alignment"
-                "or a 3-tuple ; "
-                "got global_memory_alignment = {global_memory_alignment}"
-            )
-        global_memory_alignment = Alignment(*global_memory_alignment)
-
     check_code_type(code_type, "cuBLASDx")
     validate_execute_api(execute_api)
     tensors_api = execute_api == "tensors"
     if tensors_api:
         validate_tensor_types(tensor_types)
-
-    if global_memory_alignment is not None:
-        # Perform validation only after initialization since we need to
-        # know precision and data_type
-        validate_alignment(
-            global_memory_alignment,
-            blas.precision,
-            blas.data_type,
-            gmem=True,
-        )
 
     handle = generate_MM(
         size=blas.size,
@@ -793,14 +1106,16 @@ def compile_blas_execute(
         execution=blas._execution,
         execute_api=execute_api,
         tensor_types=tensor_types,
+        with_pipeline=blas.with_pipeline,
+        enable_input_streaming=blas.enable_input_streaming,
     )
 
     # Now compile the LTO device function
     h = handle.descriptor
 
     if tensors_api:
-        resp = generate_tensors(h, tensor_types, global_memory_alignment)
-        _, target_tensors = resp.gmem, resp.target
+        resp = generate_tensors(h, tensor_types)
+        target_tensors = resp.target
         code, symbol = generate_function_code(h, mathdx.CublasdxDeviceFunctionType.EXECUTE, target_tensors, code_type.cc)
     else:
         code = generate_code(h, code_type.cc)
@@ -819,7 +1134,10 @@ def compile_blas_execute(
     return ltos[0], symbol
 
 
-def _blas_tensors_handle(MM: Matmul):
+def _blas_handle(
+    MM: Matmul,
+    execute_api: str | None = None,
+):
     handle = generate_MM(
         size=MM.size,
         function=MM.function,
@@ -832,9 +1150,36 @@ def _blas_tensors_handle(MM: Matmul):
         block_dim=MM.block_dim,
         static_block_dim=MM._static_block_dim,
         execution=MM._execution,
-        execute_api="tensors",
+        execute_api=execute_api,
+        with_pipeline=MM._with_pipeline,
+        enable_input_streaming=MM._enable_input_streaming,
     )
     return handle.descriptor
+
+
+def _blas_tensors_handle(MM: Matmul):
+    return _blas_handle(MM, execute_api="tensors")
+
+
+def _blas_device_pipeline_handle(pipeline: DevicePipeline):
+    MM_descriptor = _blas_tensors_handle(pipeline.mm)
+    return generate_device_pipeline(
+        MM_descriptor,
+        pipeline.pipeline_depth,
+        NP_TYPES_TO_MATHDX_TYPES[pipeline.a.dtype.type],
+        NP_TYPES_TO_MATHDX_TYPES[pipeline.b.dtype.type],
+        pipeline.a.shape,
+        pipeline.b.shape,
+        pipeline.a_strides,
+        pipeline.b_strides,
+    ).descriptor
+
+
+def _blas_tile_pipeline_handle(pipeline: TilePipeline):
+    MM_descriptor = _blas_tensors_handle(pipeline.device_pipeline.mm)
+    device_pipeline_descriptor = _blas_device_pipeline_handle(pipeline.device_pipeline)
+    h = generate_tile_pipeline(MM_descriptor, device_pipeline_descriptor)
+    return h.descriptor
 
 
 @docstring_decorator(CUBLASDX_DOCSTRING, skip_missing=False)
@@ -973,118 +1318,220 @@ def matmul(*, compiler=None, code_type=None, execute_api=None, tensor_types=None
     return Matmul(**kwargs)
 
 
-def _parse_layout(layout: str) -> tuple[bool, str, str]:
+def _parse_layout(layout: str) -> tuple[bool, bool, str, str]:
     """Parse layout string to extract tensor type and memory type.
 
-    Returns: tuple of (suggest, memory, tensor)
+    Returns: tuple of (suggest, accumulator, memory, tensor)
         suggest: bool, True if the layout is a suggested layout
-        memory: str, memory type ('s' for shared, 'g' for global, 'r' for register)
+        accumulator: bool, True if the layout is an accumulator
+        memory: str, memory type ('s' for shared, 'g' for global,
+            'r' for register, '' for accumulator)
         tensor: str, tensor type ('a', 'b', 'c')
     """
     # extracting tensor type from layout
-    pattern = re.compile(r"^(?:(suggest|get)_)?layout_([srg])mem_([abc])$")
+    pattern = re.compile(r"^(?:(suggest|get)_)?(layout|accumulator)_(?:([srg])mem_)?([abc])$")
 
     match = pattern.match(layout)
 
     assert match is not None
 
-    suggest, memory, tensor = match.group(1, 2, 3)
+    suggest, layout_type, memory, tensor = match.group(1, 2, 3, 4)
 
-    return suggest == "suggest", memory, tensor
+    return suggest == "suggest", layout_type == "accumulator", memory, tensor
 
 
-class _BlasLayout(Layout):
+class _BaseBlasLayout(OpaqueLayout):
+    _uid: int
+    _logical_size: int
+    _storage_bytes: int
+    _alignment_bytes: int
+
+    _MM: Matmul
+
+    def __init__(self, MM: Matmul, shape: tuple[int, ...], strides: tuple[int, ...], dtype: numpy.number):
+        super().__init__(shape, strides, dtype)
+        self._MM = MM
+
+    @abstractmethod
+    def _get_descriptor(self) -> DescriptorWrapper:
+        pass
+
+    def _init_traits(self):
+        d = self._get_descriptor()
+        self._uid, self._logical_size, self._storage_bytes, self._alignment_bytes = get_tensor_traits(d.descriptor)
+
+    @property
+    def MM(self) -> Matmul:
+        return self._MM
+
+    @property
+    def uid(self) -> int:
+        return self._uid
+
+    @property
+    def size(self) -> int:
+        return self._logical_size
+
+    @property
+    def storage_bytes(self) -> int:
+        return self._storage_bytes
+
+    @cached_property
+    def cosize(self) -> int:
+        assert self._storage_bytes % numpy.dtype(self._dtype).itemsize == 0
+        return self._storage_bytes // numpy.dtype(self._dtype).itemsize
+
+    @property
+    def alignment(self) -> int:
+        return self._alignment_bytes
+
+
+class _BlasMatmulLayout(_BaseBlasLayout):
     """BlasLayout for the OpaqueTensor"""
 
-    _size: int
-    _cosize: int
-
-    # Runtime fields for the opaque tensor
-    _uid: int
-    _leading_dimension: int | None
-
-    # Internal fields to recreate the numba layout type
-    _MM: Matmul | None
     _layout: str
-
-    # Cached fields to avoid recomputing
+    _tensor_type: str
     _tensor_index: int
+    _accumulator: bool
+    _memory_space: str
+    _tensor: str
+
+    _default_ld: int | None
+
+    def _get_descriptor(self) -> DescriptorWrapper:
+        return generate_tensor(_blas_tensors_handle(self._MM), self._tensor_type)
 
     def __init__(self, MM: Matmul, layout: str, leading_dimension: int | None = None):
         if not isinstance(MM, Matmul):
             raise ValueError("MM should be an instance of Matmul")
 
-        suggested, memory, tensor = _parse_layout(layout)
+        self._default_ld = leading_dimension
+        self._suggested, self._accumulator, memory, tensor = _parse_layout(layout)
         self._tensor_index = ["a", "b", "c"].index(tensor)
 
-        tensor_type = f"{memory}mem_{tensor}"
+        if self._accumulator:
+            tensor_type = f"accumulator_{tensor}"
+        else:
+            tensor_type = f"{memory}mem_{tensor}"
 
-        if suggested:
+        if self._suggested:
             tensor_type = "suggested_" + tensor_type
 
-        self._dtype = MM._traits.value_types[self._tensor_index]
-        itemsize = numpy.dtype(self._dtype).itemsize
+        self._tensor_type = tensor_type
+
+        # Inheritance support
+        if hasattr(self, "_dtype") and self._dtype is not None:
+            dtype = self._dtype
+        else:
+            dtype = MM._traits.value_types[self._tensor_index]
+        itemsize = numpy.dtype(dtype).itemsize
+
+        self._MM = MM
 
         if memory == "g":
-            self._uid = -1  # gmem tensors at this stage do not have a uid
-            self._size = (MM.a_size, MM.b_size, MM.c_size)[self._tensor_index]
-            storage_size = self._size * itemsize
-        else:
-            th = generate_tensor(_blas_tensors_handle(MM), tensor_type)
-            self._uid, self._size, storage_size = get_tensor_traits(th.descriptor)
-        assert storage_size % itemsize == 0
-        self._cosize = storage_size // itemsize
-        if mathdx.get_version_ex() < (0, 3, 0):
-            self._size = (MM.a_size, MM.b_size, MM.c_size)[self._tensor_index]
-            if memory == "r":
-                self._size = self._cosize
+            self._uid = -1
+            self._logical_size = MM._abc_sizes[self._tensor_index]
+            self._storage_bytes = self._logical_size * itemsize
+            # TODO: should we take it as an argument?
+            self._alignment_bytes = itemsize
 
-        self._dynamic_ld = memory == "g"  # dynamic ld only global memory
-        self._MM = MM
+            shape: tuple[int, ...] = tuple((MM.a_dim, MM.b_dim, MM.c_dim)[self._tensor_index])
+            strides: tuple[int, ...] = (_LIBMATHDX_RUNTIME, 1)
+        else:
+            self._init_traits()
+            shape, strides = (self.size,), (1,)
+        assert self._storage_bytes % itemsize == 0
+        self._cosize = self._storage_bytes // itemsize
+
+        self._memory_space = memory
         self._layout = layout
         self._tensor_type = tensor_type
-        self._leading_dimension = leading_dimension
+
+        super().__init__(MM, dtype=dtype, shape=shape, strides=strides)
 
     @property
-    def dtype(self):
-        return self._dtype
+    def suggested(self) -> bool:
+        return self._suggested
 
     @property
-    def size(self) -> int:
-        return self._size
+    def layout(self) -> str:
+        return self._layout
 
     @property
-    def cosize(self) -> int:
-        return self._cosize
+    def accumulator(self) -> bool:
+        return self._accumulator
+
+    @property
+    def tensor_type(self) -> str:
+        return self._tensor_type
+
+    @property
+    def tensor_index(self) -> int:
+        """Tensor index is 0 for A, 1 for B and 2 for C."""
+        return self._tensor_index
+
+    @property
+    def memory_space(self) -> str:
+        """Memory space is 's' for shared, 'g' for global, 'r' for register,
+        '' for accumulator."""
+        return self._memory_space
+
+    @property
+    def default_ld(self) -> int | None:
+        """Default leading dimension if provided during layout creation.
+        Only available for gmem layouts created on the host side.
+        Strides will be set to (_LIBMATHDX_RUNTIME,1).
+        """
+        return self._default_ld
+
+
+class _BlasMatmulLikeLayout(_BlasMatmulLayout):
+    """BlasLayout for the OpaqueTensor created with make_fragment_like"""
+
+    _dtype_orig: numpy.number
+
+    def __init__(self, MM: Matmul, layout: str, dtype: numpy.number, leading_dimension: int | None = None):
+        self._dtype = dtype
+        super().__init__(MM, layout, leading_dimension)
+        self._dtype_orig = MM._traits.value_types[self._tensor_index]
+
+    def _get_descriptor(self) -> DescriptorWrapper:
+        mm_handle = _blas_tensors_handle(self._MM)
+        src_tensor = generate_tensor(mm_handle, self._tensor_type)
+        dst_tensor = generate_tensor_like(mm_handle, src_tensor.descriptor, self._dtype)
+
+        return dst_tensor
+
+    @property
+    def dtype_orig(self) -> numpy.number:
+        """Original dtype of the tensor in the Matmul object."""
+        return self._dtype_orig
 
 
 def compile_blas_copy(
-    src_tensor: _BlasLayout,
-    dst_tensor: _BlasLayout,
+    src_tensor: _BlasMatmulLayout,
+    dst_tensor: _BlasMatmulLayout,
     code_type: CodeType,
     alignment: int | None = None,
 ):
     check_code_type(code_type, "cuBLASDx")
-    assert src_tensor._MM == dst_tensor._MM
     assert src_tensor._MM is not None
+    assert dst_tensor._MM is not None
 
-    MM = src_tensor._MM
-
-    handle = _blas_tensors_handle(MM)
-    src_handler = generate_tensor(
-        handle, src_tensor._tensor_type, gmem_alignment=alignment if "gmem" in src_tensor._tensor_type else None
-    )
-    dst_handler = generate_tensor(
-        handle, dst_tensor._tensor_type, gmem_alignment=alignment if "gmem" in dst_tensor._tensor_type else None
-    )
+    src_MM_descriptor = _blas_tensors_handle(src_tensor._MM)
+    src_tensor_descriptor = src_tensor._get_descriptor()
+    dst_tensor_descriptor = dst_tensor._get_descriptor()
 
     return get_function_code(
-        handle, mathdx.CublasdxDeviceFunctionType.COPY, [src_handler.descriptor, dst_handler.descriptor], code_type
+        src_MM_descriptor,
+        mathdx.CublasdxDeviceFunctionType.COPY,
+        [src_tensor_descriptor.descriptor, dst_tensor_descriptor.descriptor],
+        code_type,
     )
 
 
 def compile_blas_clear(
-    tensor: _BlasLayout,
+    tensor: _BlasMatmulLayout,
     code_type: CodeType,
 ):
     check_code_type(code_type, "cuBLASDx")
@@ -1093,14 +1540,14 @@ def compile_blas_clear(
     MM = tensor._MM
 
     handle = _blas_tensors_handle(MM)
-    tensor_handler = generate_tensor(handle, tensor._tensor_type)
+    tensor_handler = tensor._get_descriptor()
 
     return get_function_code(handle, mathdx.CublasdxDeviceFunctionType.CLEAR, [tensor_handler.descriptor], code_type)
 
 
 def compile_blas_axpby(
-    x_tensor: _BlasLayout,
-    y_tensor: _BlasLayout,
+    x_tensor: _BlasMatmulLayout,
+    y_tensor: _BlasMatmulLayout,
     code_type: CodeType,
 ):
     check_code_type(code_type, "cuBLASDx")
@@ -1110,8 +1557,8 @@ def compile_blas_axpby(
     MM = x_tensor._MM
 
     handle = _blas_tensors_handle(MM)
-    x_handler = generate_tensor(handle, x_tensor._tensor_type)
-    y_handler = generate_tensor(handle, y_tensor._tensor_type)
+    x_handler = x_tensor._get_descriptor()
+    y_handler = y_tensor._get_descriptor()
 
     return get_function_code(
         handle, mathdx.CublasdxDeviceFunctionType.AXPBY, [x_handler.descriptor, y_handler.descriptor], code_type
@@ -1173,3 +1620,170 @@ def compile_blas_is_index_in_bounds(
         code_type,
         mathdx.CublasdxDeviceFunctionType.IS_INDEX_IN_BOUNDS,
     )
+
+
+def compile_blas_device_pipeline_destroy(
+    pipeline: DevicePipeline,
+    code_type: CodeType,
+) -> tuple[Code, str]:
+    assert isinstance(pipeline, DevicePipeline)
+
+    MM_descriptor = _blas_tensors_handle(pipeline.mm)
+    pipeline_descriptor = _blas_device_pipeline_handle(pipeline)
+
+    code, symbol = generate_function_with_pipelines_code(
+        MM_descriptor,
+        mathdx.CublasdxDeviceFunctionType.DESTROY,
+        (),
+        (pipeline_descriptor,),
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+def compile_blas_tile_pipeline_init(
+    pipeline: TilePipeline,
+    code_type: CodeType,
+):
+    assert isinstance(pipeline, TilePipeline)
+    assert isinstance(code_type, CodeType)
+
+    MM_descriptor = _blas_tensors_handle(pipeline.device_pipeline.mm)
+    pipeline_descriptor = _blas_tile_pipeline_handle(pipeline)
+
+    code, symbol = generate_function_with_pipelines_code(
+        MM_descriptor,
+        mathdx.CublasdxDeviceFunctionType.CREATE,
+        (),
+        (pipeline_descriptor,),
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+def compile_blas_device_pipeline_reset_tile(
+    device_pipeline: DevicePipeline,
+    tile_pipeline: TilePipeline,
+    code_type: CodeType,
+):
+    assert isinstance(device_pipeline, DevicePipeline)
+    assert isinstance(tile_pipeline, TilePipeline)
+    assert isinstance(code_type, CodeType)
+
+    MM_descriptor = _blas_tensors_handle(tile_pipeline.device_pipeline.mm)
+    tile_pipeline_descriptor = _blas_tile_pipeline_handle(tile_pipeline)
+    device_pipeline_descriptor = _blas_device_pipeline_handle(device_pipeline)
+
+    code, symbol = generate_function_with_pipelines_code(
+        MM_descriptor,
+        mathdx.CublasdxDeviceFunctionType.RESET,
+        (),
+        (device_pipeline_descriptor, tile_pipeline_descriptor),
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+def compile_blas_tile_pipeline_destroy(
+    pipeline: TilePipeline,
+    code_type: CodeType,
+):
+    assert isinstance(pipeline, TilePipeline)
+    assert isinstance(code_type, CodeType)
+
+    MM_descriptor = _blas_tensors_handle(pipeline.device_pipeline.mm)
+    pipeline_descriptor = _blas_tile_pipeline_handle(pipeline)
+
+    code, symbol = generate_function_with_pipelines_code(
+        MM_descriptor,
+        mathdx.CublasdxDeviceFunctionType.DESTROY,
+        (),
+        (pipeline_descriptor,),
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+def compile_blas_accumulator_init(
+    layout: Layout,
+    code_type: CodeType,
+):
+    assert isinstance(layout, _BlasMatmulLayout)
+    assert layout.accumulator
+    assert isinstance(code_type, CodeType)
+
+    MM_descriptor = _blas_tensors_handle(layout._MM)
+    opaque_tensor_descriptor = layout._get_descriptor()
+
+    code, symbol = generate_function_code(
+        MM_descriptor,
+        mathdx.CublasdxDeviceFunctionType.CREATE,
+        [opaque_tensor_descriptor.descriptor],
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol
+
+
+def compile_blas_tile_pipeline_execute(
+    pipeline: TilePipeline,
+    accumulator: Layout,
+    code_type: CodeType,
+):
+    assert isinstance(accumulator, _BlasMatmulLayout)
+    assert accumulator.accumulator
+    assert isinstance(code_type, CodeType)
+
+    MM_descriptor = _blas_tensors_handle(pipeline.device_pipeline.mm)
+    tile_pipeline_descriptor = _blas_tile_pipeline_handle(pipeline)
+    tensor_descriptor = accumulator._get_descriptor().descriptor
+
+    code, symbol = generate_function_with_pipelines_code(
+        MM_descriptor,
+        mathdx.CublasdxDeviceFunctionType.EXECUTE,
+        (tensor_descriptor,),
+        (tile_pipeline_descriptor,),
+        code_type.cc,
+    )
+
+    # Compile
+    lto_fn = get_lto(code.descriptor)
+    isa_version = get_isa_version(code.descriptor)
+
+    lto = Code(code_type, isa_version, lto_fn)
+
+    return lto, symbol

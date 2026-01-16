@@ -9,7 +9,7 @@ Initializing the distributed runtime
 
 To use the distributed APIs, you must first initialize the distributed runtime.
 This is done by having each process provide a local CUDA device ID (referring
-to a GPU on the host on which that process runs), an MPI communicator and the
+to a GPU on the host on which that process runs), an MPI communicator, and the
 desired communication backends:
 
 .. code-block:: python
@@ -21,13 +21,17 @@ desired communication backends:
 
 .. note::
 
-    nvmath-python uses MPI for bootstrapping, and other bootstrapping modes
+    nvmath-python uses MPI for bootstrapping, and other bootstrapping methods
     may become available in the future.
 
     Under the hood, the distributed math libraries use additional
     communication backends, such as NVSHMEM and NCCL.
 
     You are free to use MPI in other parts of your application.
+
+.. note::
+
+    NVSHMEM backend is required for symmetric memory operations.
 
 After initializing the distributed runtime you may use the distributed APIs.
 Certain APIs such as FFT and Reshape require GPU operands to be allocated on the

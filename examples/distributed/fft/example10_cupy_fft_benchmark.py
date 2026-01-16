@@ -1,3 +1,7 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 A simple distributed FFT example benchmark using the default Slab distribution.
 
@@ -7,16 +11,24 @@ $ mpiexec -n 4 python example10_cupy_fft_benchmark.py
 import cupy as cp
 import cupyx
 import numpy as np
-import cuda.core.experimental
+
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 from mpi4py import MPI
 
 import nvmath.distributed
 from nvmath.distributed.distribution import Slab
 
+try:
+    num_devices = system.get_num_devices()
+except AttributeError:
+    num_devices = system.num_devices
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
-device_id = rank % cuda.core.experimental.system.num_devices
+device_id = rank % num_devices
 nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 # The global 3-D FFT size is (N, N, N)
