@@ -126,11 +126,24 @@ cdef void* __cusolverdxFinalizeCode = NULL
 cdef void* __cusolverdxDestroyDescriptor = NULL
 cdef void* __cusolverdxOperatorTypeToStr = NULL
 cdef void* __cusolverdxTraitTypeToStr = NULL
+cdef void* __commondxSetCodeOptionInt64s = NULL
 cdef void* __cublasdxCreateTensor = NULL
+cdef void* __cublasdxCreateTensorStrided = NULL
 cdef void* __cublasdxMakeTensorLike = NULL
 cdef void* __cublasdxDestroyTensor = NULL
+cdef void* __cublasdxDestroyPipeline = NULL
+cdef void* __cublasdxCreateDevicePipeline = NULL
+cdef void* __cublasdxCreateTilePipeline = NULL
+cdef void* __cublasdxFinalizePipelines = NULL
+cdef void* __cublasdxFinalize = NULL
+cdef void* __cublasdxGetPipelineTraitInt64 = NULL
+cdef void* __cublasdxGetPipelineTraitInt64s = NULL
+cdef void* __cublasdxGetPipelineTraitStrSize = NULL
+cdef void* __cublasdxGetPipelineTraitStr = NULL
 cdef void* __cublasdxCreateDeviceFunction = NULL
 cdef void* __cublasdxDestroyDeviceFunction = NULL
+cdef void* __cublasdxCreateDeviceFunctionWithPipelines = NULL
+cdef void* __cusolverdxGetTraitInt64s = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
@@ -147,6 +160,10 @@ cdef int _check_or_init_mathdx() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_mathdx_init:
+            return 0
+
         driver_ver = get_cuda_version()
 
         # Load function
@@ -640,12 +657,26 @@ cdef int _check_or_init_mathdx() except -1 nogil:
                 handle = load_library(driver_ver)
             __cusolverdxTraitTypeToStr = dlsym(handle, 'cusolverdxTraitTypeToStr')
 
+        global __commondxSetCodeOptionInt64s
+        __commondxSetCodeOptionInt64s = dlsym(RTLD_DEFAULT, 'commondxSetCodeOptionInt64s')
+        if __commondxSetCodeOptionInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __commondxSetCodeOptionInt64s = dlsym(handle, 'commondxSetCodeOptionInt64s')
+
         global __cublasdxCreateTensor
         __cublasdxCreateTensor = dlsym(RTLD_DEFAULT, 'cublasdxCreateTensor')
         if __cublasdxCreateTensor == NULL:
             if handle == NULL:
                 handle = load_library(driver_ver)
             __cublasdxCreateTensor = dlsym(handle, 'cublasdxCreateTensor')
+
+        global __cublasdxCreateTensorStrided
+        __cublasdxCreateTensorStrided = dlsym(RTLD_DEFAULT, 'cublasdxCreateTensorStrided')
+        if __cublasdxCreateTensorStrided == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxCreateTensorStrided = dlsym(handle, 'cublasdxCreateTensorStrided')
 
         global __cublasdxMakeTensorLike
         __cublasdxMakeTensorLike = dlsym(RTLD_DEFAULT, 'cublasdxMakeTensorLike')
@@ -661,6 +692,69 @@ cdef int _check_or_init_mathdx() except -1 nogil:
                 handle = load_library(driver_ver)
             __cublasdxDestroyTensor = dlsym(handle, 'cublasdxDestroyTensor')
 
+        global __cublasdxDestroyPipeline
+        __cublasdxDestroyPipeline = dlsym(RTLD_DEFAULT, 'cublasdxDestroyPipeline')
+        if __cublasdxDestroyPipeline == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxDestroyPipeline = dlsym(handle, 'cublasdxDestroyPipeline')
+
+        global __cublasdxCreateDevicePipeline
+        __cublasdxCreateDevicePipeline = dlsym(RTLD_DEFAULT, 'cublasdxCreateDevicePipeline')
+        if __cublasdxCreateDevicePipeline == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxCreateDevicePipeline = dlsym(handle, 'cublasdxCreateDevicePipeline')
+
+        global __cublasdxCreateTilePipeline
+        __cublasdxCreateTilePipeline = dlsym(RTLD_DEFAULT, 'cublasdxCreateTilePipeline')
+        if __cublasdxCreateTilePipeline == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxCreateTilePipeline = dlsym(handle, 'cublasdxCreateTilePipeline')
+
+        global __cublasdxFinalizePipelines
+        __cublasdxFinalizePipelines = dlsym(RTLD_DEFAULT, 'cublasdxFinalizePipelines')
+        if __cublasdxFinalizePipelines == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxFinalizePipelines = dlsym(handle, 'cublasdxFinalizePipelines')
+
+        global __cublasdxFinalize
+        __cublasdxFinalize = dlsym(RTLD_DEFAULT, 'cublasdxFinalize')
+        if __cublasdxFinalize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxFinalize = dlsym(handle, 'cublasdxFinalize')
+
+        global __cublasdxGetPipelineTraitInt64
+        __cublasdxGetPipelineTraitInt64 = dlsym(RTLD_DEFAULT, 'cublasdxGetPipelineTraitInt64')
+        if __cublasdxGetPipelineTraitInt64 == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetPipelineTraitInt64 = dlsym(handle, 'cublasdxGetPipelineTraitInt64')
+
+        global __cublasdxGetPipelineTraitInt64s
+        __cublasdxGetPipelineTraitInt64s = dlsym(RTLD_DEFAULT, 'cublasdxGetPipelineTraitInt64s')
+        if __cublasdxGetPipelineTraitInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetPipelineTraitInt64s = dlsym(handle, 'cublasdxGetPipelineTraitInt64s')
+
+        global __cublasdxGetPipelineTraitStrSize
+        __cublasdxGetPipelineTraitStrSize = dlsym(RTLD_DEFAULT, 'cublasdxGetPipelineTraitStrSize')
+        if __cublasdxGetPipelineTraitStrSize == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetPipelineTraitStrSize = dlsym(handle, 'cublasdxGetPipelineTraitStrSize')
+
+        global __cublasdxGetPipelineTraitStr
+        __cublasdxGetPipelineTraitStr = dlsym(RTLD_DEFAULT, 'cublasdxGetPipelineTraitStr')
+        if __cublasdxGetPipelineTraitStr == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxGetPipelineTraitStr = dlsym(handle, 'cublasdxGetPipelineTraitStr')
+
         global __cublasdxCreateDeviceFunction
         __cublasdxCreateDeviceFunction = dlsym(RTLD_DEFAULT, 'cublasdxCreateDeviceFunction')
         if __cublasdxCreateDeviceFunction == NULL:
@@ -674,6 +768,20 @@ cdef int _check_or_init_mathdx() except -1 nogil:
             if handle == NULL:
                 handle = load_library(driver_ver)
             __cublasdxDestroyDeviceFunction = dlsym(handle, 'cublasdxDestroyDeviceFunction')
+
+        global __cublasdxCreateDeviceFunctionWithPipelines
+        __cublasdxCreateDeviceFunctionWithPipelines = dlsym(RTLD_DEFAULT, 'cublasdxCreateDeviceFunctionWithPipelines')
+        if __cublasdxCreateDeviceFunctionWithPipelines == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasdxCreateDeviceFunctionWithPipelines = dlsym(handle, 'cublasdxCreateDeviceFunctionWithPipelines')
+
+        global __cusolverdxGetTraitInt64s
+        __cusolverdxGetTraitInt64s = dlsym(RTLD_DEFAULT, 'cusolverdxGetTraitInt64s')
+        if __cusolverdxGetTraitInt64s == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cusolverdxGetTraitInt64s = dlsym(handle, 'cusolverdxGetTraitInt64s')
 
         __py_mathdx_init = True
         return 0
@@ -900,8 +1008,14 @@ cpdef dict _inspect_function_pointers():
     global __cusolverdxTraitTypeToStr
     data["__cusolverdxTraitTypeToStr"] = <intptr_t>__cusolverdxTraitTypeToStr
 
+    global __commondxSetCodeOptionInt64s
+    data["__commondxSetCodeOptionInt64s"] = <intptr_t>__commondxSetCodeOptionInt64s
+
     global __cublasdxCreateTensor
     data["__cublasdxCreateTensor"] = <intptr_t>__cublasdxCreateTensor
+
+    global __cublasdxCreateTensorStrided
+    data["__cublasdxCreateTensorStrided"] = <intptr_t>__cublasdxCreateTensorStrided
 
     global __cublasdxMakeTensorLike
     data["__cublasdxMakeTensorLike"] = <intptr_t>__cublasdxMakeTensorLike
@@ -909,11 +1023,44 @@ cpdef dict _inspect_function_pointers():
     global __cublasdxDestroyTensor
     data["__cublasdxDestroyTensor"] = <intptr_t>__cublasdxDestroyTensor
 
+    global __cublasdxDestroyPipeline
+    data["__cublasdxDestroyPipeline"] = <intptr_t>__cublasdxDestroyPipeline
+
+    global __cublasdxCreateDevicePipeline
+    data["__cublasdxCreateDevicePipeline"] = <intptr_t>__cublasdxCreateDevicePipeline
+
+    global __cublasdxCreateTilePipeline
+    data["__cublasdxCreateTilePipeline"] = <intptr_t>__cublasdxCreateTilePipeline
+
+    global __cublasdxFinalizePipelines
+    data["__cublasdxFinalizePipelines"] = <intptr_t>__cublasdxFinalizePipelines
+
+    global __cublasdxFinalize
+    data["__cublasdxFinalize"] = <intptr_t>__cublasdxFinalize
+
+    global __cublasdxGetPipelineTraitInt64
+    data["__cublasdxGetPipelineTraitInt64"] = <intptr_t>__cublasdxGetPipelineTraitInt64
+
+    global __cublasdxGetPipelineTraitInt64s
+    data["__cublasdxGetPipelineTraitInt64s"] = <intptr_t>__cublasdxGetPipelineTraitInt64s
+
+    global __cublasdxGetPipelineTraitStrSize
+    data["__cublasdxGetPipelineTraitStrSize"] = <intptr_t>__cublasdxGetPipelineTraitStrSize
+
+    global __cublasdxGetPipelineTraitStr
+    data["__cublasdxGetPipelineTraitStr"] = <intptr_t>__cublasdxGetPipelineTraitStr
+
     global __cublasdxCreateDeviceFunction
     data["__cublasdxCreateDeviceFunction"] = <intptr_t>__cublasdxCreateDeviceFunction
 
     global __cublasdxDestroyDeviceFunction
     data["__cublasdxDestroyDeviceFunction"] = <intptr_t>__cublasdxDestroyDeviceFunction
+
+    global __cublasdxCreateDeviceFunctionWithPipelines
+    data["__cublasdxCreateDeviceFunctionWithPipelines"] = <intptr_t>__cublasdxCreateDeviceFunctionWithPipelines
+
+    global __cusolverdxGetTraitInt64s
+    data["__cusolverdxGetTraitInt64s"] = <intptr_t>__cusolverdxGetTraitInt64s
 
     func_ptrs = data
     return data
@@ -1630,6 +1777,16 @@ cdef const char* _cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NUL
         trait)
 
 
+cdef commondxStatusType _commondxSetCodeOptionInt64s(commondxCode code, commondxOption option, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __commondxSetCodeOptionInt64s
+    _check_or_init_mathdx()
+    if __commondxSetCodeOptionInt64s == NULL:
+        with gil:
+            raise FunctionNotFoundError("function commondxSetCodeOptionInt64s is not found")
+    return (<commondxStatusType (*)(commondxCode, commondxOption, size_t, long long int*) noexcept nogil>__commondxSetCodeOptionInt64s)(
+        code, option, count, values)
+
+
 cdef commondxStatusType _cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __cublasdxCreateTensor
     _check_or_init_mathdx()
@@ -1638,6 +1795,16 @@ cdef commondxStatusType _cublasdxCreateTensorNew(cublasdxDescriptor handle, cubl
             raise FunctionNotFoundError("function cublasdxCreateTensor is not found")
     return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxTensorType, cublasdxTensor*) noexcept nogil>__cublasdxCreateTensor)(
         handle, tensor_type, tensor)
+
+
+cdef commondxStatusType _cublasdxCreateTensorStrided(cublasdxMemorySpace memory_space, commondxValueType value_type, void* ptr, long long int rank, long long int* shape, long long int* stride, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateTensorStrided
+    _check_or_init_mathdx()
+    if __cublasdxCreateTensorStrided == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateTensorStrided is not found")
+    return (<commondxStatusType (*)(cublasdxMemorySpace, commondxValueType, void*, long long int, long long int*, long long int*, cublasdxTensor*) noexcept nogil>__cublasdxCreateTensorStrided)(
+        memory_space, value_type, ptr, rank, shape, stride, tensor)
 
 
 cdef commondxStatusType _cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -1660,6 +1827,96 @@ cdef commondxStatusType _cublasdxDestroyTensorNew(cublasdxTensor tensor) except?
         tensor)
 
 
+cdef commondxStatusType _cublasdxDestroyPipeline(cublasdxPipeline pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxDestroyPipeline
+    _check_or_init_mathdx()
+    if __cublasdxDestroyPipeline == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxDestroyPipeline is not found")
+    return (<commondxStatusType (*)(cublasdxPipeline) noexcept nogil>__cublasdxDestroyPipeline)(
+        pipeline)
+
+
+cdef commondxStatusType _cublasdxCreateDevicePipeline(cublasdxDescriptor handle, cublasdxDevicePipelineType device_pipeline_type, long long int pipeline_depth, cublasdxBlockSizeStrategy block_size_strategy, cublasdxTensor tensor_a, cublasdxTensor tensor_b, cublasdxPipeline* device_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateDevicePipeline
+    _check_or_init_mathdx()
+    if __cublasdxCreateDevicePipeline == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateDevicePipeline is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxDevicePipelineType, long long int, cublasdxBlockSizeStrategy, cublasdxTensor, cublasdxTensor, cublasdxPipeline*) noexcept nogil>__cublasdxCreateDevicePipeline)(
+        handle, device_pipeline_type, pipeline_depth, block_size_strategy, tensor_a, tensor_b, device_pipeline)
+
+
+cdef commondxStatusType _cublasdxCreateTilePipeline(cublasdxDescriptor handle, cublasdxTilePipelineType tile_pipeline_type, cublasdxPipeline device_pipeline, cublasdxPipeline* tile_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateTilePipeline
+    _check_or_init_mathdx()
+    if __cublasdxCreateTilePipeline == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateTilePipeline is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxTilePipelineType, cublasdxPipeline, cublasdxPipeline*) noexcept nogil>__cublasdxCreateTilePipeline)(
+        handle, tile_pipeline_type, device_pipeline, tile_pipeline)
+
+
+cdef commondxStatusType _cublasdxFinalizePipelines(size_t count, const cublasdxPipeline* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxFinalizePipelines
+    _check_or_init_mathdx()
+    if __cublasdxFinalizePipelines == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxFinalizePipelines is not found")
+    return (<commondxStatusType (*)(size_t, const cublasdxPipeline*) noexcept nogil>__cublasdxFinalizePipelines)(
+        count, array)
+
+
+cdef commondxStatusType _cublasdxFinalize(size_t countTensors, const cublasdxTensor* tensors, size_t countPipelines, const cublasdxPipeline* pipelines) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxFinalize
+    _check_or_init_mathdx()
+    if __cublasdxFinalize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxFinalize is not found")
+    return (<commondxStatusType (*)(size_t, const cublasdxTensor*, size_t, const cublasdxPipeline*) noexcept nogil>__cublasdxFinalize)(
+        countTensors, tensors, countPipelines, pipelines)
+
+
+cdef commondxStatusType _cublasdxGetPipelineTraitInt64(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxGetPipelineTraitInt64
+    _check_or_init_mathdx()
+    if __cublasdxGetPipelineTraitInt64 == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxGetPipelineTraitInt64 is not found")
+    return (<commondxStatusType (*)(cublasdxPipeline, cublasdxPipelineTrait, long long int*) noexcept nogil>__cublasdxGetPipelineTraitInt64)(
+        pipeline, trait, value)
+
+
+cdef commondxStatusType _cublasdxGetPipelineTraitInt64s(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t count, long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxGetPipelineTraitInt64s
+    _check_or_init_mathdx()
+    if __cublasdxGetPipelineTraitInt64s == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxGetPipelineTraitInt64s is not found")
+    return (<commondxStatusType (*)(cublasdxPipeline, cublasdxPipelineTrait, size_t, long long int*) noexcept nogil>__cublasdxGetPipelineTraitInt64s)(
+        pipeline, trait, count, array)
+
+
+cdef commondxStatusType _cublasdxGetPipelineTraitStrSize(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxGetPipelineTraitStrSize
+    _check_or_init_mathdx()
+    if __cublasdxGetPipelineTraitStrSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxGetPipelineTraitStrSize is not found")
+    return (<commondxStatusType (*)(cublasdxPipeline, cublasdxPipelineTrait, size_t*) noexcept nogil>__cublasdxGetPipelineTraitStrSize)(
+        pipeline, trait, size)
+
+
+cdef commondxStatusType _cublasdxGetPipelineTraitStr(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxGetPipelineTraitStr
+    _check_or_init_mathdx()
+    if __cublasdxGetPipelineTraitStr == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxGetPipelineTraitStr is not found")
+    return (<commondxStatusType (*)(cublasdxPipeline, cublasdxPipelineTrait, size_t, char*) noexcept nogil>__cublasdxGetPipelineTraitStr)(
+        pipeline, trait, size, value)
+
+
 cdef commondxStatusType _cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __cublasdxCreateDeviceFunction
     _check_or_init_mathdx()
@@ -1678,6 +1935,26 @@ cdef commondxStatusType _cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction
             raise FunctionNotFoundError("function cublasdxDestroyDeviceFunction is not found")
     return (<commondxStatusType (*)(cublasdxDeviceFunction) noexcept nogil>__cublasdxDestroyDeviceFunction)(
         device_function)
+
+
+cdef commondxStatusType _cublasdxCreateDeviceFunctionWithPipelines(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t tensor_count, const cublasdxTensor* tensors, size_t pipeline_count, const cublasdxPipeline* pipelines, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cublasdxCreateDeviceFunctionWithPipelines
+    _check_or_init_mathdx()
+    if __cublasdxCreateDeviceFunctionWithPipelines == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasdxCreateDeviceFunctionWithPipelines is not found")
+    return (<commondxStatusType (*)(cublasdxDescriptor, cublasdxDeviceFunctionType, size_t, const cublasdxTensor*, size_t, const cublasdxPipeline*, cublasdxDeviceFunction*) noexcept nogil>__cublasdxCreateDeviceFunctionWithPipelines)(
+        handle, device_function_type, tensor_count, tensors, pipeline_count, pipelines, device_function)
+
+
+cdef commondxStatusType _cusolverdxGetTraitInt64s(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverdxGetTraitInt64s
+    _check_or_init_mathdx()
+    if __cusolverdxGetTraitInt64s == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverdxGetTraitInt64s is not found")
+    return (<commondxStatusType (*)(cusolverdxDescriptor, cusolverdxTraitType, size_t, long long int*) noexcept nogil>__cusolverdxGetTraitInt64s)(
+        handle, trait, count, values)
 
 cdef commondxStatusType _cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     global __cublasdxFinalizeTensors

@@ -71,9 +71,10 @@ Slab
 Currently, distributed FFT supports Slab decomposition on X or Y.
 Here is an example of a distributed FFT using Slab distribution:
 
-.. tip::
-    Reminder to initialize the distributed context first as per
-    :ref:`distributed-api-initialize`.
+.. note::
+    To use the distributed FFT APIs you need to
+    :ref:`initialize the distributed runtime <distributed-api-initialize>`
+    with the NVSHMEM communication backend.
 
 .. code-block:: python
 

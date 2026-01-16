@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +8,8 @@ from llvmlite import ir
 from numba import types
 from numba.core import cgutils, typing
 from numba.core.base import BaseContext
-from numba.extending import models, overload, overload_attribute, typeof_impl, intrinsic
+from numba.extending import models, typeof_impl
+from numba.cuda.extending import overload, overload_attribute, intrinsic, register_model
 from numba.core.errors import TypingError
 from nvmath.bindings import mathdx
 import numpy as np
@@ -16,7 +17,6 @@ import numpy as np
 
 from .vector_types_numba import float16x2_type, float16x4_type, float32x2_type, float64x2_type
 from .types import np_float16x2, np_float16x4, complex32, complex64, complex128, half2, half4, Complex, Vector
-from .common_opaque_tensor import OpaqueTensorType
 
 NP_TYPES_TO_NUMBA_FE_TYPES = {
     np.float16: np.float16,
@@ -73,7 +73,7 @@ def overload_type_attribute(numba_type, attribute_base, attribute):
     """Make type attribute available inside jitted code."""
     assert issubclass(numba_type, types.Type)
 
-    @overload_attribute(numba_type, attribute, jit_options={"forceinline": True}, target="cuda")
+    @overload_attribute(numba_type, attribute, inline="always")
     def ol_blas_attribute(blas_numba):
         tp = blas_numba
         if attribute_base != "":
@@ -148,37 +148,29 @@ def get_value_ptr(typingctx: typing.Context, value):
     return sig, codegen
 
 
-@intrinsic
-def get_opaque_tensor(typingctx: typing.Context, value: OpaqueTensorType):
-    """Get raw pointer to the value."""
-    if not isinstance(value, OpaqueTensorType):
-        raise TypingError(f"get_opaque_tensor does not support type {value}")
+class OpaquePointerType(types.Type):
+    def __init__(self):
+        super().__init__("OpaquePointer()")
 
-    sig = typing.signature(value._capi_type, value)
+
+@register_model(OpaquePointerType)
+class OpaquePointerModel(models.StructModel):
+    def __init__(self, dmm, fe_type: OpaquePointerType):
+        members = [("ptr", types.voidptr)]
+        models.StructModel.__init__(self, dmm, fe_type, members)
+
+
+@intrinsic
+def get_opaque_pointer(typingctx: typing.Context, value):
+    """Get opaque pointer to the value."""
+    op_ty = OpaquePointerType()
+    sig = typing.signature(op_ty, value)
 
     def codegen(context: BaseContext, builder, sig, args):
-        ptrTy = ir.PointerType(ir.IntType(8))
-        ldTy = ir.IntType(64)
-
-        opaque_tensor = cgutils.create_struct_proxy(value)(context, builder, args[0])
-        ptr = cgutils.create_struct_proxy(value.buffer_type)(context, builder, opaque_tensor.buffer).data
-
-        # Future release of numba-cuda may have support for address spaces.
-        # It is not supported to pass a non generic pointer to device function
-        # call.
-        if ptr.type.addrspace != 0:
-            ptr = builder.addrspacecast(ptr, ir.PointerType(ptr.type.pointee), "generic")
-
-        ptr = builder.bitcast(ptr, ptrTy)
-
-        layout = cgutils.create_struct_proxy(value.layout)(context, builder, opaque_tensor.layout)
-
-        member_values = [ptr]
-        if value.layout.dynamic_ld:
-            ld = builder.bitcast(layout.leading_dimension, ldTy)
-            member_values += [ld]
-
-        return cgutils.pack_struct(builder, member_values)
+        input = cgutils.create_struct_proxy(sig.args[0])(context, builder, args[0])
+        output = cgutils.create_struct_proxy(sig.return_type)(context, builder)
+        output.ptr = input.ptr
+        return output._getvalue()
 
     return sig, codegen
 
@@ -225,7 +217,7 @@ def _declare_cabi_device(symbol: str, sig: typing.Signature, link=None):
     def device_func():
         pass
 
-    @overload(device_func, jit_options={"forceinline": True}, target="cuda")
+    @overload(device_func, jit_options={"forceinline": True})
     def ol_device_func(*args):
         if len(args) != len(sig.args):
             raise RuntimeError(

@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 cimport cython  # NOQA
 cimport cpython
@@ -121,8 +121,8 @@ cpdef intptr_t create_generator(int rng_type) except? 0:
     """
     cdef Generator generator
     with nogil:
-        status = curandCreateGenerator(&generator, <_RngType>rng_type)
-    check_status(status)
+        __status__ = curandCreateGenerator(&generator, <_RngType>rng_type)
+    check_status(__status__)
     return <intptr_t>generator
 
 
@@ -139,8 +139,8 @@ cpdef intptr_t create_generator_host(int rng_type) except? 0:
     """
     cdef Generator generator
     with nogil:
-        status = curandCreateGeneratorHost(&generator, <_RngType>rng_type)
-    check_status(status)
+        __status__ = curandCreateGeneratorHost(&generator, <_RngType>rng_type)
+    check_status(__status__)
     return <intptr_t>generator
 
 
@@ -153,8 +153,8 @@ cpdef destroy_generator(intptr_t generator):
     .. seealso:: `curandDestroyGenerator`
     """
     with nogil:
-        status = curandDestroyGenerator(<Generator>generator)
-    check_status(status)
+        __status__ = curandDestroyGenerator(<Generator>generator)
+    check_status(__status__)
 
 
 cpdef int get_version() except? -1:
@@ -167,8 +167,8 @@ cpdef int get_version() except? -1:
     """
     cdef int version
     with nogil:
-        status = curandGetVersion(&version)
-    check_status(status)
+        __status__ = curandGetVersion(&version)
+    check_status(__status__)
     return version
 
 
@@ -185,8 +185,8 @@ cpdef int get_property(int type) except? -1:
     """
     cdef int value
     with nogil:
-        status = curandGetProperty(<LibraryPropertyType>type, &value)
-    check_status(status)
+        __status__ = curandGetProperty(<LibraryPropertyType>type, &value)
+    check_status(__status__)
     return value
 
 
@@ -200,8 +200,8 @@ cpdef set_stream(intptr_t generator, intptr_t stream):
     .. seealso:: `curandSetStream`
     """
     with nogil:
-        status = curandSetStream(<Generator>generator, <Stream>stream)
-    check_status(status)
+        __status__ = curandSetStream(<Generator>generator, <Stream>stream)
+    check_status(__status__)
 
 
 cpdef set_pseudo_random_generator_seed(intptr_t generator, unsigned long long seed):
@@ -214,8 +214,8 @@ cpdef set_pseudo_random_generator_seed(intptr_t generator, unsigned long long se
     .. seealso:: `curandSetPseudoRandomGeneratorSeed`
     """
     with nogil:
-        status = curandSetPseudoRandomGeneratorSeed(<Generator>generator, seed)
-    check_status(status)
+        __status__ = curandSetPseudoRandomGeneratorSeed(<Generator>generator, seed)
+    check_status(__status__)
 
 
 cpdef set_generator_offset(intptr_t generator, unsigned long long offset):
@@ -228,8 +228,8 @@ cpdef set_generator_offset(intptr_t generator, unsigned long long offset):
     .. seealso:: `curandSetGeneratorOffset`
     """
     with nogil:
-        status = curandSetGeneratorOffset(<Generator>generator, offset)
-    check_status(status)
+        __status__ = curandSetGeneratorOffset(<Generator>generator, offset)
+    check_status(__status__)
 
 
 cpdef set_generator_ordering(intptr_t generator, int order):
@@ -242,8 +242,8 @@ cpdef set_generator_ordering(intptr_t generator, int order):
     .. seealso:: `curandSetGeneratorOrdering`
     """
     with nogil:
-        status = curandSetGeneratorOrdering(<Generator>generator, <_Ordering>order)
-    check_status(status)
+        __status__ = curandSetGeneratorOrdering(<Generator>generator, <_Ordering>order)
+    check_status(__status__)
 
 
 cpdef set_quasi_random_generator_dimensions(intptr_t generator, unsigned int num_dimensions):
@@ -256,8 +256,8 @@ cpdef set_quasi_random_generator_dimensions(intptr_t generator, unsigned int num
     .. seealso:: `curandSetQuasiRandomGeneratorDimensions`
     """
     with nogil:
-        status = curandSetQuasiRandomGeneratorDimensions(<Generator>generator, num_dimensions)
-    check_status(status)
+        __status__ = curandSetQuasiRandomGeneratorDimensions(<Generator>generator, num_dimensions)
+    check_status(__status__)
 
 
 cpdef generate(intptr_t generator, intptr_t output_ptr, size_t num):
@@ -271,8 +271,8 @@ cpdef generate(intptr_t generator, intptr_t output_ptr, size_t num):
     .. seealso:: `curandGenerate`
     """
     with nogil:
-        status = curandGenerate(<Generator>generator, <unsigned int*>output_ptr, num)
-    check_status(status)
+        __status__ = curandGenerate(<Generator>generator, <unsigned int*>output_ptr, num)
+    check_status(__status__)
 
 
 cpdef generate_long_long(intptr_t generator, intptr_t output_ptr, size_t num):
@@ -286,8 +286,8 @@ cpdef generate_long_long(intptr_t generator, intptr_t output_ptr, size_t num):
     .. seealso:: `curandGenerateLongLong`
     """
     with nogil:
-        status = curandGenerateLongLong(<Generator>generator, <unsigned long long*>output_ptr, num)
-    check_status(status)
+        __status__ = curandGenerateLongLong(<Generator>generator, <unsigned long long*>output_ptr, num)
+    check_status(__status__)
 
 
 cpdef generate_uniform(intptr_t generator, intptr_t output_ptr, size_t num):
@@ -301,8 +301,8 @@ cpdef generate_uniform(intptr_t generator, intptr_t output_ptr, size_t num):
     .. seealso:: `curandGenerateUniform`
     """
     with nogil:
-        status = curandGenerateUniform(<Generator>generator, <float*>output_ptr, num)
-    check_status(status)
+        __status__ = curandGenerateUniform(<Generator>generator, <float*>output_ptr, num)
+    check_status(__status__)
 
 
 cpdef generate_uniform_double(intptr_t generator, intptr_t output_ptr, size_t num):
@@ -316,8 +316,8 @@ cpdef generate_uniform_double(intptr_t generator, intptr_t output_ptr, size_t nu
     .. seealso:: `curandGenerateUniformDouble`
     """
     with nogil:
-        status = curandGenerateUniformDouble(<Generator>generator, <double*>output_ptr, num)
-    check_status(status)
+        __status__ = curandGenerateUniformDouble(<Generator>generator, <double*>output_ptr, num)
+    check_status(__status__)
 
 
 cpdef generate_normal(intptr_t generator, intptr_t output_ptr, size_t n, float mean, float stddev):
@@ -333,8 +333,8 @@ cpdef generate_normal(intptr_t generator, intptr_t output_ptr, size_t n, float m
     .. seealso:: `curandGenerateNormal`
     """
     with nogil:
-        status = curandGenerateNormal(<Generator>generator, <float*>output_ptr, n, mean, stddev)
-    check_status(status)
+        __status__ = curandGenerateNormal(<Generator>generator, <float*>output_ptr, n, mean, stddev)
+    check_status(__status__)
 
 
 cpdef generate_normal_double(intptr_t generator, intptr_t output_ptr, size_t n, double mean, double stddev):
@@ -350,8 +350,8 @@ cpdef generate_normal_double(intptr_t generator, intptr_t output_ptr, size_t n, 
     .. seealso:: `curandGenerateNormalDouble`
     """
     with nogil:
-        status = curandGenerateNormalDouble(<Generator>generator, <double*>output_ptr, n, mean, stddev)
-    check_status(status)
+        __status__ = curandGenerateNormalDouble(<Generator>generator, <double*>output_ptr, n, mean, stddev)
+    check_status(__status__)
 
 
 cpdef generate_log_normal(intptr_t generator, intptr_t output_ptr, size_t n, float mean, float stddev):
@@ -367,8 +367,8 @@ cpdef generate_log_normal(intptr_t generator, intptr_t output_ptr, size_t n, flo
     .. seealso:: `curandGenerateLogNormal`
     """
     with nogil:
-        status = curandGenerateLogNormal(<Generator>generator, <float*>output_ptr, n, mean, stddev)
-    check_status(status)
+        __status__ = curandGenerateLogNormal(<Generator>generator, <float*>output_ptr, n, mean, stddev)
+    check_status(__status__)
 
 
 cpdef generate_log_normal_double(intptr_t generator, intptr_t output_ptr, size_t n, double mean, double stddev):
@@ -384,8 +384,8 @@ cpdef generate_log_normal_double(intptr_t generator, intptr_t output_ptr, size_t
     .. seealso:: `curandGenerateLogNormalDouble`
     """
     with nogil:
-        status = curandGenerateLogNormalDouble(<Generator>generator, <double*>output_ptr, n, mean, stddev)
-    check_status(status)
+        __status__ = curandGenerateLogNormalDouble(<Generator>generator, <double*>output_ptr, n, mean, stddev)
+    check_status(__status__)
 
 
 cpdef create_poisson_distribution(double lambda_, intptr_t discrete_distribution):
@@ -398,8 +398,8 @@ cpdef create_poisson_distribution(double lambda_, intptr_t discrete_distribution
     .. seealso:: `curandCreatePoissonDistribution`
     """
     with nogil:
-        status = curandCreatePoissonDistribution(lambda_, <DiscreteDistribution*>discrete_distribution)
-    check_status(status)
+        __status__ = curandCreatePoissonDistribution(lambda_, <DiscreteDistribution*>discrete_distribution)
+    check_status(__status__)
 
 
 cpdef destroy_distribution(intptr_t discrete_distribution):
@@ -411,8 +411,8 @@ cpdef destroy_distribution(intptr_t discrete_distribution):
     .. seealso:: `curandDestroyDistribution`
     """
     with nogil:
-        status = curandDestroyDistribution(<DiscreteDistribution>discrete_distribution)
-    check_status(status)
+        __status__ = curandDestroyDistribution(<DiscreteDistribution>discrete_distribution)
+    check_status(__status__)
 
 
 cpdef generate_poisson(intptr_t generator, intptr_t output_ptr, size_t n, double lambda_):
@@ -427,26 +427,26 @@ cpdef generate_poisson(intptr_t generator, intptr_t output_ptr, size_t n, double
     .. seealso:: `curandGeneratePoisson`
     """
     with nogil:
-        status = curandGeneratePoisson(<Generator>generator, <unsigned int*>output_ptr, n, lambda_)
-    check_status(status)
+        __status__ = curandGeneratePoisson(<Generator>generator, <unsigned int*>output_ptr, n, lambda_)
+    check_status(__status__)
 
 
 cpdef generate_poisson_method(intptr_t generator, intptr_t output_ptr, size_t n, double lambda_, int method):
     with nogil:
-        status = curandGeneratePoissonMethod(<Generator>generator, <unsigned int*>output_ptr, n, lambda_, <_Method>method)
-    check_status(status)
+        __status__ = curandGeneratePoissonMethod(<Generator>generator, <unsigned int*>output_ptr, n, lambda_, <_Method>method)
+    check_status(__status__)
 
 
 cpdef generate_binomial(intptr_t generator, intptr_t output_ptr, size_t num, unsigned int n, double p):
     with nogil:
-        status = curandGenerateBinomial(<Generator>generator, <unsigned int*>output_ptr, num, n, p)
-    check_status(status)
+        __status__ = curandGenerateBinomial(<Generator>generator, <unsigned int*>output_ptr, num, n, p)
+    check_status(__status__)
 
 
 cpdef generate_binomial_method(intptr_t generator, intptr_t output_ptr, size_t num, unsigned int n, double p, int method):
     with nogil:
-        status = curandGenerateBinomialMethod(<Generator>generator, <unsigned int*>output_ptr, num, n, p, <_Method>method)
-    check_status(status)
+        __status__ = curandGenerateBinomialMethod(<Generator>generator, <unsigned int*>output_ptr, num, n, p, <_Method>method)
+    check_status(__status__)
 
 
 cpdef generate_seeds(intptr_t generator):
@@ -458,8 +458,8 @@ cpdef generate_seeds(intptr_t generator):
     .. seealso:: `curandGenerateSeeds`
     """
     with nogil:
-        status = curandGenerateSeeds(<Generator>generator)
-    check_status(status)
+        __status__ = curandGenerateSeeds(<Generator>generator)
+    check_status(__status__)
 
 
 cpdef get_scramble_constants32(size_t size):

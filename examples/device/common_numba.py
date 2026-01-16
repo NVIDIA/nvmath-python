@@ -1,24 +1,30 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import ctypes
 from cuda.bindings import driver as cudadrv
 from numba import cuda
-import numba
+from numba.cuda.typing import typeof as cuda_typeof
 import math
 from nvmath.device import float16x2
 
 
-def time_numba(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args):
+def time_numba(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args, get_results=None):
     ## Numba
     stream = cuda.stream()
     start, stop = cuda.event(), cuda.event()
     cuda.synchronize()
 
-    # warmup + jit
+    # jit + set max dynamic smem size
+    set_max_dynamic_shared_size_bytes(kernel, shared_memory_size, *args)
+
+    # warmup
     kernel[grid_dim, block_dim, stream, shared_memory_size](*args)
     stream.synchronize()
+
+    if get_results is not None:
+        get_results()
 
     # time
     start.record(stream)
@@ -32,7 +38,7 @@ def time_numba(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args):
 
 
 def get_active_blocks_per_multiprocessor(kernel, block_dim, dynamic_smem_size, *args):
-    argsty = tuple([numba.typeof(a) for a in args])
+    argsty = tuple([cuda_typeof.typeof(a) for a in args])
     compiled = kernel.compile(argsty)
     ctx = cuda.current_context()
     cufunc = compiled.library.get_cufunc()
@@ -42,16 +48,30 @@ def get_active_blocks_per_multiprocessor(kernel, block_dim, dynamic_smem_size, *
 
 
 def set_max_dynamic_shared_size_bytes(kernel, max_dynamic_smem_size, *args):
-    argsty = tuple([numba.typeof(a) for a in args])
+    argsty = tuple([cuda_typeof.typeof(a) for a in args])
     compiled = kernel.compile(argsty)
     cufunc = compiled.library.get_cufunc()
-    cudadrv.cuFuncSetAttribute(
-        # Starting in numba-cuda 0.15, there are two bindings backends, we need to handle
-        # both. See docs about NUMBA_CUDA_USE_NVIDIA_BINDING environment variable.
-        cufunc.handle.value if isinstance(cufunc.handle, ctypes.c_void_p) else int(cufunc.handle),
+    # Starting in numba-cuda 0.15, there are two bindings backends, we need to handle
+    # both. See docs about NUMBA_CUDA_USE_NVIDIA_BINDING environment variable.
+    if isinstance(cufunc.handle, ctypes.c_void_p):
+        handle = cufunc.handle.value
+    elif isinstance(cufunc.handle, cudadrv.CUkernel):
+        resp, func = cudadrv.cuKernelGetFunction(cufunc.handle)
+        if resp != cudadrv.CUresult.CUDA_SUCCESS:
+            raise RuntimeError(f"cuKernelGetFunction failed with error code {resp}")
+        handle = func
+    elif isinstance(cufunc.handle, cudadrv.CUfunction):
+        handle = cufunc.handle
+    else:
+        raise RuntimeError(f"Unsupported cufunc.handle type: {type(cufunc.handle)}")
+
+    resp = cudadrv.cuFuncSetAttribute(
+        handle,
         cudadrv.CUfunction_attribute.CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES,
         max_dynamic_smem_size,
     )
+    if resp[0] != cudadrv.CUresult.CUDA_SUCCESS:
+        raise RuntimeError(f"cuFuncSetAttribute failed with error code {resp}")
 
 
 # matrix is always in C-order (cupy/numpy) but smem should always be in F-order (expected by

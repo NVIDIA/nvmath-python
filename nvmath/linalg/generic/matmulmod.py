@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,17 +9,22 @@ __all__ = [
 
 import dataclasses
 import logging
-from typing import TypeAlias
+import math
+from typing import TypeAlias, Final
 from collections.abc import Sequence
 
 import numpy as np
-import cuda.core.experimental as ccx
+
+try:
+    from cuda.core import Stream, Event
+except ImportError:
+    from cuda.core.experimental import Stream, Event
 
 from nvmath.bindings import cublas
 from nvmath._internal import templates
 from nvmath.internal import utils, tensor_wrapper, typemaps, formatters
 from nvmath.linalg._internal.batch import BatchTraits
-from nvmath.linalg._internal.layout import BLASMMTraits, BLASMatrixTraits, check_extents, check_strides
+from nvmath.linalg._internal.layout import BLASMMTraitsView, BLASMatrixTraits, InputMMTraits, check_extents, check_strides
 from nvmath.linalg.generic._configuration import (
     GeneralMatrixQualifier,
     MatrixQualifier,
@@ -27,6 +32,8 @@ from nvmath.linalg.generic._configuration import (
     MatmulOptions,
     select_blas_mm_function,
     vector_to_square,
+    mm_layout_checker_getter,
+    CACHED_LAYOUT_CHECKERS,
 )
 from nvmath.linalg.advanced.matmulmod import SHARED_MM_DOCUMENTATION
 from nvmath.linalg.generic._dtype import check_dtype
@@ -100,10 +107,8 @@ same package as the input operands.""".replace("\n", " "),
         "semantics": """\
         .. _semantics:
 
-        The semantics of the matrix multiplication follows :func:`numpy.matmul` semantics, with some restrictions.
+        The semantics of the matrix multiplication follows :external:py:data:`numpy.matmul` semantics, with some restrictions.
 
-        * Batching is not supported in this API, but is planned for a future release. See the advanced API
-          (:func:`nvmath.linalg.advanced.matmul`) for an API that supports batching.
         * Broadcasting `c` is not supported in this API, but may be supported in the future. See the advanced API
           (:func:`nvmath.linalg.advanced.matmul`) for an API that supports broadcasting `c`.
 
@@ -251,9 +256,9 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
         directory.
     """
 
-    _input_traits: BLASMMTraits
-    _batch_traits: tuple[BatchTraits, BatchTraits, BatchTraits]
-    _qualifiers: MatrixQualifier
+    _input_traits: Final[InputMMTraits]
+    _batch_traits: Final[tuple[BatchTraits, BatchTraits, BatchTraits, BatchTraits]]
+    _qualifiers: Final[MatrixQualifier]
 
     def __init__(
         self,
@@ -329,7 +334,7 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             self.c_dtype = typemaps.NAME_TO_DATA_TYPE[c.dtype]
         self.c_dtype_name = typemaps.DATA_TYPE_TO_NAME[self.c_dtype]
 
-        self._logger.info(f"The data type for the result C is '{self.c_dtype_name}'.")
+        self._logger.info(f"The data type for the result D is '{self.c_dtype_name}'.")
 
         self.scale_type_name = self.a_dtype_name
 
@@ -349,20 +354,20 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             raise ValueError(f"The value provided for beta {beta} is not convertible to dtype '{self.beta.dtype}'.") from e
 
         if qualifiers is None:
-            self._qualifiers = np.empty(3, dtype=matrix_qualifiers_dtype)
-            self._qualifiers[:] = GeneralMatrixQualifier.create()
+            new_qualifiers = np.empty(3, dtype=matrix_qualifiers_dtype)
+            new_qualifiers[:] = GeneralMatrixQualifier.create()
         else:
             if not ((len(qualifiers) == 3) or (len(qualifiers) == 2 and c is None)):
                 raise ValueError("The number of MatrixQualifiers must match the number of operands.")
             new_qualifiers = np.empty(3, dtype=matrix_qualifiers_dtype)
             new_qualifiers[:2] = qualifiers[:2]
             new_qualifiers[2] = GeneralMatrixQualifier.create() if len(qualifiers) < 3 else qualifiers[2]
-            self._qualifiers = new_qualifiers
+        self._qualifiers = new_qualifiers
         self._logger.info(
-            f"The matrix multiplication qualifiers are "
-            f"A = {GeneralMatrixQualifier.to_string(self._qualifiers[0])}, "
-            f"B = {GeneralMatrixQualifier.to_string(self._qualifiers[1])}, and "
-            f"C = {GeneralMatrixQualifier.to_string(self._qualifiers[2])}."
+            f"The matrix multiplication qualifiers are:\n"
+            f"    A = {GeneralMatrixQualifier.to_string(self._qualifiers[0])}\n"
+            f"    B = {GeneralMatrixQualifier.to_string(self._qualifiers[1])}\n"
+            f"    C = {GeneralMatrixQualifier.to_string(self._qualifiers[2])}"
         )
 
         # Set qualifiers based on torch lazy conjugation flag if not provided.
@@ -387,9 +392,10 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                 self._qualifiers[0],
             ),
             is_conjugate=bool(self._qualifiers[0]["conjugate"]),
-            is_transpose=bool(self._qualifiers[0]["transpose"]),
+            is_transpose=False,
             is_lower=self._qualifiers[0]["uplo"] == FillMode.LOWER,
         )
+        self._logger.info("Operand A has traits of %s", a_layout)
         b_layout = BLASMatrixTraits(
             self.b_dtype,
             *vector_to_square(
@@ -398,9 +404,10 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                 self._qualifiers[1],
             ),
             is_conjugate=bool(self._qualifiers[1]["conjugate"]),
-            is_transpose=bool(self._qualifiers[1]["transpose"]),
+            is_transpose=False,
             is_lower=self._qualifiers[1]["uplo"] == FillMode.LOWER,
         )
+        self._logger.info("Operand B has traits of %s", b_layout)
         c_layout = (
             None
             if c is None
@@ -412,17 +419,14 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                     self._qualifiers[2],
                 ),
                 is_conjugate=bool(self._qualifiers[2]["conjugate"]),
-                is_transpose=bool(self._qualifiers[2]["transpose"]),
+                is_transpose=False,
                 is_lower=self._qualifiers[2]["uplo"] == FillMode.LOWER,
             )
         )
+        self._logger.info("Operand C has traits of %s", c_layout)
 
         # Get the operation traits.
-        self._input_traits = BLASMMTraits.from_layouts(a_layout, b_layout, c_layout, self._logger)
-        self._logger.info(
-            f"The matrix multiplication attributes are M = {self._input_traits.M}, N = {self._input_traits.N}, and "
-            f"K = {self._input_traits.K}."
-        )
+        self._input_traits = InputMMTraits.from_layouts(a_layout, b_layout, c_layout, self.options.inplace, self._logger)
 
         a_batch = BatchTraits.from_full_shape_and_strides(
             self._operands[0].shape,
@@ -437,10 +441,7 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             overlap_allowed=True,
         )
         c_batch = (
-            BatchTraits.from_full_shape_only(
-                (*(a_batch * b_batch), *self._input_traits.c_layout_traits.shape),
-                num_trailing_dims=2,
-            )
+            BatchTraits(shape=(), strides=())
             if c is None
             else BatchTraits.from_full_shape_and_strides(
                 self._operands[2].shape,
@@ -449,24 +450,26 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                 overlap_allowed=False,
             )
         )
-        self._logger.debug("Operand A has %s.", a_batch)
-        self._logger.debug("Operand B has %s.", b_batch)
-        self._logger.debug("Operand C has %s.", c_batch)
-        if a_batch.shape != () or b_batch.shape != () or c_batch.shape != ():
-            raise ValueError("Batched inputs are unsupported by the generic matmul API at this time.")
-        if (a_batch * b_batch) != c_batch.shape:
-            raise ValueError(
-                f"The batch dimensions of operand C are invalid. {a_batch * b_batch} does not match {c_batch.shape}."
+        # BatchTraits overloads the * operator with a batch combination behavior
+        abc_batch, axis_order = a_batch * (b_batch * c_batch)
+        d_batch = (
+            c_batch
+            if self.options.inplace
+            else BatchTraits.from_batch_shape_and_size(
+                shape=abc_batch,
+                axis_order=axis_order,
+                batch_stride=math.prod(self._input_traits.d_layout_traits.shape),
             )
-        self._batch_traits = (a_batch, b_batch, c_batch)
-
-        self._logger.info(
-            f"The batch count is {self._batch_traits[2].count}, and the batch shape is {self._batch_traits[2].shape}."
         )
+        self._logger.info("Operand A has batch traits of %s.", a_batch)
+        self._logger.info("Operand B has batch traits of %s.", b_batch)
+        self._logger.info("Operand C has batch traits of %s.", c_batch)
+        self._logger.info("Result D has batch traits of %s.", d_batch)
+        self._batch_traits = (a_batch, b_batch, c_batch, d_batch)
 
         # Attributes to establish stream ordering.
-        self.workspace_stream: ccx.Stream | None = None
-        self.last_compute_event: ccx.Event | None = None
+        self.workspace_stream: Stream | None = None
+        self.last_compute_event: Event | None = None
 
         self.valid_state = True
         self._logger.info("The Matmul operation has been created.")
@@ -479,7 +482,7 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             raise InvalidMatmulState("The Matmul object cannot be used after resources are free'd")
 
     @utils.precondition(_check_valid_matmul)
-    def plan(self) -> None:
+    def plan(self, *, stream: utils.AnyStream | int | None = None) -> None:
         """
         Plan the matrix multiplication operation.
 
@@ -493,30 +496,37 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
         Returns:
             Nothing.
         """
-        self._logger.info("= PLANNING PHASE =")
+        log_info = self._logger.isEnabledFor(logging.INFO)
 
-        mm_traits = self._input_traits.blas_compatible(self._logger, self.options.inplace)
-        if self.options.inplace:
-            self.result_layout_traits = self._input_traits.c_layout_traits
-            self.result_batch_traits = self._batch_traits[2]
-        else:
-            self.result_layout_traits = self._input_traits.c_layout_traits.trim_strides()
-            self.result_batch_traits = BatchTraits.from_full_shape_only(
-                shape=(*self._batch_traits[2].shape, *self.result_layout_traits.shape),
-                num_trailing_dims=len(self.result_layout_traits.shape),
+        if log_info:
+            self._logger.info("= PLANNING PHASE =")
+            self._logger.info("Starting matrix multiplication planning...")
+
+        with utils.host_call_ctx(timing=log_info) as elapsed:
+            mm_layout_checker = mm_layout_checker_getter(self._qualifiers)
+
+            mm_traits = BLASMMTraitsView.from_input_traits(
+                self._input_traits,
+                mm_layout_checker,
+                self._logger,
+                lookup_table_table=CACHED_LAYOUT_CHECKERS,
             )
+
+            self._function, function_name = select_blas_mm_function(
+                (*self._batch_traits[:2], self._batch_traits[3]),
+                mm_traits,
+                self._qualifiers,
+                self._logger,
+                self.execution,
+            )
+
+        if log_info and elapsed.data is not None:
+            self._logger.info(f"The plan found 1 suitable algorithm named {function_name}.")
+            self._logger.info(f"The matrix multiplication planning phase took {elapsed.data:.3f} ms to complete.")
 
         # Base FLOP count.
         self.flop_count = 2 * mm_traits.M * mm_traits.N * mm_traits.K
         self._logger.info(f"The base matrix multiplication FLOP count is {formatters.FLOPSStr(self.flop_count, 'FLOP')}.")
-
-        self._function = select_blas_mm_function(
-            (*self._batch_traits[:2], self.result_batch_traits),
-            mm_traits,
-            self._qualifiers,
-            self._logger,
-            self.execution,
-        )
 
         self._has_plan = True
 
@@ -797,16 +807,16 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             if log_debug:
                 self._logger.debug("Beginning output (empty) tensor creation...")
                 self._logger.debug(
-                    f"The output tensor shape = {self.result_layout_traits.shape} with strides = "
-                    f"{self.result_layout_traits.strides} and data type '{self.c_dtype_name}'."
+                    f"The output tensor shape = {self._input_traits.d_layout_traits.shape} with strides = "
+                    f"{self._input_traits.d_layout_traits.strides} and data type '{self.c_dtype_name}'."
                 )
                 self._logger.debug(
-                    f"The output tensor has batch dimensions with shape {self.result_batch_traits.shape} "
-                    f"and strides {self.result_batch_traits.strides}."
+                    f"The output tensor has batch dimensions with shape {self._batch_traits[3].shape} "
+                    f"and strides {self._batch_traits[3].strides}."
                 )
             result = utils.create_empty_tensor(
                 self._result_class,
-                (*self.result_batch_traits.shape, *self.result_layout_traits.shape),
+                (*self._batch_traits[3].shape, *self._input_traits.d_layout_traits.shape),
                 self.c_dtype_name,
                 getattr(self.execution, "device_id", "cpu"),
                 exec_stream_holder,
@@ -815,7 +825,7 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                 # Otherwise, the layout parameters will mismatch what we pass to the matmul
                 # implementation.
                 verify_strides=False,
-                strides=(*self.result_batch_traits.strides, *self.result_layout_traits.strides),
+                strides=(*self._batch_traits[3].strides, *self._input_traits.d_layout_traits.strides),
             )
             if log_debug:
                 self._logger.debug("The output (empty) tensor has been created.")
@@ -878,8 +888,31 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
 
         return out
 
-    def __exit__(self, *args, **kwargs) -> bool | None:
-        pass
+    def free(self):
+        """Free Matmul resources.
+
+        It is recommended that the :class:`Matmul` object be used within a context,
+        but if it is not possible then this method must be called explicitly to ensure
+        that the Matmul object doesn't hold unnecessary references to operands.
+        """
+        if not self.valid_state:
+            return
+
+        try:
+            # Call parent class free
+            super().free()
+
+        except Exception as e:
+            self._logger.critical("Internal error: only part of the Matmul object's resources have been released.")
+            self._logger.critical(str(e))
+            raise e
+        finally:
+            self.valid_state = False
+
+        self._logger.info("The Matmul object's resources have been released.")
+
+    def __exit__(self, *args, **kwargs):
+        self.free()
 
 
 @utils.docstring_decorator(GENERIC_MM_DOCUMENTATION, skip_missing=False)
@@ -1006,7 +1039,7 @@ def matmul(
         execution=execution,
         stream=stream,
     ) as mm:
-        mm.plan()
+        mm.plan(stream=stream)
 
         r = mm.execute(stream=stream)
 

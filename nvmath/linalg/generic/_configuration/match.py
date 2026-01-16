@@ -1,3 +1,7 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Matrix multiplication function selection and matching for BLAS operations.
 
@@ -15,7 +19,7 @@ import numpy as np
 from nvmath._internal.templates import ExecutionCPU, ExecutionCUDA
 from nvmath.internal import tensor_wrapper, typemaps, utils
 from nvmath.linalg._internal.batch import BatchTraits
-from nvmath.linalg._internal.layout import BLASMMTraits
+from nvmath.linalg._internal.layout import BLASMMTraitsView
 import nvmath.bindings.cublas as cublas
 
 from .qualifiers import (
@@ -63,11 +67,11 @@ MMFunctionGetter: typing.TypeAlias = typing.Callable[
 
 def select_blas_mm_function(
     batch_traits: tuple[BatchTraits, BatchTraits, BatchTraits],
-    mm_traits: BLASMMTraits,
+    mm_traits: BLASMMTraitsView,
     qualifiers: MatrixQualifier,
     logger: logging.Logger,
     execution: ExecutionCUDA | ExecutionCPU,
-) -> WrappedMMFunction:
+) -> tuple[WrappedMMFunction, str]:
     """Return a matrix multiplication function which matches the provided arguments."""
 
     # At this level, we only select the appropriate library
@@ -101,19 +105,19 @@ def select_blas_mm_function(
 
 def _select_blas_mm_function_from_qualifiers(
     batch_traits: tuple[BatchTraits, BatchTraits, BatchTraits],
-    mm_traits: BLASMMTraits,
+    mm_traits: BLASMMTraitsView,
     qualifiers: MatrixQualifier,
     logger: logging.Logger,
     execution: ExecutionCUDA | ExecutionCPU,
     mm_function_getter: MMFunctionGetter,
     mm_enum_mapper: typing.Callable,
     mm_alpha_beta_picker: typing.Callable,
-) -> WrappedMMFunction:
+) -> tuple[WrappedMMFunction, str]:
     """Match and wrap a matrix multiplication function based on the provided arguments."""
     # NOTE: The parameters of this function are only the operands that will be resettable by
     # reset_operands(); the rest of the parameters should be unchanged by reset_operands.
     # Therefore we can amortize the cost of those bits.
-    batchCount = batch_traits[2].count
+    batchCount = max(b.count for b in batch_traits)
     if batchCount >= 0 and GeneralMatrixQualifier.is_valid(qualifiers):
         operationA = mm_traits.a_layout_traits.operation
         operationB = mm_traits.b_layout_traits.operation
@@ -272,7 +276,7 @@ def _select_blas_mm_function_from_qualifiers(
 
         side = cublas.SideMode.LEFT if is_left_side_symmetric else cublas.SideMode.RIGHT
         uplo = cublas.FillMode.LOWER if traitsS.is_lower else cublas.FillMode.UPPER
-        m, n = traitsG.shape
+        m, n = mm_traits.M, mm_traits.N
         lda, ldb, ldc = traitsS.ld, traitsG.ld, traitsC.ld
 
         side = mm_enum_mapper(side)
@@ -398,7 +402,7 @@ def _select_blas_mm_function_from_qualifiers(
         uplo = cublas.FillMode.LOWER if traitsT.is_lower else cublas.FillMode.UPPER
         operation = traitsT.operation
         diag = qualifierT["diag"]
-        m, n = traitsG.shape
+        m, n = mm_traits.M, mm_traits.N
         lda, ldb, ldc = traitsT.ld, traitsG.ld, traitsC.ld
 
         if (
@@ -538,7 +542,7 @@ def _select_blas_mm_function_from_qualifiers(
             raise ValueError(f"Conjugate-Transpose on operand X is not supported for {func.__name__}")
 
         side = cublas.SideMode.LEFT if is_left_side_diagonal else cublas.SideMode.RIGHT
-        m, n = traitsG.shape
+        m, n = mm_traits.M, mm_traits.N
         lda, ldc = traitsG.ld, traitsC.ld
         incx = qualifierX["incx"] * max(traitsX.strides)
 
@@ -602,4 +606,4 @@ def _select_blas_mm_function_from_qualifiers(
         msg = f"No available generic matrix multiplication matches the provided matrices: {qualifiers}."
         raise ValueError(msg)
 
-    return wrapped
+    return wrapped, func.__name__

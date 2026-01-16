@@ -1,3 +1,7 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import abc
 import contextlib
 import dataclasses
@@ -347,6 +351,17 @@ class StatefulAPI(contextlib.AbstractContextManager, Generic[OptionsPlaceholder]
         """Reset the operands held by this :class:`StatefulAPI` instance."""
         msg = f"{self.__class__.__name__}.reset_operands() is not implemented."
         raise NotImplementedError(msg)
+
+    def free(self):
+        """Free resources held by this :class:`StatefulAPI` instance.
+
+        This method releases references to operands to ensure proper reference counting.
+        Subclasses should call super().free() if they override this method to add
+        additional cleanup logic.
+        """
+        # Release references to operands to ensure proper reference counting
+        self._operands = []
+        self._operands_backup = []
 
 
 class HasWorkspaceMemory(contextlib.AbstractContextManager):

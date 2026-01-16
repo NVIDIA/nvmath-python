@@ -113,10 +113,10 @@ Example
 The following example performs :math:`\alpha A @ B + \beta C` with inputs distributed
 according to a :ref:`distribution-slab` distribution (partitioning on a single dimension):
 
-.. tip::
-    Reminder to initialize the distributed context first as per
-    :ref:`distributed-api-initialize` and to select both NVSHMEM and
-    NCCL as communication backends.
+.. note::
+    To use the distributed Matmul APIs you need to
+    :ref:`initialize the distributed runtime <distributed-api-initialize>`
+    with the NVSHMEM and NCCL communication backends.
 
 .. code-block:: python
 

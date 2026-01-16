@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from ..cycublasLt cimport *
 
@@ -52,3 +52,8 @@ cdef const char* _cublasLtGetStatusString(cublasStatus_t status) except?NULL nog
 cdef cublasStatus_t _cublasLtHeuristicsCacheGetCapacity(size_t* capacity) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cublasStatus_t _cublasLtHeuristicsCacheSetCapacity(size_t capacity) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef unsigned _cublasLtDisableCpuInstructionsSetMask(unsigned mask) except?0 nogil
+cdef cublasStatus_t _cublasLtGroupedMatrixLayoutCreate(cublasLtMatrixLayout_t* matLayout, cudaDataType type, int groupCount, const void* rows_array, const void* cols_array, const void* ld_array) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasLtEmulationDescCreate(cublasLtEmulationDesc_t* emulationDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasLtEmulationDescDestroy(cublasLtEmulationDesc_t emulationDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasLtEmulationDescSetAttribute(cublasLtEmulationDesc_t emulationDesc, cublasLtEmulationDescAttributes_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cublasStatus_t _cublasLtEmulationDescGetAttribute(cublasLtEmulationDesc_t emulationDesc, cublasLtEmulationDescAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil

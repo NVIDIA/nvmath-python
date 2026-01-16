@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,7 +14,11 @@ from .common_axes import (
     Direction,
     OptFftType,
 )
-import cuda.core.experimental as ccx
+
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 
 
 framework_backend_support = {
@@ -187,7 +191,10 @@ def multi_gpu_only(fn):
 
     @functools.wraps(fn)
     def inner(*args, **kwargs):
-        dev_count = ccx.system.num_devices
+        try:
+            dev_count = system.get_num_devices()
+        except AttributeError:
+            dev_count = system.num_devices
         if dev_count < 2:
             pytest.skip(f"Test requires at least two gpus, got {dev_count}")
         else:

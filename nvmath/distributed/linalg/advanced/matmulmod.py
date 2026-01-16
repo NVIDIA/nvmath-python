@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,7 +10,11 @@ import logging
 import typing
 
 from typing import cast, Literal
-import cuda.core.experimental as ccx
+
+try:
+    from cuda.core import Device
+except ImportError:
+    from cuda.core.experimental import Device
 import numpy as np
 
 import nvmath.distributed
@@ -46,7 +50,7 @@ from nvmath.linalg._internal.utils import (
 )
 from nvmath._utils import CudaDataType
 
-MatmulComputeType = cublasMp.ComputeType
+MatmulComputeType = cublas.ComputeType
 
 
 @dataclass
@@ -357,7 +361,7 @@ same package as the input operands.""".replace("\n", " "),
         "semantics": """\
         .. _semantics:
 
-        The semantics of the matrix multiplication follows :func:`numpy.matmul` semantics, with some restrictions on
+        The semantics of the matrix multiplication follows :external:py:data:`numpy.matmul` semantics, with some restrictions on
         broadcasting.
 """.strip(),
     }
@@ -549,7 +553,7 @@ class Matmul:
         if distributed_ctx is None:
             raise RuntimeError(
                 "nvmath.distributed has not been initialized. Refer to "
-                "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
+                "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/runtime.html"
                 " for more information."
             )
         if not distributed_ctx.nvshmem_available:
@@ -582,7 +586,7 @@ class Matmul:
             packages=[o.name for o in operands],
             memory_spaces=[o.device for o in operands],
             device_ids=[o.device_id for o in operands],
-            compute_capability=tuple(ccx.Device(distributed_ctx.device_id).compute_capability),
+            compute_capability=tuple(Device(distributed_ctx.device_id).compute_capability),
             alpha=alpha,
             beta=beta,
             qualifiers=qualifiers,
@@ -803,12 +807,17 @@ class Matmul:
                     )
                 elif scale_type == st.CUDA_C_32F:
                     return abtype == "complex64"
-            elif compute_type in (ct.COMPUTE_32F_FAST_16F, ct.COMPUTE_32F_FAST_16BF, ct.COMPUTE_32F_FAST_TF32):
+            elif compute_type in (
+                ct.COMPUTE_32F_FAST_16F,
+                ct.COMPUTE_32F_FAST_16BF,
+                ct.COMPUTE_32F_FAST_TF32,
+                ct.COMPUTE_32F_EMULATED_16BFX9,
+            ):
                 if scale_type == st.CUDA_R_32F:
                     return abtype == "float32"
                 if scale_type == st.CUDA_C_32F:
                     return abtype == "complex64"
-            elif compute_type in (ct.COMPUTE_64F, ct.COMPUTE_64F_PEDANTIC):
+            elif compute_type in (ct.COMPUTE_64F, ct.COMPUTE_64F_PEDANTIC, ct.COMPUTE_64F_EMULATED_FIXEDPOINT):
                 if scale_type == st.CUDA_R_64F:
                     return abtype == "float64"
                 if scale_type == st.CUDA_C_64F:
@@ -1569,7 +1578,7 @@ class Matmul:
             else:
                 # In-place copy to existing device pointer because the new operand is on the
                 # CPU.
-                tensor_wrapper.copy_([operand], [o], stream_holder)
+                o.copy_(operand, stream_holder=stream_holder)
         else:
             if self.package != package:
                 message = f"Library package mismatch: '{self.package}' => '{package}'"
@@ -2031,7 +2040,8 @@ class Matmul:
                     for operand in self.operands:
                         if operand.is_symmetric_memory:
                             operand.free_symmetric()
-                self.operands = None
+
+            self.operands = None
 
         except Exception as e:
             self.logger.critical("Internal error: only part of the Matmul object's resources have been released.")

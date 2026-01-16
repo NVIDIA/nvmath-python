@@ -287,8 +287,16 @@ cdef const char* cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NULL
     return _mathdx._cusolverdxTraitTypeToStr(trait)
 
 
+cdef commondxStatusType commondxSetCodeOptionInt64s(commondxCode code, commondxOption option, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._commondxSetCodeOptionInt64s(code, option, count, values)
+
+
 cdef commondxStatusType cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     return _mathdx._cublasdxCreateTensorNew(handle, tensor_type, tensor)
+
+
+cdef commondxStatusType cublasdxCreateTensorStrided(cublasdxMemorySpace memory_space, commondxValueType value_type, void* ptr, long long int rank, long long int* shape, long long int* stride, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxCreateTensorStrided(memory_space, value_type, ptr, rank, shape, stride, tensor)
 
 
 cdef commondxStatusType cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
@@ -299,12 +307,56 @@ cdef commondxStatusType cublasdxDestroyTensorNew(cublasdxTensor tensor) except?_
     return _mathdx._cublasdxDestroyTensorNew(tensor)
 
 
+cdef commondxStatusType cublasdxDestroyPipeline(cublasdxPipeline pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxDestroyPipeline(pipeline)
+
+
+cdef commondxStatusType cublasdxCreateDevicePipeline(cublasdxDescriptor handle, cublasdxDevicePipelineType device_pipeline_type, long long int pipeline_depth, cublasdxBlockSizeStrategy block_size_strategy, cublasdxTensor tensor_a, cublasdxTensor tensor_b, cublasdxPipeline* device_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxCreateDevicePipeline(handle, device_pipeline_type, pipeline_depth, block_size_strategy, tensor_a, tensor_b, device_pipeline)
+
+
+cdef commondxStatusType cublasdxCreateTilePipeline(cublasdxDescriptor handle, cublasdxTilePipelineType tile_pipeline_type, cublasdxPipeline device_pipeline, cublasdxPipeline* tile_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxCreateTilePipeline(handle, tile_pipeline_type, device_pipeline, tile_pipeline)
+
+
+cdef commondxStatusType cublasdxFinalizePipelines(size_t count, const cublasdxPipeline* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxFinalizePipelines(count, array)
+
+
+cdef commondxStatusType cublasdxFinalize(size_t countTensors, const cublasdxTensor* tensors, size_t countPipelines, const cublasdxPipeline* pipelines) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxFinalize(countTensors, tensors, countPipelines, pipelines)
+
+
+cdef commondxStatusType cublasdxGetPipelineTraitInt64(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxGetPipelineTraitInt64(pipeline, trait, value)
+
+
+cdef commondxStatusType cublasdxGetPipelineTraitInt64s(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t count, long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxGetPipelineTraitInt64s(pipeline, trait, count, array)
+
+
+cdef commondxStatusType cublasdxGetPipelineTraitStrSize(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxGetPipelineTraitStrSize(pipeline, trait, size)
+
+
+cdef commondxStatusType cublasdxGetPipelineTraitStr(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxGetPipelineTraitStr(pipeline, trait, size, value)
+
+
 cdef commondxStatusType cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     return _mathdx._cublasdxCreateDeviceFunctionNew(handle, device_function_type, count, array, device_function)
 
 
 cdef commondxStatusType cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     return _mathdx._cublasdxDestroyDeviceFunctionNew(device_function)
+
+
+cdef commondxStatusType cublasdxCreateDeviceFunctionWithPipelines(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t tensor_count, const cublasdxTensor* tensors, size_t pipeline_count, const cublasdxPipeline* pipelines, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cublasdxCreateDeviceFunctionWithPipelines(handle, device_function_type, tensor_count, tensors, pipeline_count, pipelines, device_function)
+
+
+cdef commondxStatusType cusolverdxGetTraitInt64s(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
+    return _mathdx._cusolverdxGetTraitInt64s(handle, trait, count, values)
 
 cdef commondxStatusType cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil:
     return _mathdx._cublasdxFinalizeTensors203(handle, count, array)

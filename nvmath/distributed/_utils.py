@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -88,9 +88,11 @@ def allocate_symmetric_memory(
     if distributed_ctx is None:
         raise RuntimeError(
             "nvmath.distributed has not been initialized. Refer to "
-            "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/index.html#initializing-the-distributed-runtime"
+            "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/runtime.html"
             " for more information."
         )
+    if not distributed_ctx.nvshmem_available:
+        raise RuntimeError("nvmath.distributed wasn't initialized with NVSHMEM backend")
 
     device_id = distributed_ctx.device_id
 

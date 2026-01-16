@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,13 +6,19 @@ import importlib
 import threading
 import typing
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 import pytest
 
 from hypothesis import given, strategies as st
 from nvmath.internal import package_wrapper, tensor_wrapper, utils
 
-_device_count = ccx.system.num_devices
+try:
+    _device_count = system.get_num_devices()
+except AttributeError:
+    _device_count = system.num_devices
 
 _cupy_available = False
 try:
@@ -114,7 +120,7 @@ def test_tensor_empty_device_ctx(package_name: str, id0: int | typing.Literal["c
         return
     if package_name == "numpy" and isinstance(id0, int):
         return
-    id1 = ccx.system.num_devices - 1
+    id1 = _device_count - 1
     stream_holder = (
         None if isinstance(id0, str) else utils.get_or_create_stream(device_id=id0, stream=None, op_package=package_name)
     )

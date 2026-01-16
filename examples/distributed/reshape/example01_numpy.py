@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -30,17 +30,25 @@ $ mpiexec -n 2 python example01_numpy.py
 """
 
 import numpy as np
-import cuda.core.experimental
+
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 import nvmath.distributed
 from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 from mpi4py import MPI
 
+try:
+    num_devices = system.get_num_devices()
+except AttributeError:
+    num_devices = system.num_devices
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
-device_id = rank % cuda.core.experimental.system.num_devices
+device_id = rank % num_devices
 nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
 assert nranks == 2, "Please run with two processes"

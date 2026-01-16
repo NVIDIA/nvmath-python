@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -257,4 +257,4 @@ compile_epilog.__doc__ = """
         - The user must ensure that the specified argument types meet the requirements
           listed above.
 """.format(**SHARED_FFT_HELPER_DOCUMENTATION)
-compile_prolog.__name__ = "compile_prolog"
+compile_epilog.__name__ = "compile_epilog"

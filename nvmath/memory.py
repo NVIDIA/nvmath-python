@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,7 +12,10 @@ from typing import Protocol, runtime_checkable
 import logging
 import weakref
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import Stream
+except ImportError:
+    from cuda.core.experimental import Stream
 
 from nvmath.internal import utils
 from nvmath.internal.package_ifc_cuda import CUDAPackage
@@ -127,7 +130,7 @@ class BaseCUDAMemoryManagerAsync(Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def memalloc_async(self, size: int, stream: ccx.Stream) -> MemoryPointer:
+    def memalloc_async(self, size: int, stream: Stream) -> MemoryPointer:
         """
         Allocate device memory asynchronously on the provided stream.
 
@@ -166,7 +169,7 @@ class _RawCUDAMemoryManager(BaseCUDAMemoryManagerAsync):
         self.logger = logger
         self.pool = _get_device_current_memory_pool(device_id)
 
-    def memalloc_async(self, size: int, stream: ccx.Stream) -> MemoryPointer:
+    def memalloc_async(self, size: int, stream: Stream) -> MemoryPointer:
         with utils.device_ctx(self.device_id):
             buffer = self.pool.allocate(size=size, stream=stream, logger=self.logger)
             device_ptr = buffer.ptr
@@ -251,7 +254,7 @@ def lazy_load_torch():
             self.device_id = device_id
             self.logger = logger
 
-        def memalloc_async(self, size: int, stream: ccx.Stream) -> MemoryPointer:
+        def memalloc_async(self, size: int, stream: Stream) -> MemoryPointer:
             torch_stream = TorchPackage.create_external_stream(self.device_id, CUDAPackage.to_stream_pointer(stream))
             device_ptr = caching_allocator_alloc(size, device=self.device_id, stream=torch_stream)
 

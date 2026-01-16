@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -40,10 +40,12 @@ ctypedef int32_t nvpl_int32_t 'nvpl_int32_t'
 ctypedef struct nvpl_scomplex_t 'nvpl_scomplex_t':
     float real
     float imag
+
 ctypedef struct nvpl_dcomplex_t 'nvpl_dcomplex_t':
     double real
     double imag
-ctypedef nvpl_int64_t nvpl_int_t 'nvpl_int_t'
+
+ctypedef nvpl_int32_t nvpl_int_t 'nvpl_int_t'
 
 
 ###############################################################################

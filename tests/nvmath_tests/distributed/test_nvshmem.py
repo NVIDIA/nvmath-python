@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -19,7 +19,10 @@ from nvmath.distributed._internal.tensor_ifc import DistributedTensor
 from nvmath.distributed._internal.tensor_wrapper import maybe_register_package
 from .helpers import is_close
 
-import cuda.core.experimental
+try:
+    from cuda.core import system, Stream
+except ImportError:
+    from cuda.core.experimental import system, Stream
 
 SHAPE = (2, 5)
 VALUE = 17
@@ -44,7 +47,11 @@ def nvmath_distributed():
         maybe_register_package("torch")
 
     comm = MPI.COMM_WORLD
-    device_id = comm.Get_rank() % cuda.core.experimental.system.num_devices
+    try:
+        num_devices = system.get_num_devices()
+    except AttributeError:
+        num_devices = system.num_devices
+    device_id = comm.Get_rank() % num_devices
     nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
 
     yield
@@ -58,7 +65,11 @@ def test_nvshmem_bootstrapped(nvmath_distributed):
 
     rank = ctx.communicator.Get_rank()
     nranks = ctx.communicator.Get_size()
-    assert ctx.device_id == rank % cuda.core.experimental.system.num_devices
+    try:
+        num_devices = system.get_num_devices()
+    except AttributeError:
+        num_devices = system.num_devices
+    assert ctx.device_id == rank % num_devices
     assert nvshmem.my_pe() == rank
     assert nvshmem.n_pes() == nranks
 
@@ -108,6 +119,13 @@ def test_allocate_symmetric(package, nvmath_distributed, check_symmetric_memory_
     nvmath.distributed.free_symmetric_memory(tensor_sheap)
 
 
+def skip_invalid_params(package, device_id):
+    if package == "cupy" and device_id == "cpu":
+        # cupy allocation not possible on host memory
+        return True
+
+
+@pytest.mark.uncollect_if(func=skip_invalid_params)
 @pytest.mark.parametrize(
     "package",
     [
@@ -121,9 +139,6 @@ def test_allocate_non_symmetric(package, device_id, nvmath_distributed, check_sy
         from nvmath.distributed._internal.tensor_ifc_torch import TorchDistributedTensor as Tensor
     elif package == "cupy":
         from nvmath.distributed._internal.tensor_ifc_cupy import CupyDistributedTensor as Tensor
-
-        if device_id == "cpu":
-            pytest.skip("cupy allocation not possible on host memory")
 
     stream = None
     if device_id != "cpu":
@@ -295,7 +310,7 @@ def test_mem_leak_reporting_internal(tensor_type, nvmath_distributed, symmetric_
     Tensor = nvmath.distributed._internal.tensor_wrapper._TENSOR_TYPES[tensor_type]
 
     device_id = nvmath.distributed.get_context().device_id
-    stream = cuda.core.experimental.Stream.from_handle(0)
+    stream = Stream.from_handle(0)
     a = Tensor.empty((4,), stream_holder=stream, device_id=device_id, symmetric_memory=True)
     assert a.is_symmetric_memory
     # We don't free memory with a.free_symmetric(), which means it leaks.

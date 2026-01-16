@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from ._internal cimport cublas as _cublas
 
@@ -2033,3 +2033,43 @@ cdef cublasStatus_t cublasGetEmulationStrategy(cublasHandle_t handle, cublasEmul
 
 cdef cublasStatus_t cublasSetEmulationStrategy(cublasHandle_t handle, cublasEmulationStrategy_t emulationStrategy) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cublas._cublasSetEmulationStrategy(handle, emulationStrategy)
+
+
+cdef cublasStatus_t cublasGetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport* mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasGetEmulationSpecialValuesSupport(handle, mask)
+
+
+cdef cublasStatus_t cublasSetEmulationSpecialValuesSupport(cublasHandle_t handle, cudaEmulationSpecialValuesSupport mask) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasSetEmulationSpecialValuesSupport(handle, mask)
+
+
+cdef cublasStatus_t cublasGetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl* mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasGetFixedPointEmulationMantissaControl(handle, mantissaControl)
+
+
+cdef cublasStatus_t cublasSetFixedPointEmulationMantissaControl(cublasHandle_t handle, cudaEmulationMantissaControl mantissaControl) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasSetFixedPointEmulationMantissaControl(handle, mantissaControl)
+
+
+cdef cublasStatus_t cublasGetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int* maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasGetFixedPointEmulationMaxMantissaBitCount(handle, maxMantissaBitCount)
+
+
+cdef cublasStatus_t cublasSetFixedPointEmulationMaxMantissaBitCount(cublasHandle_t handle, int maxMantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasSetFixedPointEmulationMaxMantissaBitCount(handle, maxMantissaBitCount)
+
+
+cdef cublasStatus_t cublasGetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int* mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasGetFixedPointEmulationMantissaBitOffset(handle, mantissaBitOffset)
+
+
+cdef cublasStatus_t cublasSetFixedPointEmulationMantissaBitOffset(cublasHandle_t handle, int mantissaBitOffset) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasSetFixedPointEmulationMantissaBitOffset(handle, mantissaBitOffset)
+
+
+cdef cublasStatus_t cublasGetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int** mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasGetFixedPointEmulationMantissaBitCountPointer(handle, mantissaBitCount)
+
+
+cdef cublasStatus_t cublasSetFixedPointEmulationMantissaBitCountPointer(cublasHandle_t handle, int* mantissaBitCount) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublas._cublasSetFixedPointEmulationMantissaBitCountPointer(handle, mantissaBitCount)

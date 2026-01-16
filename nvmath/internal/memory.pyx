@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -18,7 +18,11 @@ from .bindings cimport (
     get_memory_pool_release_threshold as _get_memory_pool_release_threshold,
 )
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import Stream, Device
+except ImportError:
+    from cuda.core.experimental import Stream, Device
+
 from nvmath.internal.package_ifc import StreamHolder
 
 
@@ -29,9 +33,9 @@ cdef class MemAsyncAllocationFinalizer:
         self.pool = pool
         self.ptr = ptr
         self.size = size
-        # we got plain ccx.Stream object only or a StreamHolder wrapping ccx.Stream only
+        # we got plain Stream object only or a StreamHolder wrapping Stream only
         if external_stream is ccx_stream:
-            # We cannot use weakref here, as the ccx.Stream does not support
+            # We cannot use weakref here, as the Stream does not support
             # weakrefs. We store regular reference, potentially prolonging its lifetime.
             self.stream_obj = ccx_stream
         else:
@@ -55,7 +59,7 @@ cdef class MemAsyncAllocationFinalizer:
                 ccx_stream,
             )
 
-    cdef close(MemAsyncAllocationFinalizer self, stream : ccx.Stream | None = None):
+    cdef close(MemAsyncAllocationFinalizer self, stream : Stream | None = None):
         if self.ptr == 0:
             return
         if stream is not None and stream.handle is not None:
@@ -92,8 +96,8 @@ cdef class MemAsyncAllocationFinalizer:
 @cython.final
 cdef class MemAsyncAllocation:
 
-    def __cinit__(MemAsyncAllocation self, MemAsyncPool pool, int64_t size, stream: StreamHolder | ccx.Stream, logger=None):
-        if isinstance(stream, ccx.Stream):
+    def __cinit__(MemAsyncAllocation self, MemAsyncPool pool, int64_t size, stream: StreamHolder | Stream, logger=None):
+        if isinstance(stream, Stream):
             ccx_stream = stream
             external_stream = stream
         elif isinstance(stream, StreamHolder):
@@ -162,7 +166,7 @@ cdef class MemAsyncPool:
         self.default_stream = device.default_stream
         self.default_stream_ptr = int(self.default_stream.handle)
 
-    cpdef allocate(MemAsyncPool self, int64_t size, stream: StreamHolder | ccx.Stream, logger=None):
+    cpdef allocate(MemAsyncPool self, int64_t size, stream: StreamHolder | Stream, logger=None):
         """
         Allocates memory from the device's current asynchronous memory pool.
         NOTE: To avoid overhead of switching current device context,
@@ -217,8 +221,8 @@ thread_local = threading.local()
 
 cdef _create_memory_pool(int device_id):
     cdef uint64_t limit = UINT64_MAX
-    cdef object current_device = ccx.Device()
-    cdef object new_device = ccx.Device(device_id)
+    cdef object current_device = Device()
+    cdef object new_device = Device(device_id)
     # We need to set the current device to the one requested unconditionally,
     # to make sure context is initialized and set (pool memory creation is likely)
     # to be the first interactiion with the device in the process.
@@ -265,11 +269,11 @@ cpdef free_reserved_memory():
     Internally, the function calls cuMemPoolTrimTo with 0 size, which should
     release back to OS all unused memory from the current memory pool.
     """
-    cdef object current_device = ccx.Device()
+    cdef object current_device = Device()
     cdef object new_device
     try:
         for pool in _thread_local_memory_pools_cache().values():
-            new_device = ccx.Device(pool.device_id)
+            new_device = Device(pool.device_id)
             new_device.set_current()
             pool.free_reserved_memory()
     finally:

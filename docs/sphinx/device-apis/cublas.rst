@@ -40,8 +40,10 @@ API Reference
    OpaqueTensor
    Layout
 
-   Partition
-   Partitioner
+   Accumulator
+
+   DevicePipeline
+   TilePipeline
 
    SharedStorageCalc
 

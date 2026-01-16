@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -119,6 +119,10 @@ cdef int _check_or_init_cutensor() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cutensor_init:
+            return 0
+
         # Load function
         global __cutensorCreate
         __cutensorCreate = dlsym(RTLD_DEFAULT, 'cutensorCreate')

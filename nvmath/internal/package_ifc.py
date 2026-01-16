@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,7 +22,10 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
-import cuda.core.experimental as ccx
+try:
+    from cuda.core import Stream
+except ImportError:
+    from cuda.core.experimental import Stream
 
 
 class AnyStream(Hashable, Protocol):
@@ -38,13 +41,13 @@ class AnyStream(Hashable, Protocol):
 A generic type for the third-party Stream which a given Package implementation wraps
 around.
 """
-Stream = TypeVar("Stream")
+S = TypeVar("S")
 
 
-class Package(ABC, Generic[Stream]):
+class Package(ABC, Generic[S]):
     @staticmethod
     @abstractmethod
-    def get_current_stream(device_id: int) -> Stream:
+    def get_current_stream(device_id: int) -> S:
         """
         Obtain the current stream on the device.
 
@@ -55,7 +58,7 @@ class Package(ABC, Generic[Stream]):
 
     @staticmethod
     @abstractmethod
-    def to_stream_pointer(stream: Stream) -> int:
+    def to_stream_pointer(stream: S) -> int:
         """
         Obtain the stream pointer.
 
@@ -66,7 +69,7 @@ class Package(ABC, Generic[Stream]):
 
     @staticmethod
     @abstractmethod
-    def to_stream_context(stream: Stream) -> AbstractContextManager[Stream]:
+    def to_stream_context(stream: S) -> AbstractContextManager[S]:
         """
         Create a context manager from the stream.
 
@@ -77,7 +80,7 @@ class Package(ABC, Generic[Stream]):
 
     @staticmethod
     @abstractmethod
-    def create_external_stream(device_id: int, stream_ptr: int) -> Stream:
+    def create_external_stream(device_id: int, stream_ptr: int) -> S:
         """
         Wrap a stream pointer into an external stream object.
 
@@ -88,18 +91,18 @@ class Package(ABC, Generic[Stream]):
         raise NotImplementedError
 
     @classmethod
-    def create_stream(cls, external: Stream) -> ccx.Stream:
+    def create_stream(cls, external: S) -> Stream:
         """
         Wrap an external Stream object into a cuda.core.Stream.
 
         Args:
             external: The external Stream object.
         """
-        return ccx.Stream.from_handle(cls.to_stream_pointer(external))
+        return Stream.from_handle(cls.to_stream_pointer(external))
 
 
 @dataclass
-class StreamHolder(Generic[Stream]):
+class StreamHolder(Generic[S]):
     """A data class for easing CUDA stream manipulation.
 
     Attributes:
@@ -111,9 +114,9 @@ class StreamHolder(Generic[Stream]):
         ptr (int): The address of the underlying ``cudaStream_t`` object.
     """
 
-    ctx: AbstractContextManager[Stream]
+    ctx: AbstractContextManager[S]
     device_id: int
-    external: Stream
-    obj: ccx.Stream
+    external: S
+    obj: Stream
     package: str
     ptr: int

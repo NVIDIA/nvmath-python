@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -221,10 +221,10 @@ def test_batching(m, n, k, atype, btype, ctype, dtype, a_batch, b_batch, c_batch
     "m,n,k",
     ((64, 32, 16),),
 )
-@pytest.mark.parametrize("a_scale_kind", ("scalar", "gpu", "cpu"))
-@pytest.mark.parametrize("b_scale_kind", ("scalar", "gpu", "cpu"))
-@pytest.mark.parametrize("c_scale_kind", ("scalar", "gpu", "cpu"))
-@pytest.mark.parametrize("d_scale_kind", ("scalar", "gpu", "cpu"))
+@pytest.mark.parametrize("a_scale_kind", ("scalar", "tensor"))
+@pytest.mark.parametrize("b_scale_kind", ("scalar", "tensor"))
+@pytest.mark.parametrize("c_scale_kind", ("scalar", "tensor"))
+@pytest.mark.parametrize("d_scale_kind", ("scalar", "tensor"))
 @pytest.mark.parametrize(("use_cuda"), (True, False))
 def test_tensor_scales(m, n, k, atype, btype, ctype, dtype, a_scale_kind, b_scale_kind, c_scale_kind, d_scale_kind, use_cuda):
     """
@@ -242,7 +242,7 @@ def test_tensor_scales(m, n, k, atype, btype, ctype, dtype, a_scale_kind, b_scal
             if kind == "scalar" or x is None:
                 return x
             tensor = torch.as_tensor(x, dtype=torch.float32)
-            return tensor.cuda() if kind == "gpu" else tensor
+            return tensor.cuda() if use_cuda else tensor
 
         return {
             "a": wrap_scale(scales["a"], a_scale_kind),
@@ -260,17 +260,17 @@ def test_tensor_scales(m, n, k, atype, btype, ctype, dtype, a_scale_kind, b_scal
     reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=scalar_scales, options=options)
     assert_fp8_equal(result, reference)
 
-    # In-place modification of GPU scales
-    if a_scale_kind == "gpu":
+    # In-place modification of device tensor scales.
+    if a_scale_kind == "tensor" and use_cuda:
         scalar_scales["a"] *= 0.5
         scales["a"].copy_(scalar_scales["a"])
-    if b_scale_kind == "gpu":
+    if b_scale_kind == "tensor" and use_cuda:
         scalar_scales["b"] *= -1
         scales["b"].copy_(scalar_scales["b"])
-    if c_scale_kind == "gpu" and scalar_scales["c"] is not None:
+    if c_scale_kind == "tensor" and use_cuda and scalar_scales["c"] is not None:
         scalar_scales["c"] *= -1
         scales["c"].copy_(scalar_scales["c"])
-    if d_scale_kind == "gpu" and scalar_scales["d"] is not None:
+    if d_scale_kind == "tensor" and use_cuda and scalar_scales["d"] is not None:
         scalar_scales["d"] *= 0.5
         scales["d"].copy_(scalar_scales["d"])
     result = mm.execute()

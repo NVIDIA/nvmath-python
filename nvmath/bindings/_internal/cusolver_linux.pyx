@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -16,6 +16,8 @@ from cuda.pathfinder import load_nvidia_dynamic_lib
 ###############################################################################
 # Extern
 ###############################################################################
+
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "<dlfcn.h>" nogil:
     void* dlopen(const char*, int)
@@ -50,6 +52,7 @@ cdef int get_cuda_version():
     return driver_ver
 
 
+
 ###############################################################################
 # Wrapper init
 ###############################################################################
@@ -73,6 +76,10 @@ cdef int _check_or_init_cusolver() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cusolver_init:
+            return 0
+
         driver_ver = get_cuda_version()
 
         # Load function

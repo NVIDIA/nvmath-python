@@ -1,35 +1,46 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-import operator
 from collections.abc import Callable
+import numbers
+import operator
 from numba import cuda
 import numba
 from numba.core import typing, cgutils
-from numba.extending import typeof_impl, overload_method, intrinsic, types, utils, overload
-from numba.cuda.cudaimpl import lower_constant, registry as cuda_registry
-from numba.cuda.models import register_model
+from numba.core.extending import models
 from numba.core.errors import TypingError
+from numba.extending import types, utils
+from numba.cuda.extending import overload_method, overload, intrinsic, typeof_impl
+from numba.cuda.cudaimpl import lower_constant, registry as cuda_registry
+from numba.cuda.models import register_model, StructModel
+
 from numba.np import numpy_support
+import numpy
 
 from nvmath.device.common_cuda import get_default_code_type
 from nvmath.device.cublasdx_backend import generate_copy_wait_lto
 
-from .common import axpby, copy, copy_fragment, clear, copy_wait, make_tensor, OpaqueTensor
+from .common import axpby, copy, copy_fragment, clear, copy_wait, make_tensor, make_fragment_like, OpaqueTensor
 from .common_numba import (
     NUMBA_FE_TYPES_TO_NUMBA_IR,
+    OpaquePointerType,
     declare_cabi_device,
     get_array_ptr,
-    get_opaque_tensor,
+    get_opaque_pointer,
     get_value_ptr,
     overload_type_attribute,
     EmptyStructModel,
 )
 from .cublasdx import (
+    _BlasMatmulLikeLayout,
+    DevicePipeline,
+    TilePipeline,
     Matmul,
-    _BlasLayout,
+    _BlasMatmulLayout,
+    Partitioner,
+    compile_blas_accumulator_init,
     compile_blas_axpby,
     compile_blas_clear,
     compile_blas_copy,
@@ -38,15 +49,16 @@ from .cublasdx import (
     compile_blas_is_predicated,
     compile_blas_is_thread_active,
     compile_blas_map_idx2crd_partitioner,
+    compile_blas_tile_pipeline_execute,
+    compile_blas_tile_pipeline_init,
+    compile_blas_device_pipeline_reset_tile,
+    compile_blas_tile_pipeline_destroy,
 )
 from .common_opaque_tensor import (
     LayoutModel,
     LayoutType,
+    OpaqueTensorModel,
     OpaqueTensorType,
-    PartitionModel,
-    PartitionType,
-    PartitionerModel,
-    PartitionerType,
 )
 
 import llvmlite.ir as llvmir
@@ -82,6 +94,29 @@ _BLAS_COMPILED_ARGS = [
     "leading_dimension",
     "shared_memory_size",
     "max_threads_per_block",
+]
+
+_DEVICE_PIPELINE_DEFINITION_ARGS = [
+    "mm",
+    "pipeline_depth",
+    "a",
+    "b",
+]
+
+_DEVICE_PIPELINE_COMPILED_ARGS = [
+    "buffer_alignment",
+    "buffer_size",
+    "storage_bytes",
+    "storage_alignment",
+]
+
+_TILE_PIPELINE_DEFINITION_ARGS = [
+    "device_pipeline",
+]
+
+_TILE_PIPELINE_COMPILED_ARGS = [
+    "storage_bytes",
+    "storage_alignment",
 ]
 
 
@@ -121,19 +156,132 @@ for attribute in _BLAS_COMPILED_ARGS + _BLAS_DEFINITION_ARGS:
     overload_type_attribute(BlasType, "blas", attribute)
 
 
+class DevicePipelineType(types.Type):
+    """
+    Type class associated with the `cublasdx.DevicePipeline`.
+    """
+
+    def __init__(self, pipeline: DevicePipeline):
+        assert isinstance(pipeline, DevicePipeline)
+        self._pipeline = pipeline
+        MM_type = BlasType(pipeline.mm)
+        attributes = [
+            f"a_layout=(dtype={pipeline.a.dtype},shape={pipeline.a.shape},strides={pipeline.a_strides})",
+            f"b_layout=(dtype={pipeline.b.dtype},shape={pipeline.b.shape},strides={pipeline.b_strides})",
+            f"pipeline_depth={pipeline.pipeline_depth}",
+            f"mm={MM_type}",
+        ]
+        attributes.sort()
+
+        self.name = "DevicePipeline(" + ",".join(attributes) + ")"
+
+    @property
+    def _buffer(self):
+        return self._pipeline._storage
+
+    @property
+    def pipeline(self) -> DevicePipeline:
+        return self._pipeline
+
+
+class PipelineModel(models.StructModel):
+    def __init__(self, dmm, fe_type: DevicePipelineType):
+        members = [
+            ("ptr", types.voidptr),
+        ]
+        models.StructModel.__init__(self, dmm, fe_type, members)
+
+
+register_model(DevicePipelineType)(PipelineModel)
+
+
+@typeof_impl.register(DevicePipeline)
+def typeof_device_pipeline_numba(val: DevicePipeline, c: typing.Context) -> DevicePipelineType:
+    return DevicePipelineType(val)
+
+
+for attribute in _DEVICE_PIPELINE_DEFINITION_ARGS + _DEVICE_PIPELINE_COMPILED_ARGS:
+    overload_type_attribute(DevicePipelineType, "pipeline", attribute)
+
+
+class TilePipelineType(types.Type):
+    """
+    Type class associated with the `cublasdx.DevicePipeline`.
+    """
+
+    def __init__(self, pipeline: TilePipeline):
+        assert isinstance(pipeline, TilePipeline)
+        self._pipeline = pipeline
+        device_pipeline_type = DevicePipelineType(pipeline.device_pipeline)
+        self.name = f"TilePipeline(device_pipeline={device_pipeline_type})"
+
+    @property
+    def pipeline(self) -> TilePipeline:
+        return self._pipeline
+
+
+register_model(TilePipelineType)(PipelineModel)
+
+
+@typeof_impl.register(TilePipeline)
+def typeof_tile_pipeline_numba(val: TilePipeline, c: typing.Context) -> TilePipelineType:
+    return TilePipelineType(val)
+
+
+for attribute in _TILE_PIPELINE_DEFINITION_ARGS + _TILE_PIPELINE_COMPILED_ARGS:
+    overload_type_attribute(TilePipelineType, "pipeline", attribute)
+
+
+@intrinsic
+def _create_tile_pipeline(typingctx: typing.Context, device_pipeline_type: DevicePipelineType):
+    """Create a new BLAS tile pipeline object."""
+
+    tile_pipeline = TilePipeline(device_pipeline_type.pipeline)
+    tile_pipeline_type = TilePipelineType(tile_pipeline)
+
+    return_ty = tile_pipeline_type
+    sig = typing.signature(return_ty, device_pipeline_type)
+
+    def codegen(context: BaseContext, builder, sig, args):
+        tile_pipeline_type = sig.return_type
+        struct_ptr = cgutils.create_struct_proxy(tile_pipeline_type)(context, builder)
+        return struct_ptr._getvalue()
+
+    return sig, codegen
+
+
+@intrinsic
+def _set_tile_pipeline_buffer(typingctx: typing.Context, tile_pipeline_type: TilePipelineType, buffer: types.Array):
+    """Create a new BLAS tile pipeline object."""
+
+    return_ty = tile_pipeline_type
+    sig = typing.signature(return_ty, tile_pipeline_type, buffer)
+
+    def codegen(context: BaseContext, builder, sig, args):
+        tile_pipeline_type, tile_pipeline = sig.args[0], args[0]
+        buffer_type, buffer = sig.args[1], args[1]
+        buffer_ptr = cgutils.create_struct_proxy(buffer_type)(context, builder, buffer).data
+        struct_ptr = cgutils.create_struct_proxy(tile_pipeline_type)(context, builder, tile_pipeline)
+        struct_ptr.ptr = buffer_ptr
+
+        return struct_ptr._getvalue()
+
+    return sig, codegen
+
+
 # Numba does not support method overload or variadic arguments, so we using
 # default values as a workaround
 # https://github.com/numba/numba/issues/9980
 # https://github.com/numba/numba/issues/9979
 # https://github.com/numba/numba/issues/10143
-@overload_method(BlasType, "execute", target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload_method(BlasType, "execute", jit_options={"forceinline": True}, strict=False)
 def ol_blas_numba_execute(
     blas_numba: BlasType, _arg1, _arg2, _arg3, _arg4=None, _arg5=None, _arg6=None, _arg7=None, _arg8=None
 ):
     return ol_blas_numba(blas_numba, _arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8)
 
 
-@overload_method(BlasType, "__call__", target="cuda", strict=False)
+@overload_method(BlasType, "__call__", strict=False)
 def ol_blas_numba_call(blas_numba: BlasType, _arg1, _arg2, _arg3, _arg4=None, _arg5=None, _arg6=None, _arg7=None, _arg8=None):
     return ol_blas_numba(blas_numba, _arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8)
 
@@ -153,6 +301,21 @@ def _bals_type___call__(*args):
     raise Exception("Stub for overloads")
 
 
+def assert_suggested_tensors(tensor_types: tuple[types.Type, ...]):
+    """
+    Verify that all tensors are suggested or not suggested at the same time.
+    """
+    suggested_flags = []
+    for t in tensor_types:
+        assert isinstance(t, (OpaqueTensorType, BlasAccumulatorType))
+        layout_type = t.layout
+        assert isinstance(layout_type, BlasLayoutType)
+        suggested_flags.append(layout_type.layout.suggested)
+
+    if not all(suggested_flags) and any(suggested_flags):
+        raise TypingError("All tensors must be either suggested or not suggested at the same time.")
+
+
 @overload(_bals_type___call__, jit_options={"forceinline": True}, strict=False)
 def ol_blas_type___call___tensors_rmem(
     blas_numba: BlasType,
@@ -163,32 +326,36 @@ def ol_blas_type___call___tensors_rmem(
     if not isinstance(blas_numba, BlasType):
         return
     MM = blas_numba.blas
-    if not all(isinstance(t, OpaqueTensorType) for t in (a, b, c)):
+    if not all(isinstance(t, OpaqueTensorType) for t in (a, b)):
         return
-    if not all(isinstance(t.layout, BlasLayoutType) for t in (a, b, c)):
-        return
-    if "rmem" not in c.layout.blas_layout._tensor_type:
+    if not (isinstance(c, (OpaqueTensorType, BlasAccumulatorType))):
         return
 
+    a_layout, b_layout, c_layout = a.layout.layout, b.layout.layout, c.layout.layout
+    assert isinstance(a_layout, _BlasMatmulLayout)
+    assert isinstance(b_layout, _BlasMatmulLayout)
+    assert isinstance(c_layout, _BlasMatmulLayout)
+
+    if c_layout.memory_space != "r" and not c_layout.accumulator:
+        return
+
+    assert_suggested_tensors((a, b, c))
+
     return_type = types.void
-    sig = typing.signature(return_type, a._capi_type, b._capi_type, c._capi_type)
+    sig = typing.signature(return_type, a, b, c)
 
     code, symbol = compile_blas_execute(
         MM,
         code_type=get_default_code_type(),
         execute_api="tensors",
-        tensor_types=(a.layout.blas_layout._tensor_type, b.layout.blas_layout._tensor_type, c.layout.blas_layout._tensor_type),
+        tensor_types=(a_layout.tensor_type, b_layout.tensor_type, c_layout.tensor_type),
     )
 
     lto = cuda.LTOIR(code.data)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(_, a, b, c):
-        a_struct = get_opaque_tensor(a)
-        b_struct = get_opaque_tensor(b)
-        c_struct = get_opaque_tensor(c)
-
-        blas_device_func(a_struct, b_struct, c_struct)
+        blas_device_func(a, b, c)
 
     return impl
 
@@ -209,33 +376,34 @@ def ol_blas_type___call___tensors_smem(
         return
     if not all(isinstance(a, OpaqueTensorType) for a in (a, b, c)):
         return
-    if not all(isinstance(t.layout, BlasLayoutType) for t in (a, b, c)):
-        return
-    if "smem" not in c.layout.blas_layout._tensor_type:
+    a_layout, b_layout, c_layout = a.layout.layout, b.layout.layout, c.layout.layout
+    assert isinstance(a_layout, _BlasMatmulLayout)
+    assert isinstance(b_layout, _BlasMatmulLayout)
+    assert isinstance(c_layout, _BlasMatmulLayout)
+    if c_layout.memory_space != "s":
         return
 
     return_type = types.void
     c_ptr = types.CPointer(c.dtype)
-    sig = typing.signature(return_type, c_ptr, a._capi_type, b._capi_type, c_ptr, c._capi_type)
+    sig = typing.signature(return_type, c_ptr, a, b, c_ptr, c)
 
     code, symbol = compile_blas_execute(
         MM,
         code_type=get_default_code_type(),
         execute_api="tensors",
-        tensor_types=(a.layout.blas_layout._tensor_type, b.layout.blas_layout._tensor_type, c.layout.blas_layout._tensor_type),
+        tensor_types=(a_layout.tensor_type, b_layout.tensor_type, c_layout.tensor_type),
     )
 
     lto = cuda.LTOIR(code.data)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
-    def impl(_, alpha, a, b, beta, c):
-        a_struct = get_opaque_tensor(a)
-        b_struct = get_opaque_tensor(b)
-        c_struct = get_opaque_tensor(c)
-        alpha_ptr = get_value_ptr(c.buffer.dtype.type(alpha))
-        beta_ptr = get_value_ptr(c.buffer.dtype.type(beta))
+    dtype = c.dtype
 
-        blas_device_func(alpha_ptr, a_struct, b_struct, beta_ptr, c_struct)
+    def impl(_, alpha, a, b, beta, c):
+        alpha_ptr = get_value_ptr(dtype(alpha))
+        beta_ptr = get_value_ptr(dtype(beta))
+
+        blas_device_func(alpha_ptr, a, b, beta_ptr, c)
 
     return impl
 
@@ -360,22 +528,23 @@ def method_impl(context, builder, sig, args):
     return call(builder, args)
 
 
-@overload(copy, target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload(copy, jit_options={"forceinline": True}, strict=False)
 def ol_blas_copy(src: OpaqueTensorType, dst: OpaqueTensorType, alignment=None):
     return ol_blas_copy_generic(src, dst, alignment, "copy")
 
 
-@overload(copy_fragment, target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload(copy_fragment, jit_options={"forceinline": True}, strict=False)
 def ol_blas_copy_fragment(src: OpaqueTensorType, dst: OpaqueTensorType, alignment=None):
     return ol_blas_copy_generic(src, dst, alignment, "copy_fragment")
 
 
 def ol_blas_copy_generic(src: OpaqueTensorType, dst: OpaqueTensorType, alignment_ty: types.Type | None, func: str):
-    assert isinstance(src, OpaqueTensorType)
-    assert isinstance(src.layout, BlasLayoutType)
+    assert isinstance(src, (OpaqueTensorType, BlasAccumulatorType))
     assert isinstance(dst, OpaqueTensorType)
-    assert isinstance(dst.layout, BlasLayoutType)
-    assert src.dtype == dst.dtype
+    src_layout_ty = src.layout
+    dst_layout_ty = dst.layout
+    assert isinstance(src_layout_ty, BlasLayoutType)
+    assert isinstance(dst_layout_ty, BlasLayoutType)
 
     alignment: int | None = None
     if alignment_ty not in {None, types.Omitted(None)}:
@@ -385,7 +554,7 @@ def ol_blas_copy_generic(src: OpaqueTensorType, dst: OpaqueTensorType, alignment
         if alignment not in {1, 2, 4, 8, 16}:
             raise TypingError(f"Alignment must be one of (1, 2, 4, 8, 16), got {alignment}")
 
-    rmem = "rmem" in dst.layout.layout or "rmem" in src.layout.layout
+    rmem = dst_layout_ty.layout.memory_space == "r" or src_layout_ty.layout.memory_space == "r"
 
     if func == "copy_fragment":
         if not rmem:
@@ -401,46 +570,42 @@ def ol_blas_copy_generic(src: OpaqueTensorType, dst: OpaqueTensorType, alignment
             raise TypingError(f"Alignment must be at least the size of the data type {dtype.itemsize}, got {alignment}")
 
     code, symbol = compile_blas_copy(
-        src_tensor=src.layout.blas_layout,
-        dst_tensor=dst.layout.blas_layout,
+        src_tensor=src_layout_ty.layout,
+        dst_tensor=dst_layout_ty.layout,
         code_type=get_default_code_type(),
         alignment=alignment,
     )
 
     return_type = types.void
-    sig = typing.signature(return_type, src._capi_type, dst._capi_type)
+    sig = typing.signature(return_type, src, dst)
 
     lto = cuda.LTOIR(code.data)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(src, dst, alignment=None):
-        src_struct = get_opaque_tensor(src)
-        dst_struct = get_opaque_tensor(dst)
-        return blas_device_func(src_struct, dst_struct)
+        return blas_device_func(src, dst)
 
     return impl
 
 
-@overload(clear, target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload(clear, jit_options={"forceinline": True}, strict=False)
 def ol_blas_clear(arr: OpaqueTensorType):
     assert isinstance(arr, OpaqueTensorType)
     assert isinstance(arr.layout, BlasLayoutType)
-    assert arr.buffer_type
 
     code, symbol = compile_blas_clear(
-        tensor=arr.layout.blas_layout,
+        tensor=arr.layout.layout,
         code_type=get_default_code_type(),
     )
 
     lto = cuda.LTOIR(code.data)
 
     return_type = types.void
-    sig = typing.signature(return_type, arr._capi_type)
+    sig = typing.signature(return_type, arr)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(arr):
-        arr_struct = get_opaque_tensor(arr)
-        return blas_device_func(arr_struct)
+        return blas_device_func(arr)
 
     return impl
 
@@ -450,65 +615,80 @@ class BlasLayoutType(LayoutType):
     Type class associated with opaque tensor layouts.
     """
 
-    def __init__(self, blas_layout: _BlasLayout):
-        assert isinstance(blas_layout, _BlasLayout)
-
-        self._blas_layout = blas_layout
-
+    def __init__(self, layout: _BlasMatmulLayout):
+        assert isinstance(layout, _BlasMatmulLayout)
+        super().__init__(layout)
         # Using handle descriptor in the type name to avoid symbol copy caching
         # by numba.
-        self.name = f"Layout(uid={blas_layout._uid},layout={blas_layout._layout},MM={blas_layout._MM})"
+        MM_type = BlasType(layout.MM)
+        self.name = f"BlasLayout(uid={layout.uid},layout={layout.layout},dtype={layout.dtype},MM={MM_type})"
 
     @property
-    def blas_layout(self) -> _BlasLayout:
-        return self._blas_layout
+    def layout(self) -> _BlasMatmulLayout:
+        assert isinstance(self._layout, _BlasMatmulLayout)
+        return self._layout
 
-    @property
-    def layout(self) -> str:
-        return self._blas_layout._layout
+    def make_layout_like(self, dtype: numpy.number) -> "BlasLayoutType":
+        src_layout = self.layout
+        dst_layout = _BlasMatmulLikeLayout(
+            src_layout.MM,
+            src_layout.layout,
+            dtype,
+            leading_dimension=src_layout._default_ld,
+        )
 
-    @property
-    def uid(self) -> int:
-        return self._blas_layout._uid
-
-    @property
-    def tensor_index(self) -> int:
-        """Tensor index is 0 for A, 1 for B and 2 for C."""
-        return self._blas_layout._tensor_index
-
-    @cached_property
-    def dtype(self) -> types.Number:
-        return NUMBA_FE_TYPES_TO_NUMBA_IR[self._blas_layout.dtype]
-
-    @property
-    def size(self) -> int:
-        return self._blas_layout._size
-
-    @property
-    def cosize(self) -> int:
-        return self._blas_layout._cosize
-
-    @property
-    def dynamic_ld(self) -> bool:
-        return self._blas_layout._dynamic_ld
+        return BlasLayoutType(dst_layout)
 
 
 register_model(BlasLayoutType)(LayoutModel)
 
 
+def lower_blas_layout_codegen(
+    context: BaseContext,
+    builder: llvmir.IRBuilder,
+    layout_type: BlasLayoutType,
+    ld_val: llvmir.NamedValue | numbers.Number | None,
+    ld_type: types.Type | None = None,
+):
+    layout = cgutils.create_struct_proxy(layout_type)(context, builder)
+    if layout_type.layout.dynamic_strides_size > 0:
+        assert layout_type.layout.dynamic_strides_size == 1
+        if ld_val is None:
+            # Use default MM ld when value is not provided
+            ld_val = layout_type.layout.MM.leading_dimension[layout_type.layout.tensor_index]
+        if isinstance(ld_val, numbers.Number):
+            ld = context.get_constant(types.int64, ld_val)
+        else:
+            ld = context.cast(builder, ld_val, ld_type, types.int64)
+        layout.strides = cgutils.pack_array(builder, [ld])
+    else:
+        assert ld_val is None
+    return layout._getvalue()
+
+
 @lower_constant(BlasLayoutType)
 def constant_blas_layout(context, builder, typ, pyval):
-    struct_ptr = cgutils.create_struct_proxy(typ)(context, builder)
-    return struct_ptr._getvalue()
+    assert isinstance(typ, BlasLayoutType)
+    assert isinstance(pyval, _BlasMatmulLayout)
+    return lower_blas_layout_codegen(context, builder, typ, pyval.default_ld)
 
 
-@typeof_impl.register(_BlasLayout)
-def typeof_blas_layout(blas_layout: _BlasLayout, c: typing.Context) -> BlasLayoutType:
-    return BlasLayoutType(blas_layout)
+@typeof_impl.register(_BlasMatmulLayout)
+def typeof_blas_mm_layout(layout: _BlasMatmulLayout, c: typing.Context) -> BlasLayoutType:
+    # We are clearing ld from the layout because it is a runtime value.
+    layout_no_ld = _BlasMatmulLayout(layout.MM, layout.layout)
+    return BlasLayoutType(layout_no_ld)
 
 
-for attribute in ["size", "cosize"]:
-    overload_type_attribute(BlasLayoutType, "", attribute)
+@typeof_impl.register(_BlasMatmulLikeLayout)
+def typeof_blas_mm_like_layout(layout: _BlasMatmulLikeLayout, c: typing.Context) -> BlasLayoutType:
+    # We are clearing ld from the layout because it is a runtime value.
+    layout_no_ld = _BlasMatmulLikeLayout(layout.MM, layout.layout, layout.dtype)
+    return BlasLayoutType(layout_no_ld)
+
+
+for attribute in ["size", "cosize", "alignment"]:
+    overload_type_attribute(BlasLayoutType, "_layout", attribute)
 
 
 def ol_blas_layout(blas_numba: BlasType, method: str, leading_dimension: types.Number | None = None):
@@ -517,24 +697,15 @@ def ol_blas_layout(blas_numba: BlasType, method: str, leading_dimension: types.N
         return
     MM = blas_numba.blas
 
-    blas_layout = getattr(MM, method)()
-    return_type = BlasLayoutType(blas_layout)
+    layout = getattr(MM, method)()
+    return_type = BlasLayoutType(layout)
 
     @intrinsic
     def _intrinsic(typingctx, leading_dimension=None):
         def codegen(context: BaseContext, builder: llvmir.IRBuilder, signature, args):
-            # Create empty struct to avoid runtime memory usage
-            layout = cgutils.create_struct_proxy(return_type)(context, builder)
-            if return_type.dynamic_ld:
-                if isinstance(leading_dimension, types.NoneType):
-                    default_ld = MM.leading_dimension[return_type.tensor_index]
-                    ld = context.get_constant(types.int64, default_ld)
-                else:
-                    ld = args[0]
-                    ld_ty = signature.args[0]
-                    ld = context.cast(builder, ld, ld_ty, types.int64)
-                layout.leading_dimension = ld
-            return layout._getvalue()
+            ld = args[0] if not isinstance(leading_dimension, types.NoneType) else None
+            ld_type = signature.args[0] if ld is not None else None
+            return lower_blas_layout_codegen(context, builder, return_type, ld, ld_type)
 
         return typing.signature(return_type, leading_dimension), codegen
 
@@ -545,7 +716,6 @@ def overload_blas_layout_method(method: str):
     overload_method(
         BlasType,
         method,
-        target="cuda",
         jit_options={"forceinline": True},
         strict=False,
     )(lambda blas_numba, leading_dimension=None: ol_blas_layout(blas_numba, method, leading_dimension))
@@ -562,20 +732,66 @@ for method in [
     "suggest_layout_smem_b",
     "suggest_layout_smem_c",
     "suggest_layout_rmem_c",
+    "get_layout_rmem_c",
+    "_get_accumulator_c",
+    "_suggest_accumulator_c",
 ]:
     overload_blas_layout_method(method)
 
 
-@overload(make_tensor, target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload(make_tensor, jit_options={"forceinline": True}, strict=False)
 def ol_make_tensor(array, layout):
     assert isinstance(array, types.Array)
     assert isinstance(layout, BlasLayoutType)
-    assert array.dtype == layout.dtype
 
-    return lambda array, layout: OpaqueTensor(array, layout)
+    if array.dtype == layout.dtype:
+        return lambda array, layout: OpaqueTensor(array, layout)
+    else:
+
+        @intrinsic
+        def copy_strides(typingctx, array_type, layout_type):
+            def codegen(context: BaseContext, builder: llvmir.IRBuilder, signature, args):
+                array_type, layout_type = signature.args
+                array = cgutils.create_struct_proxy(array_type)(context, builder, args[0])
+                layout = cgutils.create_struct_proxy(layout_type)(context, builder, args[1])
+                if array_type.layout.layout.dynamic_strides_size > 0:
+                    array.strides = layout.strides
+                return array._getvalue()
+
+            return typing.signature(array_type, array_type, layout_type), codegen
+
+        np_dtype = numpy.dtype(numpy_support.as_dtype(array.dtype)).type
+        dst_layout_ty = layout.make_layout_like(np_dtype)
+        dst_layout = dst_layout_ty.layout
+
+        def impl(array, layout):
+            tensor = OpaqueTensor(array, dst_layout)
+            return copy_strides(tensor, layout)
+
+        return impl
 
 
-@overload(copy_wait, target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload(make_fragment_like, inline="always", strict=False)
+def ol_make_fragment_like(tensor, dtype):
+    assert isinstance(tensor, OpaqueTensorType)
+    layout = tensor.layout
+    assert isinstance(layout, BlasLayoutType)
+    assert layout.layout.memory_space == "r"
+
+    assert isinstance(dtype, types.NumberClass)
+    np_dtype = numpy.dtype(numpy_support.as_dtype(dtype)).type
+
+    dst_layout_ty = layout.make_layout_like(np_dtype)
+    dst_layout = dst_layout_ty.layout
+
+    def impl(tensor, dtype):
+        buff = cuda.local.array(dst_layout.cosize, dtype=dtype, alignment=dst_layout.alignment)
+        return OpaqueTensor(buff, dst_layout)
+
+    return impl
+
+
+@overload(copy_wait, jit_options={"forceinline": True}, strict=False)
 def ol_copy_wait():
     # numba has cache per compute capability, so the function won't end up
     # cached for the wrong compute capability.
@@ -591,7 +807,7 @@ def ol_copy_wait():
     return lambda: blas_device_func()
 
 
-@overload(axpby, target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload(axpby, jit_options={"forceinline": True}, strict=False)
 def ol_axpby(a, x, b, y):
     if not isinstance(a, types.Number):
         return
@@ -601,103 +817,152 @@ def ol_axpby(a, x, b, y):
         return
     if not isinstance(y, OpaqueTensorType):
         return
-    if x != y:
-        raise TypeError("x and y must be the same tensor type")
-    if "rmem" not in x.layout.layout:
-        raise TypeError("axpby is only supported for rmem tensors")
+    if x.layout.layout.memory_space != "r":
+        raise TypeError("axpby is only supported for rmem tensors. x is not")
+    if y.layout.layout.memory_space != "r":
+        raise TypeError("axpby is only supported for rmem tensors. y is not")
 
     code, symbol = compile_blas_axpby(
-        x_tensor=x.layout.blas_layout,
-        y_tensor=y.layout.blas_layout,
+        x_tensor=x.layout.layout,
+        y_tensor=y.layout.layout,
         code_type=get_default_code_type(),
     )
 
     lto = cuda.LTOIR(code.data)
 
     return_type = types.void
-    sig = typing.signature(return_type, types.CPointer(x.dtype), x._capi_type, types.CPointer(y.dtype), y._capi_type)
+    sig = typing.signature(return_type, types.CPointer(x.dtype), x, types.CPointer(y.dtype), y)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
+    x_dtype = x.dtype
+    y_dtype = y.dtype
+
     def impl(a, x, b, y):
-        x_struct = get_opaque_tensor(x)
-        y_struct = get_opaque_tensor(y)
-        a_ptr = get_value_ptr(x.buffer.dtype.type(a))
-        b_ptr = get_value_ptr(y.buffer.dtype.type(b))
-        return blas_device_func(a_ptr, x_struct, b_ptr, y_struct)
+        a_ptr = get_value_ptr(x_dtype(a))
+        b_ptr = get_value_ptr(y_dtype(b))
+        return blas_device_func(a_ptr, x, b_ptr, y)
 
     return impl
 
 
-class BlasPartitionerType(PartitionerType):
+class BlasPartitionerType(types.Type):
     """
     Type class for Blas partitioner.
     """
 
-    def __init__(self, MM: Matmul):
+    def __init__(self, MM: Matmul, suggested: bool):
         assert isinstance(MM, Matmul)
         self._MM = MM
-        super().__init__(f"BlasPartitioner(MM={MM})")
+        mm_type = BlasType(MM)
+        self._suggested = suggested
+        super().__init__(f"BlasPartitioner(MM={mm_type}, suggested={suggested})")
 
     @property
     def MM(self) -> Matmul:
         return self._MM
 
+    @property
+    def suggested(self) -> bool:
+        return self._suggested
 
-register_model(BlasPartitionerType)(PartitionerModel)
+    @property
+    def dtype(self) -> types.Number:
+        return NUMBA_FE_TYPES_TO_NUMBA_IR[self._MM._traits.value_types[2]]
+
+    @property
+    def fragment_layout(self) -> BlasLayoutType:
+        MM = self.MM
+        if self.suggested:
+            layout = MM.suggest_layout_rmem_c()
+        else:
+            layout = MM.get_layout_rmem_c()
+
+        assert isinstance(layout, _BlasMatmulLayout)
+
+        return BlasLayoutType(layout)
 
 
-class BlasPartitionType(PartitionType):
+@register_model(BlasPartitionerType)
+class PartitionerModel(StructModel):
+    def __init__(self, dmm, fe_type: BlasPartitionerType):
+        StructModel.__init__(self, dmm, fe_type, [])
+
+
+class BlasAccumulatorType(BlasPartitionerType):
     """
     Type class for Blas partitioner.
     """
 
-    def __init__(self, partitioner: BlasPartitionerType, tensor: OpaqueTensorType):
-        assert isinstance(partitioner, BlasPartitionerType)
-        super().__init__(partitioner, tensor)
-        self.name = f"BlasPartitionType(partitioner={partitioner}, tensor={tensor})"
+    def __init__(self, MM: Matmul, suggested: bool):
+        super().__init__(MM, suggested)
+        mm = BlasType(MM)
+        self.name = f"BlasAccumulator(MM={mm}, suggested={suggested})"
+
+    @cached_property
+    def layout(self) -> BlasLayoutType:
+        if self._suggested:
+            layout = self._MM._suggest_accumulator_c()
+        else:
+            layout = self._MM._get_accumulator_c()
+
+        assert isinstance(layout, _BlasMatmulLayout)
+
+        return BlasLayoutType(layout)
 
 
-register_model(BlasPartitionType)(PartitionModel)
+register_model(BlasAccumulatorType)(OpaqueTensorModel)
 
 
-@overload_method(BlasType, "suggest_partitioner", target="cuda", jit_options={"forceinline": True}, strict=False)
-def ol_blas_suggest_partitioner(blas_numba: BlasType):
+def ol_blas_get_accumulator_generic(blas_numba: BlasType, suggested: bool):
     assert isinstance(blas_numba, BlasType)
 
     MM = blas_numba.blas
-    return_type = BlasPartitionerType(MM)
+    return_type = BlasAccumulatorType(MM, suggested=suggested)
+    opaque_tensor_type = OpaqueTensorType(return_type.layout)
 
     @intrinsic
-    def _intrinsic(typingctx):
+    def _type_cast_ot_acc(typingctx, opaque_tensor):
         def codegen(context: BaseContext, builder: llvmir.IRBuilder, signature, args):
-            # Create empty struct to avoid runtime memory usage
-            layout = cgutils.create_struct_proxy(return_type)(context, builder)
-            return layout._getvalue()
+            return args[0]
 
-        return typing.signature(return_type), codegen
+        return typing.signature(return_type, opaque_tensor_type), codegen
 
-    return lambda blas_numba: _intrinsic()
+    if suggested:
+        acc_layout = MM._suggest_accumulator_c()
+    else:
+        acc_layout = MM._get_accumulator_c()
+
+    alignment = max(acc_layout.alignment, 8)
+
+    def impl(mm: Matmul):
+        buff = cuda.local.array(acc_layout.cosize, dtype=mm.c_value_type, alignment=alignment)
+        tensor = make_tensor(buff, acc_layout)
+        clear(tensor)
+        acc = _type_cast_ot_acc(tensor)
+        acc._init()
+        return acc
+
+    return impl
 
 
-@overload_method(BlasPartitionerType, "partition_like_C", target="cuda", jit_options={"forceinline": True}, strict=False)
+@overload_method(BlasType, "suggest_accumulator", inline="always", strict=False)
+def ol_blas_suggest_accumulator(blas_numba: BlasType):
+    return ol_blas_get_accumulator_generic(blas_numba, suggested=True)
+
+
+@overload_method(BlasType, "get_accumulator", inline="always", strict=False)
+def ol_blas_get_accumulator(blas_numba: BlasType):
+    return ol_blas_get_accumulator_generic(blas_numba, suggested=False)
+
+
+@overload_method(BlasPartitionerType, "partition_like_C", jit_options={"forceinline": True}, strict=False)
 def ol_blas_partition_like_C(partitioner: BlasPartitionerType, tensor: OpaqueTensorType):
     assert isinstance(partitioner, BlasPartitionerType)
     assert isinstance(tensor, OpaqueTensorType)
-    assert tensor.layout.blas_layout._tensor_type == "gmem_c"
+    assert isinstance(tensor.layout, BlasLayoutType)
+    assert tensor.layout.layout.tensor_type == "gmem_c"
 
-    return_type = BlasPartitionType(partitioner, tensor)
-
-    @intrinsic
-    def _intrinsic(typingctx, partitioner, tensor):
-        def codegen(context: BaseContext, builder: llvmir.IRBuilder, signature, args):
-            partition = cgutils.create_struct_proxy(return_type)(context, builder)
-            partition.partitioner = args[0]
-            partition.tensor = args[1]
-            return partition._getvalue()
-
-        return typing.signature(return_type, partitioner, tensor), codegen
-
-    return lambda partitioner, tensor: _intrinsic(partitioner, tensor)
+    raise NotImplementedError("Blas partition_like_C is not yet implemented, please use map_fragment_index instead")
 
 
 def get_map_idx2crd_partitioner(symbol: str, lto: cuda.LTOIR):
@@ -729,7 +994,6 @@ def get_map_idx2crd_partitioner(symbol: str, lto: cuda.LTOIR):
 @overload_method(
     BlasPartitionerType,
     "map_fragment_index",
-    target="cuda",
     jit_options={"forceinline": True},
     strict=False,
 )
@@ -789,7 +1053,6 @@ def get_bool_return_intrinsic(symbol: str, index: bool = False, lto=None):
 @overload_method(
     BlasPartitionerType,
     "is_thread_active",
-    target="cuda",
     jit_options={"forceinline": True},
     strict=False,
 )
@@ -809,7 +1072,6 @@ def ol_blas_partitioner_is_thread_active(
 @overload_method(
     BlasPartitionerType,
     "is_predicated",
-    target="cuda",
     jit_options={"forceinline": True},
     strict=False,
 )
@@ -829,7 +1091,6 @@ def ol_blas_partitioner_is_predicated(
 @overload_method(
     BlasPartitionerType,
     "is_index_in_bounds",
-    target="cuda",
     jit_options={"forceinline": True},
     strict=False,
 )
@@ -849,45 +1110,439 @@ def ol_blas_partition_is_index_in_bounds(
     return lambda partitioner, idx: is_index_in_bounds(idx)
 
 
+@overload_method(
+    BlasPartitionerType,
+    "partition_and_copy",
+    inline="always",
+    strict=False,
+)
+def ol_blas_partitioner_partition_and_copy(
+    partitioner: BlasPartitionerType,
+    src: OpaqueTensorType,
+    dst: OpaqueTensorType,
+):
+    if not isinstance(partitioner, BlasPartitionerType):
+        return
+    if not isinstance(src, OpaqueTensorType):
+        return
+    if not isinstance(dst, OpaqueTensorType):
+        return
+    assert isinstance(src.layout, BlasLayoutType)
+    assert isinstance(dst.layout, BlasLayoutType)
+    src_mem = src.layout.layout.memory_space
+    dst_mem = dst.layout.layout.memory_space
+    assert src_mem == "r" and dst_mem == "g" or src_mem == "g" and dst_mem == "r"
+
+    alignment = max(partitioner.MM.alignment.c, src.layout.layout.alignment, dst.layout.layout.alignment)
+
+    def impl(partitioner: Partitioner, src, dst):
+        if partitioner.is_thread_active():
+            copy_fragment(src, dst, alignment=alignment)
+
+    return impl
+
+
+@overload_method(
+    BlasPartitionerType,
+    "make_empty_fragment",
+    inline="always",
+    strict=False,
+)
+def ol_blas_partitioner_make_empty_fragment(
+    partitioner: BlasPartitionerType,
+):
+    MM = partitioner.MM
+    layout = partitioner.fragment_layout.layout
+
+    alignment = max(8, layout.alignment, MM.alignment.c)
+
+    def impl(partitioner):
+        buff = cuda.local.array(layout.cosize, dtype=MM.c_value_type, alignment=alignment)
+        frag = make_tensor(buff, layout)
+        return frag
+
+    return impl
+
+
+@overload_method(
+    BlasPartitionerType,
+    "make_partition_and_copy",
+    inline="always",
+    strict=False,
+)
+def ol_blas_partitioner_make_partition_and_copy(
+    partitioner: BlasPartitionerType,
+    tensor: OpaqueTensorType,
+):
+    if not isinstance(tensor, OpaqueTensorType):
+        return
+
+    layout_ty = partitioner.fragment_layout
+    layout = layout_ty.layout
+    if layout_ty.dtype != tensor.layout.dtype:
+        layout = layout_ty.make_layout_like(tensor.layout.layout.dtype).layout
+    assert isinstance(layout, _BlasMatmulLayout)
+
+    MM = partitioner.MM
+    alignment = max(8, layout.alignment, MM.alignment.c)
+    dtype = layout.dtype
+
+    def impl(partitioner, tensor):
+        buff = cuda.local.array(layout.cosize, dtype=dtype, alignment=alignment)
+        frag = make_tensor(buff, layout)
+        partitioner.partition_and_copy(tensor, frag)
+        return frag
+
+    return impl
+
+
+@overload_method(
+    BlasAccumulatorType,
+    "_init",
+    target="cuda",
+    jit_options={"forceinline": True},
+    strict=False,
+)
+def ol_opaque_tensor_init(
+    accumulator: BlasAccumulatorType,
+):
+    if not isinstance(accumulator, BlasAccumulatorType):
+        return
+
+    layout = accumulator.layout
+    assert isinstance(layout, BlasLayoutType)
+    code, symbol = compile_blas_accumulator_init(layout.layout, code_type=get_default_code_type())
+    lto = cuda.LTOIR(code.data)
+
+    return_type = types.void
+    sig = typing.signature(return_type, accumulator)
+
+    cublasdx_init_accumulator = declare_cabi_device(symbol, sig, link=lto)
+
+    def impl(accumulator):
+        cublasdx_init_accumulator(accumulator)
+
+    return impl
+
+
+@overload_method(
+    BlasAccumulatorType,
+    "get_results",
+    inline="always",
+    strict=False,
+)
+def ol_blas_accumulator_get_results(
+    accumulator: BlasAccumulatorType,
+):
+    if not isinstance(accumulator, BlasAccumulatorType):
+        return
+
+    def impl(accumulator):
+        frag = accumulator.make_empty_fragment()
+        copy_fragment(accumulator, frag)
+
+        return frag
+
+    return impl
+
+
+@overload_method(BlasAccumulatorType, "clear", jit_options={"forceinline": True}, strict=False)
+def ol_blas_accumulator_clear(accumulator: BlasAccumulatorType):
+    opaque_tensor_type = OpaqueTensorType(accumulator.layout)
+
+    @intrinsic
+    def _type_cast_ot_tensor(typingctx, opaque_tensor):
+        def codegen(context: BaseContext, builder: llvmir.IRBuilder, signature, args):
+            return args[0]
+
+        return_type = opaque_tensor_type
+        return typing.signature(return_type, accumulator), codegen
+
+    def impl(accumulator: BlasAccumulatorType):
+        tensor = _type_cast_ot_tensor(accumulator)
+        clear(tensor)
+
+    return impl
+
+
+@overload_method(DevicePipelineType, "get_tile", target="cuda", inline="always", strict=False)
+def ol_device_pipeline_get_tile(
+    device_pipeline: DevicePipelineType,
+    smem: types.Array,
+    idx: types.Number,
+    idy: types.Number,
+):
+    if not isinstance(device_pipeline, DevicePipelineType):
+        return
+    if not isinstance(smem, types.Array):
+        return
+    if not isinstance(idx, types.Number) and not isinstance(idx, types.UniTuple):
+        return
+    if not isinstance(idy, types.Number) and not isinstance(idy, types.UniTuple):
+        return
+
+    assert (
+        isinstance(idx, types.Number)
+        and isinstance(idy, types.Number)
+        or isinstance(idx, types.UniTuple)
+        and isinstance(idy, types.UniTuple)
+    )
+
+    def impl(device_pipeline, smem, idx, idy):
+        tile_pipeline: TilePipeline = _create_tile_pipeline(device_pipeline)
+        tile_pipeline_buffer = cuda.local.array(
+            shape=(tile_pipeline.storage_bytes,), dtype=numpy.byte, alignment=tile_pipeline.storage_alignment
+        )
+        tile_pipeline = _set_tile_pipeline_buffer(tile_pipeline, tile_pipeline_buffer)
+        tile_pipeline._init(device_pipeline, smem, idx, idy)
+
+        return tile_pipeline
+
+    return impl
+
+
+@overload_method(DevicePipelineType, "reset_tile", target="cuda", inline="always", strict=False)
+def ol_tile_pipeline_reset_tile(
+    device_pipeline: DevicePipelineType,
+    tile_pipeline: TilePipelineType,
+    idx: types.Number,
+    idy: types.Number,
+):
+    if not isinstance(device_pipeline, DevicePipelineType):
+        return
+    if not isinstance(tile_pipeline, TilePipelineType):
+        return
+    if not isinstance(idx, types.Number) and not isinstance(idx, types.UniTuple):
+        return
+    if not isinstance(idy, types.Number) and not isinstance(idy, types.UniTuple):
+        return
+
+    assert tile_pipeline.pipeline.device_pipeline == device_pipeline.pipeline
+
+    code, symbol = compile_blas_device_pipeline_reset_tile(
+        device_pipeline.pipeline, tile_pipeline.pipeline, code_type=get_default_code_type()
+    )
+    lto = cuda.LTOIR(code.data)
+
+    return_type = types.void
+    sig = typing.signature(
+        return_type,
+        OpaquePointerType(),
+        OpaquePointerType(),
+        types.CPointer(types.int32),
+        types.CPointer(types.int32),
+    )
+
+    cublasdx_reset_tile = declare_cabi_device(symbol, sig, link=lto)
+
+    if isinstance(idx, types.Number):
+
+        def impl(device_pipeline, tile_pipeline, idx, idy):
+            idx = get_value_ptr(types.int32(idx))
+            idy = get_value_ptr(types.int32(idy))
+            cublasdx_reset_tile(get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), idx, idy)
+
+        return impl
+    else:
+
+        def impl(device_pipeline, tile_pipeline, idx, idy):
+            idx_arr = cuda.local.array(shape=(2,), dtype=numpy.int32)
+            idx_arr[0], idx_arr[1] = idx
+            idy_arr = cuda.local.array(shape=(2,), dtype=numpy.int32)
+            idy_arr[0], idy_arr[1] = idy
+            idx_ptr = get_array_ptr(idx_arr)
+            idy_ptr = get_array_ptr(idy_arr)
+            cublasdx_reset_tile(get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), idx_ptr, idy_ptr)
+
+        return impl
+
+
+@overload_method(TilePipelineType, "_init", target="cuda", jit_options={"forceinline": True}, strict=False)
+def ol_tile_pipeline_init(
+    tile_pipeline: TilePipelineType,
+    device_pipeline: DevicePipelineType,
+    smem: types.Array,
+    idx: types.Number,
+    idy: types.Number,
+):
+    if not isinstance(tile_pipeline, TilePipelineType):
+        return
+    if not isinstance(device_pipeline, DevicePipelineType):
+        return
+    if not isinstance(smem, types.Array):
+        return
+    if not isinstance(idx, types.Number) and not isinstance(idx, types.UniTuple):
+        return
+    if not isinstance(idy, types.Number) and not isinstance(idy, types.UniTuple):
+        return
+
+    assert tile_pipeline.pipeline.device_pipeline == device_pipeline.pipeline
+
+    code, symbol = compile_blas_tile_pipeline_init(tile_pipeline.pipeline, code_type=get_default_code_type())
+    lto = cuda.LTOIR(code.data)
+
+    return_type = types.void
+    sig = typing.signature(
+        return_type,
+        OpaquePointerType(),
+        OpaquePointerType(),
+        types.CPointer(smem.dtype),
+        types.CPointer(types.int32),
+        types.CPointer(types.int32),
+    )
+
+    cublasdx_init_pipeline = declare_cabi_device(symbol, sig, link=lto)
+
+    if isinstance(idx, types.Number):
+
+        def impl(tile_pipeline, device_pipeline, smem, idx, idy):
+            smem_ptr = get_array_ptr(smem)
+            idx = get_value_ptr(types.int32(idx))
+            idy = get_value_ptr(types.int32(idy))
+
+            cublasdx_init_pipeline(get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), smem_ptr, idx, idy)
+
+        return impl
+    else:
+
+        def impl(tile_pipeline, device_pipeline, smem, idx, idy):
+            smem_ptr = get_array_ptr(smem)
+            idx_arr = cuda.local.array(shape=(2,), dtype=numpy.int32)
+            idx_arr[0], idx_arr[1] = idx
+            idy_arr = cuda.local.array(shape=(2,), dtype=numpy.int32)
+            idy_arr[0], idy_arr[1] = idy
+            idx_ptr = get_array_ptr(idx_arr)
+            idy_ptr = get_array_ptr(idy_arr)
+            cublasdx_init_pipeline(
+                get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), smem_ptr, idx_ptr, idy_ptr
+            )
+
+        return impl
+
+
+@overload_method(TilePipelineType, "_del", target="cuda", jit_options={"forceinline": True}, strict=False)
+def ol_tile_pipeline_destroy(tile_pipeline: TilePipelineType):
+    if not isinstance(tile_pipeline, TilePipelineType):
+        return
+
+    code, symbol = compile_blas_tile_pipeline_destroy(tile_pipeline.pipeline, code_type=get_default_code_type())
+    lto = cuda.LTOIR(code.data)
+
+    return_type = types.void
+    sig = typing.signature(return_type, tile_pipeline)
+
+    cublasdx_destroy_pipeline = declare_cabi_device(symbol, sig, link=lto)
+
+    def impl(tile_pipeline):
+        cublasdx_destroy_pipeline(tile_pipeline)
+
+    return impl
+
+
+@overload_method(TilePipelineType, "execute", target="cuda", jit_options={"forceinline": True}, strict=False)
+def ol_tile_pipeline_execute(
+    tile_pipeline: TilePipelineType,
+    accumulator: BlasAccumulatorType,
+):
+    assert isinstance(accumulator, BlasAccumulatorType)
+    acc_layout = accumulator.layout.layout
+    assert acc_layout.accumulator
+
+    code, symbol = compile_blas_tile_pipeline_execute(tile_pipeline.pipeline, acc_layout, code_type=get_default_code_type())
+    lto = cuda.LTOIR(code.data)
+
+    return_type = types.void
+    sig = typing.signature(return_type, OpaquePointerType(), accumulator)
+
+    cublasdx_tile_pipeline_execute = declare_cabi_device(symbol, sig, link=lto)
+
+    def impl(tile_pipeline, accumulator):
+        cublasdx_tile_pipeline_execute(get_opaque_pointer(tile_pipeline), accumulator)
+
+    return impl
+
+
 @intrinsic
-def extract_partition(typingctx, ty_partition: BlasPartitionType):
-    assert isinstance(ty_partition, BlasPartitionType)
-    return_type = types.Tuple((ty_partition.partitioner, ty_partition.tensor))
-
+def _get_set_ot_item(typingctx, tensor: OpaqueTensorType, index: types.Integer, val=None):
     def codegen(context: BaseContext, builder: llvmir.IRBuilder, signature, args):
-        partition = cgutils.create_struct_proxy(ty_partition)(context, builder, value=args[0])
-        return context.make_tuple(builder, return_type, (partition.partitioner, partition.tensor))
+        tensor_ty = signature.args[0]
+        tensor, idx = args[0], args[1]
 
-    return typing.signature(return_type, ty_partition), codegen
+        tensor_struct = cgutils.create_struct_proxy(tensor_ty)(context, builder, tensor)
+        buff_void_ptr = tensor_struct.ptr
+
+        assert isinstance(buff_void_ptr.type, llvmir.PointerType)
+
+        llvm_val_ty = context.get_value_type(tensor_ty.dtype)
+
+        data_ptr_ty = llvmir.PointerType(llvm_val_ty, buff_void_ptr.type.addrspace)
+        buff_ptr = builder.bitcast(buff_void_ptr, data_ptr_ty)
+
+        val_ptr = builder.gep(buff_ptr, [idx], inbounds=True)
+
+        if val is None:
+            return builder.load(val_ptr)
+        else:
+            val_arg = args[2]
+            builder.store(val_arg, val_ptr)
+
+    if val is None:
+        ret_type = tensor.dtype
+        sig = typing.signature(ret_type, tensor, index, types.none)
+    else:
+        ret_type = types.void
+        sig = typing.signature(ret_type, tensor, index, tensor.dtype)
+    return sig, codegen
 
 
-@overload(operator.getitem, target="cuda", jit_options={"forceinline": True}, strict=False)
-def ol_blas_partition_getitem(partition: BlasPartitionType, index: types.Integer):
-    if not isinstance(partition, BlasPartitionType):
+def _validate_fragment_tensor(tensor: OpaqueTensorType) -> bool:
+    if not isinstance(tensor, OpaqueTensorType):
+        return False
+
+    layout_ty = tensor.layout
+    if not isinstance(layout_ty, BlasLayoutType):
+        return False
+
+    layout = layout_ty.layout
+    if not isinstance(layout, _BlasMatmulLayout):
+        return False
+    return layout.memory_space == "r"
+
+
+@overload(operator.getitem, jit_options={"forceinline": True}, strict=False)
+def ol_blas_partition_getitem(tensor: OpaqueTensorType, index: types.Integer):
+    if not _validate_fragment_tensor(tensor):
         return
     if not isinstance(index, types.Integer):
         return
 
-    def dummy_getitem_impl(obj, idx):
-        partitioner, tensor = extract_partition(obj)
-        i, j = partitioner.map_fragment_index(idx)
-        return tensor.buffer[i, j]
-
-    return dummy_getitem_impl
+    return lambda tensor, index: _get_set_ot_item(tensor, index)
 
 
-@overload(operator.setitem, target="cuda", jit_options={"forceinline": True}, strict=False)
-def ol_blas_partition_setitem(partition: BlasPartitionType, index: types.Integer, value: types.Number):
-    if not isinstance(partition, BlasPartitionType):
+@overload(operator.setitem, jit_options={"forceinline": True}, strict=False)
+def ol_blas_partition_setitem(tensor: OpaqueTensorType, index: types.Integer, value):
+    if not _validate_fragment_tensor(tensor):
         return
     if not isinstance(index, types.Integer):
         return
     if not isinstance(value, types.Number):
         return
 
-    def dummy_setitem_impl(obj, idx, value):
-        partitioner, tensor = extract_partition(obj)
-        i, j = partitioner.map_fragment_index(idx)
-        tensor.buffer[i, j] = value
+    dtype = tensor.dtype
 
-    return dummy_setitem_impl
+    return lambda tensor, index, value: _get_set_ot_item(tensor, index, dtype(value))
+
+
+class _PipelineExtension:
+    def prepare_args(self, ty, val, **kwargs):
+        if isinstance(val, DevicePipeline):
+            assert isinstance(ty, DevicePipelineType)
+            c_ptr = types.CPointer(types.void)
+            return c_ptr, int(val._storage.handle)
+        else:
+            return ty, val
+
+
+# TODO: make implicit, once numba-cuda supports it
+#  https://github.com/NVIDIA/numba-cuda/pull/504
+pipeline_extensions = [_PipelineExtension()]

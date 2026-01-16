@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -107,7 +107,7 @@ def initialize(
             raise ValueError(f"backend must be one of {valid_backends}, got {backend}")
 
     if len(backends) == 0:
-        raise ValueError("Need to specify at least one backend")
+        raise ValueError(f"Need to specify at least one of {valid_backends} communication backends")
 
     with _initialize_mutex:
         global _atexit_registered, _ctx

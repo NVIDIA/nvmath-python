@@ -5,3 +5,34 @@
 .bd-page-width {
     max-width: 100rem;  /* default is 88rem */
 }
+
+/* Experimental API styling */
+/* Add left border to the entire method/function/class marked as experimental */
+/* This covers both the signature and docstring */
+/* Uses theme's attention color variables that automatically adapt to light/dark mode */
+dl.py.method.experimental,
+dl.py.function.experimental,
+dl.py.class.experimental {
+    border-left: 6px solid var(--pst-color-attention-bg);
+    padding-left: 10px;
+}
+
+/* Style the experimental marker box */
+/* This is a simple container created by .. experimental:: directive */
+/* Using CSS variables from the theme's attention/warning admonition style */
+/* These variables automatically change with the theme switcher */
+.experimental-marker {
+    background-color: var(--pst-color-attention-bg);
+    padding: 8px 12px;
+    margin: 12px 0;
+    border-radius: 4px;
+}
+
+/* Style the paragraph inside the container */
+.experimental-marker > p {
+    color: var(--pst-color-attention-text);
+    font-weight: 700;
+    margin: 0;
+    padding-left: 8px;
+    font-size: 0.95em;
+}

@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -16,6 +16,8 @@ from cuda.pathfinder import load_nvidia_dynamic_lib
 ###############################################################################
 # Extern
 ###############################################################################
+
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "<dlfcn.h>" nogil:
     void* dlopen(const char*, int)
@@ -48,6 +50,7 @@ cdef int get_cuda_version():
         raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
 
     return driver_ver
+
 
 
 ###############################################################################
@@ -98,6 +101,11 @@ cdef void* __cublasLtGetStatusString = NULL
 cdef void* __cublasLtHeuristicsCacheGetCapacity = NULL
 cdef void* __cublasLtHeuristicsCacheSetCapacity = NULL
 cdef void* __cublasLtDisableCpuInstructionsSetMask = NULL
+cdef void* __cublasLtGroupedMatrixLayoutCreate = NULL
+cdef void* __cublasLtEmulationDescCreate = NULL
+cdef void* __cublasLtEmulationDescDestroy = NULL
+cdef void* __cublasLtEmulationDescSetAttribute = NULL
+cdef void* __cublasLtEmulationDescGetAttribute = NULL
 
 
 cdef void* load_library(const int driver_ver) except* with gil:
@@ -113,6 +121,10 @@ cdef int _check_or_init_cublasLt() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cublasLt_init:
+            return 0
+
         driver_ver = get_cuda_version()
 
         # Load function
@@ -403,6 +415,41 @@ cdef int _check_or_init_cublasLt() except -1 nogil:
                 handle = load_library(driver_ver)
             __cublasLtDisableCpuInstructionsSetMask = dlsym(handle, 'cublasLtDisableCpuInstructionsSetMask')
 
+        global __cublasLtGroupedMatrixLayoutCreate
+        __cublasLtGroupedMatrixLayoutCreate = dlsym(RTLD_DEFAULT, 'cublasLtGroupedMatrixLayoutCreate')
+        if __cublasLtGroupedMatrixLayoutCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtGroupedMatrixLayoutCreate = dlsym(handle, 'cublasLtGroupedMatrixLayoutCreate')
+
+        global __cublasLtEmulationDescCreate
+        __cublasLtEmulationDescCreate = dlsym(RTLD_DEFAULT, 'cublasLtEmulationDescCreate')
+        if __cublasLtEmulationDescCreate == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtEmulationDescCreate = dlsym(handle, 'cublasLtEmulationDescCreate')
+
+        global __cublasLtEmulationDescDestroy
+        __cublasLtEmulationDescDestroy = dlsym(RTLD_DEFAULT, 'cublasLtEmulationDescDestroy')
+        if __cublasLtEmulationDescDestroy == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtEmulationDescDestroy = dlsym(handle, 'cublasLtEmulationDescDestroy')
+
+        global __cublasLtEmulationDescSetAttribute
+        __cublasLtEmulationDescSetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtEmulationDescSetAttribute')
+        if __cublasLtEmulationDescSetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtEmulationDescSetAttribute = dlsym(handle, 'cublasLtEmulationDescSetAttribute')
+
+        global __cublasLtEmulationDescGetAttribute
+        __cublasLtEmulationDescGetAttribute = dlsym(RTLD_DEFAULT, 'cublasLtEmulationDescGetAttribute')
+        if __cublasLtEmulationDescGetAttribute == NULL:
+            if handle == NULL:
+                handle = load_library(driver_ver)
+            __cublasLtEmulationDescGetAttribute = dlsym(handle, 'cublasLtEmulationDescGetAttribute')
+
         __py_cublasLt_init = True
         return 0
 
@@ -540,6 +587,21 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasLtDisableCpuInstructionsSetMask
     data["__cublasLtDisableCpuInstructionsSetMask"] = <intptr_t>__cublasLtDisableCpuInstructionsSetMask
+
+    global __cublasLtGroupedMatrixLayoutCreate
+    data["__cublasLtGroupedMatrixLayoutCreate"] = <intptr_t>__cublasLtGroupedMatrixLayoutCreate
+
+    global __cublasLtEmulationDescCreate
+    data["__cublasLtEmulationDescCreate"] = <intptr_t>__cublasLtEmulationDescCreate
+
+    global __cublasLtEmulationDescDestroy
+    data["__cublasLtEmulationDescDestroy"] = <intptr_t>__cublasLtEmulationDescDestroy
+
+    global __cublasLtEmulationDescSetAttribute
+    data["__cublasLtEmulationDescSetAttribute"] = <intptr_t>__cublasLtEmulationDescSetAttribute
+
+    global __cublasLtEmulationDescGetAttribute
+    data["__cublasLtEmulationDescGetAttribute"] = <intptr_t>__cublasLtEmulationDescGetAttribute
 
     func_ptrs = data
     return data
@@ -964,3 +1026,53 @@ cdef unsigned _cublasLtDisableCpuInstructionsSetMask(unsigned mask) except?0 nog
             raise FunctionNotFoundError("function cublasLtDisableCpuInstructionsSetMask is not found")
     return (<unsigned (*)(unsigned) noexcept nogil>__cublasLtDisableCpuInstructionsSetMask)(
         mask)
+
+
+cdef cublasStatus_t _cublasLtGroupedMatrixLayoutCreate(cublasLtMatrixLayout_t* matLayout, cudaDataType type, int groupCount, const void* rows_array, const void* cols_array, const void* ld_array) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasLtGroupedMatrixLayoutCreate
+    _check_or_init_cublasLt()
+    if __cublasLtGroupedMatrixLayoutCreate == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasLtGroupedMatrixLayoutCreate is not found")
+    return (<cublasStatus_t (*)(cublasLtMatrixLayout_t*, cudaDataType, int, const void*, const void*, const void*) noexcept nogil>__cublasLtGroupedMatrixLayoutCreate)(
+        matLayout, type, groupCount, rows_array, cols_array, ld_array)
+
+
+cdef cublasStatus_t _cublasLtEmulationDescCreate(cublasLtEmulationDesc_t* emulationDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasLtEmulationDescCreate
+    _check_or_init_cublasLt()
+    if __cublasLtEmulationDescCreate == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasLtEmulationDescCreate is not found")
+    return (<cublasStatus_t (*)(cublasLtEmulationDesc_t*) noexcept nogil>__cublasLtEmulationDescCreate)(
+        emulationDesc)
+
+
+cdef cublasStatus_t _cublasLtEmulationDescDestroy(cublasLtEmulationDesc_t emulationDesc) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasLtEmulationDescDestroy
+    _check_or_init_cublasLt()
+    if __cublasLtEmulationDescDestroy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasLtEmulationDescDestroy is not found")
+    return (<cublasStatus_t (*)(cublasLtEmulationDesc_t) noexcept nogil>__cublasLtEmulationDescDestroy)(
+        emulationDesc)
+
+
+cdef cublasStatus_t _cublasLtEmulationDescSetAttribute(cublasLtEmulationDesc_t emulationDesc, cublasLtEmulationDescAttributes_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasLtEmulationDescSetAttribute
+    _check_or_init_cublasLt()
+    if __cublasLtEmulationDescSetAttribute == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasLtEmulationDescSetAttribute is not found")
+    return (<cublasStatus_t (*)(cublasLtEmulationDesc_t, cublasLtEmulationDescAttributes_t, const void*, size_t) noexcept nogil>__cublasLtEmulationDescSetAttribute)(
+        emulationDesc, attr, buf, sizeInBytes)
+
+
+cdef cublasStatus_t _cublasLtEmulationDescGetAttribute(cublasLtEmulationDesc_t emulationDesc, cublasLtEmulationDescAttributes_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasLtEmulationDescGetAttribute
+    _check_or_init_cublasLt()
+    if __cublasLtEmulationDescGetAttribute == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasLtEmulationDescGetAttribute is not found")
+    return (<cublasStatus_t (*)(cublasLtEmulationDesc_t, cublasLtEmulationDescAttributes_t, void*, size_t, size_t*) noexcept nogil>__cublasLtEmulationDescGetAttribute)(
+        emulationDesc, attr, buf, sizeInBytes, sizeWritten)

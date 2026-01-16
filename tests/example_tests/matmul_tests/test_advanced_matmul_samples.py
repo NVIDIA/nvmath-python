@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,10 +8,8 @@ import re
 
 import pytest
 
-import cuda.core.experimental as ccx
-
 from nvmath import bindings
-from ..test_utils import run_sample
+from ..test_utils import run_sample, cc
 
 
 samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "linalg", "advanced", "matmul")
@@ -63,10 +61,10 @@ min_cc = {
     "example28_mxfp8_epilog.py": (10, 0),
     "example29_mxfp8_layout.py": (10, 0),
 }
-
-cublas_version = bindings.cublasLt.get_version()
-device_properties = ccx.Device().properties
-cc = (device_properties.compute_capability_major, device_properties.compute_capability_minor)
+try:
+    cublas_version = bindings.cublasLt.get_version()
+except:
+    cublas_version = 0
 
 
 @pytest.mark.parametrize("sample", sample_files)

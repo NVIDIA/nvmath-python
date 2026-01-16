@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 12.8.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
 
 cimport cython
 
@@ -37,6 +37,7 @@ ctypedef cusolverAlgMode_t _AlgMode
 ctypedef cusolverStorevMode_t _StorevMode
 ctypedef cusolverDirectMode_t _DirectMode
 ctypedef cusolverDeterministicMode_t _DeterministicMode
+ctypedef cusolverMathMode_t _MathMode
 
 
 ###############################################################################

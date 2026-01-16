@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,10 +9,16 @@ import logging
 
 from nvmath.internal import tensor_wrapper
 import pytest
-import cuda.core.experimental as ccx
+
+try:
+    from cuda.core import system
+except ImportError:
+    from cuda.core.experimental import system
 import nvmath.internal.tensor_ifc_ndbuffer as tndb
 import nvmath.internal.ndbuffer.ndbuffer as ndb
-from nvmath.internal.utils import device_ctx
+from nvmath.internal.tensor_ifc_numpy import CudaTensor
+from nvmath.internal.tensor_ifc_cupy import HostTensor
+from nvmath.internal.utils import create_empty_tensor, device_ctx
 from .helpers import (
     np,
     cp,
@@ -36,6 +42,11 @@ from .helpers import (
     free_memory,
     wrap_operand,
 )
+
+try:
+    num_devices = system.get_num_devices()
+except AttributeError:
+    num_devices = system.num_devices
 
 
 def _permutations(rng, ndim, sample_size=10):
@@ -298,7 +309,7 @@ def test_layout_preservation(ndim, shape, permutation, slice, negate, direction,
     dtype = dtype.value
     device_id = device_id.value
 
-    if device_id > 0 and ccx.system.num_devices < 2:
+    if device_id > 0 and num_devices < 2:
         pytest.skip("Test requires at least 2 gpus")
 
     src_device_id = "cpu" if direction == "h2d" else device_id
@@ -390,7 +401,7 @@ def test_multithreaded(shape, transformation, direction, device_id, dtype, num_t
     device_id = device_id.value
     num_threads = num_threads.value
 
-    if device_id > 0 and ccx.system.num_devices < 2:
+    if device_id > 0 and num_devices < 2:
         pytest.skip("Test requires at least 2 gpus")
 
     if use_barrier:
@@ -784,7 +795,7 @@ def test_vectorized_copy(caplog, shape, dtype, expected_itemsize, transpose, dev
     dtype = dtype.value
     expected_itemsize = expected_itemsize.value
     device_id = device_id.value
-    if device_id > 0 and ccx.system.num_devices < 2:
+    if device_id > 0 and num_devices < 2:
         pytest.skip("Test requires at least 2 gpus")
 
     stream_holder = create_stream(device_id)
@@ -933,6 +944,80 @@ def test_broadcast_copy(base_shape, broadcast_shape, broadcast_strides, dtype, d
 
 @pytest.mark.parametrize(
     (
+        "base_shape",
+        "broadcast_shape",
+        "broadcast_strides",
+        "dtype",
+        "direction",
+    ),
+    [
+        (
+            Param("base_shape", base_shape),
+            Param("broadcast_shape", broadcast_shape),
+            Param("broadcast_strides", broadcast_strides),
+            Param("dtype", py_rng.choice(dtypes)),
+            Param("direction", direction),
+        )
+        for base_shape, broadcast_shape, broadcast_strides in [
+            # broadcast
+            ((1,), (7, 255, 3), (0, 0, 0)),
+            ((255, 1), (255, 3), (1, 0)),
+            ((1, 3), (255, 3), (0, 1)),
+            ((6, 1, 12), (6, 3, 12), (6, 0, 1)),
+            ((1, 1, 12), (6, 3, 12), (0, 0, 1)),
+            ((1, 1, 12), (3, 6, 12), (0, 0, 1)),
+        ]
+        for direction in ["h2d", "d2d", "d2h"]
+    ],
+    ids=idfn,
+)
+def test_copy_broadcast(base_shape, broadcast_shape, broadcast_strides, dtype, direction):
+    if cp is None:
+        pytest.skip("Cupy is required to run this test")
+    base_shape = base_shape.value
+    broadcast_shape = broadcast_shape.value
+    broadcast_strides = broadcast_strides.value
+    dtype = dtype.value
+    direction = direction.value
+    stream_holder = create_stream(0)
+    device_id = 0
+    src_device_id = "cpu" if direction == "h2d" else device_id
+    dst_device_id = "cpu" if direction == "d2h" else device_id
+    dst_tensor_class = HostTensor if dst_device_id == "cpu" else CudaTensor
+    a = arange(src_device_id, stream_holder, math.prod(base_shape), dtype).reshape(base_shape)
+    aw = wrap_operand(a)
+    bw = create_empty_tensor(
+        dst_tensor_class,
+        broadcast_shape,
+        dtype,
+        dst_device_id,
+        None if dst_device_id == "cpu" else stream_holder,
+        verify_strides=True,
+    )
+    if direction == "h2d":
+        assert aw.device_id == "cpu"
+        bw.copy_(aw, stream_holder)
+        b = as_array(bw.tensor)
+        print(f"\nh2d copy, shape={bw.shape}, strides={bw.strides} <- {aw.strides}")
+    elif direction == "d2h":
+        assert aw.device_id == 0
+        bw.copy_(aw, stream_holder)
+        b = as_array(bw.tensor)
+        print(f"\nd2h copy, shape={bw.shape}, strides={bw.strides} <- {aw.strides}")
+    else:
+        assert direction == "d2d"
+        assert aw.device_id == 0
+        bw.copy_(aw, stream_holder)
+        b = as_array(bw.tensor)
+        print(f"\nd2d copy, shape={bw.shape}, strides={bw.strides} <- {aw.strides}")
+        stream_holder.obj.sync()
+    assert_equal(b, np.broadcast_to(a, broadcast_shape))
+    expected_strides = dense_c_strides(broadcast_shape, a.itemsize)
+    assert b.strides == expected_strides, f"{b.strides} != {expected_strides}"
+
+
+@pytest.mark.parametrize(
+    (
         "base_size",
         "device_id",
         "dtype",
@@ -955,7 +1040,7 @@ def test_default_device_allocation_size(base_size, device_id, dtype):
     base_size = base_size.value
     if cp is None:
         pytest.skip("Cupy is required to run this test")
-    if device_id > 0 and ccx.system.num_devices < 2:
+    if device_id > 0 and num_devices < 2:
         pytest.skip("Test requires at least 2 gpus")
     stream_holder = create_stream(device_id)
     itemsize = np.dtype(dtype).itemsize

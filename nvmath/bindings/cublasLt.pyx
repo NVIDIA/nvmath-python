@@ -1,27 +1,52 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 cimport cython  # NOQA
 from libcpp.vector cimport vector
-from cpython cimport buffer as _buffer
-from cpython.memoryview cimport PyMemoryView_FromMemory
 
 from enum import IntEnum as _IntEnum
 
+
+from libc.stdlib cimport calloc, free, malloc
+from cython cimport view
+cimport cpython.buffer
+cimport cpython.memoryview
+from libc.string cimport memcmp, memcpy
 import numpy as _numpy
+
+
+cdef __from_data(data, dtype_name, expected_dtype, lowpp_type):
+    # _numpy.recarray is a subclass of _numpy.ndarray, so implicitly handled here.
+    if isinstance(data, lowpp_type):
+        return data
+    if not isinstance(data, _numpy.ndarray):
+        raise TypeError("data argument must be a NumPy ndarray")
+    if data.size != 1:
+        raise ValueError("data array must have a size of 1")
+    if data.dtype != expected_dtype:
+        raise ValueError(f"data array must be of dtype {dtype_name}")
+    return lowpp_type.from_ptr(data.ctypes.data, not data.flags.writeable, data)
 
 
 ###############################################################################
 # POD
 ###############################################################################
 
-matmul_algo_dtype = _numpy.dtype([
-    ("data_", _numpy.uint64, (8,)),
-    ], align=True)
+cdef _get_matmul_algo_dtype_offsets():
+    cdef cublasLtMatmulAlgo_t pod = cublasLtMatmulAlgo_t()
+    return _numpy.dtype({
+        'names': ['data_'],
+        'formats': [(_numpy.uint64, 8)],
+        'offsets': [
+            (<intptr_t>&(pod.data)) - (<intptr_t>&pod),
+        ],
+        'itemsize': sizeof(cublasLtMatmulAlgo_t),
+    })
 
+matmul_algo_dtype = _get_matmul_algo_dtype_offsets()
 
 cdef class MatmulAlgo:
     """Empty-initialize an array of `cublasLtMatmulAlgo_t`.
@@ -38,11 +63,13 @@ cdef class MatmulAlgo:
     cdef:
         readonly object _data
 
+
+
     def __init__(self, size=1):
         arr = _numpy.empty(size, dtype=matmul_algo_dtype)
         self._data = arr.view(_numpy.recarray)
         assert self._data.itemsize == sizeof(cublasLtMatmulAlgo_t), \
-            f"itemsize {self._data.itemsize} mismatches struct size {sizeof(cublasLtMatmulAlgo_t)}"
+            f"itemsize {self._data.itemsize} mismatches struct size { sizeof(cublasLtMatmulAlgo_t) }"
 
     def __repr__(self):
         if self._data.size > 1:
@@ -55,6 +82,9 @@ cdef class MatmulAlgo:
         """Get the pointer address to the data as Python :class:`int`."""
         return self._data.ctypes.data
 
+    cdef intptr_t _get_ptr(self):
+        return self._data.ctypes.data
+
     def __int__(self):
         if self._data.size > 1:
             raise TypeError("int() argument must be a bytes-like object of size 1. "
@@ -65,13 +95,10 @@ cdef class MatmulAlgo:
         return self._data.size
 
     def __eq__(self, other):
-        if not isinstance(other, MatmulAlgo):
+        cdef object self_data = self._data
+        if (not isinstance(other, MatmulAlgo)) or self_data.size != other._data.size or self_data.dtype != other._data.dtype:
             return False
-        if self._data.size != other._data.size:
-            return False
-        if self._data.dtype != other._data.dtype:
-            return False
-        return bool((self._data == other._data).all())
+        return bool((self_data == other._data).all())
 
     @property
     def data_(self):
@@ -83,13 +110,16 @@ cdef class MatmulAlgo:
         self._data.data_ = val
 
     def __getitem__(self, key):
+        cdef ssize_t key_
+        cdef ssize_t size
         if isinstance(key, int):
+            key_ = key
             size = self._data.size
-            if key >= size or key <= -(size+1):
+            if key_ >= size or key_ <= -(size+1):
                 raise IndexError("index is out of bounds")
-            if key < 0:
-                key += size
-            return MatmulAlgo.from_data(self._data[key:key+1])
+            if key_ < 0:
+                key_ += size
+            return MatmulAlgo.from_data(self._data[key_:key_+1])
         out = self._data[key]
         if isinstance(out, _numpy.recarray) and out.dtype == matmul_algo_dtype:
             return MatmulAlgo.from_data(out)
@@ -106,7 +136,7 @@ cdef class MatmulAlgo:
             data (_numpy.ndarray): a 1D array of dtype `matmul_algo_dtype` holding the data.
         """
         cdef MatmulAlgo obj = MatmulAlgo.__new__(MatmulAlgo)
-        if not isinstance(data, (_numpy.ndarray, _numpy.recarray)):
+        if not isinstance(data, _numpy.ndarray):
             raise TypeError("data argument must be a NumPy ndarray")
         if data.ndim != 1:
             raise ValueError("data array must be 1D")
@@ -128,24 +158,31 @@ cdef class MatmulAlgo:
         if ptr == 0:
             raise ValueError("ptr must not be null (0)")
         cdef MatmulAlgo obj = MatmulAlgo.__new__(MatmulAlgo)
-        cdef flag = _buffer.PyBUF_READ if readonly else _buffer.PyBUF_WRITE
-        cdef object buf = PyMemoryView_FromMemory(
+        cdef flag = cpython.buffer.PyBUF_READ if readonly else cpython.buffer.PyBUF_WRITE
+        cdef object buf = cpython.memoryview.PyMemoryView_FromMemory(
             <char*>ptr, sizeof(cublasLtMatmulAlgo_t) * size, flag)
-        data = _numpy.ndarray((size,), buffer=buf,
-                              dtype=matmul_algo_dtype)
+        data = _numpy.ndarray(size, buffer=buf, dtype=matmul_algo_dtype)
         obj._data = data.view(_numpy.recarray)
 
         return obj
 
 
-matmul_heuristic_result_dtype = _numpy.dtype([
-    ("algo", matmul_algo_dtype, ),
-    ("workspace_size", _numpy.uint64, ),
-    ("state", _numpy.int32, ),
-    ("waves_count", _numpy.float32, ),
-    ("reserved", _numpy.int32, (4,)),
-    ], align=True)
+cdef _get_matmul_heuristic_result_dtype_offsets():
+    cdef cublasLtMatmulHeuristicResult_t pod = cublasLtMatmulHeuristicResult_t()
+    return _numpy.dtype({
+        'names': ['algo', 'workspace_size', 'state', 'waves_count', 'reserved'],
+        'formats': [matmul_algo_dtype, _numpy.uint64, _numpy.int32, _numpy.float32, (_numpy.int32, 4)],
+        'offsets': [
+            (<intptr_t>&(pod.algo)) - (<intptr_t>&pod),
+            (<intptr_t>&(pod.workspaceSize)) - (<intptr_t>&pod),
+            (<intptr_t>&(pod.state)) - (<intptr_t>&pod),
+            (<intptr_t>&(pod.wavesCount)) - (<intptr_t>&pod),
+            (<intptr_t>&(pod.reserved)) - (<intptr_t>&pod),
+        ],
+        'itemsize': sizeof(cublasLtMatmulHeuristicResult_t),
+    })
 
+matmul_heuristic_result_dtype = _get_matmul_heuristic_result_dtype_offsets()
 
 cdef class MatmulHeuristicResult:
     """Empty-initialize an array of `cublasLtMatmulHeuristicResult_t`.
@@ -162,11 +199,13 @@ cdef class MatmulHeuristicResult:
     cdef:
         readonly object _data
 
+
+
     def __init__(self, size=1):
         arr = _numpy.empty(size, dtype=matmul_heuristic_result_dtype)
         self._data = arr.view(_numpy.recarray)
         assert self._data.itemsize == sizeof(cublasLtMatmulHeuristicResult_t), \
-            f"itemsize {self._data.itemsize} mismatches struct size {sizeof(cublasLtMatmulHeuristicResult_t)}"
+            f"itemsize {self._data.itemsize} mismatches struct size { sizeof(cublasLtMatmulHeuristicResult_t) }"
 
     def __repr__(self):
         if self._data.size > 1:
@@ -179,6 +218,9 @@ cdef class MatmulHeuristicResult:
         """Get the pointer address to the data as Python :class:`int`."""
         return self._data.ctypes.data
 
+    cdef intptr_t _get_ptr(self):
+        return self._data.ctypes.data
+
     def __int__(self):
         if self._data.size > 1:
             raise TypeError("int() argument must be a bytes-like object of size 1. "
@@ -189,13 +231,10 @@ cdef class MatmulHeuristicResult:
         return self._data.size
 
     def __eq__(self, other):
-        if not isinstance(other, MatmulHeuristicResult):
+        cdef object self_data = self._data
+        if (not isinstance(other, MatmulHeuristicResult)) or self_data.size != other._data.size or self_data.dtype != other._data.dtype:
             return False
-        if self._data.size != other._data.size:
-            return False
-        if self._data.dtype != other._data.dtype:
-            return False
-        return bool((self._data == other._data).all())
+        return bool((self_data == other._data).all())
 
     @property
     def algo(self):
@@ -240,13 +279,16 @@ cdef class MatmulHeuristicResult:
         self._data.waves_count = val
 
     def __getitem__(self, key):
+        cdef ssize_t key_
+        cdef ssize_t size
         if isinstance(key, int):
+            key_ = key
             size = self._data.size
-            if key >= size or key <= -(size+1):
+            if key_ >= size or key_ <= -(size+1):
                 raise IndexError("index is out of bounds")
-            if key < 0:
-                key += size
-            return MatmulHeuristicResult.from_data(self._data[key:key+1])
+            if key_ < 0:
+                key_ += size
+            return MatmulHeuristicResult.from_data(self._data[key_:key_+1])
         out = self._data[key]
         if isinstance(out, _numpy.recarray) and out.dtype == matmul_heuristic_result_dtype:
             return MatmulHeuristicResult.from_data(out)
@@ -263,7 +305,7 @@ cdef class MatmulHeuristicResult:
             data (_numpy.ndarray): a 1D array of dtype `matmul_heuristic_result_dtype` holding the data.
         """
         cdef MatmulHeuristicResult obj = MatmulHeuristicResult.__new__(MatmulHeuristicResult)
-        if not isinstance(data, (_numpy.ndarray, _numpy.recarray)):
+        if not isinstance(data, _numpy.ndarray):
             raise TypeError("data argument must be a NumPy ndarray")
         if data.ndim != 1:
             raise ValueError("data array must be 1D")
@@ -285,11 +327,10 @@ cdef class MatmulHeuristicResult:
         if ptr == 0:
             raise ValueError("ptr must not be null (0)")
         cdef MatmulHeuristicResult obj = MatmulHeuristicResult.__new__(MatmulHeuristicResult)
-        cdef flag = _buffer.PyBUF_READ if readonly else _buffer.PyBUF_WRITE
-        cdef object buf = PyMemoryView_FromMemory(
+        cdef flag = cpython.buffer.PyBUF_READ if readonly else cpython.buffer.PyBUF_WRITE
+        cdef object buf = cpython.memoryview.PyMemoryView_FromMemory(
             <char*>ptr, sizeof(cublasLtMatmulHeuristicResult_t) * size, flag)
-        data = _numpy.ndarray((size,), buffer=buf,
-                              dtype=matmul_heuristic_result_dtype)
+        data = _numpy.ndarray(size, buffer=buf, dtype=matmul_heuristic_result_dtype)
         obj._data = data.view(_numpy.recarray)
 
         return obj
@@ -976,6 +1017,7 @@ class MatmulStages(_IntEnum):
     STAGES_64xAUTO = CUBLASLT_MATMUL_STAGES_64xAUTO
     STAGES_128xAUTO = CUBLASLT_MATMUL_STAGES_128xAUTO
     STAGES_256xAUTO = CUBLASLT_MATMUL_STAGES_256xAUTO
+    STAGES_768xAUTO = CUBLASLT_MATMUL_STAGES_768xAUTO
     STAGES_16x80 = CUBLASLT_MATMUL_STAGES_16x80
     STAGES_64x80 = CUBLASLT_MATMUL_STAGES_64x80
 
@@ -1015,6 +1057,11 @@ class MatrixLayoutAttribute(_IntEnum):
     STRIDED_BATCH_OFFSET = CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET
     PLANE_OFFSET = CUBLASLT_MATRIX_LAYOUT_PLANE_OFFSET
     BATCH_MODE = CUBLASLT_MATRIX_LAYOUT_BATCH_MODE
+    GROUPED_ROWS_ARRAY = CUBLASLT_GROUPED_MATRIX_LAYOUT_ROWS_ARRAY
+    GROUPED_COLS_ARRAY = CUBLASLT_GROUPED_MATRIX_LAYOUT_COLS_ARRAY
+    GROUPED_LD_ARRAY = CUBLASLT_GROUPED_MATRIX_LAYOUT_LD_ARRAY
+    GROUPED_ROWS_COLS_ARRAY_INTEGER_WIDTH = CUBLASLT_GROUPED_MATRIX_LAYOUT_ROWS_COLS_ARRAY_INTEGER_WIDTH
+    GROUPED_LD_ARRAY_INTEGER_WIDTH = CUBLASLT_GROUPED_MATRIX_LAYOUT_LD_ARRAY_INTEGER_WIDTH
 
 class MatmulDescAttribute(_IntEnum):
     """See `cublasLtMatmulDescAttributes_t`."""
@@ -1050,6 +1097,9 @@ class MatmulDescAttribute(_IntEnum):
     EPILOGUE_AUX_SCALE_MODE = CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE
     D_OUT_SCALE_POINTER = CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER
     D_OUT_SCALE_MODE = CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE
+    EMULATION_DESCRIPTOR = CUBLASLT_MATMUL_DESC_EMULATION_DESCRIPTOR
+    ALPHA_BATCH_STRIDE = CUBLASLT_MATMUL_DESC_ALPHA_BATCH_STRIDE
+    BETA_BATCH_STRIDE = CUBLASLT_MATMUL_DESC_BETA_BATCH_STRIDE
     ATOMIC_SYNC_NUM_CHUNKS_D_ROWS = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_ROWS
     ATOMIC_SYNC_NUM_CHUNKS_D_COLS = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS
     ATOMIC_SYNC_IN_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER
@@ -1113,6 +1163,9 @@ class MatmulPreferenceAttribute(_IntEnum):
     MIN_ALIGNMENT_D_BYTES = CUBLASLT_MATMUL_PREF_MIN_ALIGNMENT_D_BYTES
     MAX_WAVES_COUNT = CUBLASLT_MATMUL_PREF_MAX_WAVES_COUNT
     IMPL_MASK = CUBLASLT_MATMUL_PREF_IMPL_MASK
+    GROUPED_AVERAGE_REDUCTION_DIM = CUBLASLT_MATMUL_PREF_GROUPED_AVERAGE_REDUCTION_DIM
+    GROUPED_DESC_D_AVERAGE_ROWS = CUBLASLT_MATMUL_PREF_GROUPED_DESC_D_AVERAGE_ROWS
+    GROUPED_DESC_D_AVERAGE_COLS = CUBLASLT_MATMUL_PREF_GROUPED_DESC_D_AVERAGE_COLS
     MATH_MODE_MASK = CUBLASLT_MATMUL_PREF_MATH_MODE_MASK
     GAUSSIAN_MODE_MASK = CUBLASLT_MATMUL_PREF_GAUSSIAN_MODE_MASK
     POINTER_MODE_MASK = CUBLASLT_MATMUL_PREF_POINTER_MODE_MASK
@@ -1141,6 +1194,7 @@ class MatmulAlgoCapAttribute(_IntEnum):
     MIN_ALIGNMENT_D_BYTES = CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_D_BYTES
     POINTER_ARRAY_BATCH_SUPPORT = CUBLASLT_ALGO_CAP_POINTER_ARRAY_BATCH_SUPPORT
     FLOATING_POINT_EMULATION_SUPPORT = CUBLASLT_ALGO_CAP_FLOATING_POINT_EMULATION_SUPPORT
+    POINTER_ARRAY_GROUPED_SUPPORT = CUBLASLT_ALGO_CAP_POINTER_ARRAY_GROUPED_SUPPORT
     ATOMIC_SYNC = CUBLASLT_ALGO_CAP_ATOMIC_SYNC
     MATHMODE_IMPL = CUBLASLT_ALGO_CAP_MATHMODE_IMPL
     GAUSSIAN_IMPL = CUBLASLT_ALGO_CAP_GAUSSIAN_IMPL
@@ -1227,11 +1281,27 @@ class MatmulMatrixScale(_IntEnum):
     OUTER_VEC_32F = CUBLASLT_MATMUL_MATRIX_SCALE_OUTER_VEC_32F
     VEC128_32F = CUBLASLT_MATMUL_MATRIX_SCALE_VEC128_32F
     BLK128x128_32F = CUBLASLT_MATMUL_MATRIX_SCALE_BLK128x128_32F
+    PER_BATCH_SCALAR_32F = CUBLASLT_MATMUL_MATRIX_SCALE_PER_BATCH_SCALAR_32F
 
 class BatchMode(_IntEnum):
     """See `cublasLtBatchMode_t`."""
     STRIDED = CUBLASLT_BATCH_MODE_STRIDED
     POINTER_ARRAY = CUBLASLT_BATCH_MODE_POINTER_ARRAY
+    GROUPED = CUBLASLT_BATCH_MODE_GROUPED
+
+class IntegerWidth(_IntEnum):
+    """See `cublasLtIntegerWidth_t`."""
+    WIDTH_32 = CUBLASLT_INTEGER_WIDTH_32
+    WIDTH_64 = CUBLASLT_INTEGER_WIDTH_64
+
+class EmulationDescAttribute(_IntEnum):
+    """See `cublasLtEmulationDescAttributes_t`."""
+    STRATEGY = CUBLASLT_EMULATION_DESC_STRATEGY
+    SPECIAL_VALUES_SUPPORT = CUBLASLT_EMULATION_DESC_SPECIAL_VALUES_SUPPORT
+    FIXEDPOINT_MANTISSA_CONTROL = CUBLASLT_EMULATION_DESC_FIXEDPOINT_MANTISSA_CONTROL
+    FIXEDPOINT_MAX_MANTISSA_BIT_COUNT = CUBLASLT_EMULATION_DESC_FIXEDPOINT_MAX_MANTISSA_BIT_COUNT
+    FIXEDPOINT_MANTISSA_BIT_OFFSET = CUBLASLT_EMULATION_DESC_FIXEDPOINT_MANTISSA_BIT_OFFSET
+    FIXEDPOINT_MANTISSA_BIT_COUNT_POINTER = CUBLASLT_EMULATION_DESC_FIXEDPOINT_MANTISSA_BIT_COUNT_POINTER
 
 
 ###############################################################################
@@ -1273,16 +1343,16 @@ cpdef intptr_t create() except? 0:
     """See `cublasLtCreate`."""
     cdef Handle light_handle
     with nogil:
-        status = cublasLtCreate(&light_handle)
-    check_status(status)
+        __status__ = cublasLtCreate(&light_handle)
+    check_status(__status__)
     return <intptr_t>light_handle
 
 
 cpdef destroy(intptr_t light_handle):
     """See `cublasLtDestroy`."""
     with nogil:
-        status = cublasLtDestroy(<Handle>light_handle)
-    check_status(status)
+        __status__ = cublasLtDestroy(<Handle>light_handle)
+    check_status(__status__)
 
 
 cpdef size_t get_version() except? 0:
@@ -1299,39 +1369,39 @@ cpdef int get_property(int type) except? -1:
     """See `cublasLtGetProperty`."""
     cdef int value
     with nogil:
-        status = cublasLtGetProperty(<LibraryPropertyType>type, &value)
-    check_status(status)
+        __status__ = cublasLtGetProperty(<LibraryPropertyType>type, &value)
+    check_status(__status__)
     return value
 
 
 cpdef matmul(intptr_t light_handle, intptr_t compute_desc, intptr_t alpha, intptr_t a, intptr_t adesc, intptr_t b, intptr_t bdesc, intptr_t beta, intptr_t c, intptr_t cdesc, intptr_t d, intptr_t ddesc, intptr_t algo, intptr_t workspace, size_t workspace_size_in_bytes, intptr_t stream):
     """See `cublasLtMatmul`."""
     with nogil:
-        status = cublasLtMatmul(<Handle>light_handle, <MatmulDesc>compute_desc, <const void*>alpha, <const void*>a, <MatrixLayout>adesc, <const void*>b, <MatrixLayout>bdesc, <const void*>beta, <const void*>c, <MatrixLayout>cdesc, <void*>d, <MatrixLayout>ddesc, <const cublasLtMatmulAlgo_t*>algo, <void*>workspace, workspace_size_in_bytes, <Stream>stream)
-    check_status(status)
+        __status__ = cublasLtMatmul(<Handle>light_handle, <MatmulDesc>compute_desc, <const void*>alpha, <const void*>a, <MatrixLayout>adesc, <const void*>b, <MatrixLayout>bdesc, <const void*>beta, <const void*>c, <MatrixLayout>cdesc, <void*>d, <MatrixLayout>ddesc, <const cublasLtMatmulAlgo_t*>algo, <void*>workspace, workspace_size_in_bytes, <Stream>stream)
+    check_status(__status__)
 
 
 cpdef matrix_transform(intptr_t light_handle, intptr_t transform_desc, intptr_t alpha, intptr_t a, intptr_t adesc, intptr_t beta, intptr_t b, intptr_t bdesc, intptr_t c, intptr_t cdesc, intptr_t stream):
     """See `cublasLtMatrixTransform`."""
     with nogil:
-        status = cublasLtMatrixTransform(<Handle>light_handle, <MatrixTransformDesc>transform_desc, <const void*>alpha, <const void*>a, <MatrixLayout>adesc, <const void*>beta, <const void*>b, <MatrixLayout>bdesc, <void*>c, <MatrixLayout>cdesc, <Stream>stream)
-    check_status(status)
+        __status__ = cublasLtMatrixTransform(<Handle>light_handle, <MatrixTransformDesc>transform_desc, <const void*>alpha, <const void*>a, <MatrixLayout>adesc, <const void*>beta, <const void*>b, <MatrixLayout>bdesc, <void*>c, <MatrixLayout>cdesc, <Stream>stream)
+    check_status(__status__)
 
 
 cpdef intptr_t matrix_layout_create(int type, uint64_t rows, uint64_t cols, int64_t ld) except? 0:
     """See `cublasLtMatrixLayoutCreate`."""
     cdef MatrixLayout mat_layout
     with nogil:
-        status = cublasLtMatrixLayoutCreate(&mat_layout, <DataType>type, rows, cols, ld)
-    check_status(status)
+        __status__ = cublasLtMatrixLayoutCreate(&mat_layout, <DataType>type, rows, cols, ld)
+    check_status(__status__)
     return <intptr_t>mat_layout
 
 
 cpdef matrix_layout_destroy(intptr_t mat_layout):
     """See `cublasLtMatrixLayoutDestroy`."""
     with nogil:
-        status = cublasLtMatrixLayoutDestroy(<MatrixLayout>mat_layout)
-    check_status(status)
+        __status__ = cublasLtMatrixLayoutDestroy(<MatrixLayout>mat_layout)
+    check_status(__status__)
 
 
 ######################### Python specific utility #########################
@@ -1346,6 +1416,11 @@ cdef dict matrix_layout_attribute_sizes = {
     CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET: _numpy.int64,
     CUBLASLT_MATRIX_LAYOUT_PLANE_OFFSET: _numpy.int64,
     CUBLASLT_MATRIX_LAYOUT_BATCH_MODE: _numpy.int32,
+    CUBLASLT_GROUPED_MATRIX_LAYOUT_ROWS_ARRAY: _numpy.intp,
+    CUBLASLT_GROUPED_MATRIX_LAYOUT_COLS_ARRAY: _numpy.intp,
+    CUBLASLT_GROUPED_MATRIX_LAYOUT_LD_ARRAY: _numpy.intp,
+    CUBLASLT_GROUPED_MATRIX_LAYOUT_ROWS_COLS_ARRAY_INTEGER_WIDTH: _numpy.int32,
+    CUBLASLT_GROUPED_MATRIX_LAYOUT_LD_ARRAY_INTEGER_WIDTH: _numpy.int32,
 }
 
 cpdef get_matrix_layout_attribute_dtype(int attr):
@@ -1368,31 +1443,31 @@ cpdef get_matrix_layout_attribute_dtype(int attr):
 cpdef matrix_layout_set_attribute(intptr_t mat_layout, int attr, intptr_t buf, size_t size_in_bytes):
     """See `cublasLtMatrixLayoutSetAttribute`."""
     with nogil:
-        status = cublasLtMatrixLayoutSetAttribute(<MatrixLayout>mat_layout, <_MatrixLayoutAttribute>attr, <const void*>buf, size_in_bytes)
-    check_status(status)
+        __status__ = cublasLtMatrixLayoutSetAttribute(<MatrixLayout>mat_layout, <_MatrixLayoutAttribute>attr, <const void*>buf, size_in_bytes)
+    check_status(__status__)
 
 
 cpdef matrix_layout_get_attribute(intptr_t mat_layout, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
     """See `cublasLtMatrixLayoutGetAttribute`."""
     with nogil:
-        status = cublasLtMatrixLayoutGetAttribute(<MatrixLayout>mat_layout, <_MatrixLayoutAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
-    check_status(status)
+        __status__ = cublasLtMatrixLayoutGetAttribute(<MatrixLayout>mat_layout, <_MatrixLayoutAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+    check_status(__status__)
 
 
 cpdef intptr_t matmul_desc_create(int compute_type, int scale_type) except? 0:
     """See `cublasLtMatmulDescCreate`."""
     cdef MatmulDesc matmul_desc
     with nogil:
-        status = cublasLtMatmulDescCreate(&matmul_desc, <cublasComputeType_t>compute_type, <DataType>scale_type)
-    check_status(status)
+        __status__ = cublasLtMatmulDescCreate(&matmul_desc, <cublasComputeType_t>compute_type, <DataType>scale_type)
+    check_status(__status__)
     return <intptr_t>matmul_desc
 
 
 cpdef matmul_desc_destroy(intptr_t matmul_desc):
     """See `cublasLtMatmulDescDestroy`."""
     with nogil:
-        status = cublasLtMatmulDescDestroy(<MatmulDesc>matmul_desc)
-    check_status(status)
+        __status__ = cublasLtMatmulDescDestroy(<MatmulDesc>matmul_desc)
+    check_status(__status__)
 
 
 ######################### Python specific utility #########################
@@ -1430,6 +1505,9 @@ cdef dict matmul_desc_attribute_sizes = {
     CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_MODE: _numpy.int32,
     CUBLASLT_MATMUL_DESC_D_OUT_SCALE_POINTER: _numpy.intp,
     CUBLASLT_MATMUL_DESC_D_OUT_SCALE_MODE: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_EMULATION_DESCRIPTOR: _numpy.int32,
+    CUBLASLT_MATMUL_DESC_ALPHA_BATCH_STRIDE: _numpy.int64,
+    CUBLASLT_MATMUL_DESC_BETA_BATCH_STRIDE: _numpy.int64,
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_ROWS: _numpy.int32,
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_NUM_CHUNKS_D_COLS: _numpy.int32,
     CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_IN_COUNTERS_POINTER: _numpy.int32,
@@ -1456,31 +1534,31 @@ cpdef get_matmul_desc_attribute_dtype(int attr):
 cpdef matmul_desc_set_attribute(intptr_t matmul_desc, int attr, intptr_t buf, size_t size_in_bytes):
     """See `cublasLtMatmulDescSetAttribute`."""
     with nogil:
-        status = cublasLtMatmulDescSetAttribute(<MatmulDesc>matmul_desc, <_MatmulDescAttribute>attr, <const void*>buf, size_in_bytes)
-    check_status(status)
+        __status__ = cublasLtMatmulDescSetAttribute(<MatmulDesc>matmul_desc, <_MatmulDescAttribute>attr, <const void*>buf, size_in_bytes)
+    check_status(__status__)
 
 
 cpdef matmul_desc_get_attribute(intptr_t matmul_desc, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
     """See `cublasLtMatmulDescGetAttribute`."""
     with nogil:
-        status = cublasLtMatmulDescGetAttribute(<MatmulDesc>matmul_desc, <_MatmulDescAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
-    check_status(status)
+        __status__ = cublasLtMatmulDescGetAttribute(<MatmulDesc>matmul_desc, <_MatmulDescAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+    check_status(__status__)
 
 
 cpdef intptr_t matrix_transform_desc_create(int scale_type) except? 0:
     """See `cublasLtMatrixTransformDescCreate`."""
     cdef MatrixTransformDesc transform_desc
     with nogil:
-        status = cublasLtMatrixTransformDescCreate(&transform_desc, <DataType>scale_type)
-    check_status(status)
+        __status__ = cublasLtMatrixTransformDescCreate(&transform_desc, <DataType>scale_type)
+    check_status(__status__)
     return <intptr_t>transform_desc
 
 
 cpdef matrix_transform_desc_destroy(intptr_t transform_desc):
     """See `cublasLtMatrixTransformDescDestroy`."""
     with nogil:
-        status = cublasLtMatrixTransformDescDestroy(<MatrixTransformDesc>transform_desc)
-    check_status(status)
+        __status__ = cublasLtMatrixTransformDescDestroy(<MatrixTransformDesc>transform_desc)
+    check_status(__status__)
 
 
 ######################### Python specific utility #########################
@@ -1512,31 +1590,31 @@ cpdef get_matrix_transform_desc_attribute_dtype(int attr):
 cpdef matrix_transform_desc_set_attribute(intptr_t transform_desc, int attr, intptr_t buf, size_t size_in_bytes):
     """See `cublasLtMatrixTransformDescSetAttribute`."""
     with nogil:
-        status = cublasLtMatrixTransformDescSetAttribute(<MatrixTransformDesc>transform_desc, <_MatrixTransformDescAttribute>attr, <const void*>buf, size_in_bytes)
-    check_status(status)
+        __status__ = cublasLtMatrixTransformDescSetAttribute(<MatrixTransformDesc>transform_desc, <_MatrixTransformDescAttribute>attr, <const void*>buf, size_in_bytes)
+    check_status(__status__)
 
 
 cpdef matrix_transform_desc_get_attribute(intptr_t transform_desc, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
     """See `cublasLtMatrixTransformDescGetAttribute`."""
     with nogil:
-        status = cublasLtMatrixTransformDescGetAttribute(<MatrixTransformDesc>transform_desc, <_MatrixTransformDescAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
-    check_status(status)
+        __status__ = cublasLtMatrixTransformDescGetAttribute(<MatrixTransformDesc>transform_desc, <_MatrixTransformDescAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+    check_status(__status__)
 
 
 cpdef intptr_t matmul_preference_create() except? 0:
     """See `cublasLtMatmulPreferenceCreate`."""
     cdef MatmulPreference pref
     with nogil:
-        status = cublasLtMatmulPreferenceCreate(&pref)
-    check_status(status)
+        __status__ = cublasLtMatmulPreferenceCreate(&pref)
+    check_status(__status__)
     return <intptr_t>pref
 
 
 cpdef matmul_preference_destroy(intptr_t pref):
     """See `cublasLtMatmulPreferenceDestroy`."""
     with nogil:
-        status = cublasLtMatmulPreferenceDestroy(<MatmulPreference>pref)
-    check_status(status)
+        __status__ = cublasLtMatmulPreferenceDestroy(<MatmulPreference>pref)
+    check_status(__status__)
 
 
 ######################### Python specific utility #########################
@@ -1551,6 +1629,9 @@ cdef dict matmul_preference_attribute_sizes = {
     CUBLASLT_MATMUL_PREF_MIN_ALIGNMENT_D_BYTES: _numpy.uint32,
     CUBLASLT_MATMUL_PREF_MAX_WAVES_COUNT: _numpy.float32,
     CUBLASLT_MATMUL_PREF_IMPL_MASK: _numpy.uint64,
+    CUBLASLT_MATMUL_PREF_GROUPED_AVERAGE_REDUCTION_DIM: _numpy.uint32,
+    CUBLASLT_MATMUL_PREF_GROUPED_DESC_D_AVERAGE_ROWS: _numpy.uint32,
+    CUBLASLT_MATMUL_PREF_GROUPED_DESC_D_AVERAGE_COLS: _numpy.uint32,
 }
 
 cpdef get_matmul_preference_attribute_dtype(int attr):
@@ -1583,36 +1664,36 @@ cpdef get_matmul_preference_attribute_dtype(int attr):
 cpdef matmul_preference_set_attribute(intptr_t pref, int attr, intptr_t buf, size_t size_in_bytes):
     """See `cublasLtMatmulPreferenceSetAttribute`."""
     with nogil:
-        status = cublasLtMatmulPreferenceSetAttribute(<MatmulPreference>pref, <_MatmulPreferenceAttribute>attr, <const void*>buf, size_in_bytes)
-    check_status(status)
+        __status__ = cublasLtMatmulPreferenceSetAttribute(<MatmulPreference>pref, <_MatmulPreferenceAttribute>attr, <const void*>buf, size_in_bytes)
+    check_status(__status__)
 
 
 cpdef matmul_preference_get_attribute(intptr_t pref, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
     """See `cublasLtMatmulPreferenceGetAttribute`."""
     with nogil:
-        status = cublasLtMatmulPreferenceGetAttribute(<MatmulPreference>pref, <_MatmulPreferenceAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
-    check_status(status)
+        __status__ = cublasLtMatmulPreferenceGetAttribute(<MatmulPreference>pref, <_MatmulPreferenceAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+    check_status(__status__)
 
 
 cpdef matmul_algo_get_heuristic(intptr_t light_handle, intptr_t operation_desc, intptr_t adesc, intptr_t bdesc, intptr_t cdesc, intptr_t ddesc, intptr_t preference, int requested_algo_count, intptr_t heuristic_results_array, intptr_t return_algo_count):
     """See `cublasLtMatmulAlgoGetHeuristic`."""
     with nogil:
-        status = cublasLtMatmulAlgoGetHeuristic(<Handle>light_handle, <MatmulDesc>operation_desc, <MatrixLayout>adesc, <MatrixLayout>bdesc, <MatrixLayout>cdesc, <MatrixLayout>ddesc, <MatmulPreference>preference, requested_algo_count, <cublasLtMatmulHeuristicResult_t*>heuristic_results_array, <int*>return_algo_count)
-    check_status(status)
+        __status__ = cublasLtMatmulAlgoGetHeuristic(<Handle>light_handle, <MatmulDesc>operation_desc, <MatrixLayout>adesc, <MatrixLayout>bdesc, <MatrixLayout>cdesc, <MatrixLayout>ddesc, <MatmulPreference>preference, requested_algo_count, <cublasLtMatmulHeuristicResult_t*>heuristic_results_array, <int*>return_algo_count)
+    check_status(__status__)
 
 
 cpdef matmul_algo_init(intptr_t light_handle, int compute_type, int scale_type, int atype, int btype, int ctype, int dtype, int algo_id, intptr_t algo):
     """See `cublasLtMatmulAlgoInit`."""
     with nogil:
-        status = cublasLtMatmulAlgoInit(<Handle>light_handle, <cublasComputeType_t>compute_type, <DataType>scale_type, <DataType>atype, <DataType>btype, <DataType>ctype, <DataType>dtype, algo_id, <cublasLtMatmulAlgo_t*>algo)
-    check_status(status)
+        __status__ = cublasLtMatmulAlgoInit(<Handle>light_handle, <cublasComputeType_t>compute_type, <DataType>scale_type, <DataType>atype, <DataType>btype, <DataType>ctype, <DataType>dtype, algo_id, <cublasLtMatmulAlgo_t*>algo)
+    check_status(__status__)
 
 
 cpdef matmul_algo_check(intptr_t light_handle, intptr_t operation_desc, intptr_t adesc, intptr_t bdesc, intptr_t cdesc, intptr_t ddesc, intptr_t algo, intptr_t result):
     """See `cublasLtMatmulAlgoCheck`."""
     with nogil:
-        status = cublasLtMatmulAlgoCheck(<Handle>light_handle, <MatmulDesc>operation_desc, <MatrixLayout>adesc, <MatrixLayout>bdesc, <MatrixLayout>cdesc, <MatrixLayout>ddesc, <const cublasLtMatmulAlgo_t*>algo, <cublasLtMatmulHeuristicResult_t*>result)
-    check_status(status)
+        __status__ = cublasLtMatmulAlgoCheck(<Handle>light_handle, <MatmulDesc>operation_desc, <MatrixLayout>adesc, <MatrixLayout>bdesc, <MatrixLayout>cdesc, <MatrixLayout>ddesc, <const cublasLtMatmulAlgo_t*>algo, <cublasLtMatmulHeuristicResult_t*>result)
+    check_status(__status__)
 
 
 ######################### Python specific utility #########################
@@ -1638,6 +1719,7 @@ cdef dict matmul_algo_cap_attribute_sizes = {
     CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_D_BYTES: _numpy.uint32,
     CUBLASLT_ALGO_CAP_POINTER_ARRAY_BATCH_SUPPORT: _numpy.int32,
     CUBLASLT_ALGO_CAP_FLOATING_POINT_EMULATION_SUPPORT: _numpy.int32,
+    CUBLASLT_ALGO_CAP_POINTER_ARRAY_GROUPED_SUPPORT: _numpy.int32,
     CUBLASLT_ALGO_CAP_ATOMIC_SYNC: _numpy.int32,
     CUBLASLT_ALGO_CAP_MATHMODE_IMPL: _numpy.int32,
     CUBLASLT_ALGO_CAP_GAUSSIAN_IMPL: _numpy.int32,
@@ -1663,8 +1745,8 @@ cpdef get_matmul_algo_cap_attribute_dtype(int attr):
 cpdef matmul_algo_cap_get_attribute(intptr_t algo, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
     """See `cublasLtMatmulAlgoCapGetAttribute`."""
     with nogil:
-        status = cublasLtMatmulAlgoCapGetAttribute(<const cublasLtMatmulAlgo_t*>algo, <_MatmulAlgoCapAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
-    check_status(status)
+        __status__ = cublasLtMatmulAlgoCapGetAttribute(<const cublasLtMatmulAlgo_t*>algo, <_MatmulAlgoCapAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+    check_status(__status__)
 
 
 ######################### Python specific utility #########################
@@ -1701,15 +1783,15 @@ cpdef get_matmul_algo_config_attribute_dtype(int attr):
 cpdef matmul_algo_config_set_attribute(intptr_t algo, int attr, intptr_t buf, size_t size_in_bytes):
     """See `cublasLtMatmulAlgoConfigSetAttribute`."""
     with nogil:
-        status = cublasLtMatmulAlgoConfigSetAttribute(<cublasLtMatmulAlgo_t*>algo, <_MatmulAlgoConfigAttribute>attr, <const void*>buf, size_in_bytes)
-    check_status(status)
+        __status__ = cublasLtMatmulAlgoConfigSetAttribute(<cublasLtMatmulAlgo_t*>algo, <_MatmulAlgoConfigAttribute>attr, <const void*>buf, size_in_bytes)
+    check_status(__status__)
 
 
 cpdef matmul_algo_config_get_attribute(intptr_t algo, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
     """See `cublasLtMatmulAlgoConfigGetAttribute`."""
     with nogil:
-        status = cublasLtMatmulAlgoConfigGetAttribute(<const cublasLtMatmulAlgo_t*>algo, <_MatmulAlgoConfigAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
-    check_status(status)
+        __status__ = cublasLtMatmulAlgoConfigGetAttribute(<const cublasLtMatmulAlgo_t*>algo, <_MatmulAlgoConfigAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+    check_status(__status__)
 
 
 cpdef logger_open_file(log_file):
@@ -1719,29 +1801,29 @@ cpdef logger_open_file(log_file):
     cdef bytes _temp_log_file_ = (<str>log_file).encode()
     cdef char* _log_file_ = _temp_log_file_
     with nogil:
-        status = cublasLtLoggerOpenFile(<const char*>_log_file_)
-    check_status(status)
+        __status__ = cublasLtLoggerOpenFile(<const char*>_log_file_)
+    check_status(__status__)
 
 
 cpdef logger_set_level(int level):
     """See `cublasLtLoggerSetLevel`."""
     with nogil:
-        status = cublasLtLoggerSetLevel(level)
-    check_status(status)
+        __status__ = cublasLtLoggerSetLevel(level)
+    check_status(__status__)
 
 
 cpdef logger_set_mask(int mask):
     """See `cublasLtLoggerSetMask`."""
     with nogil:
-        status = cublasLtLoggerSetMask(mask)
-    check_status(status)
+        __status__ = cublasLtLoggerSetMask(mask)
+    check_status(__status__)
 
 
 cpdef logger_force_disable():
     """See `cublasLtLoggerForceDisable`."""
     with nogil:
-        status = cublasLtLoggerForceDisable()
-    check_status(status)
+        __status__ = cublasLtLoggerForceDisable()
+    check_status(__status__)
 
 
 cpdef str get_status_name(int status):
@@ -1762,23 +1844,90 @@ cpdef size_t heuristics_cache_get_capacity() except? 0:
     """See `cublasLtHeuristicsCacheGetCapacity`."""
     cdef size_t capacity
     with nogil:
-        status = cublasLtHeuristicsCacheGetCapacity(&capacity)
-    check_status(status)
+        __status__ = cublasLtHeuristicsCacheGetCapacity(&capacity)
+    check_status(__status__)
     return capacity
 
 
 cpdef heuristics_cache_set_capacity(size_t capacity):
     """See `cublasLtHeuristicsCacheSetCapacity`."""
     with nogil:
-        status = cublasLtHeuristicsCacheSetCapacity(capacity)
-    check_status(status)
+        __status__ = cublasLtHeuristicsCacheSetCapacity(capacity)
+    check_status(__status__)
 
 
 cpdef disable_cpu_instructions_set_mask(unsigned mask):
     """See `cublasLtDisableCpuInstructionsSetMask`."""
     with nogil:
-        status = cublasLtDisableCpuInstructionsSetMask(mask)
-    check_status(status)
+        __status__ = cublasLtDisableCpuInstructionsSetMask(mask)
+    check_status(__status__)
+
+
+cpdef intptr_t grouped_matrix_layout_create(int type, int group_count, intptr_t rows_array, intptr_t cols_array, intptr_t ld_array) except? 0:
+    """See `cublasLtGroupedMatrixLayoutCreate`."""
+    cdef MatrixLayout mat_layout
+    with nogil:
+        __status__ = cublasLtGroupedMatrixLayoutCreate(&mat_layout, <DataType>type, group_count, <const void*>rows_array, <const void*>cols_array, <const void*>ld_array)
+    check_status(__status__)
+    return <intptr_t>mat_layout
+
+
+cpdef intptr_t emulation_desc_create() except? 0:
+    """See `cublasLtEmulationDescCreate`."""
+    cdef EmulationDesc emulation_desc
+    with nogil:
+        __status__ = cublasLtEmulationDescCreate(&emulation_desc)
+    check_status(__status__)
+    return <intptr_t>emulation_desc
+
+
+cpdef emulation_desc_destroy(intptr_t emulation_desc):
+    """See `cublasLtEmulationDescDestroy`."""
+    with nogil:
+        __status__ = cublasLtEmulationDescDestroy(<EmulationDesc>emulation_desc)
+    check_status(__status__)
+
+
+######################### Python specific utility #########################
+
+cdef dict emulation_desc_attribute_sizes = {
+    CUBLASLT_EMULATION_DESC_STRATEGY: _numpy.int32,
+    CUBLASLT_EMULATION_DESC_SPECIAL_VALUES_SUPPORT: _numpy.int32,
+    CUBLASLT_EMULATION_DESC_FIXEDPOINT_MANTISSA_CONTROL: _numpy.int32,
+    CUBLASLT_EMULATION_DESC_FIXEDPOINT_MAX_MANTISSA_BIT_COUNT: _numpy.int32,
+    CUBLASLT_EMULATION_DESC_FIXEDPOINT_MANTISSA_BIT_OFFSET: _numpy.int32,
+    CUBLASLT_EMULATION_DESC_FIXEDPOINT_MANTISSA_BIT_COUNT_POINTER: _numpy.intp,
+}
+
+cpdef get_emulation_desc_attribute_dtype(int attr):
+    """Get the Python data type of the corresponding EmulationDescAttribute attribute.
+
+    Args:
+        attr (EmulationDescAttribute): The attribute to query.
+
+    Returns:
+        The data type of the queried attribute.
+
+    .. note:: This API has no C counterpart and is a convenient helper for
+        allocating memory for :func:`emulation_desc_get_attribute`, :func:`emulation_desc_set_attribute`.
+    """
+    return emulation_desc_attribute_sizes[attr]
+
+###########################################################################
+
+
+cpdef emulation_desc_set_attribute(intptr_t emulation_desc, int attr, intptr_t buf, size_t size_in_bytes):
+    """See `cublasLtEmulationDescSetAttribute`."""
+    with nogil:
+        __status__ = cublasLtEmulationDescSetAttribute(<EmulationDesc>emulation_desc, <_EmulationDescAttribute>attr, <const void*>buf, size_in_bytes)
+    check_status(__status__)
+
+
+cpdef emulation_desc_get_attribute(intptr_t emulation_desc, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
+    """See `cublasLtEmulationDescGetAttribute`."""
+    with nogil:
+        __status__ = cublasLtEmulationDescGetAttribute(<EmulationDesc>emulation_desc, <_EmulationDescAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+    check_status(__status__)
 
 
 cpdef tuple matmul_algo_get_ids(intptr_t light_handle, cublasComputeType_t compute_type, size_t scale_type, size_t atype, size_t btype, size_t ctype, size_t dtype, int requested_algo_count):

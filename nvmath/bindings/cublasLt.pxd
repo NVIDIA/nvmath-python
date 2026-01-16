@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -18,6 +18,7 @@ ctypedef cublasLtMatrixLayout_t MatrixLayout
 ctypedef cublasLtMatmulDesc_t MatmulDesc
 ctypedef cublasLtMatrixTransformDesc_t MatrixTransformDesc
 ctypedef cublasLtMatmulPreference_t MatmulPreference
+ctypedef cublasLtEmulationDesc_t EmulationDesc
 ctypedef cublasLtLoggerCallback_t LoggerCallback
 
 ctypedef cudaStream_t Stream
@@ -47,6 +48,8 @@ ctypedef cublasLtClusterShape_t _ClusterShape
 ctypedef cublasLtMatmulInnerShape_t _MatmulInnerShape
 ctypedef cublasLtMatmulMatrixScale_t _MatmulMatrixScale
 ctypedef cublasLtBatchMode_t _BatchMode
+ctypedef cublasLtIntegerWidth_t _IntegerWidth
+ctypedef cublasLtEmulationDescAttributes_t _EmulationDescAttribute
 
 
 ###############################################################################
@@ -97,4 +100,10 @@ cpdef str get_status_string(int status)
 cpdef size_t heuristics_cache_get_capacity() except? 0
 cpdef heuristics_cache_set_capacity(size_t capacity)
 cpdef disable_cpu_instructions_set_mask(unsigned mask)
+cpdef intptr_t grouped_matrix_layout_create(int type, int group_count, intptr_t rows_array, intptr_t cols_array, intptr_t ld_array) except? 0
+cpdef intptr_t emulation_desc_create() except? 0
+cpdef emulation_desc_destroy(intptr_t emulation_desc)
+cpdef get_emulation_desc_attribute_dtype(int attr)
+cpdef emulation_desc_set_attribute(intptr_t emulation_desc, int attr, intptr_t buf, size_t size_in_bytes)
+cpdef emulation_desc_get_attribute(intptr_t emulation_desc, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written)
 cpdef tuple matmul_algo_get_ids(intptr_t light_handle, cublasComputeType_t compute_type, size_t scale_type, size_t atype, size_t btype, size_t ctype, size_t dtype, int requested_algo_count)

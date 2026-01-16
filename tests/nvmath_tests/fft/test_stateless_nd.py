@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -106,6 +106,7 @@ assert_exec_backend_specified = init_assert_exec_backend_specified()
     ],
 )
 def test_fft_ifft_1d(
+    seeder,
     fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
@@ -123,7 +124,7 @@ def test_fft_ifft_1d(
         ShapeKind.random: 207,
     }
     shape = (shapes[shape_kind],) * array_dim
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=55)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     check_layouts, *_ = fx_last_operand_layout
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
@@ -222,6 +223,7 @@ def test_fft_ifft_1d(
     ],
 )
 def test_fft_ifft_2d(
+    seeder,
     fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
@@ -240,7 +242,7 @@ def test_fft_ifft_2d(
     }
     shape = shapes[shape_kind][:array_dim]
     axes = list(range(first_axis, first_axis + 2))
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=55)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     check_layouts, *_ = fx_last_operand_layout
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
@@ -336,6 +338,7 @@ def test_fft_ifft_2d(
     ],
 )
 def test_fft_ifft_3d(
+    seeder,
     fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
@@ -359,7 +362,7 @@ def test_fft_ifft_3d(
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=55)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     fft = fft_fn(
@@ -451,6 +454,7 @@ def test_fft_ifft_3d(
     ],
 )
 def test_irfft_preserves_input(
+    seeder,
     fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
@@ -467,7 +471,7 @@ def test_irfft_preserves_input(
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     exec_options = {"name": exec_backend.nvname}
     if exec_backend == ExecBackend.fftw:
@@ -563,6 +567,7 @@ def test_irfft_preserves_input(
     ],
 )
 def test_inplace(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -594,7 +599,7 @@ def test_inplace(
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     signal_copy = copy_array(signal)
 
     nvmath.fft.fft(
@@ -681,7 +686,7 @@ def test_inplace(
         for batched in ["no", "left", "right"]
     ],
 )
-def test_permuted_axes_c2c(framework, exec_backend, mem_backend, axes, batched, dtype, fft_shape):
+def test_permuted_axes_c2c(seeder, framework, exec_backend, mem_backend, axes, batched, dtype, fft_shape):
     axes = literal_eval(axes)
     fft_shape = tuple(literal_eval(fft_shape))
     if batched == "left":
@@ -696,7 +701,7 @@ def test_permuted_axes_c2c(framework, exec_backend, mem_backend, axes, batched, 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft = nvmath.fft.fft(signal, execution=exec_backend.nvname, axes=axes)
     assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
     assert_norm_close(
@@ -755,14 +760,14 @@ def test_permuted_axes_c2c(framework, exec_backend, mem_backend, axes, batched, 
         for result_layout in OptFftLayout
     ],
 )
-def test_permuted_axes_c2c_repeated_strides(framework, exec_backend, mem_backend, axes, shape, dtype, result_layout):
+def test_permuted_axes_c2c_repeated_strides(seeder, framework, exec_backend, mem_backend, axes, shape, dtype, result_layout):
     axes = literal_eval(axes)
     shape = literal_eval(shape)
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft = nvmath.fft.fft(
         signal,
         axes=axes,
@@ -831,14 +836,16 @@ def test_permuted_axes_c2c_repeated_strides(framework, exec_backend, mem_backend
         for result_layout in OptFftLayout
     ],
 )
-def test_permuted_axes_c2c_repeated_strides_inplace(framework, exec_backend, mem_backend, axes, shape, dtype, result_layout):
+def test_permuted_axes_c2c_repeated_strides_inplace(
+    seeder, framework, exec_backend, mem_backend, axes, shape, dtype, result_layout
+):
     axes = literal_eval(axes)
     shape = literal_eval(shape)
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    data = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    data = get_random_input_data(framework, shape, dtype, mem_backend)
     signal_copy = copy_array(data)
     nvmath.fft.fft(
         data,
@@ -904,7 +911,7 @@ def test_permuted_axes_c2c_repeated_strides_inplace(framework, exec_backend, mem
         for result_layout in OptFftLayout
     ],
 )
-def test_permuted_axes_r2c_c2r(framework, exec_backend, mem_backend, axes, batched, dtype, fft_shape, result_layout):
+def test_permuted_axes_r2c_c2r(seeder, framework, exec_backend, mem_backend, axes, batched, dtype, fft_shape, result_layout):
     axes = literal_eval(axes)
     fft_shape = tuple(literal_eval(fft_shape))
     if batched == "left":
@@ -919,7 +926,7 @@ def test_permuted_axes_r2c_c2r(framework, exec_backend, mem_backend, axes, batch
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     if is_half(dtype) and batched == "right":
         with pytest.raises(ValueError, match="is currently not supported for strided inputs"):
@@ -994,14 +1001,16 @@ def test_permuted_axes_r2c_c2r(framework, exec_backend, mem_backend, axes, batch
         for result_layout in OptFftLayout
     ],
 )
-def test_permuted_axes_r2c_c2r_repeated_strides(framework, exec_backend, mem_backend, axes, shape, dtype, result_layout):
+def test_permuted_axes_r2c_c2r_repeated_strides(
+    seeder, framework, exec_backend, mem_backend, axes, shape, dtype, result_layout
+):
     axes = literal_eval(axes)
     shape = literal_eval(shape)
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     if is_half(dtype) and max(axes) < len(shape) - 1:
         with pytest.raises(ValueError, match="is currently not supported for strided inputs"):
@@ -1079,7 +1088,7 @@ def test_permuted_axes_r2c_c2r_repeated_strides(framework, exec_backend, mem_bac
     ],
 )
 def test_permuted_axes_r2c_c2r_repeated_strides_fallback(
-    framework, exec_backend, mem_backend, axes, shape, dtype, result_layout
+    seeder, framework, exec_backend, mem_backend, axes, shape, dtype, result_layout
 ):
     axes = literal_eval(axes)
     shape = literal_eval(shape)
@@ -1087,7 +1096,7 @@ def test_permuted_axes_r2c_c2r_repeated_strides_fallback(
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     fft = check_layout_fallback(
         signal,
@@ -1171,6 +1180,7 @@ def test_permuted_axes_r2c_c2r_repeated_strides_fallback(
     ],
 )
 def test_fft_repeated_strides(
+    seeder,
     result_layout,
     framework,
     exec_backend,
@@ -1193,7 +1203,7 @@ def test_fft_repeated_strides(
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
     if dtype == DType.float16 and batched == "right" and any(d != 1 for d in batch_shape):
@@ -1269,6 +1279,7 @@ def test_fft_repeated_strides(
     ],
 )
 def test_ifft_repeated_strides(
+    seeder,
     result_layout,
     framework,
     exec_backend,
@@ -1292,7 +1303,7 @@ def test_ifft_repeated_strides(
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
     try:
-        signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+        signal = get_random_input_data(framework, shape, dtype, mem_backend)
         fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
         fft = fft_fn(
             signal,
@@ -1363,7 +1374,7 @@ def test_ifft_repeated_strides(
         ]
     ],
 )
-def test_irfft_half_strided_output(result_layout, framework, exec_backend, mem_backend, shape, axes):
+def test_irfft_half_strided_output(seeder, result_layout, framework, exec_backend, mem_backend, shape, axes):
     shape = literal_eval(shape)
     axes = literal_eval(axes)
 
@@ -1372,7 +1383,7 @@ def test_irfft_half_strided_output(result_layout, framework, exec_backend, mem_b
 
     real_shape = list(shape)
     real_shape[axes[-1]] = (shape[axes[-1]] - 1) * 2
-    signal = get_random_input_data(framework, real_shape, DType.float16, mem_backend, seed=105)
+    signal = get_random_input_data(framework, real_shape, DType.float16, mem_backend)
     # normalize the fft so we don't overflow in half-precision case
     fft = copy_array(get_fft_ref(signal, axes=axes, norm="forward"))
     assert_array_type(fft, framework, mem_backend, DType.complex32)
@@ -1476,6 +1487,7 @@ def test_irfft_half_strided_output(result_layout, framework, exec_backend, mem_b
     ],
 )
 def test_sliced_tensor(
+    seeder,
     fx_last_operand_layout,  # noqa: F811
     framework,
     exec_backend,
@@ -1516,7 +1528,7 @@ def test_sliced_tensor(
 
     assert is_complex(complex_dtype)
 
-    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend)
     slices = tuple(slice(*s) if s is not None else slice(s) for s in slices)
     signal = signal_base[slices]
     assert_array_type(signal, framework, mem_backend, dtype)
@@ -1531,7 +1543,7 @@ def test_sliced_tensor(
         real_dtype = get_ifft_dtype(dtype, fft_type=fft_type)
         # assuming last_axis_parit == "odd"
         instance_shape = tuple(e if i != axes[-1] else 2 * (e - 1) + 1 for i, e in enumerate(view_shape))
-        real_sample = get_random_input_data(framework, instance_shape, real_dtype, mem_backend, seed=106)
+        real_sample = get_random_input_data(framework, instance_shape, real_dtype, mem_backend)
         complex_sample = get_fft_ref(real_sample, axes=axes)
         assert_array_type(complex_sample, framework, mem_backend, dtype)
         assert complex_sample.shape == view_shape
@@ -1657,7 +1669,7 @@ def test_sliced_tensor(
         for dtype in framework_exec_type_support[framework][exec_backend]
     ],
 )
-def test_sliced_tensor_unaligned(framework, exec_backend, shape, slice_descs, dtype):
+def test_sliced_tensor_unaligned(seeder, framework, exec_backend, shape, slice_descs, dtype):
     mem_backend = exec_backend.mem
     shape = literal_eval(shape)
     slice_descs = literal_eval(slice_descs)
@@ -1667,7 +1679,7 @@ def test_sliced_tensor_unaligned(framework, exec_backend, shape, slice_descs, dt
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
     base_shape = tuple(d + (start or 0) - (end or 0) for d, (start, end) in zip(shape, slice_descs, strict=True))
-    signal = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, base_shape, dtype, mem_backend)
     signal_sliced = signal[tuple(slice(*slice_desc) for slice_desc in slice_descs)]
     assert signal_sliced.shape == shape
     assert signal_sliced.dtype == signal.dtype
@@ -1731,7 +1743,7 @@ def test_sliced_tensor_unaligned(framework, exec_backend, shape, slice_descs, dt
         if is_complex(dtype) and not is_half(dtype)
     ],
 )
-def test_permuted_tensor(framework, exec_backend, mem_backend, batched, dtype, shape_kind):
+def test_permuted_tensor(seeder, framework, exec_backend, mem_backend, batched, dtype, shape_kind):
     extent = {
         ShapeKind.pow2: (128, 64),
         ShapeKind.pow2357: (48, 48),
@@ -1753,7 +1765,7 @@ def test_permuted_tensor(framework, exec_backend, mem_backend, batched, dtype, s
         transpose_axes = [0, 1]
         axes = None
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     signal_transposed = get_transposed(signal, *transpose_axes)
     assert not is_decreasing(get_array_strides(signal_transposed))
     assert signal.dtype == signal_transposed.dtype
@@ -1807,6 +1819,7 @@ def test_permuted_tensor(framework, exec_backend, mem_backend, batched, dtype, s
     ],
 )
 def test_single_element(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -1831,7 +1844,7 @@ def test_single_element(
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
 
     if not is_complex(dtype) and is_half(dtype) and batched == "right" and batch_size > 1:
@@ -1921,6 +1934,7 @@ def test_single_element(
     ],
 )
 def test_single_element_view(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -1946,7 +1960,7 @@ def test_single_element_view(
     if should_skip_3d_unsupported(exec_backend, shape, axes):
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     signal_view = signal[
         tuple((slice(None, None, batch_step) if axes and axis not in axes else slice(1)) for axis in range(len(shape)))
     ]
@@ -2041,6 +2055,7 @@ def test_single_element_view(
     ],
 )
 def test_inplace_sliced_non_overlapping(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -2053,7 +2068,7 @@ def test_inplace_sliced_non_overlapping(
     axes = literal_eval(axes)
     steps = literal_eval(steps)
     assert len(base_shape) == len(steps)
-    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend, seed=105)
+    signal_base = get_random_input_data(framework, base_shape, dtype, mem_backend)
     signal = signal_base[tuple(slice(None, None, step) for step in steps)]
     signal_copy = copy_array(signal)
     shape = tuple(
@@ -2156,6 +2171,7 @@ def test_inplace_sliced_non_overlapping(
     ],
 )
 def test_inplace_overlapping(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -2169,7 +2185,7 @@ def test_inplace_overlapping(
     axes = literal_eval(axes)
     unfold_args = literal_eval(unfold_args)
     unfold_dim, unfold_window_size, unfold_step = unfold_args
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     signal_view = unfold(signal, unfold_dim, unfold_window_size, unfold_step)
     signal_view_copy = copy_array(signal_view)
 
@@ -2261,6 +2277,7 @@ def test_inplace_overlapping(
     ],
 )
 def test_repeated_strides_strided(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -2278,7 +2295,7 @@ def test_repeated_strides_strided(
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
     vol = math.prod(shape) * stride
-    signal = get_random_input_data(framework, (vol,), dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, (vol,), dtype, mem_backend)
     signal = signal[::stride].reshape(shape)
     signal_copy = copy_array(signal)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
@@ -2346,6 +2363,7 @@ def test_repeated_strides_strided(
     ],
 )
 def test_overlapping_non_tilable_output(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -2365,7 +2383,7 @@ def test_overlapping_non_tilable_output(
         pytest.skip("Pre 11.4.2 CTK does not support 3D batched FFT")
 
     max_offset = sum((extent - 1) * stride for extent, stride in zip(shape, strides, strict=True))
-    signal = get_random_input_data(framework, (max_offset + 1,), dtype, mem_backend, seed=105)
+    signal = get_random_input_data(framework, (max_offset + 1,), dtype, mem_backend)
     signal_view = as_strided(signal, shape, strides)
     signal_view_copy = copy_array(signal_view)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
@@ -2418,12 +2436,12 @@ def test_overlapping_non_tilable_output(
         for fft_dim in [1, 2, 3]
     ],
 )
-def test_high_dim_array(framework, exec_backend, mem_backend, array_dim, fft_dim, dtype):
+def test_high_dim_array(seeder, framework, exec_backend, mem_backend, array_dim, fft_dim, dtype):
     if array_dim <= 20:
         shape = (2,) * array_dim
     else:
         shape = tuple(2 if i >= array_dim - fft_dim else 1 for i in range(array_dim))
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=444)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     axes = tuple(range(array_dim - fft_dim, array_dim))
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
@@ -2468,7 +2486,7 @@ def test_high_dim_array(framework, exec_backend, mem_backend, array_dim, fft_dim
 )
 def test_unsupported_axes_gaps(framework, exec_backend, mem_backend, fft_dim, dtype):
     shape = (32,) * (fft_dim + 1)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=444)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     axes = (0, fft_dim)
     example_transpose = tuple(range(1, fft_dim)) + (0, fft_dim)
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
@@ -2503,7 +2521,7 @@ def test_unsupported_axes_gaps(framework, exec_backend, mem_backend, fft_dim, dt
 )
 def test_unsupported_axes_out_of_range(framework, exec_backend, mem_backend, fft_dim, negative, dtype):
     shape = (32,) * (fft_dim - 1)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=444)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     if not negative:
         axes = tuple(range(fft_dim))
     else:
@@ -2548,7 +2566,7 @@ def test_unsupported_axes_out_of_range(framework, exec_backend, mem_backend, fft
 )
 def test_unsupported_fft_dim(framework, exec_backend, mem_backend, fft_dim, use_axes, dtype):
     shape = (2,) * fft_dim
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=444)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     fft_fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
     if not use_axes:

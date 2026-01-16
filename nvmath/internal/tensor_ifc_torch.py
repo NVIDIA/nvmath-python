@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -120,6 +120,10 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         if copy is False:
             return self.__class__(self.tensor.view(shape))
         return self.__class__(self.tensor.reshape(shape))
+
+    def _broadcast_to(self, shape):
+        reshaped_tensor = torch.broadcast_to(self.tensor, shape)
+        return self.__class__(reshaped_tensor)
 
     @property
     def is_conjugate(self) -> bool:

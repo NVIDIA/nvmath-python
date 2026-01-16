@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -139,7 +139,7 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
                 numpy.copyto(self.tensor, src.tensor)
             case _:
                 with utils.device_ctx(src.device_id):
-                    ndbuffer.copy_into(self.asndbuffer(), src.asndbuffer(), stream_holder)
+                    ndbuffer.copy_into(self.asndbuffer(), src._broadcast_to(self.shape).asndbuffer(), stream_holder)
 
     def istensor(self):
         """
@@ -152,6 +152,10 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
             return self.__class__(numpy.reshape(self.tensor, shape))
         else:
             return self.__class__(numpy.reshape(self.tensor, shape, copy=copy))
+
+    def _broadcast_to(self, shape):
+        reshaped_tensor = numpy.broadcast_to(self.tensor, shape)
+        return self.__class__(reshaped_tensor)
 
 
 CudaTensor.host_tensor_class = NumpyTensor

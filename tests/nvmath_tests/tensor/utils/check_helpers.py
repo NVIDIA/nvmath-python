@@ -1,17 +1,23 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import importlib
 import numpy as np
 from collections.abc import Sequence
+from typing import Union
 
 try:
-    import cupy as cp
-
-    CP_NDARRAY = cp.ndarray
+    from cuda.core import Stream
 except ImportError:
-    cp = CP_NDARRAY = None
+    from cuda.core.experimental import Stream
+
+try:
+    import cupy
+
+    CP_NDARRAY = cupy.ndarray
+except ImportError:
+    cupy = CP_NDARRAY = None
 
 try:
     import torch
@@ -22,6 +28,7 @@ except ImportError:
 from nvmath.internal import tensor_wrapper
 from nvmath.tensor import ComputeDesc, Operator
 
+from nvmath_tests.helpers import use_stream
 from .axes_utils import TORCH_TENSOR
 
 
@@ -35,6 +42,7 @@ def get_contraction_ref(
     alpha: float = 1.0,
     beta: float | None = None,
     qualifiers: Sequence[Operator] = [],
+    stream: Union[Stream, "cupy.cuda.Stream", "torch.cuda.Stream"] | None = None,
 ):
     num_inputs = eq.count(",") + 1
     if len(qualifiers) == 0:
@@ -77,9 +85,11 @@ def get_contraction_ref(
     wrapped_operands = tensor_wrapper.wrap_operands(operands)
     package = wrapped_operands[0].name
     module = importlib.import_module(package)
-    output = module.einsum(eq, *operands) * alpha
-    if offset is not None:
-        output = output + offset * beta
+
+    with use_stream(stream):
+        output = module.einsum(eq, *operands) * alpha
+        if offset is not None:
+            output = output + offset * beta
     return output
 
 
@@ -114,7 +124,7 @@ def assert_all_close(a, b, rtol, atol):
     if isinstance(a, np.ndarray):
         return np.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
     elif CP_NDARRAY is not None and isinstance(a, CP_NDARRAY):
-        return cp.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
+        return cupy.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
     elif TORCH_TENSOR is not None and isinstance(a, TORCH_TENSOR):
         return torch.testing.assert_close(a, b, rtol=rtol, atol=atol)
     else:

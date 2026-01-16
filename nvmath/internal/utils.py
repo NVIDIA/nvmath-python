@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,7 +13,11 @@ import typing
 from collections.abc import Callable, Sequence
 
 import cuda.bindings.runtime as cbr
-import cuda.core.experimental as ccx
+
+try:
+    from cuda.core import Device, Event, EventOptions
+except ImportError:
+    from cuda.core.experimental import Device, Event, EventOptions
 
 from . import formatters
 from . import mem_limit
@@ -164,10 +168,10 @@ class device_ctx:
     def __enter__(self):
         if self._old_device is not None:
             raise RuntimeError("Reusing a device_ctx instance is not allowed.")
-        self._old_device = old_device = ccx.Device()
+        self._old_device = old_device = Device()
         new_device_id = self.new_device_id
         if old_device.device_id != new_device_id:
-            device = ccx.Device(new_device_id)
+            device = Device(new_device_id)
             device.set_current()
             return device
         else:
@@ -456,9 +460,7 @@ class Value:
 
 
 @contextlib.contextmanager
-def cuda_call_ctx(
-    stream_holder: StreamHolder[AnyStream], blocking=True, timing=True
-) -> typing.Iterator[tuple[ccx.Event, Value]]:
+def cuda_call_ctx(stream_holder: StreamHolder[AnyStream], blocking=True, timing=True) -> typing.Iterator[tuple[Event, Value]]:
     """
     A simple context manager that provides (non-)blocking behavior depending on the
     `blocking` parameter for CUDA calls. The call is timed only for blocking behavior when
@@ -476,9 +478,9 @@ def cuda_call_ctx(
 
     with device_ctx(device_id):
         if timing:
-            start = stream.record(options=ccx.EventOptions(enable_timing=blocking))
+            start = stream.record(options=EventOptions(enable_timing=blocking))
 
-        end = stream.device.create_event(options=ccx.EventOptions(enable_timing=(timing and blocking)))
+        end = stream.device.create_event(options=EventOptions(enable_timing=(timing and blocking)))
 
         time = Value(None, validator=lambda v: True)
         yield end, time

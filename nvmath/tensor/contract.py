@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -125,6 +125,115 @@ class InvalidContractionState(Exception):
     pass
 
 
+def _validate_contraction_preconditions(expr, a, b, c, d, qualifiers, options):
+    """
+    Validate preconditions for _ElementaryContraction initialization.
+
+    This function checks all preconditions that can be validated before
+    wrapping operands or allocating resources. It raises exceptions for invalid inputs.
+
+    Args:
+        expr: Einstein expression string
+        a: First input operand
+        b: Second input operand
+        c: Optional third operand (for binary) or offset (for ternary)
+        d: Optional offset operand (for ternary only)
+        qualifiers: Optional qualifiers array
+        options: Optional contraction options
+
+    Returns:
+        tuple: (num_inputs, inputs, output) from parsed expression
+    """
+    # Check cuTensor version
+    version = cutensor.get_version()
+    if version < 20301:
+        raise RuntimeError(
+            f"cuTensor version {version} is detected, which is lower than the minimum required "
+            f"version 2.3.1 for nvmath.tensor module. Please upgrade cuTensor to a compatible version."
+        )
+
+    # Parse expression to determine number of inputs (validates expression format)
+    inputs, output = einsum_parser.parse_einsum_str(expr)
+    num_inputs = len(inputs)
+
+    # Validate number of inputs, c/d operand consistency with expression type
+    if num_inputs == 2:
+        if d is not None:
+            raise ValueError(f"Binary contraction '{expr}' (2 inputs) cannot have a 'd' operand. ")
+    elif num_inputs == 3:
+        if c is None:
+            raise ValueError(f"Ternary contraction '{expr}' (3 inputs) requires 'c' operand (third multiplicand). ")
+    else:
+        raise NotImplementedError(
+            f"Expression '{expr}' has {num_inputs} inputs. Only binary and ternary contractions are supported."
+        )
+
+    # Validate qualifiers structure (if provided)
+    if qualifiers is not None:
+        try:
+            qualifiers_array = np.asarray(qualifiers, dtype=np.int32)
+        except Exception as e:
+            raise TypeError(f"Qualifiers must be array-like and convertible to int32: {e}") from e
+
+        # Check array length
+        expected_len = num_inputs + 1  # one per input + one for offset
+        if qualifiers_array.size != expected_len:
+            contraction_type = "binary" if num_inputs == 2 else "ternary"
+            operand_names = "a, b, offset" if num_inputs == 2 else "a, b, c, offset"
+            raise ValueError(
+                f"The qualifiers must be a numpy array of length {expected_len} "
+                f"(one per operand: {operand_names}), got {qualifiers_array.size}. "
+                f"Expression '{expr}' is a {contraction_type} contraction."
+            )
+
+        # Validate offset qualifier must be identity
+        if qualifiers_array[num_inputs] != cutensor.Operator.OP_IDENTITY:
+            raise ValueError(f"The operand for the offset must be the identity operator, found {qualifiers_array[num_inputs]}")
+
+        # Validate all input qualifiers are supported operators
+        operand_names = ["a", "b", "c"][:num_inputs]
+        for op_name, qualifier in zip(operand_names, qualifiers_array[:-1], strict=False):
+            if qualifier not in OPERATORS_SUPPORTED:
+                raise ValueError(
+                    f"Each operator must be a valid cuTensor operator, "
+                    f"currently only support {OPERATORS_SUPPORTED}, "
+                    f"got {qualifier} for operand '{op_name}'."
+                )
+
+        # Validate qualifiers against operand dtypes (e.g., OP_CONJ requires complex)
+        operands = [a, b, c][:num_inputs]
+        for op_name, operand, qualifier in zip(operand_names, operands, qualifiers_array[:-1], strict=False):
+            if qualifier == cutensor.Operator.OP_CONJ:
+                # Check if operand has dtype attribute
+                if not hasattr(operand, "dtype"):
+                    raise TypeError(
+                        f"Operand '{op_name}' must be array-like with a dtype attribute "
+                        f"(numpy.ndarray, cupy.ndarray, or torch.Tensor)"
+                    )
+
+                # Check for complex dtype
+                dtype_str = str(operand.dtype)
+                if "complex" not in dtype_str:
+                    raise ValueError(
+                        f"Cannot apply OP_CONJ (conjugate) operator to operand '{op_name}' "
+                        f"with dtype '{operand.dtype}'. Conjugate operator requires complex dtype."
+                    )
+
+    # Validate options structure (if provided)
+    if options is not None:
+        # Extract compute_type from options (could be dict or ContractionOptions object)
+        if isinstance(options, dict):
+            compute_type = options.get("compute_type")
+        else:
+            compute_type = getattr(options, "compute_type", None)
+
+        # Validate compute_type is None or int
+        if compute_type is not None and not isinstance(compute_type, int):
+            raise ValueError(f"Invalid compute type: {compute_type}. compute_type must be None or an integer.")
+
+    return num_inputs, inputs, output
+
+
 @utils.docstring_decorator(SHARED_CONTRACTION_DOCUMENTATION, skip_missing=False)
 class _ElementaryContraction:
     """
@@ -137,50 +246,67 @@ class _ElementaryContraction:
     def __init__(self, expr, a, b, *, c=None, d=None, out=None, qualifiers=None, options=None, execution=None, stream=None):
         """Binary & Ternary Contraction"""
 
-        version = cutensor.get_version()
-        if version < 20301:
-            raise RuntimeError(
-                f"cuTensor version {version} is detected, which is lower than the minimum required "
-                f"version 2.3.1 for nvmath.tensor module. please upgrade cuTensor to a compatible version."
-            )
+        # Initialize valid_state to True here because this flag is currenttly only
+        # used to check if the object has been free'd or not.
+        # As far as freeing the object is concerned, upon initialization,
+        # the object is already valid.
+        self.valid_state = True
 
+        # ========================================================================
+        # Validate preconditions right away, if it fails, no state changes will be made
+        # ========================================================================
+        self.num_inputs, inputs, output = _validate_contraction_preconditions(expr, a, b, c, d, qualifiers, options)
         self.expr = expr
 
-        # Process options.
+        # ========================================================================
+        # Process options (needed for logging and configuration)
+        # ========================================================================
         self.options: Any = utils.check_or_create_options(ContractionOptions, options, "elementary contraction options")
-        self.blocking = self.options.blocking
         self.logger = self.options.logger if self.options.logger is not None else logging.getLogger()
 
-        # Process operands & einsum expression
+        # ========================================================================
+        # Wrap and validate operands (a, b, and c, d if needed)
+        # ========================================================================
         self.a, self.b = tensor_wrapper.wrap_operands([a, b])
         input_operand_class = self.a.__class__
         self.input_package = utils.get_operands_package([self.a, self.b])
-        inputs, output = einsum_parser.parse_einsum_str(expr)
-        self.num_inputs = len(inputs)
 
-        if self.num_inputs == 2:
-            assert d is None, f"Internal error: Binary contraction {expr} cannot have a fourth operand"
-        elif self.num_inputs == 3:
-            assert c is not None, f"Internal error: Ternary contraction {expr} must have a third operand"
-        else:
-            raise NotImplementedError("Only binary and ternary contractions are supported")
-
-        wrapped_operands = [self.a, self.b]
-        for op_name, op in zip(["c", "d"], [c, d], strict=False):
-            if op is not None:
-                op = tensor_wrapper.wrap_operand(op)
-                if op.name != self.input_package:
-                    raise ValueError(f"The operand {op_name} must be a {self.input_package} tensor")
-                wrapped_operands.append(op)
-            setattr(self, op_name, op)
-
+        # Determine internal package (numpy -> cuda conversion)
         if self.input_package == "numpy":
             self.internal_package = "cuda"
         else:
             self.internal_package = self.input_package
         tensor_wrapper.maybe_register_package(self.internal_package)
 
+        # Wrap optional operands c, d and validate package consistency
+        wrapped_operands = [self.a, self.b]
+        for op_name, op in zip(["c", "d"], [c, d], strict=False):
+            if op is not None:
+                op = tensor_wrapper.wrap_operand(op)
+                if op.name != self.input_package:
+                    raise ValueError(
+                        f"operand has package '{op.name}' but expected '{self.input_package}'. "
+                        f"All operands must be from the same tensor package."
+                    )
+                wrapped_operands.append(op)
+            setattr(self, op_name, op)
+
+        # ========================================================================
+        # Setup qualifiers
+        # ========================================================================
+        # If here, preconditions were validated, we can safely create the qualifiers
+        # or use the ones provided.
+        if qualifiers is None:
+            self.qualifiers = np.full(self.num_inputs + 1, cutensor.Operator.OP_IDENTITY, dtype=np.int32)  # size of enum value
+        else:
+            # validation of qualifiers done during preconditions' check
+            self.qualifiers = np.asarray(qualifiers, dtype=np.int32)
+
+        # ========================================================================
+        # Setup execution environment and device management
+        # ========================================================================
         self.input_device_id = utils.get_operands_device_id(wrapped_operands)
+        self.blocking = self.options.blocking is True or self.input_device_id == "cpu"
 
         if execution is None:
             self.execution = ExecutionCUDA()
@@ -190,25 +316,12 @@ class _ElementaryContraction:
                 execution,
                 "execution options",
             )
-        # TODO: cutensor supports R_64F (A) C_64F (B) C_64F (C) combination (and inverse)
-        # https://docs.nvidia.com/cuda/cutensor/latest/api/cutensor.html#cutensorcreatecontraction
-        self.data_type = utils.get_operands_dtype(wrapped_operands)
-        self.cuda_data_type = NAME_TO_DATA_TYPE[self.data_type]
 
-        # Parse compute descriptor
-        if self.options.compute_type is None:
-            self.compute_type = get_default_compute_type_from_dtype_name(self.data_type)
-        elif isinstance(self.options.compute_type, int):
-            # make sure compute type is valid
-            if self.options.compute_type not in get_supported_compute_types(self.data_type):
-                raise ValueError(f"Invalid compute type: {self.options.compute_type} for data type: {self.data_type}")
-            self.compute_type = self.options.compute_type
-        else:
-            raise ValueError(f"Invalid compute type: {self.options.compute_type}")
-
+        # Determine execution device and create stream
         if self.input_device_id == "cpu":
             self.execution_device_id = self.execution.device_id
             stream_holder = utils.get_or_create_stream(self.execution_device_id, stream, self.internal_package)
+            # Transfer CPU operands to execution device
             self.a = self.a.to(self.execution_device_id, stream_holder)
             self.b = self.b.to(self.execution_device_id, stream_holder)
             if self.c is not None:
@@ -219,49 +332,26 @@ class _ElementaryContraction:
             self.execution_device_id = self.input_device_id
             stream_holder = utils.get_or_create_stream(self.execution_device_id, stream, self.internal_package)
 
-        if qualifiers is None:
-            self.qualifiers = np.full(self.num_inputs + 1, cutensor.Operator.OP_IDENTITY, dtype=np.int32)  # size of enum value
+        # ========================================================================
+        # Determine data types and compute configuration
+        # ========================================================================
+        # TODO: cutensor supports R_64F (A) C_64F (B) C_64F (C) combination (and inverse)
+        # https://docs.nvidia.com/cuda/cutensor/latest/api/cutensor.html#cutensorcreatecontraction
+        self.data_type = utils.get_operands_dtype(wrapped_operands)
+        self.cuda_data_type = NAME_TO_DATA_TYPE[self.data_type]
+
+        # Parse compute descriptor
+        if self.options.compute_type is None:
+            self.compute_type = get_default_compute_type_from_dtype_name(self.data_type)
         else:
-            self.qualifiers = np.asarray(qualifiers, dtype=np.int32)
-            if self.qualifiers.size != self.num_inputs + 1:
-                if self.num_inputs == 2:
-                    message = f"The qualifiers must be a numpy array of length {self.num_inputs + 1}\
-                              corresponding to the operands a, b and c"
-                else:
-                    message = f"The qualifiers must be a numpy array of length {self.num_inputs + 1}\
-                              corresponding to the operands a, b, c and d"
-                raise ValueError(message)
-            if self.qualifiers[self.num_inputs] != cutensor.Operator.OP_IDENTITY:
-                raise ValueError(
-                    f"The operand for the offset must be the identity operator, found {self.qualifiers[self.num_inputs]}"
-                )
-            if self.num_inputs == 2:
-                iterator = zip(["a", "b"], self.qualifiers[:-1], strict=False)
-            else:
-                iterator = zip(["a", "b", "c"], self.qualifiers[:-1], strict=False)
-            for op_name, qualifier in iterator:
-                if qualifier not in OPERATORS_SUPPORTED:
-                    raise ValueError(
-                        f"Each operator must be a valid cutensor operator, "
-                        f"currently only support {OPERATORS_SUPPORTED}, "
-                        f"got {qualifier}."
-                    )
-                if qualifier == cutensor.Operator.OP_CONJ:
-                    operand = getattr(self, op_name)
-                    if "complex" not in operand.dtype:
-                        raise ValueError(f"The operand {op_name} must be a complex tensor to use the conjugate operator.")
+            # Type validation done in preconditions, here check compatibility with data type
+            if self.options.compute_type not in get_supported_compute_types(self.data_type):
+                raise ValueError(f"Invalid compute type: {self.options.compute_type} for data type: {self.data_type}")
+            self.compute_type = self.options.compute_type
 
-        # Set memory allocator.
-        self.allocator = (
-            self.options.allocator
-            if self.options.allocator is not None
-            else memory._MEMORY_MANAGER[self.internal_package](self.execution_device_id, self.logger)
-        )
-
-        self.memory_limit = utils.get_memory_limit_from_device_id(self.options.memory_limit, self.execution_device_id)
-
-        self.tensor_descs = {}
-
+        # ========================================================================
+        # Parse einsum modes and setup output tensor
+        # ========================================================================
         self.input_modes, self.output_modes, _, size_dict = einsum_parser.parse_elementary_einsum(
             inputs, output, self.a, self.b, self.c
         )[:4]
@@ -294,6 +384,20 @@ class _ElementaryContraction:
                     input_operand_class, output_shape, self.data_type, self.input_device_id, tmp_stream_holder, False
                 )
 
+        # ========================================================================
+        # Setup memory management
+        # ========================================================================
+        self.allocator = (
+            self.options.allocator
+            if self.options.allocator is not None
+            else memory._MEMORY_MANAGER[self.internal_package](self.execution_device_id, self.logger)
+        )
+        self.memory_limit = utils.get_memory_limit_from_device_id(self.options.memory_limit, self.execution_device_id)
+        self.tensor_descs = {}
+
+        # ========================================================================
+        # Create cuTensor handle and descriptors
+        # ========================================================================
         with utils.device_ctx(self.execution_device_id):
             if self.options.handle is not None:
                 self.own_handle = False
@@ -303,8 +407,6 @@ class _ElementaryContraction:
                 self.own_handle = True
                 self.handle = cutensor.create()
                 self.logger.info(f"The library handle has been created: {self.handle}.")
-
-        self.valid_state = True
 
         # Parse tensor descriptors
         self.operands_info = {}
@@ -322,7 +424,9 @@ class _ElementaryContraction:
                     "strides": op.strides,
                 }
 
+        # ========================================================================
         # Create contraction descriptor
+        # ========================================================================
         if self.num_inputs == 2:
             self.contraction_desc = cutensor.create_contraction(
                 self.handle,
@@ -363,6 +467,9 @@ class _ElementaryContraction:
                 self.compute_type,
             )
 
+        # ========================================================================
+        # Query scalar type and initialize planning/workspace state
+        # ========================================================================
         scalar_dtype = cutensor.get_operation_descriptor_attribute_dtype(cutensor.OperationDescriptorAttribute.SCALAR_TYPE)
         scalar_dtype_buffer = np.empty(1, dtype=scalar_dtype)
         cutensor.operation_descriptor_get_attribute(
@@ -377,16 +484,23 @@ class _ElementaryContraction:
         self.alpha = np.empty(1, dtype=DATA_TYPE_TO_NAME[self.scalar_type])
         self.beta = np.empty(1, dtype=DATA_TYPE_TO_NAME[self.scalar_type])
 
+        # Initialize planning-related members
         self.contraction_planned = False
         self.plan_preference_ptr = cutensor.create_plan_preference(self.handle, cutensor.Algo.DEFAULT, cutensor.JitMode.NONE)
         self._plan_preference = ContractionPlanPreference(self)
-        self.plan_ptr = None
 
+        # Initialize remaining members
         self.workspace_ptr = None
         self.workspace_allocated_size = 0
         self.workspace_size = None
         self.workspace_stream = None
         self.workspace_allocated_here = False
+        self.last_compute_event = None
+        self.plan_ptr = None
+
+        # A bug to be fixed in cuTensor, currently kernel_rank is -1 by default,
+        # which may hurt performance for certain contractions.
+        self.plan_preference.kernel_rank = 0
 
     def _check_valid_contraction(self, *args, **kwargs):
         """
@@ -781,6 +895,7 @@ class _ElementaryContraction:
         if not self.valid_state:
             return
 
+        class_name = self.__class__.__name__
         try:
             if self.last_compute_event is not None and self.workspace_stream is not None:
                 self.workspace_stream.wait(self.last_compute_event)
@@ -790,7 +905,6 @@ class _ElementaryContraction:
 
             self._free_plan_resources()
 
-            class_name = self.__class__.__name__
             # Free handle if we own it.
             if self.handle is not None and self.own_handle:
                 cutensor.destroy(self.handle)
@@ -803,6 +917,17 @@ class _ElementaryContraction:
             while self.tensor_descs:
                 tensor_desc = self.tensor_descs.popitem()[1]
                 cutensor.destroy_tensor_descriptor(tensor_desc)
+
+            # Ensures the contraction object doesn't hold unnecessary references
+            # to objects after cleanup, otherwise reference counts are not correct.
+            self.a = None
+            self.b = None
+            self.c = None
+            self.d = None
+            self.out = None
+            self.out_return = None
+
+            self._plan_preference = None
 
         except Exception as e:
             self.logger.critical(f"Internal error: only part of the {class_name} object's resources have been released.")
@@ -954,6 +1079,11 @@ class BinaryContraction(_ElementaryContraction):
     """
 
     def __init__(self, expr, a, b, *, c=None, out=None, qualifiers=None, stream=None, options=None, execution=None):
+        # Check here for a valid expr because it is a precondition for the constructor
+        # of the base class where it is used to extract the number of operands.
+        if not isinstance(expr, str) or expr.count(",") != 1:
+            raise ValueError("Binary contraction requires a string with exactly 2 comma-separated operands")
+
         super().__init__(expr, a, b, c=c, out=out, qualifiers=qualifiers, stream=stream, options=options, execution=execution)
 
     def reset_operands(self, a=None, b=None, *, c=None, out=None, stream=None):
@@ -1178,6 +1308,11 @@ class TernaryContraction(_ElementaryContraction):
     """
 
     def __init__(self, expr, a, b, c, *, d=None, out=None, qualifiers=None, stream=None, options=None, execution=None):
+        # Check here for a valid expr because it is a precondition for the constructor
+        # of the base class where it is used to extract the number of operands.
+        if not isinstance(expr, str) or expr.count(",") != 2:
+            raise ValueError("Ternary contraction requires a string with exactly 3 comma-separated operands")
+
         super().__init__(
             expr, a, b, c=c, d=d, out=out, qualifiers=qualifiers, stream=stream, options=options, execution=execution
         )
@@ -1408,7 +1543,7 @@ def binary_contraction(
     with BinaryContraction(
         expr, a, b, c=c, out=out, qualifiers=qualifiers, stream=stream, options=options, execution=execution
     ) as contraction:
-        contraction.plan()
+        contraction.plan(stream=stream)
         out = contraction.execute(alpha=alpha, beta=beta, stream=stream)
     return out
 
@@ -1557,6 +1692,6 @@ def ternary_contraction(
     with TernaryContraction(
         expr, a, b, c, d=d, out=out, qualifiers=qualifiers, stream=stream, options=options, execution=execution
     ) as contraction:
-        contraction.plan()
+        contraction.plan(stream=stream)
         out = contraction.execute(alpha=alpha, beta=beta, stream=stream)
     return out

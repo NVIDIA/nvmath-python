@@ -1,6 +1,57 @@
 nvmath-python Release Notes
 ***************************
 
+nvmath-python v0.8.0
+====================
+
+Beta8 release.
+
+* New pipeline and supporting features for device matrix multiplication APIs
+  that enable applications such as floating-point emulation.
+* Support for inplace operation in the advanced Matmul host APIs.
+* Support for implicit batching in the generic Matmul host APIs.
+* Windows support for the tensor contraction APIs.
+* A new experimental :meth:`nvmath.fft.FFT.reset_operand_unchecked` API
+  to reduce redundant checking and minimize overhead.
+* Added bindings for new APIs introduced in CTK version 13.1.
+* cuBLASMp bindings updated to 0.7
+
+Bugs Fixed
+----------
+
+* The tensor contraction API always blocked in Beta7, even if asynchronous
+  execution (the default) was requested. This has been fixed.
+* Fixed the outdated references in the documentation that state the CuPy
+  will be installed as part of nvmath-python extras. This was no longer true
+  from Beta7 onwards.
+* The internal references to the tensor contraction and direct solver operands
+  held in those objects relied on garbage collection to be released. This
+  has been fixed, so that the references are now released when the context
+  manager exits or when the object is explicitly freed.
+* A performance issue has been fixed for certain tensor contractions that
+  involve small contraction extents along with large batch extents.
+
+
+Breaking Changes
+----------------
+
+* The ``transpose`` option has been removed from the generic matrix
+  multiplication qualifiers (:class:`nvmath.linalg.GeneralMatrixQualifier`,
+  :class:`nvmath.linalg.DiagonalMatrixQualifier`,
+  :class:`nvmath.linalg.SquareMatrixQualifier`,
+  :class:`nvmath.linalg.HermitianMatrixQualifier`,
+  :class:`nvmath.linalg.SymmetricMatrixQualifier`,
+  :class:`nvmath.linalg.TriangularMatrixQualifier`). The transpose
+  operation that the array library provides (``a.T``) should be
+  used instead.
+
+Known Issues
+------------
+
+* The use of Python logging set to the debug level (``logging.DEBUG``) may result
+  in a ``TypeError`` when
+  `compiling Numba kernels <https://github.com/NVIDIA/numba-cuda/issues/454>`_.
+
 nvmath-python v0.7.0
 ====================
 

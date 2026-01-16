@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,6 +7,7 @@ import numpy as np
 from numba import cuda
 
 from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_tensor
+from nvmath.device.common_cuda import ComputeCapability
 from nvmath.device.cublasdx_backend import Arrangement, Precision
 from .helpers import (
     _TOLERANCE,
@@ -274,6 +275,8 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
     m, n, k = shape
 
     SM = set_device()
+    if SM.major * 100 + SM.minor * 10 not in {900, 1000, 1030, 1100}:
+        SM = ComputeCapability(SM.major, SM.minor)
     MM = time_this(
         "matmul codegen",
         matmul,
@@ -495,7 +498,8 @@ def test_valid():
     "tensor_types",
     [
         ("smem_a", "smem_b", "smem_c"),
-        ("smem_a", "smem_b", "suggested_rmem_c"),
+        ("smem_a", "smem_b", "rmem_c"),
+        ("smem_a", "smem_b", "suggested_smem_c"),
         ("suggested_smem_a", "suggested_smem_b", "suggested_smem_c"),
         ("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
     ],
@@ -542,8 +546,8 @@ def test_opaque_tensor(tensor_types):
         smem_a = make_tensor(smem_a_buffer, layout_a)
         smem_b = make_tensor(smem_b_buffer, layout_b)
 
-        copy(gmem_a, smem_a)
-        copy(gmem_b, smem_b)
+        copy(gmem_a, smem_a, alignment=16)
+        copy(gmem_b, smem_b, alignment=16)
         copy_wait()
 
         if not is_rmem_c:
@@ -551,28 +555,29 @@ def test_opaque_tensor(tensor_types):
             layout_c = MM.suggest_layout_smem_c() if is_suggested_c else MM.get_layout_smem_c()
             smem_c = make_tensor(smem_c_buffer, layout_c)
 
-            copy(gmem_c, smem_c)
+            copy(gmem_c, smem_c, alignment=16)
             copy_wait()
 
             MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
             cuda.syncthreads()
 
-            copy(smem_c, gmem_output)
+            copy(smem_c, gmem_output, alignment=16)
 
             copy_wait()
 
             return
 
         rmem_c_compute_buffer = cuda.local.array(shape=(MM.c_size,), dtype=MM.c_value_type)
-        rmem_c_compute = make_tensor(rmem_c_compute_buffer, MM.suggest_layout_rmem_c())
+        layout_c = MM.suggest_layout_rmem_c() if is_suggested_c else MM.get_layout_rmem_c()
+        rmem_c_compute = make_tensor(rmem_c_compute_buffer, layout_c)
 
         clear(rmem_c_compute)
 
         MM.execute(smem_a, smem_b, rmem_c_compute)
 
         rmem_c_buffer = cuda.local.array(shape=(MM.c_size,), dtype=MM.c_value_type)
-        rmem_c = make_tensor(rmem_c_buffer, MM.suggest_layout_rmem_c())
+        rmem_c = make_tensor(rmem_c_buffer, layout_c)
 
         copy_fragment(gmem_c, rmem_c)
         axpby(alpha, rmem_c_compute, beta, rmem_c)
@@ -601,11 +606,60 @@ def test_opaque_tensor(tensor_types):
     assert error < 1e-2
 
 
-def test_make_fragment_like_C():
-    from nvmath.bindings import mathdx
+def test_copy_negative_cases():
+    """Test error handling in copy and copy_fragment functions"""
+    from numba.core.errors import TypingError
 
-    if mathdx.get_version_ex() < (0, 3, 0):
-        pytest.skip("Partition is supported on libmathdx 0.3.0+")
+    m, n, k = 4, 2, 8
+    block_size = 64
+    precision = Precision(np.float32, np.float32, np.float32)
+
+    MM = matmul(
+        size=(m, n, k),
+        precision=precision,
+        data_type="real",
+        arrangement=("col_major", "row_major", "row_major"),
+        execution="Block",
+        block_size=block_size,
+        compiler="numba",
+        tensor_types=("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
+        execute_api="tensors",
+    )
+
+    # Test 1: copy_fragment used with non-rmem tensor
+    with pytest.raises(TypingError, match="copy_fragment is only supported for rmem tensors"):
+
+        @cuda.jit
+        def test_copy_fragment_on_smem(a, output):
+            smem_buffer = cuda.shared.array(shape=(MM.a_size,), dtype=precision.a)
+            gmem_a = make_tensor(a, MM.get_layout_gmem_a())
+            smem_a = make_tensor(smem_buffer, MM.get_layout_smem_a())
+
+            # This should raise error: copy_fragment on smem
+            copy_fragment(gmem_a, smem_a)
+
+        a_test = np.zeros(MM.a_dim, dtype=precision.a)
+        output_test = np.zeros(MM.a_dim, dtype=precision.a)
+        test_copy_fragment_on_smem[1, MM.block_dim](a_test, output_test)
+
+    # Test 2: copy used with rmem tensor
+    with pytest.raises(TypingError, match="copy is not supported for rmem tensors"):
+
+        @cuda.jit
+        def test_copy_on_rmem(c):
+            gmem_c = make_tensor(c, MM.get_layout_gmem_c())
+            rmem_buffer = cuda.local.array(shape=(MM.c_size,), dtype=MM.c_value_type)
+            rmem_c = make_tensor(rmem_buffer, MM.suggest_layout_rmem_c())
+
+            # This should raise error: copy on rmem
+            copy(gmem_c, rmem_c)
+
+        c_test = np.zeros(MM.c_dim, dtype=precision.c)
+        test_copy_on_rmem[1, MM.block_dim](c_test)
+
+
+@pytest.mark.skip("Blas partition_like_C is not yet implemented")
+def test_make_fragment_like_C():
     MM = matmul(
         size=(2, 2, 2),
         data_type="real",
@@ -623,12 +677,12 @@ def test_make_fragment_like_C():
     @cuda.jit(link=MM.files)
     def kernel(c):
         gmem_c = make_tensor(c, MM.get_layout_gmem_c())
-        partitioner = MM.suggest_partitioner()
-        c_frag = partitioner.partition_like_C(gmem_c)
+        accumulator = MM.suggest_accumulator()
+        c_frag = accumulator.partition_like_C(gmem_c)
 
-        if partitioner.is_thread_active():
+        if accumulator.is_thread_active():
             for i in range(c_size):
-                if (not partitioner.is_predicated()) or partitioner.is_index_in_bounds(i):
+                if (not accumulator.is_predicated()) or accumulator.is_index_in_bounds(i):
                     c_frag[i] = c_frag[i] * 2
 
     a = np.arange(4, dtype=np.float32).reshape((2, 2))

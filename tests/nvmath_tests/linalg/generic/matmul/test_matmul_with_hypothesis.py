@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -424,9 +424,9 @@ def test_matmul(input_arrays, order, options, execution, preferences, tensor_lib
 
     match tensor_library:
         case "cupy":
-            d_a = cp.asarray(ax)
-            d_b = cp.asarray(bx)
-            d_c = None if c is None else cp.asarray(c)
+            d_a = cp.asarray(ax, order=order[0])
+            d_b = cp.asarray(bx, order=order[1])
+            d_c = None if c is None else cp.asarray(c, order=order[2])
         case "torch-cpu":
             d_a = torch.tensor(ax, device="cpu")
             d_b = torch.tensor(bx, device="cpu")
@@ -436,9 +436,9 @@ def test_matmul(input_arrays, order, options, execution, preferences, tensor_lib
             d_b = torch.tensor(bx, device="cuda")
             d_c = None if c is None else torch.tensor(c, device="cuda")
         case _:
-            d_a = np.copy(ax)
-            d_b = np.copy(bx)
-            d_c = None if c is None else np.copy(c)
+            d_a = np.copy(ax, order=order[0])
+            d_b = np.copy(bx, order=order[1])
+            d_c = None if c is None else np.copy(c, order=order[2])
 
     try:
         result_c = matmul(
@@ -459,7 +459,7 @@ def test_matmul(input_arrays, order, options, execution, preferences, tensor_lib
             logging.warning("Hypothesis ignored the following error: %s", message)
             return
         if (
-            "was not convertible to a valid" in message
+            "No BLAS compatible view of the operands was found" in message
             or "Operations on the non-triangular operand" in message
             or "Operations on the non-hermitian/non-symmetric operands" in message
             or "Transpose on operand A is not supported" in message

@@ -1,5 +1,13 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import argparse
-import cuda.core.experimental as ccx
+
+try:
+    from cuda.core import Device, system
+except ImportError:
+    from cuda.core.experimental import Device, system
 import socket
 import os
 import warnings
@@ -24,7 +32,7 @@ def initialize_nccl(comm, rank, nranks):
 
 def set_device(rank):
     device_id = rank % num_devices
-    device = ccx.Device(device_id)
+    device = Device(device_id)
     device.set_current()
 
 
@@ -44,7 +52,10 @@ use_nccl = args.nccl
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
-num_devices = ccx.system.num_devices
+try:
+    num_devices = system.get_num_devices()
+except AttributeError:
+    num_devices = system.num_devices
 
 if nranks < 2:
     raise RuntimeError(

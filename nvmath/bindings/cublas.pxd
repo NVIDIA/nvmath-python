@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.0.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -544,5 +544,15 @@ cpdef dgemm_grouped_batched(intptr_t handle, transa_array, transb_array, m_array
 cpdef dgemm_grouped_batched_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, alpha_array, intptr_t aarray, lda_array, intptr_t barray, ldb_array, beta_array, intptr_t carray, ldc_array, int64_t group_count, group_size)
 cpdef gemm_grouped_batched_ex(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int group_count, group_size, int compute_type)
 cpdef gemm_grouped_batched_ex_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int64_t group_count, group_size, int compute_type)
-cpdef get_emulation_strategy(intptr_t handle, intptr_t emulation_strategy)
+cpdef int get_emulation_strategy(intptr_t handle) except? -1
 cpdef set_emulation_strategy(intptr_t handle, int emulation_strategy)
+cpdef get_emulation_special_values_support(intptr_t handle, intptr_t mask)
+cpdef set_emulation_special_values_support(intptr_t handle, cudaEmulationSpecialValuesSupport mask)
+cpdef get_fixed_point_emulation_mantissa_control(intptr_t handle, intptr_t mantissa_control)
+cpdef set_fixed_point_emulation_mantissa_control(intptr_t handle, cudaEmulationMantissaControl mantissa_control)
+cpdef int get_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle) except? -1
+cpdef set_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle, int max_mantissa_bit_count)
+cpdef int get_fixed_point_emulation_mantissa_bit_offset(intptr_t handle) except? -1
+cpdef set_fixed_point_emulation_mantissa_bit_offset(intptr_t handle, int mantissa_bit_offset)
+cpdef intptr_t get_fixed_point_emulation_mantissa_bit_count_pointer(intptr_t handle) except? -1
+cpdef set_fixed_point_emulation_mantissa_bit_count_pointer(intptr_t handle, intptr_t mantissa_bit_count)

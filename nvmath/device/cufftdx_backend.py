@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,6 +17,7 @@ from .common_backend import (
     NVARG_GEN_OPT_LTO,
     build_get_int_traits,
     build_get_str_trait,
+    set_code_target_sm,
 )
 from .types import REAL_NP_TYPES
 
@@ -168,7 +169,7 @@ def generate_FFT(
 def generate_code(handle, version: ComputeCapability):
     code = mathdx.commondx_create_code()
 
-    mathdx.commondx_set_code_option_int64(code, mathdx.CommondxOption.TARGET_SM, version.integer)
+    set_code_target_sm(code, version)
     mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
     mathdx.cufftdx_finalize_code(code, handle)
 

@@ -1,7 +1,11 @@
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Matrix qualifier dataclasses for describing structured matrix types and their properties in
 linear algebra operations. Provides qualifiers for general, symmetric, hermitian,
-triangular, and diagonal matrices with associated metadata like fill modes, transpose flags,
+triangular, and diagonal matrices with associated metadata like fill modes, conjugate flags,
 and BLAS function abbreviations.
 """
 
@@ -61,9 +65,6 @@ The two character abbreviation of the matrix qualifier.""".replace("\n", " "),
     "conjugate": """\
 Whether the matrix is conjugate.""".replace("\n", " "),
     #
-    "transpose": """\
-Whether the matrix is transpose.""".replace("\n", " "),
-    #
     "uplo": """\
 The :py:class:`~nvmath.bindings.cublas.FillMode` of the matrix. e.g. upper, lower...""".replace("\n", " "),
     #
@@ -82,7 +83,6 @@ matrix_qualifiers_dtype = np.dtype(
     [
         ("abbreviation", "U2"),
         ("conjugate", np.bool_),
-        ("transpose", np.bool_),
         ("uplo", np.int_),
         ("diag", np.int_),
         ("incx", np.int_),
@@ -110,12 +110,11 @@ class MatrixQualifierConstructor(abc.ABC):
     def create(
         cls,
         conjugate: bool = False,
-        transpose: bool = False,
         uplo: FillMode = FillMode.FULL,
         diag: DiagType = DiagType.NON_UNIT,
         incx: typing.Literal[-1, 1, 0] = 0,
     ):
-        return np.array((cls.abbreviation, conjugate, transpose, uplo, diag, incx), dtype=matrix_qualifiers_dtype)
+        return np.array((cls.abbreviation, conjugate, uplo, diag, incx), dtype=matrix_qualifiers_dtype)
 
     @classmethod
     def is_valid(cls, other: MatrixQualifier) -> np.bool_:
@@ -124,7 +123,7 @@ class MatrixQualifierConstructor(abc.ABC):
         return np.all(other["abbreviation"] == cls.abbreviation) and np.bool_(
             all(
                 n in other.dtype.names  # type: ignore[operator]
-                for n in ("conjugate", "transpose")
+                for n in ("conjugate",)
             )
         )
 
@@ -133,7 +132,7 @@ class MatrixQualifierConstructor(abc.ABC):
         """Return a pretty string representation of `other`."""
         return (
             f"({other['abbreviation']}, conjugate={other['conjugate']}, "
-            f"transpose={other['transpose']}, uplo={FillMode(other['uplo']).name}, "
+            f"uplo={FillMode(other['uplo']).name}, "
             f"diag={DiagType(other['diag']).name}, incx={other['incx']})"
         )
 
@@ -151,13 +150,13 @@ class GeneralMatrixQualifier(MatrixQualifierConstructor):
         Create a general matrix qualifier:
 
         >>> GeneralMatrixQualifier.create()  # doctest: +ELLIPSIS
-        array(('ge', False, False, 2, 0, 0),
+        array(('ge', False, 2, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create a conjugate general matrix qualifier:
 
         >>> GeneralMatrixQualifier.create(conjugate=True)  # doctest: +ELLIPSIS
-        array(('ge', True, False, 2, 0, 0),
+        array(('ge', True, 2, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create an array of general matrix qualifiers:
@@ -165,7 +164,7 @@ class GeneralMatrixQualifier(MatrixQualifierConstructor):
         >>> np.full(
         ...     2, GeneralMatrixQualifier.create(), dtype=matrix_qualifiers_dtype
         ... )  # doctest: +ELLIPSIS
-        array([('ge', False, False, 2, 0, 0), ('ge', False, False, 2, 0, 0)],
+        array([('ge', False, 2, 0, 0), ('ge', False, 2, 0, 0)],
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
     .. seealso::
@@ -180,7 +179,6 @@ class GeneralMatrixQualifier(MatrixQualifierConstructor):
     def create(  # type: ignore[override]
         cls,
         conjugate: bool = False,
-        transpose: bool = False,
     ):
         """Return a :class:`np.ndarray` of type :class:`matrix_qualifiers_dtype` whose
         element describes a general matrix.
@@ -188,9 +186,8 @@ class GeneralMatrixQualifier(MatrixQualifierConstructor):
         Args:
             conjugate: {conjugate}
 
-            transpose: {transpose}
         """
-        return super().create(conjugate=conjugate, transpose=transpose)
+        return super().create(conjugate=conjugate)
 
 
 @utils.docstring_decorator(MM_QUALIFIERS_DOCUMENTATION, skip_missing=False)
@@ -210,13 +207,13 @@ class DiagonalMatrixQualifier(MatrixQualifierConstructor):
         Create a diagonal matrix qualifier:
 
         >>> DiagonalMatrixQualifier.create()  # doctest: +ELLIPSIS
-        array(('dg', False, False, 2, 0, 1),
+        array(('dg', False, 2, 0, 1),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create a conjugate diagonal matrix qualifier:
 
         >>> DiagonalMatrixQualifier.create(conjugate=True)  # doctest: +ELLIPSIS
-        array(('dg', True, False, 2, 0, 1),
+        array(('dg', True, 2, 0, 1),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create an array of matrix qualifiers with one general and one diagonal matrix:
@@ -228,7 +225,7 @@ class DiagonalMatrixQualifier(MatrixQualifierConstructor):
         ... )
         >>> qualifiers[1] = DiagonalMatrixQualifier.create()
         >>> qualifiers  # doctest: +ELLIPSIS
-        array([('ge', False, False, 2, 0, 0), ('dg', False, False, 2, 0, 1)],
+        array([('ge', False, 2, 0, 0), ('dg', False, 2, 0, 1)],
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
     .. seealso::
@@ -243,7 +240,6 @@ class DiagonalMatrixQualifier(MatrixQualifierConstructor):
     def create(  # type: ignore[override]
         cls,
         conjugate: bool = False,
-        transpose: bool = False,
         incx: typing.Literal[-1, 1] = 1,
     ):
         """Return a :class:`np.ndarray` of type :class:`matrix_qualifiers_dtype` whose
@@ -252,13 +248,11 @@ class DiagonalMatrixQualifier(MatrixQualifierConstructor):
         Args:
             conjugate: {conjugate}
 
-            transpose: {transpose}
-
             incx: {incx}
         """
         if incx not in (-1, 1):
             raise ValueError(f"The 'incx' parameter must be '-1' or '1' not {incx}")
-        return super().create(conjugate, transpose, incx=incx)
+        return super().create(conjugate, incx=incx)
 
     @classmethod
     def is_valid(cls, other):
@@ -271,13 +265,12 @@ class SquareMatrixQualifier(MatrixQualifierConstructor, abc.ABC):
     def create(  # type: ignore[override]
         cls,
         conjugate: bool = False,
-        transpose: bool = False,
         uplo: FillMode = FillMode.LOWER,
         **kwargs,
     ):
         if uplo not in (FillMode.UPPER, FillMode.LOWER):
             raise ValueError(f"The 'uplo' parameter must be 'UPPER' or 'LOWER', not {uplo}.")
-        return super().create(conjugate, transpose, uplo=uplo, **kwargs)
+        return super().create(conjugate, uplo=uplo, **kwargs)
 
     @classmethod
     def is_valid(cls, other):
@@ -303,13 +296,13 @@ class HermitianMatrixQualifier(SquareMatrixQualifier):
         Create a hermitian matrix qualifier:
 
         >>> HermitianMatrixQualifier.create()  # doctest: +ELLIPSIS
-        array(('he', False, False, 0, 0, 0),
+        array(('he', False, 0, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create a conjugate hermitian matrix qualifier:
 
         >>> HermitianMatrixQualifier.create(conjugate=True)  # doctest: +ELLIPSIS
-        array(('he', True, False, 0, 0, 0),
+        array(('he', True, 0, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create an array of matrix qualifiers with one general and one hermitian matrix:
@@ -321,7 +314,7 @@ class HermitianMatrixQualifier(SquareMatrixQualifier):
         ... )
         >>> qualifiers[1] = HermitianMatrixQualifier.create()
         >>> qualifiers  # doctest: +ELLIPSIS
-        array([('ge', False, False, 2, 0, 0), ('he', False, False, 0, 0, 0)],
+        array([('ge', False, 2, 0, 0), ('he', False, 0, 0, 0)],
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
     .. seealso::
@@ -336,7 +329,6 @@ class HermitianMatrixQualifier(SquareMatrixQualifier):
     def create(  # type: ignore[override]
         cls,
         conjugate: bool = False,
-        transpose: bool = False,
         uplo: FillMode = FillMode.LOWER,
     ):
         """Return a :class:`np.ndarray` of type :class:`matrix_qualifiers_dtype` whose
@@ -345,11 +337,9 @@ class HermitianMatrixQualifier(SquareMatrixQualifier):
         Args:
             conjugate: {conjugate}
 
-            transpose: {transpose}
-
             uplo: {uplo}
         """
-        return super().create(conjugate, transpose, uplo)
+        return super().create(conjugate, uplo)
 
 
 @utils.docstring_decorator(MM_QUALIFIERS_DOCUMENTATION, skip_missing=False)
@@ -369,13 +359,13 @@ class SymmetricMatrixQualifier(SquareMatrixQualifier):
         Create a symmetric matrix qualifier:
 
         >>> SymmetricMatrixQualifier.create()  # doctest: +ELLIPSIS
-        array(('sy', False, False, 0, 0, 0),
+        array(('sy', False, 0, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create a conjugate symmetric matrix qualifier:
 
         >>> SymmetricMatrixQualifier.create(conjugate=True)  # doctest: +ELLIPSIS
-        array(('sy', True, False, 0, 0, 0),
+        array(('sy', True, 0, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create an array of matrix qualifiers with one general and one symmetric matrix:
@@ -387,7 +377,7 @@ class SymmetricMatrixQualifier(SquareMatrixQualifier):
         ... )
         >>> qualifiers[1] = SymmetricMatrixQualifier.create()
         >>> qualifiers  # doctest: +ELLIPSIS
-        array([('ge', False, False, 2, 0, 0), ('sy', False, False, 0, 0, 0)],
+        array([('ge', False, 2, 0, 0), ('sy', False, 0, 0, 0)],
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
     .. seealso::
@@ -402,7 +392,6 @@ class SymmetricMatrixQualifier(SquareMatrixQualifier):
     def create(  # type: ignore[override]
         cls,
         conjugate: bool = False,
-        transpose: bool = False,
         uplo: FillMode = FillMode.LOWER,
     ):
         """Return a :class:`np.ndarray` of type :class:`matrix_qualifiers_dtype` whose
@@ -411,11 +400,9 @@ class SymmetricMatrixQualifier(SquareMatrixQualifier):
         Args:
             conjugate: {conjugate}
 
-            transpose: {transpose}
-
             uplo: {uplo}
         """
-        return super().create(conjugate, transpose, uplo)
+        return super().create(conjugate, uplo)
 
 
 @utils.docstring_decorator(MM_QUALIFIERS_DOCUMENTATION, skip_missing=False)
@@ -435,13 +422,13 @@ class TriangularMatrixQualifier(SquareMatrixQualifier):
         Create a triangular matrix qualifier:
 
         >>> TriangularMatrixQualifier.create()  # doctest: +ELLIPSIS
-        array(('tr', False, False, 0, 0, 0),
+        array(('tr', False, 0, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create a conjugate triangular matrix qualifier:
 
         >>> TriangularMatrixQualifier.create(conjugate=True)  # doctest: +ELLIPSIS
-        array(('tr', True, False, 0, 0, 0),
+        array(('tr', True, 0, 0, 0),
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
         Create an array of matrix qualifiers with one general and one triangular matrix:
@@ -453,7 +440,7 @@ class TriangularMatrixQualifier(SquareMatrixQualifier):
         ... )
         >>> qualifiers[1] = TriangularMatrixQualifier.create()
         >>> qualifiers  # doctest: +ELLIPSIS
-        array([('ge', False, False, 2, 0, 0), ('tr', False, False, 0, 0, 0)],
+        array([('ge', False, 2, 0, 0), ('tr', False, 0, 0, 0)],
               dtype=[('abbreviation', '<U2'), ('conjugate', '?'), ...
 
     .. seealso::
@@ -468,7 +455,6 @@ class TriangularMatrixQualifier(SquareMatrixQualifier):
     def create(  # type: ignore[override]
         cls,
         conjugate: bool = False,
-        transpose: bool = False,
         uplo: FillMode = FillMode.LOWER,
         diag: DiagType = DiagType.NON_UNIT,
     ):
@@ -478,15 +464,13 @@ class TriangularMatrixQualifier(SquareMatrixQualifier):
         Args:
             conjugate: {conjugate}
 
-            transpose: {transpose}
-
             uplo: {uplo}
 
             diag: {diag}
         """
         if diag not in (DiagType.UNIT, DiagType.NON_UNIT):
             raise ValueError(f"The 'diag' parameter must be 'UNIT' or 'NON_UNIT', not {diag}.")
-        return super().create(conjugate, transpose, diag=diag, uplo=uplo)
+        return super().create(conjugate, diag=diag, uplo=uplo)
 
     @classmethod
     def is_valid(cls, other):

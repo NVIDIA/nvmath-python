@@ -15,9 +15,9 @@ clean:
 	rm -rf $(BUILDDIR)
 	rm -rf ${SOURCEDIR}/_xml/
 	rm -rf ${SOURCEDIR}/bindings/generated/
-	rm -rf ${SOURCEDIR}/fft/generated
-	rm -rf ${SOURCEDIR}/linalg/generated
+	rm -rf ${SOURCEDIR}/host-apis/**/generated
 	rm -rf ${SOURCEDIR}/device-apis/generated
+	rm -rf ${SOURCEDIR}/distributed-apis/**/generated
 
 html: Makefile
 	@echo BUILDDIR=${BUILDDIR}

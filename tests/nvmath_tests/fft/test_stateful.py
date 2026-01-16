@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,6 +8,7 @@ import random
 import math
 import functools
 from ast import literal_eval
+import sys
 
 import pytest
 
@@ -120,6 +121,7 @@ assert_exec_backend_specified = init_assert_exec_backend_specified()
     ],
 )
 def test_stateful_nd_default_allocator(
+    seeder,
     monkeypatch,
     framework,
     exec_backend,
@@ -146,8 +148,8 @@ def test_stateful_nd_default_allocator(
         assert batched == "no"
         axes = None
 
-    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend, seed=55)
-    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend, seed=56)
+    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend)
+    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend)
 
     allocations = intercept_default_allocations(monkeypatch)
     expected_key = "torch" if framework == Framework.torch else "cupy"
@@ -227,7 +229,7 @@ def test_stateful_nd_default_allocator(
         if is_complex(dtype) and (not is_half(dtype) or fft_dim == 1)
     ],
 )
-def test_stateful_nd_custom_allocator(monkeypatch, framework, exec_backend, mem_backend, fft_dim, dtype):
+def test_stateful_nd_custom_allocator(seeder, monkeypatch, framework, exec_backend, mem_backend, fft_dim, dtype):
     fft_dim_shape = {
         1: (512,),
         2: (256, 512),
@@ -235,7 +237,7 @@ def test_stateful_nd_custom_allocator(monkeypatch, framework, exec_backend, mem_
     }
     shape = fft_dim_shape[fft_dim]
 
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     allocations = intercept_default_allocations(monkeypatch)
     logger = logging.getLogger("dummy_logger")
@@ -282,12 +284,12 @@ def test_stateful_nd_custom_allocator(monkeypatch, framework, exec_backend, mem_
         for release_workspace in [False, True]
     ],
 )
-def test_stateful_release_workspace(monkeypatch, framework, exec_backend, mem_backend, release_workspace):
+def test_stateful_release_workspace(seeder, monkeypatch, framework, exec_backend, mem_backend, release_workspace):
     shape = (2048, 128)
     dtype = DType.float32
 
-    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
-    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend, seed=45)
+    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend)
+    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend)
 
     allocations = intercept_default_allocations(monkeypatch)
     if framework == Framework.torch:
@@ -370,7 +372,7 @@ def test_stateful_release_workspace(monkeypatch, framework, exec_backend, mem_ba
         for blocking in OptFftBlocking
     ],
 )
-def test_custom_stream(framework, exec_backend, mem_backend, shape_kind, shape, axes, dtype, blocking):
+def test_custom_stream(seeder, framework, exec_backend, mem_backend, shape_kind, shape, axes, dtype, blocking):
     shape = literal_eval(shape)
     axes = literal_eval(axes)
 
@@ -381,7 +383,7 @@ def test_custom_stream(framework, exec_backend, mem_backend, shape_kind, shape, 
     free_framework_pools(framework)
 
     with use_stream(s0):
-        signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
+        signal = get_random_input_data(framework, shape, dtype, mem_backend)
         scale = math.prod(shape[a] for a in axes)
         signal_scaled = get_scaled(signal, scale)
 
@@ -470,7 +472,7 @@ def test_custom_stream(framework, exec_backend, mem_backend, shape_kind, shape, 
         for blocking in OptFftBlocking
     ],
 )
-def test_custom_stream_inplace(framework, exec_backend, mem_backend, shape_kind, shape, axes, dtype, blocking):
+def test_custom_stream_inplace(seeder, framework, exec_backend, mem_backend, shape_kind, shape, axes, dtype, blocking):
     shape = literal_eval(shape)
     axes = literal_eval(axes)
     s0 = get_custom_stream(framework, is_numpy_stream_oriented=True)
@@ -479,7 +481,7 @@ def test_custom_stream_inplace(framework, exec_backend, mem_backend, shape_kind,
     free_framework_pools(framework)
 
     with use_stream(s0):
-        signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
+        signal = get_random_input_data(framework, shape, dtype, mem_backend)
         scale = math.prod(shape[a] for a in axes)
         signal_scaled = get_scaled(signal, scale * 2)
 
@@ -571,6 +573,7 @@ def test_custom_stream_inplace(framework, exec_backend, mem_backend, shape_kind,
     ],
 )
 def test_custom_stream_busy_input(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -588,7 +591,7 @@ def test_custom_stream_busy_input(
     free_framework_pools(framework)
 
     with use_stream(s0):
-        signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=44)
+        signal = get_random_input_data(framework, shape, dtype, mem_backend)
         ref = get_scaled(get_fft_ref(signal, axes=axes), 4)
 
     if should_skip_3d_unsupported(exec_backend, shape, axes):
@@ -649,10 +652,10 @@ def test_custom_stream_busy_input(
     ],
 )
 @multi_gpu_only
-def test_arrays_different_devices(framework, exec_backend, mem_backend, dtype):
+def test_arrays_different_devices(seeder, framework, exec_backend, mem_backend, dtype):
     shape = (512, 512)
-    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend, seed=13, device_id=0)
-    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend, seed=12, device_id=1)
+    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend, device_id=0)
+    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend, device_id=1)
 
     fft_0, fft_1 = None, None
     try:
@@ -711,8 +714,8 @@ def test_multi_device_wrong_device(framework, exec_backend, mem_backend):
     shape = (32, 128)
     dtype = DType.complex64
 
-    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend, seed=44, device_id=0)
-    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend, seed=45, device_id=1)
+    signal_0 = get_random_input_data(framework, shape, dtype, mem_backend, device_id=0)
+    signal_1 = get_random_input_data(framework, shape, dtype, mem_backend, device_id=1)
 
     with nvmath.fft.FFT(
         signal_0,
@@ -744,8 +747,8 @@ def test_unsupported_shape_change(framework, exec_backend, mem_backend):
     shape_1 = (256, 1024)
     dtype = DType.float64
 
-    signal_0 = get_random_input_data(framework, shape_0, dtype, mem_backend, seed=44)
-    signal_1 = get_random_input_data(framework, shape_1, dtype, mem_backend, seed=45)
+    signal_0 = get_random_input_data(framework, shape_0, dtype, mem_backend)
+    signal_1 = get_random_input_data(framework, shape_1, dtype, mem_backend)
 
     with nvmath.fft.FFT(signal_0, execution=exec_backend.nvname) as f:
         f.plan()
@@ -788,7 +791,7 @@ def test_unsupported_shape_change(framework, exec_backend, mem_backend):
 )
 def test_incorrect_fft_kind_direction(framework, exec_backend, mem_backend, direction, fft_kind, dtype):
     shape = (16,)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=13)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     with nvmath.fft.FFT(
         signal,
@@ -832,10 +835,10 @@ def test_incorrect_fft_kind_direction(framework, exec_backend, mem_backend, dire
         for inplace in [False, True]
     ],
 )
-def test_reset_operand_forward_inverse(framework, exec_backend, mem_backend, dtype, inplace):
+def test_reset_operand_forward_inverse(seeder, framework, exec_backend, mem_backend, dtype, inplace):
     shape = (128, 256, 3)
     axes = (0, 1)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=13)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft_ref = get_fft_ref(signal, axes=axes)
     scale = math.prod(shape[a] for a in axes)
     ifft_ref = get_scaled(signal, scale)
@@ -887,7 +890,7 @@ def test_reset_operand_forward_inverse(framework, exec_backend, mem_backend, dty
 def test_reset_operand_unsupported_direction(framework, exec_backend, mem_backend, direction, dtype):
     shape = (3, 16, 3)
     axes = (1, 2)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=13)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
 
     if isinstance(direction, int):
         direction_value = direction
@@ -932,10 +935,10 @@ def test_reset_operand_unsupported_direction(framework, exec_backend, mem_backen
         if exec_backend.mem == mem_backend or case in ("explicit_dict", "cls")
     ],
 )
-def test_execution_options(framework, exec_backend, mem_backend, dtype, case):
+def test_execution_options(seeder, framework, exec_backend, mem_backend, dtype, case):
     shape = (3, 5, 7)
     axes = (0, 1, 2)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=13)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     fft_ref = get_fft_ref(signal, axes=axes)
 
     if exec_backend not in supported_backends.exec:
@@ -1001,13 +1004,13 @@ def test_execution_options(framework, exec_backend, mem_backend, dtype, case):
         for dtype in framework_exec_type_support[framework][exec_backend]
     ],
 )
-def test_num_threads_option(framework, exec_backend, mem_backend, dtype):
+def test_num_threads_option(seeder, framework, exec_backend, mem_backend, dtype):
     if len(os.sched_getaffinity(0)) < 16:
         pytest.skip("Not enough cores to run the test")
 
     shape = (127, 256, 128)
     axes = (1, 2)
-    signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=13)
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
     ref = get_fft_ref(signal, axes)
 
     with nvmath.fft.FFT(signal, axes=axes, execution={"name": "cpu", "num_threads": 16}) as fft:
@@ -1059,7 +1062,7 @@ def test_num_threads_option(framework, exec_backend, mem_backend, dtype):
         ]
     ],
 )
-def test_cpu_gpu_copy_sync(framework, exec_backend, mem_backend, dtype, inplace, shape, axes):
+def test_cpu_gpu_copy_sync(seeder, framework, exec_backend, mem_backend, dtype, inplace, shape, axes):
     if len(os.sched_getaffinity(0)) < 16:
         pytest.skip("Not enough cores to run the test")
     free_framework_pools(framework)
@@ -1070,13 +1073,13 @@ def test_cpu_gpu_copy_sync(framework, exec_backend, mem_backend, dtype, inplace,
     axes = literal_eval(axes)
 
     with use_stream(s_1):
-        signal = get_random_input_data(framework, shape, dtype, mem_backend, seed=13)
-        noise = get_random_input_data(framework, shape, dtype, mem_backend, seed=15)
+        signal = get_random_input_data(framework, shape, dtype, mem_backend)
+        noise = get_random_input_data(framework, shape, dtype, mem_backend)
         ref = get_fft_ref(get_scaled(signal, 4), axes)
         add_in_place(signal, signal)
 
     with use_stream(s_2):
-        signal_2 = get_random_input_data(framework, shape, dtype, mem_backend, seed=15)
+        signal_2 = get_random_input_data(framework, shape, dtype, mem_backend)
         ref_2 = get_fft_ref(get_scaled(signal_2, 4), axes)
 
     with nvmath.fft.FFT(
@@ -1135,7 +1138,7 @@ def test_cpu_gpu_copy_sync(framework, exec_backend, mem_backend, dtype, inplace,
         for dtype in framework_exec_type_support[framework][exec_backend]
     ],
 )
-def test_direction_planning_stateful_vs_statless(monkeypatch, framework, exec_backend, mem_backend, dtype):
+def test_direction_planning_stateful_vs_statless(seeder, monkeypatch, framework, exec_backend, mem_backend, dtype):
     rets = []
 
     def wrap_call(fn):
@@ -1157,7 +1160,7 @@ def test_direction_planning_stateful_vs_statless(monkeypatch, framework, exec_ba
         fft_fn = nvmath.fft.rfft
         ifft_fn = nvmath.fft.irfft
 
-    signal = get_random_input_data(framework, (15, 16), dtype, mem_backend, 445)
+    signal = get_random_input_data(framework, (15, 16), dtype, mem_backend)
     assert len(rets) == 0
 
     out = fft_fn(signal, execution=exec_backend.nvname)
@@ -1243,6 +1246,7 @@ def test_direction_planning_stateful_vs_statless(monkeypatch, framework, exec_ba
     ],
 )
 def test_reset_operand_decreasing_alignment(
+    seeder,
     framework,
     exec_backend,
     mem_backend,
@@ -1315,9 +1319,7 @@ def test_reset_operand_decreasing_alignment(
     all_view_shape = list(shape)
     all_view_shape[-1] = all_samples_last_extent
     all_view_shape = tuple(all_view_shape)
-    signal_base, signal_overaligned = get_overaligned_view(
-        overalignment_bytes, framework, all_view_shape, dtype, mem_backend, seed=177
-    )
+    signal_base, signal_overaligned = get_overaligned_view(overalignment_bytes, framework, all_view_shape, dtype, mem_backend)
     base_ptr = get_raw_ptr(signal_base)
     overaligned_ptr = get_raw_ptr(signal_overaligned)
     assert overaligned_ptr % overalignment_bytes == 0, f"{base_ptr}, {overaligned_ptr}"
@@ -1341,7 +1343,7 @@ def test_reset_operand_decreasing_alignment(
 
             if fft_type == OptFftType.c2r:
                 real_dtype = get_ifft_dtype(dtype, fft_type=fft_type)
-                real_sample = get_random_input_data(framework, problem_shape, real_dtype, mem_backend, seed=444 + i)
+                real_sample = get_random_input_data(framework, problem_shape, real_dtype, mem_backend)
                 complex_sample = get_fft_ref(real_sample, axes=axes)
                 assert complex_sample.shape == shape
                 sample[:] = complex_sample[:]
@@ -1430,3 +1432,35 @@ def test_reset_operand_decreasing_alignment(
             pass
         else:
             raise
+
+
+@pytest.mark.skipif(cp is None, reason="CuPy is not available")
+@pytest.mark.parametrize("use_plan_execute", [False, True], ids=["no_plan", "with_plan"])
+def test_reference_count(use_plan_execute):
+    """
+    Test reference counts consistency before/after context manager.
+    Only need a single scenario with CuPy to test scenario when tensors reside on GPU.
+
+    Note: sys.getrefcount() adds 1 for the temp reference in getrefcount,
+    so we need to subtract 1 to have the actual value.
+    """
+    shape = 512, 512, 512
+    axes = 0, 1
+    a = cp.ones(shape, dtype=cp.complex64)
+
+    # Check initial reference count
+    assert sys.getrefcount(a) - 1 == 1, f"pre op: {sys.getrefcount(a) - 1}"
+
+    # Create and optionally execute
+    f = nvmath.fft.FFT(a, axes=axes, execution="cuda")
+    with f:
+        if use_plan_execute:
+            f.plan()
+            result = f.execute()
+            cp.cuda.get_current_stream().synchronize()
+        else:
+            pass
+
+    assert sys.getrefcount(a) - 1 == 1, f"post op: {sys.getrefcount(a) - 1}"
+    if use_plan_execute:
+        assert sys.getrefcount(result) - 1 == 1, f"post op: {sys.getrefcount(result) - 1}"

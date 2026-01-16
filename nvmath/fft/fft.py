@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -655,8 +655,7 @@ def _copy_operand_perhaps(
             exec_space_copy = operand.to(to_device, stream_holder)
             return exec_space_copy, operand
         else:
-            # In-place copy to existing pointer
-            tensor_wrapper.copy_([operand], [internal_operand], stream_holder)
+            internal_operand.copy_(operand, stream_holder=stream_holder)
             return internal_operand, operand
 
 
@@ -912,7 +911,8 @@ class FFT:
     :func:`ifft`, :func:`rfft`, and :func:`irfft`, which are convenience wrappers around it.
     The stateful object also allows for the amortization of preparatory costs when the same
     FFT operation is to be performed on multiple operands with the same problem
-    specification (see :meth:`reset_operand` and :meth:`create_key` for more details).
+    specification (see :meth:`reset_operand`, :meth:`reset_operand_unchecked`,
+    and :meth:`create_key` for more details).
 
     Using the stateful object typically involves the following steps:
 
@@ -948,7 +948,8 @@ class FFT:
         stream: {stream}
 
     .. seealso::
-        :meth:`plan`, :meth:`reset_operand`, :meth:`execute`, :meth:`create_key`
+        :meth:`plan`, :meth:`reset_operand`, :meth:`reset_operand_unchecked`,
+        :meth:`execute`, :meth:`create_key`
 
     Examples:
 
@@ -1545,6 +1546,20 @@ class FFT:
 
             stream: {stream}.
 
+        Semantics:
+            When used for the use case of providing a new valid operand,
+            the following scenarios apply:
+
+            - If execution space == memory space and the FFT is not a C2R transform:
+              operand reference update with no data copying.
+
+            - If execution space == memory space, the FFT is a C2R transform:
+              one data copy to an auxiliary tensor, required to prevent cuFFT from
+              overwriting the user's input.
+
+            - If execution space != memory space:
+              data must be copied between different memory spaces.
+
         Examples:
 
             >>> import cupy as cp
@@ -1574,6 +1589,10 @@ class FFT:
 
             With :meth:`reset_operand`, minimal overhead is achieved as problem
             specification and planning are only performed once.
+            However it still performs validation to ensure that the operand is compatible
+            with the original, and, if enabled, logging. See :meth:`reset_operand_unchecked`
+            for an alternative when the caller has already validated the operand or chooses
+            to skip validation and logging.
 
             For the particular example above, explicitly calling :meth:`reset_operand` is
             equivalent to updating the operand in-place, i.e, replacing
@@ -1657,10 +1676,6 @@ class FFT:
                     "original operand."
                 )
 
-        if self.execution_space == "cuda":
-            # Set stream for the FFT.
-            cufft.set_stream(self.handle, exec_stream_holder.ptr)  # type: ignore[union-attr]
-
         self.operand, self.operand_backup = _copy_operand_perhaps(
             self.operand,
             operand,
@@ -1696,6 +1711,141 @@ class FFT:
         self.logger.info(f"The result shape = {result_shape}, and strides = {result_strides}.")
 
         self.logger.info("The operand has been reset to the specified operand.")
+
+    def reset_operand_unchecked(self, operand, *, stream: AnyStream | None = None):
+        """
+        .. experimental:: method
+
+        This method is a performance-optimized alternative to :meth:`reset_operand` that
+        eliminates validation and logging overhead, making it ideal for
+        performance-critical loops where operand compatibility is guaranteed by the caller.
+
+        Args:
+            operand: A tensor (ndarray-like object) that is **guaranteed** by the user
+                to be compatible with the original operand used during planning.
+                See the ``operand`` parameter in :meth:`reset_operand` for the definition
+                of compatibility.
+
+            stream: {stream}.
+
+        Returns:
+            None
+
+        Semantics:
+            The semantics are the same as in :meth:`reset_operand`,
+            except for the following differences:
+
+            - This method does not perform any validation (e.g. package match,
+              data type match, key match, etc.) and logging.
+
+            - This method does not support releasing the operand by passing None
+              as an argument. To release the operand, use :meth:`reset_operand` instead.
+
+        When to Use:
+            - Performance-critical loops with repeated FFT executions on different operands
+
+            - After verifying correctness with :meth:`reset_operand` during development
+
+            - When operand compatibility is guaranteed by construction or invariant
+
+        Examples:
+
+            **Example 1: Optimizing a processing loop**
+
+            .. code-block:: python
+
+                import cupy as cp
+                import nvmath
+
+                shape = (1024, 1024)
+                operand = cp.random.rand(*shape, dtype=cp.complex64)
+
+                fft = nvmath.fft.FFT(operand, execution="cuda")
+                with fft:
+                    fft.plan()
+                    for i in range(10000):
+                        # Process and create new operand with the same shape, dtype,
+                        # and device as the original operand
+                        new_operand = process_data(...)
+                        fft.reset_operand_unchecked(new_operand)
+                        result = fft.execute()
+                        # block until the result is ready
+                        ...
+
+            **Example 2: Streaming data processing**
+
+            Processing a stream of incoming data operands with identical layout:
+
+            .. code-block:: python
+
+                import cupy as cp
+                import nvmath
+
+                # Create a stateful FFT object and prepare it once.
+                shape = (512, 512)
+                initial_operand = cp.empty(shape, dtype=cp.complex64)
+
+                fft = nvmath.fft.FFT(initial_operand, execution="cuda")
+                with fft:
+                    fft.plan()
+
+                    # Process stream of incoming operands
+                    for operand in incoming_data_stream():
+                        # The user guarantees that the operand is compatible
+                        # with the original (same shape, dtype, device, ...).
+                        fft.reset_operand_unchecked(operand)
+                        result = fft.execute()
+                        # block until the result is ready
+                        process_spectrum(result)
+                        ...
+
+        .. seealso::
+            :meth:`reset_operand`: Safe, validated method for changing operands.
+            :meth:`create_key`: For understanding FFT key compatibility.
+        """
+        # Case 1: Same execution and memory space, non-C2R transform
+        # The user guarantees that the operand is in the same memory space as the original
+        # operand so we can directly update the operand reference without copying data
+        if self.execution_space == self.memory_space and self.fft_abstract_type != "C2R":
+            # Directly assign the new tensor to the wrapped operand's internal tensor.
+            self.operand.tensor = operand
+            self.operand_backup = None
+            return
+
+        # Cases 2 and 3 require data copying, so we need the stream
+        _, operand_stream_holder = self._get_or_create_stream_maybe(stream)
+
+        # Case 2: C2R transform with same execution and memory space
+        # Data must be copied to prevent cuFFT from overwriting the user's input buffer.
+        # This is a corner case that stems from cuFFT behavior.
+        if self.execution_space == self.memory_space:
+            # At this point, we have:
+            # - self.fft_abstract_type == "C2R" (guaranteed by the if condition above)
+            # - self.execution_space == self.memory_space
+            #
+            # For C2R, self.operand points to an auxiliary buffer (allocated in __init__
+            # or reset_operand via _copy_operand_perhaps) rather than the user's original
+            # operand. This is necessary because cuFFT's C2R transform overwrites the input
+            # buffer in-place, and we must preserve the user's data.
+            # We copy the new operand's data into this pre-allocated auxiliary buffer.
+
+            # Wrap the new operand using the same wrapper class as the existing operand,
+            # since they are guaranteed to be identical except for memory location.
+            operand_wrapped = self.operand.__class__(operand)
+            self.operand.copy_(operand_wrapped, stream_holder=operand_stream_holder)
+            self.operand_backup = None
+            return
+
+        # Case 3: Cross-space scenario (execution_space != memory_space)
+        # Example: CPU operand with CUDA execution, or CUDA operand with CPU execution.
+        # Data must be copied between memory spaces.
+        # Wrap the new operand with the appropriate wrapper based on its actual type
+        # (not self.operand's class, since they may be in different memory spaces).
+        operand_wrapped = tensor_wrapper.wrap_operand(operand)
+        # Copy from the source operand to the execution space buffer.
+        self.operand.copy_(operand_wrapped, stream_holder=operand_stream_holder)
+        # Keep a reference to the original operand.
+        self.operand_backup = operand_wrapped
 
     def get_input_layout(self):
         """
@@ -1948,6 +2098,13 @@ class FFT:
                 else:
                     fftw.destroy(self.handle)
                 self.handle = None
+
+            # Release references to operand to ensure proper reference counting
+            self.operand = None
+            self.operand_backup = None
+            self.result = None
+            self._preallocated_result = None
+            self.plan_traits = None
 
         except Exception as e:
             self.logger.critical("Internal error: only part of the FFT object's resources have been released.")

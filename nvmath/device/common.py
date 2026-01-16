@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -15,10 +15,9 @@ from .common_cuda import MAX_SUPPORTED_CC, MIN_SUPPORTED_CC, CodeType, ComputeCa
 
 __all__ = [
     "make_tensor",
+    "make_fragment_like",
     "OpaqueTensor",
     "Layout",
-    "Partition",
-    "Partitioner",
     "axpby",
     "copy",
     "copy_fragment",
@@ -155,6 +154,17 @@ class Layout:
         """
         pass
 
+    @property
+    @abstractmethod
+    def alignment(self) -> int:
+        """
+        Returns the required alignment (in bytes) for the tensor data buffer.
+
+        Refer to the cuBLASDx documentation for more details on how to use this attribute:
+        https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+        """
+        pass
+
 
 class OpaqueTensor:
     """
@@ -176,78 +186,6 @@ class OpaqueTensor:
         raise RuntimeError("OpaqueTensor should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
 
-class Partition:
-    """
-    Partition of a global memory tensor into a partitioned tensor. This is used
-    for accessing the C matrix when working with register fragments.
-
-    .. note:: Do not create directly, use
-        :py:func:`nvmath.device.Partitioner.partition_like_C`.
-
-    Refer to the cuBLASDx documentation for more details on how to use this class:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#partitioner-register-tensor-other-label
-    """
-
-    def __init__(self, *args):
-        raise RuntimeError("Partition should not be called directly")
-
-
-class Partitioner:
-    """
-    Partitioner is an abstraction for partitioning a global memory tensor into a
-    partitioned tensor.
-
-    .. note:: Do not create directly, use
-        :py:func:`nvmath.device.Matmul.suggest_partitioner`.
-
-    Refer to the cuBLASDx documentation for more details on how to use this class:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#partitioner-register-tensor-other-label
-    """
-
-    def __init__(self, *args):
-        raise RuntimeError("Partitioner should not be called directly")
-
-    @abstractmethod
-    def partition_like_C(self, gmem_c: OpaqueTensor) -> Partition:
-        """
-        Partitions the given global memory tensor `gmem_c` into a partitioned tensor.
-        The partitioned tensor is used for accessing the C matrix when working
-        with register fragment.
-        """
-        raise NotImplementedError("This method should be implemented in a subclass.")
-
-    @abstractmethod
-    def map_fragment_index(self, fragment_index: int) -> tuple[int, int]:
-        """
-        Maps the given fragment index to a global memory index.
-        This is used to access the correct element in the partitioned tensor.
-        """
-        raise NotImplementedError("This method should be implemented in a subclass.")
-
-    @abstractmethod
-    def is_thread_active(self) -> bool:
-        """
-        Checks if the current thread takes part in GEMM.
-        """
-        raise NotImplementedError("This method should be implemented in a subclass.")
-
-    @abstractmethod
-    def is_predicated(self) -> bool:
-        """
-        Checks if the current thread is predicated.
-        This is used to determine if the thread should execute the kernel.
-        """
-        raise NotImplementedError("This method should be implemented in a subclass.")
-
-    @abstractmethod
-    def is_index_in_bounds(self, index: int) -> bool:
-        """
-        Checks if the given index is within the bounds of the partitioned tensor.
-        This is used to prevent out-of-bounds access in the kernel.
-        """
-        raise NotImplementedError("This method should be implemented in a subclass.")
-
-
 def make_tensor(array: np.ndarray, layout: Layout) -> OpaqueTensor:
     """
     make_tensor is a helper function for creating
@@ -262,6 +200,21 @@ def make_tensor(array: np.ndarray, layout: Layout) -> OpaqueTensor:
     https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#create-tensor-other-label
     """
     raise RuntimeError("make_tensor should not be called directly outside of a numba.cuda.jit(...) kernel.")
+
+
+def make_fragment_like(tensor: OpaqueTensor, dtype) -> OpaqueTensor:
+    """
+    make_fragment_like is a helper function for creating register fragments with
+    the same layout as input tensor, but different dtype.
+
+    Args:
+        tensor (OpaqueTensor): The input tensor to be used as a template for the fragment.
+        dtype: The data type of the fragment to be created.
+
+    Refer to the cuBLASDx documentation for more details on how to use this function:
+    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+    """
+    raise RuntimeError("make_fragment_like should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
 
 def axpby(alpha: float, x_tensor: OpaqueTensor, beta: float, y_tensor: OpaqueTensor) -> None:
@@ -288,6 +241,7 @@ def copy(src: OpaqueTensor, dst: OpaqueTensor, alignment=None):
     Args:
         src (OpaqueTensor): The source tensor to copy from.
         dst (OpaqueTensor): The destination tensor to copy to.
+        alignment (int, optional): The alignment (in bytes) for the copy operation.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
     https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#cooperative-global-shared-copying
@@ -295,7 +249,7 @@ def copy(src: OpaqueTensor, dst: OpaqueTensor, alignment=None):
     raise RuntimeError("copy should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
 
-def copy_fragment(src: OpaqueTensor, dst: OpaqueTensor):
+def copy_fragment(src: OpaqueTensor, dst: OpaqueTensor, alignment=None):
     """
     A bidirectional copying method to copy data between register fragments and
     global memory tensors.
@@ -303,6 +257,7 @@ def copy_fragment(src: OpaqueTensor, dst: OpaqueTensor):
     Args:
         src (OpaqueTensor): The source tensor to copy from.
         dst (OpaqueTensor): The destination tensor to copy to.
+        alignment (int, optional): The alignment (in bytes) for the copy operation.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
     https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#copying-registers-tensors

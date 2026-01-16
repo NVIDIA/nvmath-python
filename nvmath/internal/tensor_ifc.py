@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -154,6 +154,23 @@ class TensorHolder(ABC, Generic[Tensor]):
             copy (Optional[bool]): whether or not to copy the input tensor. If True, the
                 function must always copy. If False, the function must never copy. If None,
                 the function must avoid copying, if possible, and may copy otherwise.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _broadcast_to(self, shape: Sequence[int]) -> TensorHolder[Tensor]:
+        """Returns a view of the tensor broadcast to the desired shape.
+
+        .. deprecated:: 0.8.0
+            This method is private, and should not be used. It will be removed in the
+            future once NDBuffer supports broadcasting-aware copy.
+
+        Like reshape, but raises an error if the tensor is not broadcastable to the desired
+        shape.
+
+        Args:
+            shape: a new shape compatible with the original shape.
+
         """
         raise NotImplementedError
 

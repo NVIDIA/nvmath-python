@@ -26,6 +26,7 @@ import warnings
 
 from sphinx.writers.html import HTMLTranslator
 from docutils.transforms import Transform
+from docutils.parsers.rst import Directive
 import docutils.nodes as nodes
 
 import numpy as np
@@ -215,7 +216,6 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
             docs = {
                 "abbreviation": MM_QUALIFIERS_DOCUMENTATION["abbreviation"],
                 "conjugate": MM_QUALIFIERS_DOCUMENTATION["conjugate"],
-                "transpose": MM_QUALIFIERS_DOCUMENTATION["transpose"],
                 "uplo": MM_QUALIFIERS_DOCUMENTATION["uplo"],
                 "diag": MM_QUALIFIERS_DOCUMENTATION["diag"],
                 "incx": MM_QUALIFIERS_DOCUMENTATION["incx"],
@@ -312,6 +312,72 @@ class UnqualifiedTitlesTransform(Transform):
     default_priority = 800
 
 
+class ExperimentalDirective(Directive):
+    """
+    Custom admonition for marking experimental APIs.
+
+    Usage in docstrings:
+        .. experimental:: method   # specify the API type
+        .. experimental:: function
+        .. experimental:: class
+        .. experimental:: parameter
+
+    This creates a warning admonition with the standard experimental text.
+    Note: this admonition is automatically detected by the mark_experimental_apis function,
+    which adds the 'experimental' CSS class to the method/function/class.
+    """
+
+    # Directive does not expect indented content below it (e.g., no text block)
+    has_content = False
+    # Requires exactly one argument: the API type (see above)
+    required_arguments = 1
+    # No optional arguments allowed
+    optional_arguments = 0
+
+    def run(self):
+        # Get the API type from argument or default to "method"
+        api_type = self.arguments[0]
+        assert api_type in ["method", "function", "class", "parameter"], "Invalid API type"
+
+        text = f"This {api_type} is experimental and potentially subject to future changes."
+        # Create a simple container div to inline the experimental text
+        container = nodes.container()
+        container += nodes.paragraph("", text)
+        container["classes"].append("experimental-marker")
+        return [container]
+
+
+def mark_experimental_apis(app, doctree, docname):
+    """
+    Add 'experimental' CSS class to any method/function/class that contains
+    the .. experimental:: directive.
+
+    This runs on the 'doctree-resolved' event, after the doctree is fully built.
+    """
+    from sphinx import addnodes
+
+    for desc_node in doctree.traverse(addnodes.desc):
+        # Get the desc_content child (the docstring content)
+        desc_content_nodes = [n for n in desc_node.children if isinstance(n, addnodes.desc_content)]
+
+        if not desc_content_nodes:
+            continue
+
+        content_node = desc_content_nodes[0]
+
+        # Check only direct child nodes of desc_content, skipping nested desc nodes
+        for child in content_node.children:
+            # Skip nested desc nodes entirely
+            if isinstance(child, addnodes.desc):
+                continue
+
+            # Check if this child has the experimental-marker class
+            # (from .. experimental:: directive)
+            if "experimental-marker" in child.get("classes", []):
+                desc_node["classes"].append("experimental")
+                break
+
+
 class NotebookHandler:
     def __init__(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -347,8 +413,18 @@ notebook_handler = NotebookHandler()
 def setup(app):
     fixup_internal_alias()
     app.add_css_file("nvmath_override.css")
+    app.add_directive("experimental", ExperimentalDirective)
     app.connect("autodoc-process-docstring", autodoc_process_docstring)
     app.connect("source-read", lambda *args, **kwargs: notebook_handler.remove_notebook_copyright(*args, **kwargs))
+
+    # Connect the experimental API marker to the doctree-resolved event.
+    # doctree-resolved fires after the doc tree is fully built and
+    # cross-references are resolved, allowing us to safely traverse and
+    # modify nodes before HTML generation.
+    # This detects methods/functions/classes with the "experimental-marker"
+    # and adds the 'experimental' CSS class for styling (orange border).
+    app.connect("doctree-resolved", mark_experimental_apis)
+
     app.set_translator("html", DotBreakHtmlTranslator)
     app.add_autodocumenter(PatchedEnumDocumenter, override=True)
     app.add_post_transform(UnqualifiedTitlesTransform)
@@ -374,7 +450,7 @@ autosummary_filename_map = {
     "nvmath.device.FFT": "nvmath.device.FFT-class",
     "nvmath.device.Matmul": "nvmath.device.Matmul-class",
     "nvmath.linalg.advanced.Matmul": "nvmath.linalg.advanced.Matmul-class",
-    "nvmath.linalg.generic.Matmul": "nvmath.linalg.generic.Matmul-class",
+    "nvmath.linalg.Matmul": "nvmath.linalg.Matmul-class",
     "nvmath.distributed.linalg.advanced.Matmul": "nvmath.distributed.linalg.advanced.Matmul-class",
     "nvmath.distributed.fft.FFT": "nvmath.distributed.fft.FFT-class",
     "nvmath.distributed.reshape.Reshape": "nvmath.distributed.reshape.Reshape-class",
