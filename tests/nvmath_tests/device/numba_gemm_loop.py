@@ -41,7 +41,7 @@ class NumbaGemmLoop:
         m, n, k = size
         lda, ldb, ldc = MM.leading_dimension.a, MM.leading_dimension.b, MM.leading_dimension.c
 
-        @cuda.jit(link=MM.files)
+        @cuda.jit()
         def f(a_global, b_global, c_global):
             # Input/output
             a_smem = cuda.shared.array(shape=(a_size,), dtype=a_value_type)

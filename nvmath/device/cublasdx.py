@@ -714,27 +714,6 @@ class Matmul:
     def valid(self, *knobs):
         return itertools.product(*[self._valid(knob) for knob in knobs])
 
-    @deprecated("definition is deprecated and may be removed in future versions")
-    def definition(self):
-        """
-        .. deprecated:: 0.7.0
-        """
-        dd = {
-            "size": self.size,
-            "precision": self.precision,
-            "data_type": self.data_type,
-            "transpose_mode": self.transpose_mode,
-            "arrangement": self.arrangement,
-            "alignment": self.alignment,
-            "sm": self.sm,
-            "block_dim": self.block_dim,
-            "static_block_dim": self.static_block_dim,
-            "function": self.function,
-            "execution": self.execution,
-            "leading_dimension": self.leading_dimension,
-        }
-        return dd
-
     @deprecated("create is deprecated and may be removed in future versions. Use `functools.partial` instead")
     def create(
         self, code_type=None, compiler=None, execute_api=None, tensor_types=None, global_memory_alignment=None, **kwargs
@@ -1008,19 +987,6 @@ class Matmul:
 
     def execute(self, *args):
         raise RuntimeError("execute should not be called directly outside of a numba.cuda.jit(...) kernel.")
-
-    @property
-    @deprecated("files is deprecated and is no longer required and will be removed in future releases.")
-    def files(self) -> list[str]:
-        """The list of binary files for the lto functions."""
-        return []
-
-    @property
-    @deprecated("codes is deprecated and is no longer required and will be removed in future releases.")
-    def codes(self) -> list[Code]:
-        """A list of :class:`Code` objects for all lto functions."""
-        return []
-
 
 class _MatmulTraits:
     def __init__(self, mm: Matmul):

@@ -273,9 +273,9 @@ def test_sm(code_type):
         code_type=code_type,
         execution="Block",
     )
-    assert all(isinstance(code.data, bytes) for code in MM.codes)
-    assert all(len(code.data) > 0 for code in MM.codes)
-    assert all(code.code_type == code_type for code in MM.codes)
+    assert all(isinstance(code.data, bytes) for code, _ in [compile_blas_execute(MM, code_type=code_type)])
+    assert all(len(code.data) > 0 for code, _ in [compile_blas_execute(MM, code_type=code_type)])
+    assert all(code.code_type == code_type for code, _ in [compile_blas_execute(MM, code_type=code_type)])
 
 
 def test_unsupported_sm():
@@ -306,11 +306,11 @@ def test_sm_type(code_type):
         code_type=code_type,
         execution="Block",
     )
-    assert all(isinstance(code.data, bytes) for code in MM.codes)
-    assert all(len(code.data) > 0 for code in MM.codes)
-    assert all(code.code_type.kind == code_type[0] for code in MM.codes)
-    assert all(code.code_type.cc.major == code_type[1][0] for code in MM.codes)
-    assert all(code.code_type.cc.minor == code_type[1][1] for code in MM.codes)
+    assert all(isinstance(code.data, bytes) for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
+    assert all(len(code.data) > 0 for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
+    assert all(code.code_type.kind == code_type[0] for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
+    assert all(code.code_type.cc.major == code_type[1][0] for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
+    assert all(code.code_type.cc.minor == code_type[1][1] for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
 
 
 @pytest.mark.parametrize(

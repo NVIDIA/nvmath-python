@@ -141,7 +141,7 @@ def test_cublasdx_call(precision, data_type):
     lda, ldb, ldc = ld.a, ld.b, ld.c
     shared_memory_size = MM.get_shared_storage_size()
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit()
     def f(a, b, c, alpha, beta, output):
         smem = cuda.shared.array(shape=(0,), dtype=value_type)
         smem_a = smem[0:]

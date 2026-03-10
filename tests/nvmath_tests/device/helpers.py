@@ -94,7 +94,6 @@ def show_FFT_traits(FFT):
 
 def show_MM_traits(MM):
     print(f"MM.size =                  {MM.size}")
-    print(f"MM.files =                 {MM.files}")
     print(f"MM.transpose_mode =        {MM.transpose_mode}")
     print(f"MM.a_value_type =          {MM.a_value_type}")
     print(f"MM.b_value_type =          {MM.b_value_type}")

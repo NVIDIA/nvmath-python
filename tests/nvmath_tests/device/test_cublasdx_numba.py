@@ -298,7 +298,6 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
     c_value_type = MM.c_value_type
 
     assert MM.size == (m, n, k)
-    assert all(f.endswith(".ltoir") for f in MM.files)
     if trans:
         assert MM.transpose_mode == TransposeMode(*trans)
     else:
@@ -350,7 +349,7 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
     B_ROW_MAJOR = arrangement and arrangement[1] == "row_major"
     C_ROW_MAJOR = arrangement and arrangement[2] == "row_major"
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit()
     def f(a_global, b_global, c_global):
         # Input/output
         a_smem = cuda.shared.array(shape=(a_size,), dtype=a_value_type)
@@ -528,7 +527,7 @@ def test_opaque_tensor(tensor_types):
 
     is_rmem_c = "rmem" in tensor_types[2]
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit()
     def f(alpha, a, b, beta, c, output):
         # Workaround to set shared memory alignment = 16 bytes (size of c64).
         smem = cuda.shared.array(shape=(0,), dtype=np.complex64).view(precision.a)
@@ -674,7 +673,7 @@ def test_make_fragment_like_C():
     c_size = MM.suggest_layout_rmem_c().size
     assert c_size == 1
 
-    @cuda.jit(link=MM.files)
+    @cuda.jit()
     def kernel(c):
         gmem_c = make_tensor(c, MM.get_layout_gmem_c())
         accumulator = MM.suggest_accumulator()

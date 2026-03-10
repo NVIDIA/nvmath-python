@@ -40,7 +40,7 @@ class NumbaGemmBatched:
         alpha = 1.0
         beta = 0.0
 
-        @cuda.jit(link=MM.files)
+        @cuda.jit()
         def f(a_global, b_global, c_global):
             bid = cuda.blockIdx.x
 
