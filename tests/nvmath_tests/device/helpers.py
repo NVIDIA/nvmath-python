@@ -106,7 +106,7 @@ def show_MM_traits(MM):
     print(f"MM.b_size =                {MM.b_size}")
     print(f"MM.c_size =                {MM.c_size}")
     print(f"MM.leading_dimension =     {MM.leading_dimension}")
-    print(f"MM.shared_memory_size =    {MM.shared_memory_size}")
+    print(f"MM.shared_memory_size =    {MM.get_shared_storage_size()}")
     print(f"MM.block_dim =             {MM.block_dim}")
     print(f"MM.max_threads_per_block = {MM.max_threads_per_block}")
 

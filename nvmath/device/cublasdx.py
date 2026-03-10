@@ -877,16 +877,6 @@ class Matmul:
         return self._abc_sizes[2]
 
     @property
-    @deprecated(
-        "shared_memory_size trait is deprecated and will be removed in "
-        "future versions. Use get_shared_storage_size instead. Don't "
-        "use with Opaque Tensors. Use get_shared_storage_size(...) or"
-        "SharedStorageCalc instead"
-    )
-    def shared_memory_size(self):
-        return self.get_shared_storage_size()
-
-    @property
     def max_threads_per_block(self):
         return self.block_dim.x * self.block_dim.y * self.block_dim.z
 

@@ -318,7 +318,7 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
     assert MM.c_size == m * n
 
     # There is a dedicated test for shared memory size
-    assert MM.shared_memory_size > 0
+    assert MM.get_shared_storage_size() > 0
 
     if block_size is not None:
         assert MM.block_dim == (block_size, 1, 1)
@@ -596,7 +596,7 @@ def test_opaque_tensor(tensor_types):
     c_d = cuda.to_device(c)
     output_d = cuda.to_device(output)
 
-    f[1, MM.block_dim, 0, MM.shared_memory_size](alpha, a_d, b_d, beta, c_d, output_d)
+    f[1, MM.block_dim, 0, MM.get_shared_storage_size()](alpha, a_d, b_d, beta, c_d, output_d)
     cuda.synchronize()
 
     data_test = output_d.copy_to_host()
