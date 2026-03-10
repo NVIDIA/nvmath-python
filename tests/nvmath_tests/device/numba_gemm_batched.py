@@ -56,7 +56,7 @@ class NumbaGemmBatched:
 
             # Execute FFT
             for r in range(repeat):
-                MM(alpha, a_smem, b_smem, beta, c_smem)
+                MM.execute(alpha, a_smem, b_smem, beta, c_smem)
 
             cuda.syncthreads()
             # Store shared --> global

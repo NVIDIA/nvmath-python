@@ -39,7 +39,7 @@ def main():
         cuda.syncthreads()
 
         # Deprecated, use MM.execute(...) instead
-        MM(alpha, smem_a, smem_b, beta, smem_c)
+        MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
         cuda.syncthreads()
 

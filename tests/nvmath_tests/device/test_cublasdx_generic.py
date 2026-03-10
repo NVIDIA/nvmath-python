@@ -47,7 +47,7 @@ def test_files_closed():
             data_type="real",
             precision=np.float32,
             transpose_mode=TransposeMode("non_transposed", "transposed"),
-            code_type=SM75,
+            sm=SM75.cc,
             execution="Block",
         )
 
@@ -99,7 +99,7 @@ def test_transpose_mode(ta, tb):
         data_type="complex",
         precision=np.float32,
         transpose_mode=(ta, tb),
-        code_type=SM75,
+        sm=SM75.cc,
         execution="Block",
     )
 
@@ -108,7 +108,7 @@ def test_transpose_mode(ta, tb):
         data_type="complex",
         precision=np.float32,
         transpose_mode=TransposeMode(ta, tb),
-        code_type=SM75,
+        sm=SM75.cc,
         execution="Block",
     )
 
@@ -142,7 +142,8 @@ def test_suggested_block_dim():
 
 
 def test_suggested_leading_dimension():
-    BO = Matmul(
+    BO = functools.partial(
+        Matmul,
         size=(16, 8, 16),
         data_type="real",
         precision=np.float32,
@@ -153,27 +154,28 @@ def test_suggested_leading_dimension():
         leading_dimension="suggested",
     )
 
-    assert isinstance(BO, Matmul)
-    assert isinstance(BO.leading_dimension, LeadingDimension)
-    assert isinstance(BO.block_dim, Dim3)
+    assert isinstance(BO(), Matmul)
+    assert isinstance(BO().leading_dimension, LeadingDimension)
+    assert isinstance(BO().block_dim, Dim3)
 
-    assert len(BO.leading_dimension) == 3
-    assert BO.leading_dimension.a >= 1
-    assert BO.leading_dimension.b >= 1
-    assert BO.leading_dimension.c >= 1
+    assert len(BO().leading_dimension) == 3
+    assert BO().leading_dimension.a >= 1
+    assert BO().leading_dimension.b >= 1
+    assert BO().leading_dimension.c >= 1
 
-    MM = BO.create()
+    MM = BO()
     assert isinstance(MM, Matmul)
     assert isinstance(MM.leading_dimension, LeadingDimension)
     assert isinstance(MM.block_dim, Dim3)
 
-    assert MM.leading_dimension.a == BO.leading_dimension.a
-    assert MM.leading_dimension.b == BO.leading_dimension.b
-    assert MM.leading_dimension.c == BO.leading_dimension.c
+    assert MM.leading_dimension.a == BO().leading_dimension.a
+    assert MM.leading_dimension.b == BO().leading_dimension.b
+    assert MM.leading_dimension.c == BO().leading_dimension.c
 
 
 def test_valid_finalize():
-    BO = Matmul(
+    BO = functools.partial(
+        Matmul,
         size=(16, 8, 16),
         data_type="real",
         precision=np.float32,
@@ -182,13 +184,13 @@ def test_valid_finalize():
         execution="Block",
     )
 
-    assert isinstance(BO, Matmul)
-    valids = BO.valid("block_dim")
+    assert isinstance(BO(), Matmul)
+    valids = BO().valid("block_dim")
 
     count = 0
     for (block_dim,) in valids:
         count += 1
-        MM = BO.create(block_dim=block_dim)
+        MM = BO(block_dim=block_dim)
         assert isinstance(MM, Matmul)
         assert MM.block_dim == block_dim
         assert MM.size == (16, 8, 16)
@@ -204,9 +206,8 @@ def test_cached():
         precision=np.float32,
         transpose_mode=TransposeMode("transposed", "transposed"),
         block_dim=Dim3(2, 4, 8),
-        code_type=SM75,
+        sm=SM75.cc,
         execution="Block",
-        compiler=None,
     )
 
     t0 = time.time()
@@ -235,11 +236,9 @@ def test_cached():
         ("precision", None),
         ("precision", (np.float32,)),
         ("precision", (np.float32, np.float32)),
-        ("code_type", None),
-        ("code_type", CodeType("lto", ComputeCapability(-1, 0))),
-        ("code_type", CodeType("lto", ComputeCapability(5, 0))),
-        ("code_type", CodeType("sass", ComputeCapability(7, 0))),
-        ("code_type", CodeType("ptx", ComputeCapability(7, 0))),
+        ("sm", None),
+        ("sm", ComputeCapability(-1, 0)),
+        ("sm", ComputeCapability(5, 0)),
         ("block_dim", (1, 2)),
         ("block_dim", (1025, 1, 1)),
         ("transpose_mode", (3, 2)),
@@ -252,7 +251,7 @@ def test_cached():
     ],
 )
 def test_negative(opt, value):
-    opts = {"size": (24, 8, 48), "data_type": "real", "precision": np.float64, "code_type": SM75, "execution": "Block"}
+    opts = {"size": (24, 8, 48), "data_type": "real", "precision": np.float64, "sm": SM75.cc, "execution": "Block"}
     if value is None:
         del opts[opt]
     else:
@@ -269,7 +268,7 @@ def test_sm(code_type):
         data_type="real",
         arrangement=("col_major", "col_major", "col_major"),
         precision=np.float32,
-        code_type=code_type,
+        sm=code_type.cc,
         execution="Block",
     )
     assert all(isinstance(code.data, bytes) for code, _ in [compile_blas_execute(MM, code_type=code_type)])
@@ -295,21 +294,25 @@ def test_unsupported_sm():
         )
 
 
-@pytest.mark.parametrize("code_type", [("lto", (7, 5)), ("lto", (8, 0))])
+@pytest.mark.parametrize("code_type", [("lto", ComputeCapability(7, 5)), ("lto", ComputeCapability(8, 0))])
 def test_sm_type(code_type):
     MM = Matmul(
         size=(24, 8, 48),
         data_type="real",
         arrangement=("col_major", "col_major", "col_major"),
         precision=np.float32,
-        code_type=code_type,
+        sm=code_type[1],
         execution="Block",
     )
     assert all(isinstance(code.data, bytes) for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
     assert all(len(code.data) > 0 for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
     assert all(code.code_type.kind == code_type[0] for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
-    assert all(code.code_type.cc.major == code_type[1][0] for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
-    assert all(code.code_type.cc.minor == code_type[1][1] for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))])
+    assert all(
+        code.code_type.cc.major == code_type[1].major for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))]
+    )
+    assert all(
+        code.code_type.cc.minor == code_type[1].minor for code, _ in [compile_blas_execute(MM, code_type=CodeType(*code_type))]
+    )
 
 
 @pytest.mark.parametrize(
@@ -334,7 +337,7 @@ def test_value_type(data_type, precision, value_type):
         data_type=data_type,
         precision=precision,
         arrangement=("col_major", "col_major", "col_major"),
-        code_type=SM90,
+        sm=SM90.cc,
         execution="Block",
     )
     assert MM.a_value_type == value_type
@@ -362,7 +365,7 @@ def test_value_types(data_type, precision, value_types):
         data_type=data_type,
         precision=precision,
         arrangement=("col_major", "col_major", "col_major"),
-        code_type=SM90,
+        sm=SM90.cc,
         execution="Block",
     )
     assert MM.a_value_type == value_types[0]
@@ -627,7 +630,7 @@ def test_static_block_dim():
         data_type="real",
         arrangement=("col_major", "col_major", "col_major"),
         block_dim=(128, 1, 1),
-        compiler="numba",
+        sm=SM80.cc,
     )
 
     MM1 = matmul_base()
@@ -673,10 +676,10 @@ def test_alignment(dtype, alignment, expected, expected_error):
 
     if expected_error:
         with pytest.raises(ValueError, match=expected_error):
-            Matmul()
+            matmul()
         return
 
-    MM = Matmul()
+    MM = matmul()
 
     assert MM.alignment == expected
 

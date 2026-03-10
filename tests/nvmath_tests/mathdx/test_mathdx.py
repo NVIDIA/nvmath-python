@@ -126,7 +126,7 @@ def test_cublasdx_call(precision, data_type):
         data_type=data_type,
         transpose_mode=("non_transposed", "transposed"),
         execution="Block",
-        compiler="numba",
+        sm=ct.cc,
     )
 
     value_type = MM.a_value_type
@@ -154,7 +154,7 @@ def test_cublasdx_call(precision, data_type):
 
         cuda.syncthreads()
 
-        MM(alpha, smem_a, smem_b, beta, smem_c)
+        MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
         cuda.syncthreads()
 

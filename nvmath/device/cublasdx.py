@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["matmul", "TransposeMode", "Matmul", "SharedStorageCalc", "Accumulator", "DevicePipeline", "TilePipeline"]
+__all__ = ["TransposeMode", "Matmul", "SharedStorageCalc", "Accumulator", "DevicePipeline", "TilePipeline"]
 
 from abc import abstractmethod
 from functools import cached_property
@@ -937,6 +937,7 @@ class Matmul:
     def execute(self, *args):
         raise RuntimeError("execute should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
+
 class _MatmulTraits:
     def __init__(self, mm: Matmul):
         h = generate_MM(
@@ -968,7 +969,7 @@ class _MatmulTraits:
 
 
 def compile_blas_execute(
-    blas: Matmul, code_type: Any, execute_api: str | None = None, tensor_types: Sequence[str] | None = None
+    blas: Matmul, code_type: Any, execute_api: str = "static_leading_dimensions", tensor_types: Sequence[str] | None = None
 ) -> tuple[Code, str]:
     check_code_type(code_type, "cuBLASDx")
     validate_execute_api(execute_api)
@@ -1022,7 +1023,7 @@ def compile_blas_execute(
 
 def _blas_handle(
     MM: Matmul,
-    execute_api: str | None = None,
+    execute_api: str = "static_leading_dimensions",
 ):
     handle = generate_MM(
         size=MM.size,

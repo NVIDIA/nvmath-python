@@ -20,9 +20,10 @@ from .helpers import (
     skip_nvbug_5218000,
     time_this,
 )
+import functools
 import time
 from nvmath.device import Matmul, float16x2_type, float32x2_type, float64x2_type, Dim3
-from nvmath.device import TransposeMode, Matmul
+from nvmath.device import TransposeMode
 import pytest
 
 
@@ -279,7 +280,7 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
         SM = ComputeCapability(SM.major, SM.minor)
     MM = time_this(
         "matmul codegen",
-        matmul,
+        Matmul,
         size=(m, n, k),
         data_type=data_type,
         precision=precision,
@@ -288,8 +289,7 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
         block_size=block_size,
         block_dim=block_dim,
         execution="Block",
-        compiler="numba",
-        execute_api="static_leading_dimensions" if not explicit_ld else "dynamic_leading_dimensions",
+        sm=SM,
     )
     show_MM_traits(MM)
 
@@ -389,9 +389,9 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
 
         # Execute FFT
         if explicit_ld:
-            MM(alpha, a_smem, lda, b_smem, ldb, beta, c_smem, ldc)
+            MM.execute(alpha, a_smem, lda, b_smem, ldb, beta, c_smem, ldc)
         else:
-            MM(alpha, a_smem, b_smem, beta, c_smem)
+            MM.execute(alpha, a_smem, b_smem, beta, c_smem)
 
         cuda.syncthreads()
         if cuda.threadIdx.x == 0 and cuda.threadIdx.y == 0 and cuda.threadIdx.z == 0:
@@ -473,7 +473,8 @@ def test_matmul(shape, block_size, block_dim, data_type, trans, arrangement, pre
 
 
 def test_valid():
-    base_MM = Matmul(
+    base_MM = functools.partial(
+        Matmul,
         size=(8, 4, 16),
         data_type="real",
         precision=np.float32,
@@ -483,10 +484,10 @@ def test_valid():
     )
 
     count = 0
-    for (bd,) in base_MM.valid("block_dim"):
-        MM0 = base_MM.create(block_dim=bd, compiler="numba")
+    for (bd,) in base_MM().valid("block_dim"):
+        MM0 = base_MM(block_dim=bd)
         assert isinstance(MM0, Matmul)
-        MM1 = base_MM.create(block_dim=bd, compiler="numba")
+        MM1 = base_MM(block_dim=bd)
         assert isinstance(MM1, Matmul)
         count += 1
 
@@ -516,9 +517,6 @@ def test_opaque_tensor(tensor_types):
         arrangement=("col_major", "row_major", "row_major"),
         execution="Block",
         block_size=block_size,
-        compiler="numba",
-        tensor_types=tensor_types,
-        execute_api="tensors",
     )
 
     is_suggested_a = "suggested" in tensor_types[0]
@@ -620,9 +618,6 @@ def test_copy_negative_cases():
         arrangement=("col_major", "row_major", "row_major"),
         execution="Block",
         block_size=block_size,
-        compiler="numba",
-        tensor_types=("suggested_smem_a", "suggested_smem_b", "suggested_rmem_c"),
-        execute_api="tensors",
     )
 
     # Test 1: copy_fragment used with non-rmem tensor
