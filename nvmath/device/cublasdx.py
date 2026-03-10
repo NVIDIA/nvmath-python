@@ -121,20 +121,11 @@ execute(...) method. Default alignment is equal to an element size of the
 matrix unless used suggested layout. In that case alignment is greater or equal
 than the element size.""".replace("\n", " "),
         #
-        "global_memory_alignment": """\
-Same as alignment, but for the global memory. Used to optimize copying between
-shared and global memory.
-""".replace("\n", " "),
         #
         "function": """\
 A string specifying the name of the function. Currently supports ``'MM'`` (default) for matrix
 multiplication.""".replace("\n", " "),
         #
-        "execute_api": """\
-A string specifying the signature of the function that handles problems with default or custom/dynamic leading dimensions.
-Could be ``'static_leading_dimensions'`` or ``'dynamic_leading_dimensions'``.""".replace("\n", " "),
-        "tensor_types": """\
-A list of strings specifying the tensors being used at execute signature.""".replace("\n", " "),
     }
 )
 
@@ -485,18 +476,6 @@ class Matmul:
         function (str): {function}
 
         execution (str): {execution}
-
-        execute_api (str): {execute_api}
-
-            .. versionchanged:: 0.5.0
-                execute_api is not part of the Matmul (ex. Blas) type. Pass this
-                argument to :py:func:`nvmath.device.matmul` instead.
-
-        tensor_types (Sequence[str]): {tensor_types}
-
-            .. versionchanged:: 0.5.0
-                tensor_types is not part of the Matmul (ex. Blas) type. Pass
-                this argument to :py:func:`nvmath.device.matmul` instead.
 
     .. seealso::
         The attributes of this class provide a 1:1 mapping with the CUDA C++ cuBLASDx APIs.
