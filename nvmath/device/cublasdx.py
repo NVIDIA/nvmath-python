@@ -823,25 +823,6 @@ class Matmul:
     def c_value_type(self):
         return self._traits.value_types[2]
 
-    @property
-    @deprecated("value_type trait is deprecated. Please use {a|b|c}_value_type instead")
-    def value_type(self):
-        if not all(vt == self._traits.value_types[0] for vt in self._traits.value_types):
-            raise RuntimeError("value_type may be used only if all {a|b|c}_value_type have the same type")
-        return self.a_value_type
-
-    @property
-    @deprecated("input_type trait is deprecated. Please use {a|b}_value_type instead")
-    def input_type(self):
-        if self.a_value_type != self.b_value_type:
-            raise RuntimeError("input_type may be used only if A and B input matrix have the same type")
-        return self.a_value_type
-
-    @property
-    @deprecated("output_type trait is deprecated. Please use c_value_type instead")
-    def output_type(self):
-        return self.c_value_type
-
     @cached_property
     def a_dim(self) -> tuple[int, int]:
         (m, _, k) = self.size

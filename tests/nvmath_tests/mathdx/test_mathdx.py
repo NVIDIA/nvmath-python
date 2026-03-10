@@ -129,7 +129,7 @@ def test_cublasdx_call(precision, data_type):
         compiler="numba",
     )
 
-    value_type = MM.value_type
+    value_type = MM.a_value_type
 
     a_size = MM.a_size
     b_size = MM.b_size
