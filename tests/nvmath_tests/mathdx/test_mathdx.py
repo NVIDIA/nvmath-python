@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from nvmath.bindings import mathdx
-from nvmath.device import matmul
+from nvmath.device import Matmul
 
 import numpy as np
 from numba import cuda
@@ -120,7 +120,7 @@ def test_cublasdx_call(precision, data_type):
     ct = get_default_code_type()
     skip_nvbug_5218000(precision, sm=ct)
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=precision,
         data_type=data_type,

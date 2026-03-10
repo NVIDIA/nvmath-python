@@ -9,7 +9,6 @@ from nvmath.device import (
     Dim3,
     CodeType,
     ComputeCapability,
-    matmul,
     TransposeMode,
     LeadingDimension,
     Matmul,
@@ -43,7 +42,7 @@ from .helpers import (
 
 def test_files_closed():
     with AssertFilesClosed():
-        _ = matmul(
+        _ = Matmul(
             size=(16, 8, 16),
             data_type="real",
             precision=np.float32,
@@ -55,7 +54,7 @@ def test_files_closed():
 
 @pytest.mark.parametrize("execute_api", ["static_leading_dimensions", "dynamic_leading_dimensions"])
 def test_third_party_symbol(execute_api):
-    MM = matmul(
+    MM = Matmul(
         size=(24, 8, 48),
         data_type="real",
         precision=np.float64,
@@ -70,7 +69,7 @@ def test_third_party_symbol(execute_api):
 
 
 def test_third_party_code():
-    MM = matmul(
+    MM = Matmul(
         size=(16, 8, 16),
         data_type="real",
         precision=np.float32,
@@ -95,7 +94,7 @@ def test_third_party_code():
 
 @pytest.mark.parametrize("ta, tb", list(itertools.product(["non_transposed", "transposed", "conj_transposed"], repeat=2)))
 def test_transpose_mode(ta, tb):
-    MM1 = matmul(
+    MM1 = Matmul(
         size=(2, 2, 2),
         data_type="complex",
         precision=np.float32,
@@ -104,7 +103,7 @@ def test_transpose_mode(ta, tb):
         execution="Block",
     )
 
-    MM2 = matmul(
+    MM2 = Matmul(
         size=(2, 2, 2),
         data_type="complex",
         precision=np.float32,
@@ -199,7 +198,7 @@ def test_valid_finalize():
 
 def test_cached():
     make_mm = functools.partial(
-        matmul,
+        Matmul,
         size=(32, 16, 32),
         data_type="real",
         precision=np.float32,
@@ -259,13 +258,13 @@ def test_negative(opt, value):
     else:
         opts[opt] = value
     with pytest.raises(Exception):
-        MM = matmul(**opts)  # noqa: F841
+        MM = Matmul(**opts)  # noqa: F841
 
 
 @pytest.mark.parametrize("code_type", [SM70, SM72, SM75, SM80, SM86, SM89, SM90, SM100, SM101, SM103, SM120, SM121])
 def test_sm(code_type):
     skip_unsupported_sm(code_type)
-    MM = matmul(
+    MM = Matmul(
         size=(24, 8, 48),
         data_type="real",
         arrangement=("col_major", "col_major", "col_major"),
@@ -286,7 +285,7 @@ def test_unsupported_sm():
         RuntimeError,
         match="The maximum compute capability currently supported by device APIs is 12.1, got 13.0",
     ):
-        matmul(
+        Matmul(
             size=(24, 8, 48),
             data_type="real",
             arrangement=("col_major", "col_major", "col_major"),
@@ -298,7 +297,7 @@ def test_unsupported_sm():
 
 @pytest.mark.parametrize("code_type", [("lto", (7, 5)), ("lto", (8, 0))])
 def test_sm_type(code_type):
-    MM = matmul(
+    MM = Matmul(
         size=(24, 8, 48),
         data_type="real",
         arrangement=("col_major", "col_major", "col_major"),
@@ -330,7 +329,7 @@ def test_sm_type(code_type):
 )
 def test_value_type(data_type, precision, value_type):
     skip_nvbug_5218000(precision, sm=SM90)
-    MM = matmul(
+    MM = Matmul(
         size=(24, 8, 48),
         data_type=data_type,
         precision=precision,
@@ -358,7 +357,7 @@ def test_value_type(data_type, precision, value_type):
 )
 def test_value_types(data_type, precision, value_types):
     skip_nvbug_5218000(precision, sm=SM90)
-    MM = matmul(
+    MM = Matmul(
         size=(24, 8, 48),
         data_type=data_type,
         precision=precision,
@@ -622,7 +621,7 @@ def test_cublasdx_get_shared_storage_size_args(
 
 def test_static_block_dim():
     matmul_base = functools.partial(
-        matmul,
+        Matmul,
         size=(64, 64, 64),
         precision=(np.float16, np.float32, np.float64),
         data_type="real",
@@ -674,10 +673,10 @@ def test_alignment(dtype, alignment, expected, expected_error):
 
     if expected_error:
         with pytest.raises(ValueError, match=expected_error):
-            matmul()
+            Matmul()
         return
 
-    MM = matmul()
+    MM = Matmul()
 
     assert MM.alignment == expected
 

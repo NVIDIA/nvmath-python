@@ -21,7 +21,7 @@ from .helpers import (
     time_this,
 )
 import time
-from nvmath.device import matmul, float16x2_type, float32x2_type, float64x2_type, Dim3
+from nvmath.device import Matmul, float16x2_type, float32x2_type, float64x2_type, Dim3
 from nvmath.device import TransposeMode, Matmul
 import pytest
 
@@ -509,7 +509,7 @@ def test_opaque_tensor(tensor_types):
     precision = Precision(np.float32, np.float32, np.float64)
 
     assert precision.a == precision.b
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=precision,
         data_type="real",
@@ -613,7 +613,7 @@ def test_copy_negative_cases():
     block_size = 64
     precision = Precision(np.float32, np.float32, np.float32)
 
-    MM = matmul(
+    MM = Matmul(
         size=(m, n, k),
         precision=precision,
         data_type="real",
@@ -659,7 +659,7 @@ def test_copy_negative_cases():
 
 @pytest.mark.skip("Blas partition_like_C is not yet implemented")
 def test_make_fragment_like_C():
-    MM = matmul(
+    MM = Matmul(
         size=(2, 2, 2),
         data_type="real",
         precision=np.float32,

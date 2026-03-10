@@ -4,7 +4,7 @@
 
 from .helpers import l2error, _TOLERANCE
 import numpy as np
-from nvmath.device import matmul, TransposeMode
+from nvmath.device import Matmul, TransposeMode
 import cupy
 from numba import cuda
 from .helpers_numba import run_and_time, shared_load_3d, shared_store_3d
@@ -15,7 +15,7 @@ class NumbaGemmBatched:
         assert precision == np.float32
         assert data_type == "real"
 
-        MM = matmul(
+        MM = Matmul(
             size=size,
             data_type="real",
             precision=np.float32,

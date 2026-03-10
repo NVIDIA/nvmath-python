@@ -714,32 +714,6 @@ class Matmul:
     def valid(self, *knobs):
         return itertools.product(*[self._valid(knob) for knob in knobs])
 
-    @deprecated("create is deprecated and may be removed in future versions. Use `functools.partial` instead")
-    def create(
-        self, code_type=None, compiler=None, execute_api=None, tensor_types=None, global_memory_alignment=None, **kwargs
-    ):
-        """
-        Creates a copy of the instance with provided arguments updated.
-
-        .. deprecated:: 0.7.0
-            Please use :py:func:`functools.partial` instead.
-        """
-        if code_type is not None:
-            DeprecationWarning("code_type is deprecated and will be removed in future releases. It is no longer needed.")
-        if compiler is not None:
-            DeprecationWarning("compiler is deprecated and will be removed in future releases. It is no longer needed.")
-        if execute_api is not None:
-            DeprecationWarning("execute_api is deprecated and will be removed in future releases. It is no longer needed.")
-        if tensor_types is not None:
-            DeprecationWarning("tensor_types is deprecated and will be removed in future releases. It is no longer needed.")
-        if global_memory_alignment is not None:
-            DeprecationWarning(
-                "global_memory_alignment is deprecated and will be removed in future releases. It is no longer needed."
-            )
-        dd = self.definition()
-        dd.update(**kwargs)
-        return Matmul(**dd)
-
     #
     # Private implementations
     #
@@ -981,10 +955,6 @@ class Matmul:
 
         return DevicePipeline(self, pipeline_depth, a, b)
 
-    @deprecated("Calling MM(...) directly is deprecated, please use MM.execute(...) method instead.")
-    def __call__(self, *args):
-        raise RuntimeError("__call__ should not be called directly outside of a numba.cuda.jit(...) kernel.")
-
     def execute(self, *args):
         raise RuntimeError("execute should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
@@ -1117,142 +1087,6 @@ def _blas_tile_pipeline_handle(pipeline: TilePipeline):
     device_pipeline_descriptor = _blas_device_pipeline_handle(pipeline.device_pipeline)
     h = generate_tile_pipeline(MM_descriptor, device_pipeline_descriptor)
     return h.descriptor
-
-
-@docstring_decorator(CUBLASDX_DOCSTRING, skip_missing=False)
-def matmul(*, compiler=None, code_type=None, execute_api=None, tensor_types=None, global_memory_alignment=None, **kwargs):
-    """
-    Create an :class:`Matmul` object that encapsulates a compiled and ready-to-use
-    device function for matrix multiplication.
-
-    .. deprecated:: 0.7.0
-
-    Args:
-        size: {size}
-
-        precision: {precision}
-
-        data_type: {data_type}
-
-        compiler: {compiler}
-
-            .. versionchanged:: 0.7.0
-                compiler is no longer needed and does not take effect. Use
-                :py:func:`nvmath.device.compile_blas_execute` to get device
-                function code.
-
-        code_type (CodeType): {code_type}
-
-            .. versionchanged:: 0.7.0
-                code_type should be used by
-                :py:func:`nvmath.device.compile_blas_execute` and no longer
-                needed for numba-cuda usage.
-
-        block_size (int): {block_size}
-
-        block_dim (Dim3): {block_dim}
-
-        leading_dimension (LeadingDimension): {leading_dimension}
-
-        transpose_mode (TransposeMode): {transpose_mode}
-
-        arrangement (Arrangement): {arrangement}
-
-        alignment (Alignment): {alignment}
-
-        function (str): {function}
-
-        execution (str): {execution}
-
-        execute_api (str): {execute_api}
-
-            .. versionchanged:: 0.7.0
-                execute_api should be used by
-                :py:func:`nvmath.device.compile_blas_execute` and no longer
-                needed for numba-cuda usage.
-
-        tensor_types (str): {tensor_types}
-
-            .. versionchanged:: 0.7.0
-                tensor_types should be used by
-                :py:func:`nvmath.device.compile_blas_execute` and no longer
-                needed for numba-cuda usage.
-
-        global_memory_alignment (Alignment): {global_memory_alignment}
-
-            .. versionchanged:: 0.7.0
-                alignment should be set at :py:func:`nvmath.device.copy`
-                global_memory_alignment should be used by
-                :py:func:`nvmath.device.compile_blas_execute` for non numba-cuda
-                usage. Alignment should be set
-
-    .. seealso::
-        The attributes of :class:`Matmul` provide a 1:1 mapping with the CUDA C++
-        cuBLASDx APIs. For further details, please refer to `cuBLASDx documentation
-        <https://docs.nvidia.com/cuda/cublasdx/>`_.
-
-    Examples:
-
-        >>> from numba import cuda
-        >>> from nvmath.device import matmul
-        >>> import numpy as np
-        >>> m, n, k = 32, 16, 64
-        >>> block_size = 256
-
-        Use :func:`nvmath.device.matmul` to create the compiled matrix multiplication
-        object:
-
-        >>> MM = matmul(
-        ...     size=(m, n, k),
-        ...     precision=np.float32,
-        ...     data_type="real",
-        ...     transpose_mode=("non_transposed", "transposed"),
-        ...     execution="Block",
-        ...     block_size=block_size,
-        ...     compiler="numba",
-        ... )
-
-        Pass ``link=MM.files`` to the :func:`numba.cuda.jit` decorator when defining your
-        kernel to link with the compiled code.
-
-        cuBLASDx works on shared memory arrays. It requires column-major (F order) arrays
-        but :class:`cuda.shared.array` creates row-major (C order) arrays only. You can
-        emulate a column-major array by flipping dimensions. With your shared memory arrays
-        ready and filled with actual data, you can run the matrix multiplication by calling
-        `MM`
-
-        >>> a_dim, b_dim, c_dim = MM.a_dim, MM.b_dim, MM.c_dim
-        >>> @cuda.jit(link=MM.files)
-        ... def f():
-        ...     a = cuda.shared.array(shape=(a_dim[1], a_dim[0]), dtype=np.float32)
-        ...     b = cuda.shared.array(shape=(b_dim[1], b_dim[0]), dtype=np.float32)
-        ...     c = cuda.shared.array(shape=(c_dim[1], c_dim[0]), dtype=np.float32)
-        ...     # TODO: Populate the arrays with actual data.
-        ...     alpha, beta = 1.0, 0.0
-        ...     MM(alpha, a, b, beta, c)
-        ...     cuda.syncthreads()
-        ...     # TODO: Copy the result (c) from the shared memory
-        >>> f[1, block_size]()
-
-        Further examples can be found in the `nvmath/examples/device
-        <https://github.com/NVIDIA/nvmath-python/tree/main/examples/device>`_ directory.
-    """
-    DeprecationWarning("matmul is deprecated and will be removed in future releases. Please use Matmul class directly.")
-    if code_type is not None:
-        DeprecationWarning("code_type is deprecated and will be removed in future releases. It is no longer needed.")
-    if compiler is not None:
-        DeprecationWarning("compiler is deprecated and will be removed in future releases. It is no longer needed.")
-    if execute_api is not None:
-        DeprecationWarning("execute_api is deprecated and will be removed in future releases. It is no longer needed.")
-    if tensor_types is not None:
-        DeprecationWarning("tensor_types is deprecated and will be removed in future releases. It is no longer needed.")
-    if global_memory_alignment is not None:
-        DeprecationWarning(
-            "global_memory_alignment is deprecated and will be removed in "
-            "future releases. It is no longer needed. Please set alignment "
-            "at copy()"
-        )
-    return Matmul(**kwargs)
 
 
 def _parse_layout(layout: str) -> tuple[bool, bool, str, str]:

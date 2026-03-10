@@ -4,7 +4,7 @@
 
 from .helpers import l2error, _TOLERANCE
 import numpy as np
-from nvmath.device import matmul
+from nvmath.device import Matmul
 import cupy
 from numba import cuda
 from .helpers_numba import run_and_time
@@ -15,7 +15,7 @@ class NumbaGemmLoop:
         assert precision == np.float32
         assert data_type == "real"
 
-        MM = matmul(
+        MM = Matmul(
             size=size,
             data_type="real",
             precision=np.float32,
