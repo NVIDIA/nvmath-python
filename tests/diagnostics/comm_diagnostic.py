@@ -8,25 +8,21 @@ try:
     from cuda.core import Device, system
 except ImportError:
     from cuda.core.experimental import Device, system
-import socket
 import os
+import socket
 import warnings
-
 from dataclasses import dataclass
-from mpi4py import MPI
 
+import nccl.core as nccl
 import numpy as np
-from nvmath.bindings import nccl
+from mpi4py import MPI
 
 
 def initialize_nccl(comm, rank, nranks):
     # Create NCCL communicator.
-    unique_id = nccl.UniqueId()
-    if rank == 0:
-        nccl.get_unique_id(unique_id.ptr)
-    # PE 0 broadcasts the unique ID.
-    comm.Bcast(unique_id._data.view(np.int8), root=0)
-    nccl_comm = nccl.comm_init_rank(nranks, unique_id.ptr, rank)
+    unique_id = nccl.get_unique_id()
+    comm.Bcast(unique_id.as_ndarray.view(np.int8), root=0)
+    nccl_comm = nccl.Communicator.init(nranks=nranks, rank=rank, unique_id=unique_id)
     return nccl_comm
 
 
@@ -72,11 +68,11 @@ if cluster_info is None or len(cluster_info) != nranks:
 
 # Construct a map of number of processes and devices per host.
 host_info = {}
-for hostname, num_devices in cluster_info:
+for hostname, host_num_devices in cluster_info:
     if hostname not in host_info:
-        host_info[hostname] = HostInfo(num_devices=num_devices, num_procs=1)
+        host_info[hostname] = HostInfo(num_devices=host_num_devices, num_procs=1)
     else:
-        if host_info[hostname].num_devices != num_devices:
+        if host_info[hostname].num_devices != host_num_devices:
             raise RuntimeError(f"Processes on host {hostname} are not reporting the same device count")
         host_info[hostname].num_procs += 1
 
@@ -110,7 +106,7 @@ if use_nccl:
     nccl_comm = initialize_nccl(comm, rank, nranks)
     if rank == 0:
         print("NCCL initialized")
-    nccl.comm_destroy(nccl_comm)
+    nccl_comm.destroy()
     if rank == 0:
         print("NCCL communicator destroyed")
 

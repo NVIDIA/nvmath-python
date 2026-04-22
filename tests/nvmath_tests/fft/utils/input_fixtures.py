@@ -4,7 +4,6 @@
 
 import random
 
-
 try:
     import cupy as cp
 except ImportError:
@@ -18,13 +17,17 @@ except ImportError:
 import pytest
 
 from nvmath_tests.helpers import (
-    get_random_input_data as _get_random_input_data,
     get_custom_stream as _get_custom_stream,
+)
+from nvmath_tests.helpers import (
     get_framework_device_ctx as _get_framework_device_ctx,
 )
+from nvmath_tests.helpers import (
+    get_random_input_data as _get_random_input_data,
+)
 
-from .common_axes import MemBackend, Framework, DType, ShapeKind, OptFftType, OptFftLayout
-from .axes_utils import get_framework_dtype, size_of, get_fft_dtype
+from .axes_utils import get_fft_dtype, get_framework_dtype, size_of
+from .common_axes import DType, Framework, MemBackend, OptFftLayout, OptFftType, ShapeKind
 
 
 def get_random_input_data(
@@ -117,6 +120,7 @@ def get_stream_pointer(stream) -> int:
 
 def init_assert_exec_backend_specified():
     import pytest
+
     import nvmath
 
     @pytest.fixture(autouse=True)
@@ -147,6 +151,7 @@ def get_primes_up_to(up_to):
 @pytest.fixture
 def fx_last_operand_layout(monkeypatch):
     import nvmath
+
     from .check_helpers import get_array_element_strides, get_raw_ptr
 
     _actual_init = nvmath.fft.FFT.__init__
@@ -161,8 +166,8 @@ def fx_last_operand_layout(monkeypatch):
         ret = _actual_init(self, initial_operand, *args, **kwargs)
         layouts["operand"] = (self.operand.shape, self.operand.strides)
         ptrs["operand"] = self.operand.data_ptr
-        assert self.operand_layout.shape == self.operand.shape
-        assert self.operand_layout.strides == self.operand.strides
+        assert self.internal_operand_layout.shape == self.operand.shape
+        assert self.internal_operand_layout.strides == self.operand.strides
         if self.operand_backup is not None:
             layouts["operand_backup"] = (self.operand_backup.shape, self.operand_backup.strides)
             ptrs["operand_backup"] = self.operand_backup.data_ptr
@@ -227,7 +232,7 @@ def align_up(num_bytes, alignment):
 
 
 def get_overaligned_view(alignment, framework, shape, dtype, mem_backend):
-    from .check_helpers import get_raw_ptr, assert_array_type
+    from .check_helpers import assert_array_type, get_raw_ptr
 
     dtype_size = size_of(dtype)
     assert alignment % dtype_size == 0

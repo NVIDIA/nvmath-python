@@ -13,7 +13,6 @@ The inputs as well as the result are CuPy ndarrays on the GPU.
 import cupy as cp
 import cupyx.scipy.sparse as sp
 
-
 import nvmath
 
 # The number of equations.
@@ -41,7 +40,7 @@ with nvmath.sparse.advanced.DirectSolver(a, b) as solver:
     # Perform numerical factorization, which returns DirectSolverFactorizationInfo. You
     # need to refactor if the LHS values change (but the sparsity structure should remain
     # the same). Alternatively, if the LHS values change only a little, you can solve
-    # solve without refactorization if the number of iterations for iterative refinement
+    # without refactorization if the number of iterations for iterative refinement
     # is adequate and it converges.
     fac_info = solver.factorize()
 

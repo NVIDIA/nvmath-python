@@ -1,53 +1,55 @@
-# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import _cython_3_1_4
+import _cython_3_2_4
 import enum
 from typing import Any, Callable, ClassVar
 
 __pyx_capi__: dict
 __test__: dict
-check_status: _cython_3_1_4.cython_function_or_method
-config_create: _cython_3_1_4.cython_function_or_method
-config_destroy: _cython_3_1_4.cython_function_or_method
-config_get: _cython_3_1_4.cython_function_or_method
-config_set: _cython_3_1_4.cython_function_or_method
-create: _cython_3_1_4.cython_function_or_method
-create_mg: _cython_3_1_4.cython_function_or_method
-data_create: _cython_3_1_4.cython_function_or_method
-data_destroy: _cython_3_1_4.cython_function_or_method
-data_get: _cython_3_1_4.cython_function_or_method
-data_set: _cython_3_1_4.cython_function_or_method
-destroy: _cython_3_1_4.cython_function_or_method
-execute: _cython_3_1_4.cython_function_or_method
-get_config_param_dtype: _cython_3_1_4.cython_function_or_method
-get_data_param_dtype: _cython_3_1_4.cython_function_or_method
-get_device_mem_handler: _cython_3_1_4.cython_function_or_method
-get_property: _cython_3_1_4.cython_function_or_method
-matrix_create_batch_csr: _cython_3_1_4.cython_function_or_method
-matrix_create_batch_dn: _cython_3_1_4.cython_function_or_method
-matrix_create_csr: _cython_3_1_4.cython_function_or_method
-matrix_create_dn: _cython_3_1_4.cython_function_or_method
-matrix_destroy: _cython_3_1_4.cython_function_or_method
-matrix_get_batch_csr: _cython_3_1_4.cython_function_or_method
-matrix_get_batch_dn: _cython_3_1_4.cython_function_or_method
-matrix_get_csr: _cython_3_1_4.cython_function_or_method
-matrix_get_distribution_row1d: _cython_3_1_4.cython_function_or_method
-matrix_get_dn: _cython_3_1_4.cython_function_or_method
-matrix_get_format: _cython_3_1_4.cython_function_or_method
-matrix_set_batch_csr_pointers: _cython_3_1_4.cython_function_or_method
-matrix_set_batch_values: _cython_3_1_4.cython_function_or_method
-matrix_set_csr_pointers: _cython_3_1_4.cython_function_or_method
-matrix_set_distribution_row1d: _cython_3_1_4.cython_function_or_method
-matrix_set_values: _cython_3_1_4.cython_function_or_method
-set_comm_layer: _cython_3_1_4.cython_function_or_method
-set_device_mem_handler: _cython_3_1_4.cython_function_or_method
-set_stream: _cython_3_1_4.cython_function_or_method
-set_threading_layer: _cython_3_1_4.cython_function_or_method
+check_status: _cython_3_2_4.cython_function_or_method
+config_create: _cython_3_2_4.cython_function_or_method
+config_destroy: _cython_3_2_4.cython_function_or_method
+config_get: _cython_3_2_4.cython_function_or_method
+config_set: _cython_3_2_4.cython_function_or_method
+create: _cython_3_2_4.cython_function_or_method
+create_mg: _cython_3_2_4.cython_function_or_method
+data_create: _cython_3_2_4.cython_function_or_method
+data_destroy: _cython_3_2_4.cython_function_or_method
+data_get: _cython_3_2_4.cython_function_or_method
+data_set: _cython_3_2_4.cython_function_or_method
+destroy: _cython_3_2_4.cython_function_or_method
+execute: _cython_3_2_4.cython_function_or_method
+get_config_param_dtype: _cython_3_2_4.cython_function_or_method
+get_data_param_dtype: _cython_3_2_4.cython_function_or_method
+get_device_mem_handler: _cython_3_2_4.cython_function_or_method
+get_property: _cython_3_2_4.cython_function_or_method
+matrix_create_batch_csr: _cython_3_2_4.cython_function_or_method
+matrix_create_batch_dn: _cython_3_2_4.cython_function_or_method
+matrix_create_csr: _cython_3_2_4.cython_function_or_method
+matrix_create_dn: _cython_3_2_4.cython_function_or_method
+matrix_destroy: _cython_3_2_4.cython_function_or_method
+matrix_get_batch_csr: _cython_3_2_4.cython_function_or_method
+matrix_get_batch_dn: _cython_3_2_4.cython_function_or_method
+matrix_get_csr: _cython_3_2_4.cython_function_or_method
+matrix_get_distribution_row1d: _cython_3_2_4.cython_function_or_method
+matrix_get_dn: _cython_3_2_4.cython_function_or_method
+matrix_get_format: _cython_3_2_4.cython_function_or_method
+matrix_set_batch_csr_pointers: _cython_3_2_4.cython_function_or_method
+matrix_set_batch_values: _cython_3_2_4.cython_function_or_method
+matrix_set_csr_pointers: _cython_3_2_4.cython_function_or_method
+matrix_set_distribution_row1d: _cython_3_2_4.cython_function_or_method
+matrix_set_values: _cython_3_2_4.cython_function_or_method
+set_comm_layer: _cython_3_2_4.cython_function_or_method
+set_device_mem_handler: _cython_3_2_4.cython_function_or_method
+set_stream: _cython_3_2_4.cython_function_or_method
+set_threading_layer: _cython_3_2_4.cython_function_or_method
 
 class AlgType(enum.IntEnum):
-    """See `cudssAlgType_t`."""
+    """
+    See `cudssAlgType_t`.
+    """
     __new__: ClassVar[Callable] = ...
     ALG_1: ClassVar[AlgType] = ...
     ALG_2: ClassVar[AlgType] = ...
@@ -62,7 +64,9 @@ class AlgType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class ConfigParam(enum.IntEnum):
-    """See `cudssConfigParam_t`."""
+    """
+    See `cudssConfigParam_t`.
+    """
     __new__: ClassVar[Callable] = ...
     DETERMINISTIC_MODE: ClassVar[ConfigParam] = ...
     DEVICE_COUNT: ClassVar[ConfigParam] = ...
@@ -97,7 +101,9 @@ class ConfigParam(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class DataParam(enum.IntEnum):
-    """See `cudssDataParam_t`."""
+    """
+    See `cudssDataParam_t`.
+    """
     __new__: ClassVar[Callable] = ...
     COMM: ClassVar[DataParam] = ...
     DIAG: ClassVar[DataParam] = ...
@@ -129,7 +135,9 @@ class DataParam(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class IndexBase(enum.IntEnum):
-    """See `cudssIndexBase_t`."""
+    """
+    See `cudssIndexBase_t`.
+    """
     __new__: ClassVar[Callable] = ...
     ONE: ClassVar[IndexBase] = ...
     ZERO: ClassVar[IndexBase] = ...
@@ -140,7 +148,9 @@ class IndexBase(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Layout(enum.IntEnum):
-    """See `cudssLayout_t`."""
+    """
+    See `cudssLayout_t`.
+    """
     __new__: ClassVar[Callable] = ...
     COL_MAJOR: ClassVar[Layout] = ...
     ROW_MAJOR: ClassVar[Layout] = ...
@@ -151,7 +161,9 @@ class Layout(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class MatrixFormat(enum.IntEnum):
-    """See `cudssMatrixFormat_t`."""
+    """
+    See `cudssMatrixFormat_t`.
+    """
     __new__: ClassVar[Callable] = ...
     BATCH: ClassVar[MatrixFormat] = ...
     CSR: ClassVar[MatrixFormat] = ...
@@ -164,7 +176,9 @@ class MatrixFormat(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class MatrixType(enum.IntEnum):
-    """See `cudssMatrixType_t`."""
+    """
+    See `cudssMatrixType_t`.
+    """
     __new__: ClassVar[Callable] = ...
     GENERAL: ClassVar[MatrixType] = ...
     HERMITIAN: ClassVar[MatrixType] = ...
@@ -178,7 +192,9 @@ class MatrixType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class MatrixViewType(enum.IntEnum):
-    """See `cudssMatrixViewType_t`."""
+    """
+    See `cudssMatrixViewType_t`.
+    """
     __new__: ClassVar[Callable] = ...
     FULL: ClassVar[MatrixViewType] = ...
     LOWER: ClassVar[MatrixViewType] = ...
@@ -190,7 +206,9 @@ class MatrixViewType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class OpType(enum.IntEnum):
-    """See `cudssOpType_t`."""
+    """
+    See `cudssOpType_t`.
+    """
     __new__: ClassVar[Callable] = ...
     MAX: ClassVar[OpType] = ...
     MIN: ClassVar[OpType] = ...
@@ -202,7 +220,9 @@ class OpType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Phase(enum.IntEnum):
-    """See `cudssPhase_t`."""
+    """
+    See `cudssPhase_t`.
+    """
     __new__: ClassVar[Callable] = ...
     ANALYSIS: ClassVar[Phase] = ...
     FACTORIZATION: ClassVar[Phase] = ...
@@ -223,7 +243,9 @@ class Phase(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class PivotType(enum.IntEnum):
-    """See `cudssPivotType_t`."""
+    """
+    See `cudssPivotType_t`.
+    """
     __new__: ClassVar[Callable] = ...
     PIVOT_COL: ClassVar[PivotType] = ...
     PIVOT_NONE: ClassVar[PivotType] = ...
@@ -235,7 +257,9 @@ class PivotType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Status(enum.IntEnum):
-    """See `cudssStatus_t`."""
+    """
+    See `cudssStatus_t`.
+    """
     __new__: ClassVar[Callable] = ...
     ALLOC_FAILED: ClassVar[Status] = ...
     EXECUTION_FAILED: ClassVar[Status] = ...

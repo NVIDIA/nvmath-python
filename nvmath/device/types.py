@@ -16,8 +16,9 @@ __all__ = [
     "INT_NP_TYPES",
 ]
 
-import numpy as np
 import warnings
+
+import numpy as np
 
 from ._deprecated import deprecated
 

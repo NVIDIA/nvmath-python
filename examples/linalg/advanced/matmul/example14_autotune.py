@@ -9,12 +9,12 @@ Autotuning will benchmark the algorithms proposed in the planning stage and reor
 according to their performance.
 """
 
+# Enable logging.
+import logging
+
 import cupy as cp
 
 import nvmath
-
-# Enable logging.
-import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 

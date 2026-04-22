@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 0.6.0 to 0.7.0. Do not modify it directly.
+# This code was automatically generated with version 0.8.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 from ._internal cimport cublasMp as _cublasMp
 
@@ -19,12 +19,20 @@ cdef cublasMpStatus_t cublasMpDestroy(cublasMpHandle_t handle) except?_CUBLASMPS
     return _cublasMp._cublasMpDestroy(handle)
 
 
-cdef cublasMpStatus_t cublasMpStreamSet(cublasMpHandle_t handle, cudaStream_t stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    return _cublasMp._cublasMpStreamSet(handle, stream)
+cdef cublasMpStatus_t cublasMpSetStream(cublasMpHandle_t handle, cudaStream_t stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpSetStream(handle, stream)
 
 
-cdef cublasMpStatus_t cublasMpStreamGet(cublasMpHandle_t handle, cudaStream_t* stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    return _cublasMp._cublasMpStreamGet(handle, stream)
+cdef cublasMpStatus_t cublasMpGetStream(cublasMpHandle_t handle, cudaStream_t* stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpGetStream(handle, stream)
+
+
+cdef cublasMpStatus_t cublasMpSetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpSetEmulationStrategy(handle, emulationStrategy)
+
+
+cdef cublasMpStatus_t cublasMpGetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t* emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpGetEmulationStrategy(handle, emulationStrategy)
 
 
 cdef cublasMpStatus_t cublasMpGetVersion(int* version) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -37,6 +45,14 @@ cdef cublasMpStatus_t cublasMpGridCreate(int64_t nprow, int64_t npcol, cublasMpG
 
 cdef cublasMpStatus_t cublasMpGridDestroy(cublasMpGrid_t grid) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cublasMp._cublasMpGridDestroy(grid)
+
+
+cdef cublasMpStatus_t cublasMpBufferRegister(cublasMpGrid_t grid, void* ptr, size_t size) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpBufferRegister(grid, ptr, size)
+
+
+cdef cublasMpStatus_t cublasMpBufferDeregister(cublasMpGrid_t grid, void* ptr) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpBufferDeregister(grid, ptr)
 
 
 cdef cublasMpStatus_t cublasMpMatrixDescriptorCreate(int64_t m, int64_t n, int64_t mb, int64_t nb, int64_t rsrc, int64_t csrc, int64_t lld, cudaDataType_t type, cublasMpGrid_t grid, cublasMpMatrixDescriptor_t* desc) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -63,12 +79,12 @@ cdef cublasMpStatus_t cublasMpMatmulDescriptorInit(cublasMpMatmulDescriptor_t ma
     return _cublasMp._cublasMpMatmulDescriptorInit(matmulDesc, computeType)
 
 
-cdef cublasMpStatus_t cublasMpMatmulDescriptorAttributeSet(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    return _cublasMp._cublasMpMatmulDescriptorAttributeSet(matmulDesc, attr, buf, sizeInBytes)
+cdef cublasMpStatus_t cublasMpMatmulDescriptorSetAttribute(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpMatmulDescriptorSetAttribute(matmulDesc, attr, buf, sizeInBytes)
 
 
-cdef cublasMpStatus_t cublasMpMatmulDescriptorAttributeGet(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    return _cublasMp._cublasMpMatmulDescriptorAttributeGet(matmulDesc, attr, buf, sizeInBytes, sizeWritten)
+cdef cublasMpStatus_t cublasMpMatmulDescriptorGetAttribute(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpMatmulDescriptorGetAttribute(matmulDesc, attr, buf, sizeInBytes, sizeWritten)
 
 
 cdef cublasMpStatus_t cublasMpTrsm_bufferSize(cublasMpHandle_t handle, cublasSideMode_t side, cublasFillMode_t uplo, cublasOperation_t trans, cublasDiagType_t diag, int64_t m, int64_t n, const void* alpha, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, cublasComputeType_t computeType, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -107,6 +123,10 @@ cdef int64_t cublasMpNumroc(int64_t n, int64_t nb, uint32_t iproc, uint32_t isrc
     return _cublasMp._cublasMpNumroc(n, nb, iproc, isrcproc, nprocs)
 
 
+cdef const char* cublasMpGetStatusString(cublasMpStatus_t status) except?NULL nogil:
+    return _cublasMp._cublasMpGetStatusString(status)
+
+
 cdef cublasMpStatus_t cublasMpGemr2D_bufferSize(cublasMpHandle_t handle, int64_t m, int64_t n, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost, ncclComm_t global_comm) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cublasMp._cublasMpGemr2D_bufferSize(handle, m, n, a, ia, ja, descA, b, ib, jb, descB, workspaceSizeInBytesOnDevice, workspaceSizeInBytesOnHost, global_comm)
 
@@ -139,9 +159,9 @@ cdef cublasMpStatus_t cublasMpTradd(cublasMpHandle_t handle, cublasFillMode_t up
     return _cublasMp._cublasMpTradd(handle, uplo, trans, m, n, alpha, a, ia, ja, descA, beta, c, ic, jc, descC, d_work, workspaceSizeInBytesOnDevice, h_work, workspaceSizeInBytesOnHost)
 
 
-cdef cublasMpStatus_t cublasMpSetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    return _cublasMp._cublasMpSetEmulationStrategy(handle, emulationStrategy)
+cdef cublasMpStatus_t cublasMpMalloc(cublasMpGrid_t grid, void** ptr, size_t size) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpMalloc(grid, ptr, size)
 
 
-cdef cublasMpStatus_t cublasMpGetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t* emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    return _cublasMp._cublasMpGetEmulationStrategy(handle, emulationStrategy)
+cdef cublasMpStatus_t cublasMpFree(cublasMpGrid_t grid, void* ptr) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cublasMp._cublasMpFree(grid, ptr)

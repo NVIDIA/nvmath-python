@@ -72,7 +72,7 @@ def fft(
         # Set new operand in object.
         f.reset_operand(a, stream=stream)
     else:
-        # Create a new stateful object, plan the operation, and cache the  object.
+        # Create a new stateful object, plan the operation, and cache the object.
         f = cache[key, stream_ptr] = nvmath.fft.FFT(a, axes=axes, options=options, execution=execution, stream=stream)
         f.plan(prolog=prolog, epilog=epilog, stream=stream)
         logger.info("Cache MISS: creating and caching a planned FFT object.")
@@ -80,7 +80,7 @@ def fft(
     # Execute the FFT on the cached object.
     r = f.execute(direction=direction, stream=stream)
 
-    # Reset operand to None to discard internal reference, allowing memory to be recycled.
-    f.reset_operand(stream=stream)
+    # Release the internal reference to the operand, allowing memory to be recycled.
+    f.release_operand()
 
     return r

@@ -84,8 +84,10 @@ def run_sample(samples_path, filename, env=None, use_subprocess=False, use_mpi=F
                         f"process per GPU and there are {DEVICE_COUNT} GPUs"
                     )
             elif uses_nccl:
-                # NCCL only allows one process per GPU.
-                num_procs = str(DEVICE_COUNT)
+                # For NCCL we can't have more processes than GPUs. And don't use more
+                # than 4 processes since the distributed examples aren't designed
+                # to run with more.
+                num_procs = str(min(4, DEVICE_COUNT))
             else:
                 # Run with 2 processes by default.
                 num_procs = "2"

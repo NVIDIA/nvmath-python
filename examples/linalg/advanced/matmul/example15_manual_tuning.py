@@ -10,8 +10,9 @@ capabilities. As an alternative to manual fine-tuning, you might want to try aut
 see `autotune` example.
 """
 
-import nvmath
 import cupy as cp
+
+import nvmath
 
 # Prepare sample input data
 m = n = k = 1024

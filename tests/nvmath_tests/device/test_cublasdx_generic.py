@@ -2,32 +2,29 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import NamedTuple
-import numpy as np
+import functools
+import itertools
 import time
+from typing import NamedTuple
+
+import numpy as np
+import pytest
+
 from nvmath.device import (
-    Dim3,
     CodeType,
     ComputeCapability,
-    matmul,
-    TransposeMode,
+    Dim3,
     LeadingDimension,
     Matmul,
+    TransposeMode,
+    matmul,
 )
-from nvmath.device.types import complex32, complex64, complex128
 from nvmath.device.common_cuda import MAX_SUPPORTED_CC
 from nvmath.device.cublasdx import SharedStorageCalc, compile_blas_execute
-import functools
-import pytest
-import itertools
+from nvmath.device.cublasdx_backend import MAX_ALIGNMENT, Alignment
+from nvmath.device.types import complex32, complex64, complex128
 
-from nvmath.device.cublasdx_backend import Alignment, MAX_ALIGNMENT
 from .helpers import (
-    SM100,
-    SM101,
-    SM103,
-    SM120,
-    SM121,
     SM70,
     SM72,
     SM75,
@@ -35,8 +32,13 @@ from .helpers import (
     SM86,
     SM89,
     SM90,
-    skip_nvbug_5218000,
+    SM100,
+    SM101,
+    SM103,
+    SM120,
+    SM121,
     AssertFilesClosed,
+    skip_nvbug_5218000,
     skip_unsupported_sm,
 )
 
@@ -258,7 +260,7 @@ def test_negative(opt, value):
         del opts[opt]
     else:
         opts[opt] = value
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         MM = matmul(**opts)  # noqa: F841
 
 

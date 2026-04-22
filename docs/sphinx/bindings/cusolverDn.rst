@@ -177,6 +177,12 @@ Functions
    dx_gesv_buffer_size
    get_deterministic_mode
    get_stream
+   get_emulation_special_values_support
+   get_emulation_strategy
+   get_fixed_point_emulation_mantissa_bit_offset
+   get_fixed_point_emulation_mantissa_control
+   get_fixed_point_emulation_max_mantissa_bit_count
+   get_math_mode
    irs_infos_create
    irs_infos_destroy
    irs_infos_get_max_iters
@@ -211,6 +217,12 @@ Functions
    sb_gesv_buffer_size
    set_adv_options
    set_deterministic_mode
+   set_emulation_special_values_support
+   set_emulation_strategy
+   set_fixed_point_emulation_mantissa_bit_offset
+   set_fixed_point_emulation_mantissa_control
+   set_fixed_point_emulation_max_mantissa_bit_count
+   set_math_mode
    set_stream
    sgebrd
    sgebrd_buffer_size
@@ -299,9 +311,13 @@ Functions
    xgetrs
    xlarft
    xlarft_buffer_size
+   xpolar
+   xpolar_buffer_size
    xpotrf
    xpotrf_buffer_size
    xpotrs
+   xstedc
+   xstedc_buffer_size
    xsyev_batched
    xsyev_batched_buffer_size
    xsyevd
@@ -313,6 +329,10 @@ Functions
    xsyevj_set_max_sweeps
    xsyevj_set_sort_eig
    xsyevj_set_tolerance
+   xsygvd
+   xsygvd_buffer_size
+   xsygvdx
+   xsygvdx_buffer_size
    xsytrs
    xsytrs_buffer_size
    xtrtri

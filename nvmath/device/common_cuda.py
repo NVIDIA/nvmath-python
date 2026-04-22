@@ -13,10 +13,12 @@ __all__ = [
     "MAX_SUPPORTED_CC",
 ]
 
-from typing import NamedTuple
-from cuda.bindings import runtime as cudart, driver as cudadrv
 import logging
 from collections import namedtuple
+from typing import NamedTuple
+
+from cuda.bindings import driver as cudadrv
+from cuda.bindings import runtime as cudart
 
 
 # Code = CodeType + ISAVersion + buffer
@@ -172,7 +174,7 @@ def get_default_code_type() -> CodeType:
     try:
         return CodeType("lto", get_current_device_cc())
     except RuntimeError as e:
-        raise ValueError(f"Failed to get the current GPU compute capability (got {e}). Set code_type explicitly.")
+        raise ValueError(f"Failed to get the current GPU compute capability (got {e}). Set code_type explicitly.") from e
 
 
 def current_device_lto():

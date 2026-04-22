@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.2.6 to 11.4.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.2.6 to 11.4.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 from ._internal cimport cufftMp as _cufftMp
 

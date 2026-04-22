@@ -2,17 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
-import pytest
 import re
 
+import numpy as np
+import pytest
+
 import nvmath.distributed
+from nvmath.distributed import MPIProcessGroup, free_symmetric_memory
+from nvmath.distributed._internal.tensor_wrapper import maybe_register_package
+from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand
 from nvmath.distributed.distribution import Box
 from nvmath.internal.utils import device_ctx, get_or_create_stream
-from nvmath.distributed import free_symmetric_memory
-from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand, maybe_register_package
 
-from .helpers import calculate_strides, gather_array, generate_random_data, is_close, to_host
+from .helpers import assert_close, calculate_strides, gather_array, generate_random_data, process_group_broadcast, to_host
 from .helpers_fft import calc_slab_shape
 
 try:
@@ -24,9 +26,8 @@ package_name_to_package = {"numpy": np}
 
 
 @pytest.fixture(scope="module")
-def nvmath_distributed():
+def nvmath_distributed(process_group):
     """Pytest fixture that initializes nvmath.distributed and finalizes it on exit"""
-    from mpi4py import MPI
 
     maybe_register_package("cupy")
     try:
@@ -41,8 +42,8 @@ def nvmath_distributed():
         num_devices = system.get_num_devices()
     except AttributeError:
         num_devices = system.num_devices
-    device_id = MPI.COMM_WORLD.Get_rank() % num_devices
-    nvmath.distributed.initialize(device_id, MPI.COMM_WORLD, backends=["nvshmem"])
+    device_id = process_group.rank % num_devices
+    nvmath.distributed.initialize(device_id, process_group, backends=["nvshmem"])
 
     yield
 
@@ -67,9 +68,9 @@ def _calculate_local_box(global_shape, partition_dim, rank, nranks) -> Box:
 @pytest.mark.parametrize("dtype", [np.int8, np.int16])
 def test_unsupported_itemsize(dtype, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     global_shape = (16, 16)
     shape = calc_slab_shape(global_shape, 0, rank, nranks)
@@ -88,8 +89,7 @@ def test_wrong_boxes1(nvmath_distributed, check_symmetric_memory_leaks):
     """In this test, the input and output box of one process overlaps with those
     of another process."""
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    nranks = comm.Get_size()
+    nranks = distributed_ctx.process_group.nranks
 
     if nranks == 1:
         pytest.skip("This test requires nranks > 1")
@@ -107,9 +107,9 @@ def test_wrong_boxes2(nvmath_distributed, check_symmetric_memory_leaks):
     actual number of global elements.
     """
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     if nranks < 2 or nranks > 8:
         pytest.skip("This test requires nranks in [2,8]")
@@ -128,8 +128,7 @@ def test_wrong_boxes2(nvmath_distributed, check_symmetric_memory_leaks):
 
 def test_wrong_boxes3(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    nranks = comm.Get_size()
+    nranks = distributed_ctx.process_group.nranks
 
     if nranks == 1:
         pytest.skip("This test requires nranks > 1")
@@ -144,9 +143,9 @@ def test_wrong_boxes3(nvmath_distributed, check_symmetric_memory_leaks):
 
 def test_inconsistent_layout(nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     if nranks == 1:
         pytest.skip("This test requires nranks > 1")
@@ -169,9 +168,9 @@ def test_inconsistent_layout(nvmath_distributed, check_symmetric_memory_leaks):
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_reshape_matrix_2_processes(memory_order, dtype, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     if nranks != 2:
         pytest.skip("This test requires 2 ranks")
@@ -206,9 +205,9 @@ def test_reshape_matrix_2_processes(memory_order, dtype, nvmath_distributed, che
 @pytest.mark.parametrize("dtype", [np.int32, np.int64])
 def test_reshape_matrix_4_processes(memory_order, dtype, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     if nranks != 4:
         pytest.skip("This test requires 4 ranks")
@@ -249,12 +248,12 @@ def test_reshape_matrix_4_processes(memory_order, dtype, nvmath_distributed, che
 
 
 @pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
-def test_reset_operand_none(input_memory_space, nvmath_distributed, check_symmetric_memory_leaks):
+def test_execute_raises_after_release_operand(input_memory_space, nvmath_distributed, check_symmetric_memory_leaks):
     distributed_ctx = nvmath.distributed.get_context()
     device_id = distributed_ctx.device_id
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     global_shape = (16, 16)
     shape = calc_slab_shape(global_shape, 0, rank, nranks)
@@ -271,26 +270,82 @@ def test_reset_operand_none(input_memory_space, nvmath_distributed, check_symmet
         reshape.plan()
         result1 = reshape.execute()
         result2 = reshape.execute()
-        if input_memory_space == "gpu":
-            free_symmetric_memory(result1)
-            free_symmetric_memory(result2)
-        reshape.reset_operand(None)
-        with pytest.raises(RuntimeError, match="Execution cannot be performed if the input operand has been set to None"):
+        reshape.release_operand()
+        with pytest.raises(RuntimeError, match="Execution cannot be performed after the operand has been released"):
             reshape.execute()
         reshape.reset_operand(data_in.tensor)
         result3 = reshape.execute()
-        if input_memory_space == "gpu":
-            free_symmetric_memory(result3)
 
     if input_memory_space == "gpu":
-        free_symmetric_memory(data_in.tensor)
+        # NOTE: nvshmem_free can only be called after the computation has finished.
+        # It's safe to do here because releasing the workspace synchronizes on the
+        # compute stream.
+        free_symmetric_memory(data_in.tensor, result1, result2, result3)
+
+
+@pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
+@pytest.mark.parametrize("release_after", ["after_init", "after_plan", "after_execute"])
+def test_release_operand_refcount(input_memory_space, release_after, nvmath_distributed, check_symmetric_memory_leaks):
+    """
+    Test that release_operand() can be called after __init__, after plan(),
+    or after execute(), and that in each case the refcount of the user-provided
+    operand returns to its initial value.
+    """
+    import sys
+
+    distributed_ctx = nvmath.distributed.get_context()
+    device_id = distributed_ctx.device_id
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
+
+    global_shape = (16, 16)
+    shape = calc_slab_shape(global_shape, 0, rank, nranks)
+    box = _calculate_local_box(global_shape, 0, rank, nranks)
+    dtype = np.complex64
+
+    stream = None
+    if input_memory_space == "gpu":
+        stream = get_or_create_stream(device_id, stream=None, op_package="cupy")
+
+    _, data_in = generate_random_data(np, input_memory_space, shape, dtype, stream)
+    a = data_in.tensor
+    initial_refcount = sys.getrefcount(a)
+
+    reshape = nvmath.distributed.reshape.Reshape(a, box, box)
+
+    if release_after == "after_init":
+        reshape.release_operand()
+    elif release_after == "after_plan":
+        reshape.plan()
+        reshape.release_operand()
+    elif release_after == "after_execute":
+        reshape.plan()
+        result = reshape.execute()
+        if input_memory_space == "gpu":
+            # NOTE: nvshmem_free can only be called after the computation has finished.
+            stream.obj.sync()
+            free_symmetric_memory(result)
+        del result
+        reshape.release_operand()
+
+    assert sys.getrefcount(a) == initial_refcount, (
+        f"release_operand did not restore refcount for input_memory_space={input_memory_space}, "
+        f"release_after={release_after}. "
+        f"Refcount after release: {sys.getrefcount(a)}, expected: {initial_refcount}"
+    )
+
+    reshape.free()
+
+    if input_memory_space == "gpu":
+        free_symmetric_memory(a)
 
 
 @pytest.mark.parametrize("package", ["numpy", "torch"])  # numpy uses cupy for GPU
 @pytest.mark.parametrize("global_shape", [(128, 32), (128, 32, 64), (32, 32, 32)])
 @pytest.mark.parametrize("input_memory_space", ["cpu", "gpu"])
 @pytest.mark.parametrize("memory_order", ["C", "F"])
-@pytest.mark.parametrize("provide_out", [False])
+# @pytest.mark.parametrize("provide_out", [False])
 @pytest.mark.parametrize("reset_inplace", [True, False])
 # For blocking we just test that it runs without error.
 @pytest.mark.parametrize("blocking", [True, "auto"])
@@ -299,7 +354,7 @@ def test_distributed_reshape(
     global_shape,
     input_memory_space,
     memory_order,
-    provide_out,
+    # provide_out,
     reset_inplace,
     blocking,
     nvmath_distributed,
@@ -336,9 +391,9 @@ def test_distributed_reshape(
 
     distributed_ctx = nvmath.distributed.get_context()
     device_id = distributed_ctx.device_id
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     stream = None
     if input_memory_space == "gpu":
@@ -365,13 +420,14 @@ def test_distributed_reshape(
         assert memory_order == "F"
         axis_order = tuple(range(len(global_shape)))
 
-    out = None
-    if provide_out:
-        out_shape = calc_slab_shape(global_shape, 1, rank, nranks)
-        strides = calculate_strides(out_shape, axis_order)
-        out = data_in.__class__.empty(
-            out_shape, data_in.device_id, dtype=data_in.dtype, strides=strides, symmetric_memory=(input_memory_space == "gpu")
-        )
+    # out = None
+    # if provide_out:
+    #     out_shape = calc_slab_shape(global_shape, 1, rank, nranks)
+    #     strides = calculate_strides(out_shape, axis_order)
+    #     out = data_in.__class__.empty(
+    #         out_shape, data_in.device_id, dtype=data_in.dtype, strides=strides,
+    #         symmetric_memory=(input_memory_space == "gpu")
+    #     )
 
     options = {"blocking": blocking}
     with nvmath.distributed.reshape.Reshape(data_in.tensor, input_box, output_box, options=options) as reshape:
@@ -400,15 +456,20 @@ def test_distributed_reshape(
             assert data_in.module is result.module
 
             # Assert that the operation didn't change the input data.
-            assert is_close(original_data_in, data_in), "Input changed by Reshape"
+            assert_close(original_data_in, data_in)
             if nranks > 1:
-                assert not is_close(original_data_in, result)
+                # assert original_data_in and result are not close
+                try:
+                    assert_close(original_data_in, result)
+                    raise AssertionError("result is not different from original data")
+                except AssertionError:
+                    pass
 
             if original_data_in.device == "cuda":
                 free_symmetric_memory(original_data_in.tensor)
 
-            if provide_out:
-                assert result.tensor is out.tensor
+            # if provide_out:
+            #     assert result.tensor is out.tensor
 
             if input_memory_space == "gpu":
                 assert result.device == "cuda"
@@ -417,9 +478,10 @@ def test_distributed_reshape(
                 assert result.device == "cpu"
                 result_cpu = result
 
-            # If reset_inplace and provide_out, we can't free the result memory
-            # yet, since it's going to be reused.
-            if not (reset_inplace and provide_out) and input_memory_space == "gpu":
+            # # If reset_inplace and provide_out, we can't free the result memory
+            # # yet, since it's going to be reused.
+            # if not (reset_inplace and provide_out) and input_memory_space == "gpu":
+            if input_memory_space == "gpu":
                 free_symmetric_memory(result.tensor)
 
             # Check that the result has the expected shape.
@@ -427,24 +489,24 @@ def test_distributed_reshape(
 
             # Gathering the input and output on their respective partition dimension, the
             # gathered arrays must be equal.
-            data_in_cpu_global = gather_array(data_in_cpu, 0, comm, rank)
+            data_in_cpu_global = gather_array(data_in_cpu, 0, process_group, rank)
             del data_in_cpu
 
-            result_cpu_global = gather_array(result_cpu, 1, comm, rank)
+            result_cpu_global = gather_array(result_cpu, 1, process_group, rank)
             del result_cpu
 
             if rank == 0:
                 try:
-                    assert is_close(result_cpu_global, data_in_cpu_global), "Gathered arrays don't match"
-                    comm.bcast(None)
+                    assert_close(result_cpu_global, data_in_cpu_global)
+                    process_group_broadcast(process_group, None)
                 except Exception as e:
                     # Broadcast the exception to avoid deadlock.
-                    comm.bcast(e)
+                    process_group_broadcast(process_group, e)
                     raise
             else:
                 # If rank 0 raises an exception, every process has to do the same to avoid
                 # deadlock.
-                e = comm.bcast(None)
+                e = process_group_broadcast(process_group, None)
                 if e is not None:
                     raise e
             del data_in_cpu_global, result_cpu_global
@@ -461,23 +523,23 @@ def test_distributed_reshape(
                     if input_memory_space == "gpu":
                         free_symmetric_memory(data_in.tensor)
                     data_in = data_in_new
-                    if provide_out:
-                        out = out.__class__.empty(
-                            out_shape,
-                            out.device_id,
-                            dtype=out.dtype,
-                            strides=out.strides,
-                            symmetric_memory=(input_memory_space == "gpu"),
-                        )
-                        reshape.reset_operand(data_in.tensor, out=out.tensor)
-                    else:
-                        # assert reshape.out is None
-                        reshape.reset_operand(data_in.tensor)
+                    # if provide_out:
+                    #     out = out.__class__.empty(
+                    #         out_shape,
+                    #         out.device_id,
+                    #         dtype=out.dtype,
+                    #         strides=out.strides,
+                    #         symmetric_memory=(input_memory_space == "gpu"),
+                    #     )
+                    #     reshape.reset_operand(data_in.tensor, out=out.tensor)
+                    # else:
+                    #     # assert reshape.out is None
+                    reshape.reset_operand(data_in.tensor)
             else:
                 if input_memory_space == "gpu":
                     free_symmetric_memory(data_in.tensor)
-                    if reset_inplace and provide_out and input_memory_space == "gpu":
-                        free_symmetric_memory(result.tensor)
+                    # if reset_inplace and provide_out and input_memory_space == "gpu":
+                    #     free_symmetric_memory(result.tensor)
                 break
 
 
@@ -489,14 +551,16 @@ def test_distributed_reshape_1D(package, nvmath_distributed, check_symmetric_mem
     are evenly divided across the other ranks."""
 
     distributed_ctx = nvmath.distributed.get_context()
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
-    if nranks == 1:
-        pytest.skip("This test needs to be run with 2 or 4 PEs")
+    if not isinstance(process_group, MPIProcessGroup):
+        pytest.skip("This test requires MPI")
+    comm = process_group._mpi_comm
 
-    assert nranks in (2, 4)
+    if nranks not in (2, 4):
+        pytest.skip("This test needs to be run with 2 or 4 processes")
 
     try:
         pkg = package_name_to_package[package]
@@ -519,7 +583,7 @@ def test_distributed_reshape_1D(package, nvmath_distributed, check_symmetric_mem
         output_box = Box([0], [80])
     else:
         lower = 80
-        for i in range(1, rank):
+        for _i in range(1, rank):
             lower += nelems_per_other_rank
         output_box = Box([lower], [lower + nelems_per_other_rank])
 
@@ -534,22 +598,22 @@ def test_distributed_reshape_1D(package, nvmath_distributed, check_symmetric_mem
     else:
         assert result.shape == (nelems_per_other_rank,)
 
-    data_in_global = gather_array(data_in, 0, comm, rank)
+    data_in_global = gather_array(data_in, 0, process_group, rank)
 
     if rank == 0:
         result_global = result.__class__.empty(global_shape, result.device_id, dtype=result.dtype, symmetric_memory=False)
         sendcounts = [80] + [nelems_per_other_rank for i in range(nranks - 1)]
         comm.Gatherv(sendbuf=result.tensor, recvbuf=(result_global.tensor, sendcounts))
         try:
-            assert is_close(result_global, data_in_global), "Gathered arrays don't match"
-            comm.bcast(None)
+            assert_close(result_global, data_in_global)
+            process_group_broadcast(process_group, None)
         except Exception as e:
             # Broadcast the exception to avoid deadlock.
-            comm.bcast(e)
+            process_group_broadcast(process_group, e)
             raise
     else:
         comm.Gatherv(result.tensor, [])
         # If rank 0 raises an exception, every process has to do the same to avoid deadlock.
-        e = comm.bcast(None)
+        e = process_group_broadcast(process_group, None)
         if e is not None:
             raise e

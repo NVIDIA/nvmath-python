@@ -12,9 +12,9 @@ The basic reference implementation is provided in `fftn1.py`.
 import functools
 
 import cupy as cp
+from caching import FFTCache
+from caching import fft as cached_fft
 from cupyx.profiler import benchmark
-
-from caching import fft as cached_fft, FFTCache
 from fftn1 import fftn
 
 shape = 32, 8, 128, 64, 16

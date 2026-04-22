@@ -7,9 +7,10 @@
 #
 
 import numpy as np
+from common import fp16x2_to_complex64, random_real
 from numba import cuda
+
 from nvmath.device import FFT, float16x2, float16x2_type
-from common import random_real, fp16x2_to_complex64
 
 
 def main():

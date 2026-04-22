@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.2.0, generator version 0.3.1.dev1507+g11b8deb46. Do not modify it directly.
 
 cimport cython  # NOQA
 from libc.stdint cimport int64_t
@@ -19,12 +19,16 @@ from enum import IntEnum as _IntEnum
 ###############################################################################
 
 class LibFormat(_IntEnum):
-    """See `libFormat_t`."""
+    """
+    See `libFormat_t`.
+    """
     CUFFT = LIB_FORMAT_CUFFT
     UNDEFINED = LIB_FORMAT_UNDEFINED
 
 class Result(_IntEnum):
-    """See `cufftResult`."""
+    """
+    See `cufftResult`.
+    """
     SUCCESS = CUFFT_SUCCESS
     INVALID_PLAN = CUFFT_INVALID_PLAN
     ALLOC_FAILED = CUFFT_ALLOC_FAILED
@@ -43,12 +47,14 @@ class Result(_IntEnum):
     NVRTC_FAILURE = CUFFT_NVRTC_FAILURE
     NVJITLINK_FAILURE = CUFFT_NVJITLINK_FAILURE
     NVSHMEM_FAILURE = CUFFT_NVSHMEM_FAILURE
-    INCOMPLETE_PARAMETER_LIST = _CUFFTRESULT_INTERNAL_LOADING_ERROR
-    PARSE_ERROR = CUFFT_INCOMPLETE_PARAMETER_LIST
-    LICENSE_ERROR = CUFFT_PARSE_ERROR
+    INCOMPLETE_PARAMETER_LIST = CUFFT_INCOMPLETE_PARAMETER_LIST
+    PARSE_ERROR = CUFFT_PARSE_ERROR
+    LICENSE_ERROR = CUFFT_LICENSE_ERROR
 
 class Type(_IntEnum):
-    """See `cufftType`."""
+    """
+    See `cufftType`.
+    """
     R2C = CUFFT_R2C
     C2R = CUFFT_C2R
     C2C = CUFFT_C2C
@@ -57,11 +63,15 @@ class Type(_IntEnum):
     Z2Z = CUFFT_Z2Z
 
 class Compatibility(_IntEnum):
-    """See `cufftCompatibility`."""
+    """
+    See `cufftCompatibility`.
+    """
     FFTW_PADDING = CUFFT_COMPATIBILITY_FFTW_PADDING
 
 class XtSubFormat(_IntEnum):
-    """See `cufftXtSubFormat`."""
+    """
+    See `cufftXtSubFormat`.
+    """
     FORMAT_INPUT = CUFFT_XT_FORMAT_INPUT
     FORMAT_OUTPUT = CUFFT_XT_FORMAT_OUTPUT
     FORMAT_INPLACE = CUFFT_XT_FORMAT_INPLACE
@@ -69,28 +79,36 @@ class XtSubFormat(_IntEnum):
     FORMAT_1D_INPUT_SHUFFLED = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
     FORMAT_DISTRIBUTED_INPUT = CUFFT_XT_FORMAT_DISTRIBUTED_INPUT
     FORMAT_DISTRIBUTED_OUTPUT = CUFFT_XT_FORMAT_DISTRIBUTED_OUTPUT
-    FORMAT_FORMAT_UNDEFINED = CUFFT_FORMAT_UNDEFINED
+    FORMAT_UNDEFINED = CUFFT_FORMAT_UNDEFINED
 
 class XtCopyType(_IntEnum):
-    """See `cufftXtCopyType`."""
+    """
+    See `cufftXtCopyType`.
+    """
     HOST_TO_DEVICE = CUFFT_COPY_HOST_TO_DEVICE
     DEVICE_TO_HOST = CUFFT_COPY_DEVICE_TO_HOST
     DEVICE_TO_DEVICE = CUFFT_COPY_DEVICE_TO_DEVICE
     UNDEFINED = CUFFT_COPY_UNDEFINED
 
 class XtQueryType(_IntEnum):
-    """See `cufftXtQueryType`."""
+    """
+    See `cufftXtQueryType`.
+    """
     QUERY_1D_FACTORS = CUFFT_QUERY_1D_FACTORS
     QUERY_UNDEFINED = CUFFT_QUERY_UNDEFINED
 
 class XtWorkAreaPolicy(_IntEnum):
-    """See `cufftXtWorkAreaPolicy`."""
+    """
+    See `cufftXtWorkAreaPolicy`.
+    """
     MINIMAL = CUFFT_WORKAREA_MINIMAL
     USER = CUFFT_WORKAREA_USER
     PERFORMANCE = CUFFT_WORKAREA_PERFORMANCE
 
 class XtCallbackType(_IntEnum):
-    """See `cufftXtCallbackType`."""
+    """
+    See `cufftXtCallbackType`.
+    """
     LD_COMPLEX = CUFFT_CB_LD_COMPLEX
     LD_COMPLEX_DOUBLE = CUFFT_CB_LD_COMPLEX_DOUBLE
     LD_REAL = CUFFT_CB_LD_REAL
@@ -102,7 +120,9 @@ class XtCallbackType(_IntEnum):
     UNDEFINED = CUFFT_CB_UNDEFINED
 
 class Property(_IntEnum):
-    """See `cufftProperty`."""
+    """
+    See `cufftProperty`.
+    """
     PATIENT_JIT = NVFFT_PLAN_PROPERTY_INT64_PATIENT_JIT
     MAX_NUM_HOST_THREADS = NVFFT_PLAN_PROPERTY_INT64_MAX_NUM_HOST_THREADS
 
@@ -129,6 +149,10 @@ cdef dict STATUS = {
     CUFFT_NOT_IMPLEMENTED           : 'CUFFT_NOT_IMPLEMENTED',
     CUFFT_LICENSE_ERROR             : 'CUFFT_LICENSE_ERROR',
     CUFFT_NOT_SUPPORTED             : 'CUFFT_NOT_SUPPORTED',
+    CUFFT_MISSING_DEPENDENCY        : 'CUFFT_MISSING_DEPENDENCY',
+    CUFFT_NVRTC_FAILURE             : 'CUFFT_NVRTC_FAILURE',
+    CUFFT_NVJITLINK_FAILURE         : 'CUFFT_NVJITLINK_FAILURE',
+    CUFFT_NVSHMEM_FAILURE           : 'CUFFT_NVSHMEM_FAILURE',
 }
 
 

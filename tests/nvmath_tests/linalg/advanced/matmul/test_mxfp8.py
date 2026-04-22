@@ -7,17 +7,19 @@ try:
     import torch
 except ImportError:
     torch = None
-import pytest
-from ...utils import sample_matrix
-from .fp8_utils import assert_fp8_equal
-from nvmath.linalg.advanced import Matmul, matmul, MatmulEpilog as Epilog
-from nvmath.linalg.advanced.helpers import matmul as matmul_helpers
-from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
-from nvmath.bindings import cublasLt as cublaslt
-from nvmath.internal.utils import check_or_create_options
-from nvmath.linalg.advanced import _configuration
 from contextlib import nullcontext
-from ...utils import allow_cublas_unsupported
+
+import pytest
+
+from nvmath.bindings import cublasLt as cublaslt
+from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
+from nvmath.internal.utils import check_or_create_options
+from nvmath.linalg.advanced import Matmul, _configuration, matmul
+from nvmath.linalg.advanced import MatmulEpilog as Epilog
+from nvmath.linalg.advanced.helpers import matmul as matmul_helpers
+
+from ...utils import allow_cublas_unsupported, pad_and_slice, sample_matrix
+from .fp8_utils import assert_fp8_equal
 
 if torch is None:
     pytest.skip("Torch is required for MXFP8 tests", allow_module_level=True)
@@ -191,11 +193,23 @@ SUPPORTED_TYPE_COMBINATIONS = (
 @pytest.mark.parametrize("a_scale_range", ((-5, 5),))
 @pytest.mark.parametrize("b_scale_range", ((-5, 5),))
 @pytest.mark.parametrize(("use_cuda"), (True, False))
-def test_mxfp8(m, n, k, atype, btype, ctype, dtype, a_scale_range, b_scale_range, use_cuda):
+@pytest.mark.parametrize(
+    "pad_a,pad_b",
+    [(False, False), (True, False), (False, True), (True, True)],
+    ids=["no_pad", "pad_a", "pad_b", "pad_ab"],
+)
+def test_mxfp8(m, n, k, atype, btype, ctype, dtype, a_scale_range, b_scale_range, use_cuda, pad_a, pad_b):
     """
     Basic MXFP8 test.
     """
-    a, b, c, alpha, beta = generate_simple_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
+    PAD = 16
+    a_orig, b_orig, c, alpha, beta = generate_simple_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
+    a = pad_and_slice(a_orig) if pad_a else a_orig
+    b = pad_and_slice(b_orig) if pad_b else b_orig
+    if pad_a:
+        assert a.stride() == (k + 2 * PAD, 1)
+    if pad_b:
+        assert b.stride() == (1, k + 2 * PAD)
 
     result_type = expected_result_type(atype, btype, ctype, dtype)
     ascales = generate_mxfp8_scales(a, a_scale_range, use_cuda=use_cuda)
@@ -205,8 +219,9 @@ def test_mxfp8(m, n, k, atype, btype, ctype, dtype, a_scale_range, b_scale_range
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "block_scaling": True}
     result, d_out, _ = unpack_matmul(matmul(a, b, c=c, alpha=alpha, beta=beta, quantization_scales=scales, options=options))
 
+    # important: we use the original (non-padded) matrices for the reference computation
     reference = mxfp8_matmul_reference(
-        a, b, d_out=d_out, c=c, alpha=alpha, beta=beta, quantization_scales=scales, options=options
+        a_orig, b_orig, d_out=d_out, c=c, alpha=alpha, beta=beta, quantization_scales=scales, options=options
     )
     assert_fp8_equal(result, reference)
     assert str(result.dtype).split(".")[-1] == result_type
@@ -229,8 +244,28 @@ def test_mxfp8(m, n, k, atype, btype, ctype, dtype, a_scale_range, b_scale_range
     ((128, 128, 128),),
 )
 @pytest.mark.parametrize(("use_cuda"), (True,))
+@pytest.mark.parametrize(
+    "pad_a,pad_b",
+    [(False, False), (True, False), (False, True), (True, True)],
+    ids=["no_pad", "pad_a", "pad_b", "pad_ab"],
+)
 def test_batching(
-    m, n, k, atype, btype, ctype, dtype, a_scale_range, b_scale_range, a_batch, b_batch, c_batch, d_batch, use_cuda
+    m,
+    n,
+    k,
+    atype,
+    btype,
+    ctype,
+    dtype,
+    a_scale_range,
+    b_scale_range,
+    a_batch,
+    b_batch,
+    c_batch,
+    d_batch,
+    use_cuda,
+    pad_a,
+    pad_b,
 ):
     """
     Tests if batching works with MXFP8.
@@ -243,8 +278,10 @@ def test_batching(
         x = sample_matrix("torch", type, shape, use_cuda=use_cuda, min=0, max=2)
         return x.swapaxes(-1, -2) if transposed else x
 
-    a = sample_batch(a_batch, (m, k), atype, transposed=False)
-    b = sample_batch(b_batch, (k, n), btype, transposed=True)
+    a_orig = sample_batch(a_batch, (m, k), atype, transposed=False)
+    b_orig = sample_batch(b_batch, (k, n), btype, transposed=True)
+    a = pad_and_slice(a_orig) if pad_a else a_orig
+    b = pad_and_slice(b_orig) if pad_b else b_orig
 
     ascales = generate_mxfp8_scales(a, a_scale_range, use_cuda=use_cuda)
     bscales = generate_mxfp8_scales(b, b_scale_range, use_cuda=use_cuda)
@@ -261,15 +298,12 @@ def test_batching(
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "block_scaling": True}
     scales = {"a": ascales, "b": bscales}
     result, d_out, _ = unpack_matmul(matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=scales, options=options))
+    # important: we use the original (non-padded) matrices for the reference computation
     reference = mxfp8_matmul_reference(
-        a, b, c=c, alpha=alpha, d_out=d_out, beta=beta, quantization_scales=scales, options=options
+        a_orig, b_orig, c=c, alpha=alpha, d_out=d_out, beta=beta, quantization_scales=scales, options=options
     )
     expected_result_shape = (*d_batch, m, n)
     assert result.shape == expected_result_shape
-
-    reference = mxfp8_matmul_reference(
-        a, b, c, d_out=d_out, alpha=alpha, beta=beta, quantization_scales=scales, options=options
-    )
     assert_fp8_equal(result, reference)
 
 
@@ -455,7 +489,10 @@ def test_epilogs(
         inputs["bias"] = bias
     if "DRELU" in epilog_name:
         round_16 = lambda x: (x + 15) // 16 * 16
-        inputs["relu_aux"] = torch.randint(low=0, high=256, size=(n, round_16(m // 8))).type(torch.uint8).T
+        relu_aux = torch.randint(low=0, high=256, size=(n, round_16(m // 8))).type(torch.uint8).T
+        if use_cuda:
+            relu_aux = relu_aux.cuda()
+        inputs["relu_aux"] = relu_aux
     if "DGELU" in epilog_name:
         if order == "col":
             inputs["gelu_aux"] = sample_matrix("torch", result_type, (n, m), use_cuda=use_cuda, min=-5, max=5).T
@@ -533,10 +570,72 @@ def test_helpers():
     """
     x = torch.ones((1024, 3 * 1024), dtype=torch.float8_e4m3fn)
     scales = matmul_helpers.create_mxfp8_scale(x, 3)
-    y = matmul_helpers.apply_mxfp8_scale(x, scales)
+    y = matmul_helpers.apply_mxfp8_scale(x, scales, output_dtype=torch.float32)
     assert_fp8_equal(y, x.type(torch.float32) * 8)
-    z = matmul_helpers.apply_mxfp8_scale(y, matmul_helpers.invert_mxfp8_scale(scales))
+    z = matmul_helpers.apply_mxfp8_scale(y, matmul_helpers.invert_mxfp8_scale(scales), output_dtype=torch.float32)
     assert_fp8_equal(z, x.type(torch.float32))
+
+
+def test_apply_mxfp8_scale_dtype_overflow():
+    """
+    When a concrete dtype is given, it must be at least as wide as smallest that fits.
+    """
+    # scale 2^16 -> result needs float32 at least
+    x = torch.ones((128, 128), dtype=torch.float8_e4m3fn)
+    scales = matmul_helpers.create_mxfp8_scale(x, 16)
+    with pytest.raises(ValueError, match="requires at least.*float16 would overflow"):
+        matmul_helpers.apply_mxfp8_scale(x, scales, output_dtype=torch.float16)
+
+
+def test_apply_mxfp8_scale_dtype_underflow():
+    """
+    When a concrete dtype is given, it must be at least as wide as smallest that fits.
+    """
+    # Scale 2^-25 -> result needs float32 at least
+    x = torch.ones((128, 128), dtype=torch.float8_e4m3fn)
+    scales = matmul_helpers.create_mxfp8_scale(x, -25)
+    with pytest.raises(ValueError, match="requires at least.*float16 would overflow"):
+        matmul_helpers.apply_mxfp8_scale(x, scales, output_dtype=torch.float16)
+
+
+@pytest.mark.parametrize("output_dtype", ("smallest", "uint8", "float16", "float32", "float64"))
+@pytest.mark.parametrize("actual_dtype", ("float16", "float32", "float64"))
+def test_expand_block_scale_output_dtype(output_dtype, actual_dtype):
+    exponent = {"float16": (-14, 15), "float32": (-126, 127), "float64": (-127, 128)}
+    output_dtype_arg = output_dtype if output_dtype == "smallest" else getattr(torch, output_dtype)
+    tensor_min = torch.zeros(128 * 4, dtype=torch.uint8)
+    tensor_max = torch.zeros(128 * 4, dtype=torch.uint8)
+    min_exponent, max_exponent = exponent[actual_dtype]
+    ue8m0_min = min_exponent + 127
+    ue8m0_max = max_exponent + 127
+    tensor_min[:] = ue8m0_min
+    tensor_max[:] = ue8m0_max
+    if output_dtype in ("smallest", "uint8") or exponent[output_dtype][1] >= max_exponent:
+        expanded_min = matmul_helpers.expand_block_scale(
+            tensor_min, (128, 128), "MXFP8", axis=-1, output_dtype=output_dtype_arg
+        )
+        expanded_max = matmul_helpers.expand_block_scale(
+            tensor_max, (128, 128), "MXFP8", axis=-1, output_dtype=output_dtype_arg
+        )
+        if output_dtype in ("smallest", "uint8"):
+            assert expanded_min.dtype == torch.uint8
+            assert expanded_max.dtype == torch.uint8
+            assert torch.all(tensor_min == ue8m0_min)
+            assert torch.all(tensor_max == ue8m0_max)
+        else:
+            assert expanded_min.dtype == output_dtype_arg
+            assert expanded_max.dtype == output_dtype_arg
+            ref_fp64_min = torch.tensor(2**min_exponent, dtype=torch.float64)
+            ref_fp64_max = torch.tensor(2**max_exponent, dtype=torch.float64)
+            assert torch.all(torch.isfinite(ref_fp64_min))
+            assert torch.all(torch.isfinite(ref_fp64_max))
+            assert torch.all(expanded_min == ref_fp64_min)
+            assert torch.all(expanded_max == ref_fp64_max)
+    else:
+        with pytest.raises(ValueError, match=f"requires at least torch.{actual_dtype};"):
+            matmul_helpers.expand_block_scale(tensor_min, (128, 128), "MXFP8", axis=-1, output_dtype=output_dtype_arg)
+        with pytest.raises(ValueError, match=f"requires at least torch.{actual_dtype};"):
+            matmul_helpers.expand_block_scale(tensor_max, (128, 128), "MXFP8", axis=-1, output_dtype=output_dtype_arg)
 
 
 @pytest.mark.parametrize("M,N", ((1024, 3 * 1024), (128, 128), (5 * 1024, 256)))
@@ -560,6 +659,23 @@ def test_indexing_helpers(M, N, nsamples, input_format):
         assert all(res == ref for res, ref in zip(result, reference, strict=True))
     else:
         raise RuntimeError
+
+
+@pytest.mark.parametrize(
+    "shape,index",
+    [
+        ((128, 128), (0, 0, 0)),
+        ((128, 128), (0,)),
+        ((128,), (0,)),
+    ],
+)
+def test_get_mxfp8_scale_offset_negative(shape, index):
+    """
+    Tests error handling in get_mxfp8_scale_offset.
+    """
+    tensor = torch.zeros(shape, dtype=torch.float8_e4m3fn)
+    with pytest.raises(ValueError):
+        matmul_helpers.get_mxfp8_scale_offset(tensor, index)
 
 
 @pytest.mark.parametrize("order", ("t", "b", "tb", "bt", "tbt", "btb"))
@@ -712,7 +828,7 @@ def test_validation_shapes(m, n, k, atype, btype, ctype, dtype, a_scale_range, b
 
     scales = {"a": ascales, "b": bscales}
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "block_scaling": True}
-    with pytest.raises(ValueError, match=f"M={m} N={n} K={k} must be divisible by 128 when block_scaling=True"):
+    with pytest.raises(ValueError, match=f"M={m} N={n} K={k} must be divisible by 128 for FP8 block_scaling"):
         matmul(a, b, c=c, alpha=alpha, beta=beta, quantization_scales=scales, options=options)
 
 
@@ -747,7 +863,7 @@ def test_validation_scales_shapes(m, n, k, atype, btype, ctype, dtype, a_err, b_
     a, b, c, alpha, beta = generate_simple_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
 
     ascales = torch.zeros(size=(a.nelement() // 32 + a_err,), dtype=torch.uint8, device=a.device)
-    bscales = torch.zeros(size=(a.nelement() // 32 + b_err,), dtype=torch.uint8, device=a.device)
+    bscales = torch.zeros(size=(b.nelement() // 32 + b_err,), dtype=torch.uint8, device=b.device)
     scales = {"a": ascales, "b": bscales}
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "block_scaling": True}
 
@@ -787,3 +903,12 @@ def test_validation_scales_dtype(m, n, k, atype, btype, ctype, dtype, scale_dtyp
 
     with pytest.raises(ValueError, match="Block scales for (A|B) must be uint8 tensor"):
         matmul(a, b, c=c, alpha=alpha, beta=beta, quantization_scales=scales, options=options)
+
+
+def test_helper_exponent_128():
+    x = torch.zeros((1024, 3 * 1024), dtype=torch.float8_e4m3fn)
+    x[0, 0] = 0.125
+    scales = matmul_helpers.create_mxfp8_scale(x, 128)
+    assert scales[0] == 255
+    y = matmul_helpers.apply_mxfp8_scale(x, scales, output_dtype=torch.float64)
+    assert_fp8_equal(y, x.type(torch.float64) * (2.0**128))

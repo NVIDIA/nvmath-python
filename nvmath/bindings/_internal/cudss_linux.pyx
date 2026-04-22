@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.7.0. Do not modify it directly.
+# This code was automatically generated with version 0.7.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -109,6 +109,10 @@ cdef int _check_or_init_cudss() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cudss_init:
+            return 0
+
         # Load function
         global __cudssConfigSet
         __cudssConfigSet = dlsym(RTLD_DEFAULT, 'cudssConfigSet')

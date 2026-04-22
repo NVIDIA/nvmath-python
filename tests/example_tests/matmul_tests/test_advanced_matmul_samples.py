@@ -7,17 +7,18 @@ import os
 import re
 
 import pytest
+from packaging.version import Version
 
 from nvmath import bindings
-from ..test_utils import run_sample, cc
 
+from ..test_utils import cc, run_sample
 
 samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "linalg", "advanced", "matmul")
 sample_files = glob.glob(samples_path + "**/*.py", recursive=True)
 
 # Handle MPI tests separately.
 mpi_re = r".*_mpi[_]?.*\.py"
-sample_files = list(filter(lambda f: not re.search(mpi_re, f), sample_files))
+sample_files = list(filter(lambda f: not re.search(mpi_re, f) and "example39_utils.py" not in f, sample_files))
 
 min_cublas_version = {
     "example09_epilog_bias.py": 11501,
@@ -44,6 +45,24 @@ min_cublas_version = {
     "example27_mxfp8_chaining.py": 120800,
     "example28_mxfp8_epilog.py": 120800,
     "example29_mxfp8_layout.py": 120800,
+    "example34_nvfp4.py": 120800,
+    "example35_nvfp4_d_out.py": 120800,
+    "example36_nvfp4_batched.py": 120800,
+    "example37_nvfp4_scale_layout.py": 120800,
+    "example38_nvfp4_slice_operands.py": 120800,
+    "example39_nvfp4_quantize_with_microscaling.py": 120800,
+    "example39_mxfp8_quantize_with_microscaling.py": 120800,
+}
+
+min_pytorch_version = {
+    "example33_fp4_encode_decode.py": "2.9",
+    "example34_nvfp4.py": "2.9",
+    "example35_nvfp4_d_out.py": "2.9",
+    "example36_nvfp4_batched.py": "2.9",
+    "example37_nvfp4_scale_layout.py": "2.9",
+    "example38_nvfp4_slice_operands.py": "2.9",
+    "example39_nvfp4_quantize_with_microscaling.py": "2.9",
+    "example39_mxfp8_quantize_with_microscaling.py": "2.9",
 }
 
 min_cc = {
@@ -60,11 +79,25 @@ min_cc = {
     "example27_mxfp8_chaining.py": (10, 0),
     "example28_mxfp8_epilog.py": (10, 0),
     "example29_mxfp8_layout.py": (10, 0),
+    "example34_nvfp4.py": (10, 0),
+    "example35_nvfp4_d_out.py": (10, 0),
+    "example36_nvfp4_batched.py": (10, 0),
+    "example37_nvfp4_scale_layout.py": (10, 0),
+    "example38_nvfp4_slice_operands.py": (10, 0),
+    "example39_nvfp4_quantize_with_microscaling.py": (10, 0),
+    "example39_mxfp8_quantize_with_microscaling.py": (10, 0),
 }
 try:
     cublas_version = bindings.cublasLt.get_version()
 except:
     cublas_version = 0
+
+try:
+    import torch
+
+    torch_version = torch.__version__
+except ImportError:
+    torch_version = "0.0.0"
 
 
 @pytest.mark.parametrize("sample", sample_files)
@@ -77,4 +110,7 @@ class TestMatmulSamples:
         required_cc = min_cc.get(filename, (0, 0))
         if cc < required_cc:
             pytest.skip(f"compute capability {cc} lower than required {required_cc}")
+        required_torch = min_pytorch_version.get(filename)
+        if required_torch is not None and Version(torch_version) < Version(required_torch):
+            pytest.skip(f"PyTorch {torch_version} lower than required ({required_torch}+)")
         run_sample(samples_path, sample)

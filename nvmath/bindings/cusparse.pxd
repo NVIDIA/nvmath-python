@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.0, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 cimport cython
 
@@ -29,6 +29,8 @@ ctypedef cusparseSpSVDescr_t SpSVDescr
 ctypedef cusparseSpSMDescr_t SpSMDescr
 ctypedef cusparseSpGEMMDescr_t SpGEMMDescr
 ctypedef cusparseSpMMOpPlan_t SpMMOpPlan
+ctypedef cusparseSpMVOpDescr_t SpMVOpDescr
+ctypedef cusparseSpMVOpPlan_t SpMVOpPlan
 ctypedef cusparseLoggerCallback_t LoggerCallback
 
 ctypedef cudaStream_t Stream
@@ -327,3 +329,10 @@ cpdef intptr_t create_const_sliced_ell(int64_t rows, int64_t cols, int64_t nnz, 
 cpdef sp_sv_update_matrix(intptr_t handle, intptr_t spsv_descr, intptr_t new_values, int update_part)
 cpdef sp_mv_preprocess(intptr_t handle, int op_a, intptr_t alpha, intptr_t mat_a, intptr_t vec_x, intptr_t beta, intptr_t vec_y, int compute_type, int alg, intptr_t external_buffer)
 cpdef sp_sm_update_matrix(intptr_t handle, intptr_t spsm_descr, intptr_t new_values, int update_part)
+cpdef intptr_t sp_mv_op_create_descr(intptr_t handle, int op_a, intptr_t mat_a, intptr_t vec_x, intptr_t vec_y, intptr_t vec_z, int compute_type, intptr_t buffer) except? 0
+cpdef sp_mv_op_destroy_descr(intptr_t desc)
+cpdef intptr_t sp_mv_op_create_plan(intptr_t handle, intptr_t desc, intptr_t code, size_t code_size) except? 0
+cpdef sp_mv_op_destroy_plan(intptr_t plan)
+cpdef sp_mv_op_set_global_user_data(intptr_t handle, intptr_t plan, intptr_t global_data_name, intptr_t input_data, size_t data_size)
+cpdef sp_mv_op(intptr_t handle, intptr_t plan, intptr_t alpha, intptr_t beta, intptr_t vec_x, intptr_t vec_y, intptr_t vec_z)
+cpdef size_t sp_mv_op_buffer_size(intptr_t handle, int op_a, intptr_t mat_a, intptr_t vec_x, intptr_t vec_y, intptr_t vec_z, int compute_type) except? 0

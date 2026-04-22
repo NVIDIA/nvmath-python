@@ -84,7 +84,9 @@ Tensor Operations (:mod:`nvmath.tensor`)
    ContractionPlanPreference
    Operator
 
-   :template: dataclass.rst
+.. autosummary::
+   :toctree: generated/
+   :template: dataclass
 
    ContractionOptions
    ExecutionCUDA

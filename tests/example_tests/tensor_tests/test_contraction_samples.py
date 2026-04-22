@@ -7,12 +7,10 @@ import os
 
 import pytest
 
-
 from nvmath.bindings import cutensor
-from nvmath.bindings._internal.utils import NotSupportedError, FunctionNotFoundError
+from nvmath.bindings._internal.utils import FunctionNotFoundError, NotSupportedError
 
-from ..test_utils import run_sample, cc
-
+from ..test_utils import cc, run_sample
 
 try:
     cutensor.get_version()

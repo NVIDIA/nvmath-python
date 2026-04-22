@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from nvmath.bindings import mathdx
-
 import numpy
+
+from nvmath.bindings import mathdx
 
 size = 32
 ept = 4

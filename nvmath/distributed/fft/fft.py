@@ -4,33 +4,32 @@
 
 __all__ = ["allocate_operand", "FFT", "fft", "ifft", "rfft", "irfft"]
 
-from typing import Literal, cast
-from types import ModuleType
-from collections.abc import Sequence
-from dataclasses import dataclass
 import functools
 import logging
 import math
+from collections.abc import Sequence
+from dataclasses import dataclass
+from types import ModuleType
+from typing import Literal, cast
+
 import numpy as np
 
-from ._configuration import FFTOptions, FFTDirection
-
 import nvmath.distributed
-from nvmath.distributed.distribution import Distribution, Slab, Box
+import nvmath.internal.ndbuffer.ndbuffer as ndbuffer
+from nvmath import memory
+from nvmath._internal.layout import is_overlapping_layout
 from nvmath.bindings import cufftMp as cufft  # type: ignore
 from nvmath.bindings import nvshmem  # type: ignore
-from nvmath import memory
-from nvmath.distributed._internal.nvshmem import NvshmemMemoryManager, NvshmemNDBufferAllocator
-
-import nvmath.internal.ndbuffer.ndbuffer as ndbuffer
-from nvmath.internal import formatters
 from nvmath.distributed._internal import tensor_wrapper
+from nvmath.distributed._internal.nvshmem import NvshmemMemoryManager, NvshmemNDBufferAllocator
 from nvmath.distributed._internal.tensor_ifc import DistributedTensor
 from nvmath.distributed._internal.tensor_ifc_numpy import CudaDistributedTensor
-from nvmath.internal.typemaps import NAME_TO_DATA_TYPE, NAME_TO_ITEM_SIZE
-from nvmath.internal import utils
-from nvmath._internal.layout import is_overlapping_layout
+from nvmath.distributed.distribution import Box, Distribution, Slab
+from nvmath.internal import formatters, utils
 from nvmath.internal.package_wrapper import AnyStream, StreamHolder
+from nvmath.internal.typemaps import NAME_TO_DATA_TYPE, NAME_TO_ITEM_SIZE
+
+from ._configuration import FFTDirection, FFTOptions
 
 
 @dataclass
@@ -43,9 +42,8 @@ class TensorLayout:
 
 @dataclass
 class _ProblemSpec:
-    """This is used in a custom MPI reduction to check that the FFT problem
-    specification is consistent across processes, and to infer global information
-    (e.g shape)."""
+    """This is used in a custom reduction to check that the FFT problem specification
+    is consistent across processes, and to infer global information (e.g shape)."""
 
     @dataclass
     class Options:
@@ -124,11 +122,17 @@ GPUs are already synchronized on the source operand, can set this to False.""".r
         #
         "function_signature": """\
 operand,
+/,
+*,
 distribution: Distribution | Sequence[Box],
 sync_symmetric_memory: bool = True,
 options: FFTOptions | None = None,
 stream: AnyStream | None = None
 """.replace("\n", " "),
+        #
+        "reset_operand_unchecked": utils._reset_operand_unchecked_docstring(
+            False, version_added="0.9.0", validation_examples="package match, data type match, distribution validation"
+        ),
     }
 )
 
@@ -502,9 +506,9 @@ def allocate_operand(
         )
     if not distributed_ctx.nvshmem_available:
         raise RuntimeError("nvmath.distributed wasn't initialized with NVSHMEM backend")
-    comm = distributed_ctx.communicator
-    rank = comm.Get_rank()
-    nranks = comm.Get_size()
+    process_group = distributed_ctx.process_group
+    rank = process_group.rank
+    nranks = process_group.nranks
 
     if package_name in ("numpy", "cupy"):
         if input_dtype is None:
@@ -541,7 +545,7 @@ def allocate_operand(
         global_size=math.prod(shape),
     )
     if nranks > 1:
-        problem_spec = comm.allreduce(problem_spec, op=_problem_spec_reducer)
+        problem_spec = process_group.allreduce_object(problem_spec, op=_problem_spec_reducer)
     else:
         # This ensures error-checking with one rank.
         problem_spec = _problem_spec_reducer(problem_spec, problem_spec)
@@ -585,7 +589,7 @@ def _get_view(
     array,
     desired_shape: Sequence[int],
     desired_dtype: str,
-    comm,
+    process_group,
     collective_error_checking: bool,
 ):
     """Returns view of the array of the desired shape and dtype. If the given array doesn't
@@ -594,7 +598,7 @@ def _get_view(
     starting from the beginning of the buffer."""
     error = None
     desired_size = math.prod(desired_shape)  # number of elements
-    rank = comm.Get_rank()
+    rank = process_group.rank
     try:
         if array.dtype == desired_dtype and array.size == desired_size:
             if tuple(array.shape) != tuple(desired_shape):
@@ -663,66 +667,114 @@ def _get_view(
         error = e
 
     if collective_error_checking:
-        error = comm.allreduce(error, _reduce_exception)
+        error = process_group.allreduce_object(error, op=_reduce_exception)
     if error:
         raise error
 
     return result
 
 
-def _copy_operand_perhaps(
-    internal_operand: DistributedTensor | None,
-    operand: DistributedTensor,
-    stream_holder,
-    execution_space,
-    memory_space,
-    device_id: int | Literal["cpu"],
-    fft_abstract_type,
-    global_shape,
-    distribution,
-    capacity,
-    rank,
-    nranks,
-    logger,
-):
-    if execution_space == memory_space:
-        return operand, None
+def _alloc_and_copy_to_exespace_mirror(
+    user_operand: DistributedTensor,
+    stream_holder: StreamHolder,
+    fft_abstract_type: Literal["C2C", "C2R", "R2C"],
+    global_shape: Sequence[int],
+    distribution: Slab | Sequence[Box],
+    capacity: int,
+    rank: int,
+    nranks: int,
+) -> DistributedTensor:
+    """
+    Allocate a CUDA symmetric-memory buffer, copy the CPU operand into it,
+    and return a reference to the new device-side :class:`DistributedTensor`.
+    """
+    if user_operand.name == "numpy":
+        package: ModuleType = ndbuffer
+        dtype = user_operand.dtype
     else:
-        # Copy the `operand` to memory that matches the exec space and keep the
-        # original `operand` since distributed FFT has inplace behavior and the
-        # result will overwrite the original operand.
-        if internal_operand is None:
-            assert execution_space == "cuda"
-            package: ModuleType
-            if operand.name == "numpy":
-                package = ndbuffer
-                dtype = operand.dtype
-            elif operand.name == "torch":
-                import torch as package
+        import torch as package
 
-                dtype = operand.tensor.dtype
+        dtype = user_operand.tensor.dtype
 
-            # XXX: not passing the stream to allocator because nvshmem_malloc doesn't
-            # take a stream.
-            exec_space_copy = _allocate_for_fft(
-                global_shape,
-                operand.shape,
-                distribution,
-                dtype,
-                "cuda",
-                package,
-                fft_abstract_type,
-                capacity,
-                rank,
-                nranks,
-            )
-            assert exec_space_copy.device_id == device_id
-            exec_space_copy.copy_(operand, stream_holder)
-            return exec_space_copy, operand
-        else:
-            # In-place copy to existing pointer
-            internal_operand.copy_(operand, stream_holder=stream_holder)
-            return internal_operand, operand
+    exespace_mirror_operand = _allocate_for_fft(
+        global_shape,
+        user_operand.shape,
+        distribution,
+        dtype,
+        "cuda",
+        package,
+        fft_abstract_type,
+        capacity,
+        rank,
+        nranks,
+    )
+    exespace_mirror_operand.copy_(user_operand, stream_holder)
+    return exespace_mirror_operand
+
+
+def _alloc_and_copy_to_exespace_mirror_or_identity(
+    user_operand: DistributedTensor,
+    stream_holder: StreamHolder,
+    execution_space: Literal["cuda", "cpu"],
+    memory_space: Literal["cuda", "cpu"],
+    device_id: int | Literal["cpu"],
+    fft_abstract_type: Literal["C2C", "C2R", "R2C"],
+    global_shape: Sequence[int],
+    distribution: Slab | Sequence[Box],
+    capacity: int,
+    rank: int,
+    nranks: int,
+) -> tuple[DistributedTensor, DistributedTensor | None]:
+    """
+    Allocate the exespace mirror for the given execution/memory space, or
+    return the user operand as-is (identity) when no mirror is needed.
+
+    Used during construction and after release_operand() when the exespace
+    mirror needs to be created from scratch.
+
+    Returns ``(operand, operand_backup)`` where:
+      - Same-space: ``operand`` is the user operand itself, ``operand_backup``
+        is ``None`` (no mirror needed).
+      - Cross-space: ``operand`` is the newly allocated device-side mirror,
+        ``operand_backup`` is the original user operand (for result copy-back).
+    """
+    if execution_space == memory_space:
+        return user_operand, None
+    assert execution_space == "cuda"
+    exespace_mirror_operand = _alloc_and_copy_to_exespace_mirror(
+        user_operand, stream_holder, fft_abstract_type, global_shape, distribution, capacity, rank, nranks
+    )
+    # Sanity-check: the allocation above is done on the device specified by the
+    # distributed context, which must match the device the FFT object expects.
+    assert exespace_mirror_operand.device_id == device_id
+    return exespace_mirror_operand, user_operand
+
+
+def _copy_to_exespace_mirror_or_identity(
+    exespace_mirror_operand: DistributedTensor,
+    new_operand: DistributedTensor,
+    stream_holder: StreamHolder,
+    execution_space: Literal["cuda", "cpu"],
+    memory_space: Literal["cuda", "cpu"],
+) -> tuple[DistributedTensor, DistributedTensor | None]:
+    """
+    Copy new operand data into an existing exespace mirror, or return the
+    new operand as-is (identity) when no mirror is needed.
+
+    Used by reset_operand() when the operand has NOT been released, so the
+    exespace mirror is still valid and can be reused via in-place copy.
+
+    Returns ``(operand, operand_backup)`` where:
+      - Same-space: ``operand`` is the new user operand, ``operand_backup``
+        is ``None`` (no mirror needed).
+      - Cross-space: ``operand`` is the existing mirror (updated in-place),
+        ``operand_backup`` is the new user operand (for result copy-back).
+    """
+    if execution_space == memory_space:
+        return new_operand, None
+    else:
+        exespace_mirror_operand.copy_(new_operand, stream_holder=stream_holder)
+        return exespace_mirror_operand, new_operand
 
 
 def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
@@ -843,7 +895,7 @@ def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
                 return Box(lower, upper)
 
             # Merge the boxes to get the global operand shape. Note that this is applied
-            # progressively throughout the MPI reduction, starting with the local boxes.
+            # progressively throughout the reduction, starting with the local boxes.
             p1.distribution = (reduce_boxes(input_box1, input_box2), reduce_boxes(output_box1, output_box2))
 
     except Exception as e:
@@ -897,6 +949,9 @@ class FFT:
         ...     datefmt="%m-%d %H:%M:%S",
         ... )
 
+    .. versionchanged:: 0.9.0
+        The `operand` parameter is now positional-only.
+
     Args:
         operand: {operand}
             {operand_admonitions}
@@ -908,23 +963,24 @@ class FFT:
         stream: {stream}
 
     .. seealso::
-        :meth:`plan`, :meth:`reset_operand`, :meth:`execute`
+        :meth:`plan`, :meth:`reset_operand`, :meth:`execute`,
+        :meth:`release_operand`
 
     Examples:
 
         >>> import cupy as cp
         >>> import nvmath.distributed
 
-        Get MPI communicator used to initialize nvmath.distributed (for information on
+        Get process group used to initialize nvmath.distributed (for information on
         initializing nvmath.distributed, you can refer to the documentation or to the
         FFT examples in `nvmath/examples/distributed/fft
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft>`_):
 
-        >>> comm = nvmath.distributed.get_context().communicator
+        >>> process_group = nvmath.distributed.get_context().process_group
 
         Get the number of processes:
 
-        >>> nranks = comm.Get_size()
+        >>> nranks = process_group.nranks
 
         Create a 3-D complex128 ndarray on GPU symmetric memory, distributed according to
         the Slab distribution on the X axis (the global shape is (128, 128, 128)):
@@ -1026,6 +1082,7 @@ class FFT:
     def __init__(
         self,
         operand,
+        /,
         *,
         distribution: Distribution | Sequence[Box],
         options: FFTOptions | None = None,
@@ -1040,9 +1097,9 @@ class FFT:
             )
         if not distributed_ctx.nvshmem_available:
             raise RuntimeError("nvmath.distributed wasn't initialized with NVSHMEM backend")
-        self.communicator = communicator = distributed_ctx.communicator
-        self.rank = rank = communicator.Get_rank()
-        self.nranks = nranks = communicator.Get_size()
+        self.process_group = process_group = distributed_ctx.process_group
+        self.rank = rank = process_group.rank
+        self.nranks = nranks = process_group.nranks
 
         self.operand = operand = tensor_wrapper.wrap_operand(operand)
         self.options = options = cast(FFTOptions, utils.check_or_create_options(FFTOptions, options, "Distributed FFT options"))
@@ -1072,7 +1129,7 @@ class FFT:
             global_size=math.prod(operand.shape),
         )
         if nranks > 1:
-            problem_spec = communicator.allreduce(problem_spec, op=_problem_spec_reducer)
+            problem_spec = process_group.allreduce_object(problem_spec, op=_problem_spec_reducer)
         else:
             # Ensure we error-check with one rank.
             problem_spec = _problem_spec_reducer(problem_spec, problem_spec)
@@ -1132,7 +1189,7 @@ class FFT:
                 distribution._bind(self.global_extents, shape=self.operand.shape)
             except Exception as e:
                 error = e
-            error = communicator.allreduce(error, _reduce_exception)
+            error = process_group.allreduce_object(error, op=_reduce_exception)
             if error:
                 raise error
         else:
@@ -1164,12 +1221,11 @@ class FFT:
         self.capacity: int = _calculate_capacity(problem_spec, self.global_extents, self.fft_abstract_type, nranks)
 
         # Copy the operand to execution_space's device if needed.
-        self.operand, self.operand_backup = _copy_operand_perhaps(
-            None,
+        self.operand, self.operand_backup = _alloc_and_copy_to_exespace_mirror_or_identity(
             operand,
             stream_holder,
-            self.execution_space,
-            self.memory_space,
+            self.execution_space,  # type: ignore[arg-type]
+            self.memory_space,  # type: ignore[arg-type]
             self.device_id,
             self.fft_abstract_type,
             self.global_extents,
@@ -1177,8 +1233,12 @@ class FFT:
             self.capacity,
             rank,
             nranks,
-            self.logger,
         )
+
+        # Track whether the user has called release_operand(). This flag is
+        # checked in _check_valid_operand to prevent execution after the user
+        # has released their operand. It is cleared by reset_operand().
+        self._operand_released = False
 
         operand = self.operand
         # Capture operand layout for consistency checks when resetting operands.
@@ -1295,7 +1355,7 @@ class FFT:
         # expected shape and dtype on this rank according to the FFT type and operand
         # distributions). Note that since the FFT is inplace, the result operand shares
         # the same buffer with the input operand.
-        self._get_result_operand(collective_error_checking=True)
+        self._update_result_view_attributes(collective_error_checking=True)
 
         # Create handle.
         with utils.device_ctx(self.device_id):
@@ -1398,12 +1458,19 @@ class FFT:
             self.logger.debug("The reshape output (empty) tensor has been created.")
         return result
 
-    def _get_result_operand(self, collective_error_checking):
+    def _get_result_views(self, collective_error_checking):
+        """Compute result-operand views from the current operand buffer.
+
+        Returns ``(result, cpu_result)`` where *result* is a view of
+        ``self.operand`` shaped for the FFT output and *cpu_result* is the
+        corresponding view of ``self.operand_backup`` (or ``None`` when there
+        is no cross-space backup).
+        """
         if isinstance(self.distribution, Slab) and self.fft_abstract_type == "C2R":
 
             def strided_view(x):
                 v = _get_view(
-                    x, self.result_shape_padded, self.result_data_type, self.communicator, collective_error_checking
+                    x, self.result_shape_padded, self.result_data_type, self.process_group, collective_error_checking
                 ).tensor
                 if not isinstance(v, ndbuffer.NDBuffer):
                     return tensor_wrapper.wrap_operand(v[..., : self.result_shape[-1]])
@@ -1413,17 +1480,37 @@ class FFT:
                     )
                     return CudaDistributedTensor(v)
 
-            if self.operand_backup is not None:
-                self.cpu_result_operand = strided_view(self.operand_backup)
-            self.result_operand = strided_view(self.operand)
+            cpu_result = strided_view(self.operand_backup) if self.operand_backup is not None else None
+            result = strided_view(self.operand)
         else:
-            if self.operand_backup is not None:
-                self.cpu_result_operand = _get_view(
-                    self.operand_backup, self.result_shape, self.result_data_type, self.communicator, collective_error_checking
+            cpu_result = (
+                _get_view(
+                    self.operand_backup, self.result_shape, self.result_data_type, self.process_group, collective_error_checking
                 )
-            self.result_operand = _get_view(
-                self.operand, self.result_shape, self.result_data_type, self.communicator, collective_error_checking
+                if self.operand_backup is not None
+                else None
             )
+            result = _get_view(
+                self.operand, self.result_shape, self.result_data_type, self.process_group, collective_error_checking
+            )
+        return result, cpu_result
+
+    def _update_result_view_attributes(self, *, collective_error_checking=False, keep_wrappers=False):
+        """Rebuild result-operand views from the current operand buffer.
+
+        When *keep_wrappers* is ``False`` (default), ``self.result_operand``
+        and ``self.cpu_result_operand`` are replaced with new wrapper objects.
+        When ``True``, only ``.tensor`` is rebound on the existing wrappers.
+        """
+        result, cpu_result = self._get_result_views(collective_error_checking)
+        if keep_wrappers:
+            self.result_operand.tensor = result.tensor
+            if cpu_result is not None:
+                self.cpu_result_operand.tensor = cpu_result.tensor
+        else:
+            self.result_operand = result
+            if cpu_result is not None:
+                self.cpu_result_operand = cpu_result
 
     @utils.precondition(_check_valid_fft)
     @utils.atomic(_free_plan_resources, method=True)
@@ -1569,53 +1656,388 @@ class FFT:
         if log_info and elapsed.data is not None:
             self.logger.info(f"The FFT planning phase took {elapsed.data:.3f} ms to complete.")
 
-    @utils.precondition(_check_valid_fft)
-    def reset_operand(
-        self, operand=None, *, distribution: Distribution | Sequence[Box] | None = None, stream: AnyStream | None = None
-    ):
+    def _validate_reset_operand(self, operand, input_distribution, stream):
         """
-        Reset the operand held by this :class:`FFT` instance. This method has two use cases:
+        (private) Validate operand and distribution for reset_operand.
 
-        (1) it can be used to provide a new operand for execution
-        (2) it can be used to release the internal reference to the previous operand and
-            potentially make its memory available for other use by passing
-            ``operand=None``.
+        Performs all precondition checks (operand compatibility,
+        distribution compatibility) without any side effects.
+
+        Returns ``(distribution, distribution_unchanged)``
+        where *distribution* is in internal form (Slab or Box-tuple,
+        **not** yet bound) and *distribution_unchanged* is a bool.
+
+        This method does **not** mutate ``self.distribution``,
+        ``self.subformat``, or the distribution object.
+        """
+        if operand is None:
+            raise ValueError("Resetting operand requires a valid operand. Use release_operand() to release the operand.")
+
+        wrapped = tensor_wrapper.wrap_operand(operand)
+
+        if self.package != wrapped.name:
+            raise TypeError(f"Library package mismatch: '{self.package}' => '{wrapped.name}'")
+
+        utils.check_attribute_match(self.operand_data_type, wrapped.dtype, "data type")
+
+        if len(wrapped.shape) != self.operand_dim:
+            raise ValueError(
+                f"The reset operand number of dimensions ({len(wrapped.shape)}) does not "
+                f"match the FFT number of dimensions ({self.operand_dim})"
+            )
+
+        stream_holder: StreamHolder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
+        self.logger.info(f"The specified stream for reset_operand() is {stream_holder and stream_holder.obj}.")
+
+        # In principle, we could support memory_space change,
+        # but to handle it properly we need to update self.memory_space and
+        # some dependent properties, like self.blocking, which may be error-prone
+        # from the user perspective. It would prevent inplace optimizations as well.
+        operand_device_id = wrapped.device_id
+        if operand_device_id != self.operand_device_id:
+
+            def device_str(device_id: int | Literal["cpu"]) -> str:
+                return f"cuda:{device_id}" if isinstance(device_id, int) else f"{device_id}"
+
+            raise ValueError(
+                f"The new operand must be on the same device as the original one. "
+                f"The new operand's device is {device_str(operand_device_id)}, "
+                f"the original device is {device_str(self.operand_device_id)}"
+            )
+
+        if self.memory_space == "cuda" and not wrapped.is_symmetric_memory:
+            raise TypeError("Distributed FFT requires GPU operand to be on symmetric memory")
+
+        # Check for C memory layout.
+        if sorted(wrapped.strides, reverse=True) != list(wrapped.strides):
+            raise ValueError("The reset operand memory layout is not C")
+
+        # Check that the distribution of the reset operand is compatible.
+        if input_distribution is None:
+            raise ValueError("Please specify the distribution of the operand for reset_operand")
+
+        if isinstance(input_distribution, Distribution):
+            distribution = input_distribution.to(Slab, ndim=self.operand_dim, copy=True)
+        else:
+            # Must be a Box pair.
+            distribution = tuple(cast(Box, box.copy()) for box in input_distribution)
+
+        distribution_type_old = "slab" if isinstance(self.distribution, Slab) else "box"
+        distribution_type_new = "slab" if isinstance(distribution, Slab) else "box"
+        if distribution_type_old != distribution_type_new:
+            raise ValueError(
+                f"This FFT uses {distribution_type_old} distribution, but got "
+                f"{distribution_type_new} distribution in reset_operand."
+            )
+
+        if self.fft_abstract_type in ("R2C", "C2R") and self.distribution != distribution:
+            raise ValueError(f"Can't change distribution with FFT type {self.fft_abstract_type}")
+
+        distribution_unchanged = self.distribution == distribution
+
+        if distribution_type_old == "slab":
+            if self.options.reshape and not distribution_unchanged:
+                raise ValueError("Can't change distribution when using reshape=True")
+        else:
+            distribution = cast(Sequence[Box], distribution)
+            input_box, output_box = distribution
+            if {input_box, output_box} != set(self.box_to_subformat):
+                raise ValueError("The reset operand distribution must use the original (input, output) box pair (in any order)")
+
+        # Check the operand shape matches the distribution.
+        d = distribution if isinstance(distribution, Slab) else distribution[0]
+        expected_shape = d.shape(self.rank, self.global_extents)
+
+        if tuple(wrapped.shape) != expected_shape:
+            raise ValueError(
+                f"Expected operand shape {expected_shape} for {distribution} "
+                f"with global shape {self.global_extents}, got {tuple(wrapped.shape)}"
+            )
+
+        return distribution, distribution_unchanged
+
+    def _bind_and_apply_distribution(self, distribution):
+        """
+        (private) Bind *distribution* to the global shape and apply it.
+
+        Attach the new distribution to the global shape so it knows the
+        local partition on this rank, then update the cufftMp subformat
+        identifier that tells the library which distribution to use
+        during execution.
+
+        Shape validation is **not** performed here; the caller is
+        responsible for verifying the operand shape beforehand (the
+        checked path does this in ``_validate_reset_operand``).
+        """
+        if isinstance(distribution, Slab):
+            distribution._bind(self.global_extents)
+            self.subformat = distribution._cufftmp_value
+        else:
+            distribution[0]._bind(self.global_extents)
+            self.subformat = self.box_to_subformat[distribution[0]]
+        self.distribution = distribution
+
+    def _log_distribution(self):
+        """
+        (private) Log the current distribution axis / box information.
+        """
+        if isinstance(self.distribution, Slab):
+            if self.options.reshape:
+                from_axis, to_axis = ("X", "X") if self.distribution == Slab.X else ("Y", "Y")
+            else:
+                from_axis, to_axis = ("X", "Y") if self.distribution == Slab.X else ("Y", "X")
+            self.logger.info(
+                f"The operand distribution is Slab, with input partitioned on {from_axis} axis "
+                f"and output on {to_axis} (reshape={self.options.reshape})."
+            )
+        else:
+            self.logger.info("The operand distribution is based on custom input and output boxes given on each process.")
+
+    def _reset_operand_same_distribution_same_space(self, operand, *, enable_logging=True):
+        """
+        (private) Reset operand when the distribution is unchanged
+        and execution_space == memory_space.
+
+        This method is hit when the distribution does not change compared to
+        the one used at plan time.  This is always the case for R2C/C2R since
+        these forbid distribution changes, and also covers C2C when the caller
+        reuses the same distribution.
+
+        Because both the distribution and memory space are unchanged, this is
+        the leanest path: the user operand already resides in the execution
+        memory space (GPU symmetric memory), so we just swap the underlying
+        tensor reference in the wrapper.
+        """
+        log_info = enable_logging and self.logger.isEnabledFor(logging.INFO)
+
+        self.operand.tensor = operand
+
+        if log_info:
+            self._log_distribution()
+            self.logger.info(f"The reset operand shape = {self.operand.shape}, and strides = {self.operand.strides}.")
+            self.logger.info(f"The result shape = {self.result_shape}, and strides = {self.result_strides}.")
+
+        # self.result_operand was set during plan() and may be the same
+        # object as self.operand (C2C with reshape, where result shape
+        # matches operand shape).  In that case, the tensor swap above
+        # already implies that self.result_operand is updated too.
+        # Otherwise it is a separate wrapper and must be rebuilt.
+        if self.result_operand is not self.operand:
+            self._update_result_view_attributes(keep_wrappers=True)
+        self._operand_released = False
+
+    def _reset_operand_same_distribution_cross_space(self, operand, stream, *, enable_logging=True):
+        """
+        (private) Reset operand when the distribution is unchanged
+        but execution_space != memory_space.
+
+        This method is hit when the distribution does not change compared to
+        the one used at plan time.  This is always the case for R2C/C2R since
+        these forbid distribution changes, and also covers C2C when the caller
+        reuses the same distribution.
+
+        The user operand lives on CPU while the FFT executes on CUDA.
+        We have two attributes to deal with:
+
+        - ``self.operand``: points to the GPU mirror in symmetric memory, used by cufftMp.
+        - ``self.operand_backup``: points to the user's CPU tensor, for result copy-back.
+        """
+        log_info = enable_logging and self.logger.isEnabledFor(logging.INFO)
+
+        stream_holder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
+        operand_wrapped = tensor_wrapper.wrap_operand(operand)
+        if self._operand_released:
+            # release_operand() freed the symmetric memory but kept the
+            # TensorHolder wrappers alive. So here we allocate a fresh GPU buffer
+            # and rebind .tensor on the existing wrappers.
+            new_mirror = _alloc_and_copy_to_exespace_mirror(
+                operand_wrapped,
+                stream_holder,
+                self.fft_abstract_type,
+                self.global_extents,
+                self.distribution,
+                self.capacity,
+                self.rank,
+                self.nranks,
+            )
+            self.operand.tensor = new_mirror.tensor
+            self.operand_backup.tensor = operand_wrapped.tensor
+        else:
+            # GPU mirror is alive, we copy the new CPU data into it and
+            # update the backup to reference the new CPU tensor.
+            self.operand.copy_(operand_wrapped, stream_holder=stream_holder)
+            self.operand_backup.tensor = operand_wrapped.tensor
+
+        if log_info:
+            self._log_distribution()
+            self.logger.info(f"The reset operand shape = {self.operand.shape}, and strides = {self.operand.strides}.")
+            self.logger.info(f"The result shape = {self.result_shape}, and strides = {self.result_strides}.")
+
+        # self.result_operand was set during plan() and may be the same
+        # object as self.operand (C2C with reshape, where result shape matches
+        # operand shape). In that case, the rebinds above already implies
+        # that self.result_operand is updated too.
+        # Otherwise it is a separate wrapper and must be rebuilt.
+        if self.result_operand is not self.operand:
+            self._update_result_view_attributes(keep_wrappers=True)
+        self._operand_released = False
+
+    def _reset_operand_new_distribution(self, operand, stream, *, enable_logging=True):
+        """Reset operand when the distribution has changed (C2C only).
+
+        This method is hit when the caller switches between distributions
+        (e.g. Slab.X ↔ Slab.Y). This path is only reachable for C2C
+        transforms (R2C/C2R cannot change distribution by contract), so
+        all logic below assumes C2C.
+
+        Because the distribution changed, the local operand shape may
+        differ from the previous call. This method therefore recomputes
+        the operand and result layouts and rebuilds the result views.
+
+        The caller must have already bound the new distribution and
+        applied it (via ``_bind_and_apply_distribution``) before
+        invoking this method.
+        """
+        log_info = enable_logging and self.logger.isEnabledFor(logging.INFO)
+
+        if log_info:
+            self._log_distribution()
+
+        # Phase 1: Update self.operand to point at the new data
+        # ------------------------------------------------------
+        # The new distribution may change the local shape. Both branches
+        # below rebind .tensor on the existing TensorHolder wrappers rather
+        # than replacing them. This is safe because the wrappers carry no
+        # distribution-specific state — shape and strides are derived from
+        # .tensor. In the same-space case the user already provides a tensor
+        # on symmetric memory, so we just swap the reference. In the
+        # cross-space case, we must copy the CPU data into the GPU mirror
+        # (allocating one if it was released).
+        if self.execution_space == self.memory_space:
+            self.operand.tensor = operand
+        else:
+            # Cross-space: two wrappers track the operand:
+            # - self.operand: points to the GPU mirror in symmetric memory, used by cufftMp
+            # - self.operand_backup: points to the user's CPU tensor, for result copy-back
+            stream_holder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
+            operand_wrapped = tensor_wrapper.wrap_operand(operand)
+            if self._operand_released:
+                # release_operand() freed the symmetric memory but kept the
+                # TensorHolder wrappers alive. So here we allocate a fresh GPU buffer
+                # and rebind .tensor on the existing wrappers.
+                new_mirror = _alloc_and_copy_to_exespace_mirror(
+                    operand_wrapped,
+                    stream_holder,
+                    self.fft_abstract_type,
+                    self.global_extents,
+                    self.distribution,
+                    self.capacity,
+                    self.rank,
+                    self.nranks,
+                )
+                self.operand.tensor = new_mirror.tensor
+                self.operand_backup.tensor = operand_wrapped.tensor
+            else:
+                # Mirror is still alive, we need to get a view of it
+                # with the new shape and copy the new CPU data in.
+                operand_view = _get_view(
+                    self.operand,
+                    operand_wrapped.shape,
+                    operand_wrapped.dtype,
+                    self.process_group,
+                    collective_error_checking=False,
+                )
+                operand_view.copy_(operand_wrapped, stream_holder=stream_holder)
+                self.operand.tensor = operand_view.tensor
+                self.operand_backup.tensor = operand_wrapped.tensor
+
+        # Phase 2: Recompute layouts
+        # --------------------------
+        # The operand's local shape may have changed, so update the layout.
+        self.operand_layout = TensorLayout(shape=self.operand.shape, strides=self.operand.strides)
+
+        if log_info:
+            self.logger.info(
+                f"The reset operand shape = {self.operand_layout.shape}, and strides = {self.operand_layout.strides}."
+            )
+
+        # Determine result layout based on how cufftMp distributes the output:
+        # - Box: result follows the output box's precomputed layout.
+        # - Slab without reshape: output is on the complementary axis.
+        # - Slab with reshape: output matches the input axis.
+        if isinstance(self.distribution, tuple):
+            output_box = self.distribution[1]
+            result_layout = self.distribution_layout[output_box]
+            output_box._bind(self.global_result_extents)
+        elif not self.options.reshape:
+            result_layout = self.distribution_layout[Slab.X if self.distribution == Slab.Y else Slab.Y]
+        else:
+            result_layout = self.operand_layout
+
+        self.result_shape = result_layout.shape
+        self.result_strides = result_layout.strides
+
+        if log_info:
+            self.logger.info(f"The result shape = {self.result_shape}, and strides = {self.result_strides}.")
+
+        # Phase 3: Rebuild result views
+        # ------------------------------
+        # Rebuild self.result_operand (and self.cpu_result_operand in cross-space)
+        # to reflect the updated buffer and result layout.
+        # We replace the wrapper (keep_wrappers=False) because self.result_operand
+        # may be the same object as self.operand. A distribution change can make
+        # result_shape diverge, and rebinding .tensor on a shared object would
+        # corrupt self.operand.  Replacing the wrapper breaks the stale alias.
+        self._update_result_view_attributes(keep_wrappers=False)
+
+        self._operand_released = False
+
+    @utils.precondition(_check_valid_fft)
+    def reset_operand(self, operand, *, distribution: Distribution | Sequence[Box], stream: AnyStream | None = None):
+        """
+        Reset the operand held by this :class:`FFT` instance to a new compatible
+        operand for subsequent execution.
 
         Args:
-            operand: A tensor (ndarray-like object) compatible with the previous one or
-                `None` (default). A value of `None` will release the internal reference to
-                the previous operand and user is expected to set a new operand before again
-                calling :meth:`execute`. The new operand is considered compatible if all the
+            operand: A tensor (ndarray-like object) compatible with the previous one.
+                The new operand is considered compatible if all the
                 following properties match with the previous one:
 
-                - The operand distribution: (a) if the FFT was planned using a Slab
-                  distribution, the reset operand must also use a Slab distribution
-                  (both X and Y axes are valid regardless of the slab axis at
-                  plan time), (b) if the FFT was planned using a box distribution, the
-                  distribution of the reset operand must be (input_box, output_box)
-                  or (output_box, input_box) where input_box and output_box are the
-                  boxes specified at plan time.
                 - The operand data type.
                 - The package that the new operand belongs to.
                 - The memory space of the new operand (CPU or GPU).
-                - The device that new operand belongs to if it is on GPU.
+                - The device that the new operand belongs to if it is on GPU.
+                - The operand shape must be consistent with the specified
+                  ``distribution`` (see below).
 
-            distribution: {distribution}
+            distribution: {distribution} This argument is required.
+                The distribution must be compatible with the one used at plan time:
 
-            stream: {stream}.
+                - If the FFT was planned using a Slab distribution, the reset
+                  distribution must also be a Slab distribution. For C2C transforms,
+                  both ``Slab.X`` and ``Slab.Y`` are valid regardless of the slab
+                  axis at plan time. For R2C and C2R transforms, the distribution
+                  must be the same as at plan time.
+                - If the FFT was planned using a box distribution, the reset
+                  distribution must use the same ``(input_box, output_box)`` pair
+                  specified at plan time (the order may be swapped).
+                - If ``reshape=True`` was specified in the options, the distribution
+                  cannot be changed.
+
+            stream: {stream}
 
         Examples:
 
             >>> import cupy as cp
             >>> import nvmath.distributed
 
-            Get MPI communicator used to initialize nvmath.distributed (for information on
+            Get process group used to initialize nvmath.distributed (for information on
             initializing nvmath.distributed, you can refer to the documentation or to the
             FFT examples in `nvmath/examples/distributed/fft
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft>`_):
 
-            >>> comm = nvmath.distributed.get_context().communicator
-            >>> nranks = comm.Get_size()
+            >>> process_group = nvmath.distributed.get_context().process_group
+            >>> nranks = process_group.nranks
 
             Create a 3-D complex128 ndarray on GPU symmetric memory, distributed according
             to the Slab distribution on the X axis (the global shape is (128, 128, 128)):
@@ -1638,7 +2060,7 @@ class FFT:
             ...     # Reset the operand to a new CuPy ndarray.
             ...     b = nvmath.distributed.allocate_symmetric_memory(shape, cp, dtype=dtype)
             ...     b[:] = cp.random.rand(*shape) + 1j * cp.random.rand(*shape)
-            ...     f.reset_operand(b)
+            ...     f.reset_operand(b, distribution=Slab.X)
             ...
             ...     # Execute to get the new result corresponding to the updated operand.
             ...     r2 = f.execute()
@@ -1648,178 +2070,110 @@ class FFT:
 
             For the particular example above, explicitly calling :meth:`reset_operand` is
             equivalent to updating the operand in-place, i.e, replacing
-            ``f.reset_operand(b)`` with ``a[:]=b``. Note that updating the operand in-place
-            should be adopted with caution as it can only yield the expected result and
+            ``f.reset_operand(b, distribution=Slab.X)`` with ``a[:]=b``.
+            Note that updating the operand in-place should be adopted with
+            caution as it can only yield the expected result and
             incur no additional copies under the additional constraints below:
 
                 - The operand's distribution is the same.
 
             For more details, please refer to `inplace update example
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft/example06_stateful_reset_inplace.py>`_.
+
+        .. seealso::
+            :meth:`release_operand`
         """
-
-        log_info = self.logger.isEnabledFor(logging.INFO)
-
-        if operand is None:
-            if self.memory_space == "cpu" and self.operand is not None:
-                with utils.device_ctx(self.device_id):
-                    # Since the execution when user passes CPU operands is blocking, it's
-                    # safe to call nvshmem_free here without additional synchronization.
-                    self.operand.free_symmetric()
-            self.operand = None  # type: ignore
-            self.operand_backup = None
-            self.logger.info("The operand has been reset to None.")
-            return
-
         self.logger.info("Resetting operand...")
-        # First wrap operand.
-        operand = tensor_wrapper.wrap_operand(operand)
+        distribution, distribution_unchanged = self._validate_reset_operand(operand, distribution, stream)
 
-        # Check package match.
-        if self.package != operand.name:
-            raise TypeError(f"Library package mismatch: '{self.package}' => '{operand.name}'")
+        # When the distribution is unchanged, we can skip a lot of boilerplate
+        # code and logic for re-layouting the operand and result.
+        # This always applies to R2C/C2R since the distribution is fixed by design
+        # and to C2C with the same distribution. Only C2C with a changed distribution
+        # falls through to the full path.
+        if distribution_unchanged:
+            if self.execution_space == self.memory_space:
+                self._reset_operand_same_distribution_same_space(operand)
+            else:
+                self._reset_operand_same_distribution_cross_space(operand, stream)
+        else:
+            self._bind_and_apply_distribution(distribution)
+            self._reset_operand_new_distribution(operand, stream)
 
-        utils.check_attribute_match(self.operand_data_type, operand.dtype, "data type")
+        self.logger.info("The operand has been reset to the specified operand.")
 
-        if len(operand.shape) != self.operand_dim:
-            raise ValueError(
-                f"The reset operand number of dimensions ({len(operand.shape)}) does not "
-                f"match the FFT number of dimensions ({self.operand_dim})"
-            )
-
-        stream_holder: StreamHolder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
-        self.logger.info(f"The specified stream for reset_operand() is {stream_holder and stream_holder.obj}.")
-
-        # In principle, we could support memory_space change,
-        # but to handle it properly we need to update self.memory_space and
-        # some dependent properties, like self.blocking, which may be error-prone
-        # from the user perspective. It would prevent inplace optimizations as well.
-        operand_device_id = operand.device_id
-        if operand_device_id != self.operand_device_id:
-
-            def device_str(device_id: int | Literal["cpu"]) -> str:
-                return f"cuda:{device_id}" if isinstance(device_id, int) else f"{device_id}"
-
-            raise ValueError(
-                f"The new operand must be on the same device as the original one. "
-                f"The new operand's device is {device_str(operand_device_id)}, "
-                f"the original device is {device_str(self.operand_device_id)}"
-            )
-
-        if self.memory_space == "cuda" and not operand.is_symmetric_memory:
-            raise TypeError("Distributed FFT requires GPU operand to be on symmetric memory")
-
-        # Check for C memory layout.
-        if sorted(operand.strides, reverse=True) != list(operand.strides):
-            raise ValueError("The reset operand memory layout is not C")
-
-        # Check that the distribution of the reset operand is compatible.
-        if distribution is None:
-            raise ValueError("Please specify the distribution of the operand for reset_operand")
-
+    def reset_operand_unchecked(
+        self,
+        operand,
+        *,
+        distribution: Distribution | Sequence[Box],
+        stream: AnyStream | None = None,
+    ):
+        """
+        {reset_operand_unchecked}
+        """
+        # Convert to internal form before comparing so that equivalent
+        # distributions of different types are recognized as equal.
         if isinstance(distribution, Distribution):
             distribution = distribution.to(Slab, ndim=self.operand_dim, copy=True)
         else:
-            # Must be a Box pair.
             distribution = tuple(cast(Box, box.copy()) for box in distribution)
 
-        distribution_type_old = "slab" if isinstance(self.distribution, Slab) else "box"
-        distribution_type_new = "slab" if isinstance(distribution, Slab) else "box"
-        if distribution_type_old != distribution_type_new:
-            raise ValueError(
-                f"This FFT uses {distribution_type_old} distribution, but got "
-                f"{distribution_type_new} distribution in reset_operand."
-            )
-
-        if self.fft_abstract_type in ("R2C", "C2R") and self.distribution != distribution:
-            raise ValueError(f"Can't change distribution with FFT type {self.fft_abstract_type}")
-
-        if distribution_type_old == "slab":
-            if self.options.reshape and self.distribution != distribution:
-                raise ValueError("Can't change distribution when using reshape=True")
-
-            distribution = cast(Slab, distribution)  # for type checker
-            distribution._bind(self.global_extents, shape=operand.shape)
-            self.distribution = distribution
-            self.subformat = distribution._cufftmp_value
-
-            # Log distribution.
-            if log_info:
-                if self.options.reshape:
-                    from_axis, to_axis = ("X", "X") if distribution == Slab.X else ("Y", "Y")
-                else:
-                    from_axis, to_axis = ("X", "Y") if distribution == Slab.X else ("Y", "X")
-                self.logger.info(
-                    f"The operand distribution is Slab, with input partitioned on {from_axis} axis "
-                    f"and output on {to_axis} (reshape={self.options.reshape})."
-                )
-        else:
-            distribution = cast(Sequence[Box], distribution)  # for type checker
-            input_box, output_box = distribution
-            if input_box not in self.box_to_subformat or output_box not in self.box_to_subformat:
-                raise ValueError("The reset operand distribution must use the original boxes (in any order)")
-            distribution[0]._bind(self.global_extents, shape=operand.shape)
-            self.subformat = self.box_to_subformat[input_box]
-            self.distribution = distribution
-
-            # Log distribution.
-            self.logger.info("The operand distribution is based on custom input and output boxes given on each process.")
-
-        # Set stream for the FFT.
-        with utils.device_ctx(self.device_id):
-            cufft.set_stream(self.handle, stream_holder.ptr)
-
-        # C2C allows changing distribution in reset_operand, so we may need to adjust
-        # the shape of the internal operand.
-        internal_operand = (
-            None
-            if self.operand is None
-            else _get_view(self.operand, operand.shape, operand.dtype, self.communicator, collective_error_checking=False)
-        )
-        self.operand, self.operand_backup = _copy_operand_perhaps(
-            internal_operand,
-            operand,
-            stream_holder,
-            self.execution_space,
-            self.memory_space,
-            self.device_id,
-            self.fft_abstract_type,
-            self.global_extents,
-            distribution,
-            self.capacity,
-            self.rank,
-            self.nranks,
-            self.logger,
-        )
-        operand = self.operand
-
-        # Update operand layout and plan traits.
-        self.operand_layout = TensorLayout(shape=operand.shape, strides=operand.strides)
-        self.logger.info(f"The reset operand shape = {self.operand_layout.shape}, and strides = {self.operand_layout.strides}.")
-
-        if distribution_type_old == "box":
-            result_layout = self.distribution_layout[output_box]
-            output_box._bind(self.global_result_extents, shape=result_layout.shape)
-        elif not self.options.reshape:
-            result_layout = self.distribution_layout[Slab.X if distribution == Slab.Y else Slab.Y]
-        else:
-            if self.fft_abstract_type in ("R2C", "C2R"):
-                # Result layout doesn't change.
-                result_layout = TensorLayout(shape=self.result_shape, strides=self.result_strides)
+        # When the distribution is unchanged, we can skip a lot of boilerplate
+        # code and logic for re-layouting the operand and result.
+        # This always applies to R2C/C2R since the distribution is fixed by design
+        # and to C2C with the same distribution. Only C2C with a changed distribution
+        # falls through to the full path.
+        if self.distribution == distribution:
+            if self.execution_space == self.memory_space:
+                self._reset_operand_same_distribution_same_space(operand, enable_logging=False)
             else:
-                result_layout = self.operand_layout
-        self.result_shape = result_layout.shape
-        self.result_strides = result_layout.strides
+                self._reset_operand_same_distribution_cross_space(operand, stream, enable_logging=False)
+        else:
+            self._bind_and_apply_distribution(distribution)
+            self._reset_operand_new_distribution(operand, stream, enable_logging=False)
 
-        self.logger.info(f"The result shape = {self.result_shape}, and strides = {self.result_strides}.")
+    @utils.precondition(_check_valid_fft)
+    def release_operand(self):
+        """
+        {release_operand}
+        """
+        if self._operand_released:
+            self.logger.info("Operand has already been released; nothing to do.")
+            return
 
-        # Obtain the result operand (the one that will be returned to the user with the
-        # expected shape and dtype on this rank according to the FFT type and operand
-        # distributions). Note that since the FFT is inplace, the result operand shares
-        # the same buffer with the input operand.
-        self._get_result_operand(collective_error_checking=False)
+        # Note that if/when possible, we keep the TensorHolder wrappers alive
+        # and only release the internal tensor reference. This is useful when
+        # reset_operand_unchecked is called subsequently because it can reuse
+        # the existing wrappers, saving overhead.
+        if self.execution_space == self.memory_space:
+            # Same-space: self.operand is the user's tensor, and
+            # self.result_operand is a view of it (or the same object
+            # for C2C when shape/dtype match). Both must be released.
+            self.operand.tensor = None
+            self.result_operand.tensor = None
+        else:
+            # Cross space:
+            # self.operand_backup = user's tensor
+            # self.cpu_result_operand = view of self.operand_backup (for result copy-back)
+            # self.operand = internal nvshmem device mirror
+            # self.result_operand = view of self.operand (shares nvshmem buffer)
+            # Release user references and free the nvshmem mirror.
+            # Cross-space execution is always blocking, so no synchronization
+            # is needed before freeing the operand.
+            self.operand_backup.tensor = None
+            self.cpu_result_operand.tensor = None
+            # Free nvshmem before clearing self.operand.tensor — self.result_operand
+            # may alias self.operand (C2C with matching shape/dtype), so clearing
+            # result_operand.tensor first would also null self.operand.tensor.
+            with utils.device_ctx(self.device_id):
+                self.operand.free_symmetric()
+            self.operand.tensor = None
+            if self.result_operand is not self.operand:
+                self.result_operand.tensor = None
 
-        self.logger.info("The operand has been reset to the specified operand.")
+        self._operand_released = True
+        self.logger.info("User-provided operand has been released.")
 
     def _check_planned(self, *args, **kwargs):
         """ """
@@ -1830,10 +2184,10 @@ class FFT:
     def _check_valid_operand(self, *args, **kwargs):
         """ """
         what = kwargs["what"]
-        if self.operand is None:
+        if self._operand_released:
             raise RuntimeError(
-                f"{what} cannot be performed if the input operand has been set to None. Use reset_operand() to set the "
-                f"desired input before using performing the {what.lower()}."
+                f"{what} cannot be performed after the operand has been released. Use reset_operand() to provide a new "
+                f"operand before performing the {what.lower()}."
             )
 
     def _free_workspace_memory(self, exception: Exception | None = None) -> bool:
@@ -2078,7 +2432,7 @@ class FFT:
         try:
             # Future operations on the workspace stream should be ordered after the
             # computation.
-            if self.last_compute_event is not None:
+            if self.last_compute_event is not None and self.workspace_stream is not None:
                 with utils.device_ctx(self.device_id):
                     self.workspace_stream.wait(self.last_compute_event)
                 self.last_compute_event = None
@@ -2103,13 +2457,18 @@ class FFT:
                     cufft.destroy(self.memory_desc_handle)
                     self.memory_desc_handle = None
 
-                if self.memory_space == "cpu" and self.operand is not None:
+                if self.memory_space == "cpu" and not self._operand_released:
                     # In this case, self.operand is an internal GPU operand owned by FFT.
                     # Since the execution when user passes CPU operands is blocking, it's
                     # safe to call nvshmem_free here without additional synchronization.
+                    # If _operand_released is True, release_operand() already freed it.
                     self.operand.free_symmetric()
-            self.operand = None
-            self.operand_backup = None
+
+            # Set all attributes to None except for logger and valid_state
+            _keep = {"logger", "valid_state"}
+            for attr in list(vars(self)):
+                if attr not in _keep:
+                    setattr(self, attr, None)
 
         except Exception as e:
             self.logger.critical("Internal error: only part of the FFT object's resources have been released.")
@@ -2122,7 +2481,7 @@ class FFT:
 
 
 def _fft(
-    x,
+    operand,
     /,
     *,
     distribution: Distribution | Sequence[Box],
@@ -2163,13 +2522,13 @@ def _fft(
         >>> import cupy as cp
         >>> import nvmath.distributed
 
-        Get MPI communicator used to initialize nvmath.distributed (for information on
+        Get process group used to initialize nvmath.distributed (for information on
         initializing nvmath.distributed, you can refer to the documentation or to the
         FFT examples in `nvmath/examples/distributed/fft
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft>`_):
 
-        >>> comm = nvmath.distributed.get_context().communicator
-        >>> nranks = comm.Get_size()
+        >>> process_group = nvmath.distributed.get_context().process_group
+        >>> nranks = process_group.nranks
 
         Create a 3-D complex128 ndarray on GPU symmetric memory, distributed according to
         the Slab distribution on the Y axis (the global shape is (256, 256, 256)):
@@ -2226,11 +2585,11 @@ def _fft(
     """
     if check_dtype is not None:
         assert check_dtype in {"real", "complex"}, "internal error"
-        operand = tensor_wrapper.wrap_operand(x)
-        if ("complex" in operand.dtype) != (check_dtype == "complex"):
-            raise ValueError(f"This function expects {check_dtype} operand, found {operand.dtype}")
+        wrapped = tensor_wrapper.wrap_operand(operand)
+        if ("complex" in wrapped.dtype) != (check_dtype == "complex"):
+            raise ValueError(f"This function expects {check_dtype} operand, found {wrapped.dtype}")
 
-    with FFT(x, distribution=distribution, options=options, stream=stream) as fftobj:
+    with FFT(operand, distribution=distribution, options=options, stream=stream) as fftobj:
         # Plan the FFT.
         fftobj.plan(stream=stream)
 
@@ -2383,13 +2742,13 @@ def irfft(
         >>> import cupy as cp
         >>> import nvmath.distributed
 
-        Get MPI communicator used to initialize nvmath.distributed (for information on
+        Get process group used to initialize nvmath.distributed (for information on
         initializing nvmath.distributed, you can refer to the documentation or to the
         FFT examples in `nvmath/examples/distributed/fft
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft>`_):
 
-        >>> comm = nvmath.distributed.get_context().communicator
-        >>> nranks = comm.Get_size()
+        >>> process_group = nvmath.distributed.get_context().process_group
+        >>> nranks = process_group.nranks
         >>> from nvmath.distributed.fft import Slab
 
         Create a 3-D symmetric complex128 ndarray on GPU symmetric memory:

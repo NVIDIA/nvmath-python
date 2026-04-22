@@ -19,12 +19,11 @@ try:
 except ImportError:
     from cuda.core.experimental import Device, Event, EventOptions
 
-from . import formatters
-from . import mem_limit
-from . import package_wrapper
-from .package_ifc import StreamHolder, Stream, AnyStream
-from .tensor_ifc import TensorHolder, Tensor, AnyTensor
 from nvmath._internal.layout import is_contiguous_and_dense
+
+from . import formatters, mem_limit, package_wrapper
+from .package_ifc import AnyStream, Stream, StreamHolder
+from .tensor_ifc import AnyTensor, Tensor, TensorHolder
 
 
 def infer_object_package(obj: object) -> str:
@@ -95,7 +94,7 @@ def _create_one_of_options_from_name(clss, cls_name, options_description, *, cls
         _cls_name = cls_name.lower()
         return next(cls for cls in clss if cls.name == _cls_name)()
     except StopIteration:
-        raise _raise_invalid_one_of_options(clss, cls_name, options_description, cls_key=cls_key)
+        raise _raise_invalid_one_of_options(clss, cls_name, options_description, cls_key=cls_key) from None
 
 
 def _create_one_of_options_from_dict(
@@ -115,7 +114,7 @@ def _create_one_of_options_from_dict(
         _cls_name = cls_name.lower()
         cls = next(cls for cls in clss if cls.name == _cls_name)
     except StopIteration:
-        raise _raise_invalid_one_of_options(clss, cls_name, options_description, cls_key=cls_key)
+        raise _raise_invalid_one_of_options(clss, cls_name, options_description, cls_key=cls_key) from None
     return cls(**{key: name for key, name in options.items() if key != cls_key})
 
 
@@ -199,12 +198,9 @@ def cached_get_or_create_stream(
     op_package_ifc = package_wrapper.PACKAGE[op_package]
     if isinstance(stream, int):
         ptr = stream
-        if op_package == "torch":
-            message = "A stream object must be provided for PyTorch operands, not stream pointer."
-            raise TypeError(message)
         external = op_package_ifc.create_external_stream(device_id, ptr)
         ctx = op_package_ifc.to_stream_context(external)
-        obj = op_package_ifc.create_stream(external)
+        obj = op_package_ifc.create_stream(external, device_id)
         return StreamHolder(ctx=ctx, device_id=device_id, external=external, obj=obj, ptr=ptr, package=op_package)
 
     stream_package = infer_object_package(stream)
@@ -218,7 +214,7 @@ def cached_get_or_create_stream(
     ctx = op_package_ifc.to_stream_context(stream)
     ptr = op_package_ifc.to_stream_pointer(stream)
     external = stream
-    obj = op_package_ifc.create_stream(stream)
+    obj = op_package_ifc.create_stream(stream, device_id)
     return StreamHolder(ctx=ctx, device_id=device_id, external=external, obj=obj, ptr=ptr, package=op_package)
 
 
@@ -348,9 +344,9 @@ def get_operands_dtype(operands: Sequence[TensorHolder[AnyTensor]]):
     Return the data type name of the tensors.
     """
     dtype = operands[0].dtype
-    if not all(operand.dtype == dtype for operand in operands):
+    if not all(operand.dtype == dtype for operand in operands[1:]):
         dtypes = {operand.dtype for operand in operands}
-        raise ValueError(f"All tensors in the network must have the same data type. Data types found = {dtypes}.")
+        raise ValueError(f"All tensors must have the same data type. Data types found = {dtypes}.")
     return dtype
 
 
@@ -359,9 +355,9 @@ def get_operands_package(operands: Sequence[TensorHolder[AnyTensor]]) -> str:
     Return the package name of the tensors.
     """
     package = infer_object_package(operands[0].tensor)
-    if not all(infer_object_package(operand.tensor) == package for operand in operands):
+    if not all(infer_object_package(operand.tensor) == package for operand in operands[1:]):
         packages = {infer_object_package(operand.tensor) for operand in operands}
-        raise TypeError(f"All tensors in the network must be from the same library package. Packages found = {packages}.")
+        raise TypeError(f"All tensors must be from the same library package. Packages found = {packages}.")
     return package
 
 
@@ -605,7 +601,8 @@ A tensor (ndarray-like object). The currently supported types are :class:`numpy.
 Provide the CUDA stream to use for executing the operation. Acceptable inputs include
 ``cudaStream_t`` (as Python :class:`int`), :class:`cupy.cuda.Stream`, and
 :class:`torch.cuda.Stream`. If a stream is not provided, the current stream from the operand
-package will be used.""".replace("\n", " "),
+package will be used. See :ref:`stream-semantics-guide` for more details on stream
+handling.""".replace("\n", " "),
     #
     "release_workspace": """\
 A value of `True` specifies that the stateful object should release workspace memory back to
@@ -616,6 +613,113 @@ or different) :meth:`execute` API, but incurs a small overhead due to obtaining 
 releasing workspace memory from and to the package memory pool on every call. The default is
 `False`.""".replace("\n", " "),
 }
+
+
+def _release_operand_docstring(plural, version_added=None):
+    operands = "operands" if plural else "operand"
+    their = "their" if plural else "its"
+    counts = "counts" if plural else "count"
+    reside = "reside" if plural else "resides"
+    reset_method = "reset_operands" if plural else "reset_operand"
+    reset_method_unchecked = "reset_operands_unchecked" if plural else "reset_operand_unchecked"
+    new_operands = "new operands" if plural else "a new operand"
+    are = "are" if plural else "is"
+    version_line = f"\n\n        .. versionadded:: {version_added}" if version_added else ""
+    return f"""\
+.. experimental:: method
+{version_line}
+
+        This method does two things:
+
+        - Releases internal references to the user-provided {operands},
+          so that this instance no longer contributes to {their} reference {counts}.
+
+        - Frees any internal copies (mirrors) that were created when the
+          user-provided {operands} {reside} in a different memory space than
+          the execution (i.e., copies made during construction or
+          :meth:`{reset_method}` / :meth:`{reset_method_unchecked}`
+          if present).
+
+        This functionality can be useful in memory-constrained scenarios, e.g. where
+        multiple stateful objects need to coexist. Leveraging this functionality,
+        the caller can reduce memory usage while retaining the planned state.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Semantics:
+            - Preserves the planned state of the stateful object.
+
+            - After calling this method, :meth:`{reset_method}` (or
+              :meth:`{reset_method_unchecked}` if present) must be called to
+              supply {new_operands} before the next :meth:`execute` call.
+              Failure to do so will result in a runtime error.
+              Device-side copies will be re-allocated as needed.
+
+            - For cross-space scenarios (e.g. CPU {operands} with GPU execution,
+              or GPU {operands} with CPU execution): execution is guaranteed to be
+              always blocking, so :meth:`execute` does not return until all
+              computation is complete. It is therefore always safe to call this
+              method after calling :meth:`execute` without additional synchronization.
+
+            - When the {operands} {are} in the same memory space as the execution
+              (e.g. GPU {operands} with GPU execution): in such case, this method
+              drops this instance's internal reference to the user-provided {operands}.
+              If the reference count of the {operands} reaches zero, {their} memory
+              may be freed, so particular attention should be paid. The caller is
+              responsible to ensure that if such deallocation happens, it is
+              ordered after pending computation (e.g. by retaining a reference until
+              the computation is complete, or by synchronizing the stream).
+              Failure to do so is analogous to use-after-free.
+
+            See :ref:`nvmath overview`, :ref:`stateful_apis_guide` for operand
+            lifecycle and usage patterns, and :ref:`stream-semantics-guide`
+            for stream ordering rules.
+"""
+
+
+COMMON_SHARED_DOC_MAP["release_operands"] = _release_operand_docstring(True, version_added="0.9.0")
+COMMON_SHARED_DOC_MAP["release_operand"] = _release_operand_docstring(False, version_added="0.9.0")
+
+
+def _reset_operand_unchecked_docstring(plural, version_added=None, validation_examples="package match, data type match"):
+    operands = "operands" if plural else "operand"
+    reset_method = "reset_operands" if plural else "reset_operand"
+    release_method = "release_operands" if plural else "release_operand"
+    version_line = f"\n\n        .. versionadded:: {version_added}" if version_added else ""
+    return f"""\
+.. experimental:: method
+{version_line}
+
+        This method is a performance-optimized alternative to :meth:`{reset_method}`
+        that eliminates validation and logging overhead, making it ideal for
+        performance-critical loops where {operands}
+        compatibility is guaranteed by the caller.
+
+        This method accepts the same parameters as :meth:`{reset_method}`.
+
+        Semantics:
+            The semantics are the same as in :meth:`{reset_method}`,
+            except that this method does not perform any validation
+            (e.g. {validation_examples}, etc.) or logging.
+
+        When to Use:
+            - Performance-critical loops with repeated executions on different {operands}
+
+            - After verifying correctness with :meth:`{reset_method}` during development
+
+            - When {operands} compatibility is guaranteed by construction or invariant
+
+        .. seealso::
+            :meth:`{reset_method}`, :meth:`{release_method}`
+"""
+
+
+COMMON_SHARED_DOC_MAP["reset_operands_unchecked"] = _reset_operand_unchecked_docstring(True, version_added="0.9.0")
+COMMON_SHARED_DOC_MAP["reset_operand_unchecked"] = _reset_operand_unchecked_docstring(False, version_added="0.9.0")
 
 
 class DefaultDocstring(dict):
@@ -642,6 +746,15 @@ def docstring_decorator(doc_map, skip_missing=False):
             for name, method in vars(func_or_class).items():
                 if isinstance(method, (staticmethod, classmethod)):
                     static_methods.append(name)
+                    continue
+                if isinstance(method, property):
+                    if method.fget and method.fget.__doc__:
+                        # Create a new property with updated docstring
+                        setattr(
+                            func_or_class,
+                            name,
+                            property(method.fget, method.fset, method.fdel, _format_doc(method.fget.__doc__)),
+                        )
                     continue
                 if callable(method) and (not name.startswith("_")) and method.__doc__:
                     method.__doc__ = _format_doc(method.__doc__)

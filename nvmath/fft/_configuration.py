@@ -4,11 +4,11 @@
 
 __all__ = ["FFTDirection", "FFTOptions", "DeviceCallable", "ExecutionCUDA", "ExecutionCPU"]
 
+import warnings
 from dataclasses import dataclass, field
 from enum import IntEnum
 from logging import Logger
 from typing import Literal
-import warnings
 
 from nvmath.memory import BaseCUDAMemoryManager
 

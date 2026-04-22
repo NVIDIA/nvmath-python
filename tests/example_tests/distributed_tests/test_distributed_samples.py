@@ -9,7 +9,6 @@ import pytest
 
 from ..test_utils import run_sample
 
-
 try:
     from mpi4py import MPI  # noqa: F401
 

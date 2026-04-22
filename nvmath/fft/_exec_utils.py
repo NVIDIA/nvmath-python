@@ -6,12 +6,24 @@ import os
 
 from nvmath.bindings import cufft  # type: ignore
 from nvmath.bindings._internal import utils as _bindings_utils  # type: ignore
-
 from nvmath.fft import _configuration
-
 
 IS_EXEC_GPU_AVAILABLE = False
 IS_EXEC_CPU_AVAILABLE = False
+NUM_THREADS_DEFAULT = None
+
+
+def _get_num_threads_default():
+    global NUM_THREADS_DEFAULT
+    if NUM_THREADS_DEFAULT is None:
+        if os.name == "posix":
+            num_threads = len(os.sched_getaffinity(0))
+        else:
+            # `sched_getaffinity` is not supported on Windows
+            num_threads = os.cpu_count() or 1
+        num_threads = max(1, num_threads // 2)
+        NUM_THREADS_DEFAULT = num_threads
+    return NUM_THREADS_DEFAULT
 
 
 def _check_init_cufft():
@@ -35,22 +47,9 @@ def _check_init_cufft():
 def _check_init_fftw():
     global IS_EXEC_CPU_AVAILABLE
     if not IS_EXEC_CPU_AVAILABLE:
-        try:
-            from nvmath.bindings.nvpl import fft as _fftw
-            from nvmath.bindings.nvpl._internal import fft as _internal_fftw
-        except ImportError as e:
-            import sys
+        from nvmath.bindings.nvpl import fft as _fftw
+        from nvmath.bindings.nvpl._internal import fft as _internal_fftw
 
-            if sys.platform.startswith("linux"):
-                raise
-            else:
-                raise RuntimeError(
-                    "The FFT CPU execution is not available. Currently, it is supported only "
-                    "with Linux. To process the CPU samples on GPU, please specify `execution='cuda'` "
-                    "when calling fft."
-                ) from e
-
-        lib_nvpl = "libnvpl_fftw.so"
         env_lib_name = os.environ.get("NVMATH_FFT_CPU_LIBRARY")
 
         if env_lib_name:
@@ -76,6 +75,7 @@ def _check_init_fftw():
         if env_lib_name:
             assert env_lib_name == loaded_lib_name
 
+        lib_nvpl = "libnvpl_fftw.so"
         if not loaded_lib_name.startswith(lib_nvpl):
             _fftw.init_threads_float()
             _fftw.init_threads_double()
@@ -92,12 +92,7 @@ def _cross_setup_execution_and_options(
         if options.device_id is not None:
             raise ValueError("The 'device_id' is not a valid option when 'execution' is specified to be 'cpu'.")
         if execution.num_threads is None:
-            # `sched_getaffinity` is not supported on Windows, it must be adjusted
-            # once the support for Windows is enabled
-            if os.name == "posix":
-                execution.num_threads = len(os.sched_getaffinity(0))  # type: ignore[attr-defined]
-            else:
-                raise ValueError("ExecutionCPU.num_threads cannot be `None` on Windows; please set a positive integer.")
+            execution.num_threads = _get_num_threads_default()
         if not isinstance(execution.num_threads, int) or execution.num_threads <= 0:
             raise ValueError("The 'num_threads' must be a positive integer")
     else:

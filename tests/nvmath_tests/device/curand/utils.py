@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cache
-from numba import cuda
+
 import numpy as np
-import nvmath.device.random as R
 import pytest
+from numba import cuda
+
+import nvmath.device.random as R
 
 from . import generators
 from .compiled_apis import compiled_apis

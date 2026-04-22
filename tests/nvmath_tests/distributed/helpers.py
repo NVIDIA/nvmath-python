@@ -3,15 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+
 import numpy as np
 
 import nvmath.distributed
-from nvmath.internal.tensor_wrapper import wrap_operand
-from nvmath.internal.utils import device_ctx
-from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand, _TENSOR_TYPES as _DIST_TENSOR_TYPES
 from nvmath.distributed._internal.tensor_ifc import DistributedTensor
+from nvmath.distributed._internal.tensor_wrapper import _TENSOR_TYPES as _DIST_TENSOR_TYPES
+from nvmath.distributed._internal.tensor_wrapper import wrap_operand as dist_wrap_operand
+from nvmath.distributed.process_group import MPIProcessGroup, ReductionOp, TorchProcessGroup
+from nvmath.internal.tensor_ifc import TensorHolder
 from nvmath.internal.tensor_ifc_ndbuffer import NDBufferTensor
+from nvmath.internal.tensor_wrapper import wrap_operand
 from nvmath.internal.typemaps import NAME_TO_DATA_WIDTH
+from nvmath.internal.utils import device_ctx
 
 
 def to_gpu(data_cpu, device_id, stream, symmetric_memory):
@@ -166,40 +170,65 @@ def generate_random_data(package, memory_space, shape, dtype, stream, memory_lay
         return data_cpu, data_cpu_copy
 
 
-def is_close(a, b, rtol=1e-07, atol=0, allow_ndbuffer=False):
+def assert_close(actual, expected, rtol=1e-07, atol=0, allow_ndbuffer=False):
     # in principle, ndbuffer is internal opaque strided memory representation
     # that should never be returned to the user, the flag allow_ndbuffer is used
     # here to make sure that the test is expected to compare internal operands
-    # and not user facing return values.
-    assert a.module is b.module
-    if a.shape != b.shape:
-        return False
-    assert a.device_id == b.device_id
-    device_id = a.device_id
-    module = a.module
-    a_tensor = a.tensor
-    b_tensor = b.tensor
-    if allow_ndbuffer and isinstance(a, NDBufferTensor):
-        a_tensor = ndbuffer_as_array(a_tensor)
-        b_tensor = ndbuffer_as_array(b_tensor)
+    # and not user-facing return values.
+
+    assert isinstance(actual, TensorHolder), "assert_close requires wrapped (TensorHolder) operands"
+    assert isinstance(expected, TensorHolder), "assert_close requires wrapped (TensorHolder) operands"
+
+    assert actual.module is expected.module, f"module of actual ({actual.module}) and expected ({expected.module}) differ"
+    assert actual.shape == expected.shape, f"shape of actual ({actual.shape}) and expected ({expected.shape}) differ"
+    assert actual.device_id == expected.device_id, (
+        f"device_id of actual ({actual.device_id}) and expected ({expected.device_id}) differ"
+    )
+    device_id = actual.device_id
+    module = actual.module
+    actual_tensor = actual.tensor
+    expected_tensor = expected.tensor
+
+    if allow_ndbuffer and isinstance(actual, NDBufferTensor):
+        actual_tensor = ndbuffer_as_array(actual_tensor)
+        expected_tensor = ndbuffer_as_array(expected_tensor)
         if device_id == "cpu":
             module = np
         else:
-            import cupy as cp
+            import cupy as module
 
-            module = cp
-    if NAME_TO_DATA_WIDTH[a.dtype] == 8 and "float" in a.dtype:
-        a_tensor = a_tensor.to(module.float32)
-    if NAME_TO_DATA_WIDTH[b.dtype] == 8 and "float" in a.dtype:
-        b_tensor = b_tensor.to(module.float32)
+    # Convert FP8 to FP32.
+    if NAME_TO_DATA_WIDTH[actual.dtype] == 8 and "float" in actual.dtype:
+        actual_tensor = actual_tensor.to(module.float32)
+    if NAME_TO_DATA_WIDTH[expected.dtype] == 8 and "float" in expected.dtype:
+        expected_tensor = expected_tensor.to(module.float32)
+
+    # Call tensor package assert close function.
+    test_func = module.testing.assert_close if module.__name__ == "torch" else module.testing.assert_allclose
     if device_id != "cpu":
         with device_ctx(device_id):
-            return module.allclose(a_tensor, b_tensor, rtol=rtol, atol=atol)
+            test_func(actual_tensor, expected_tensor, rtol=rtol, atol=atol)
     else:
-        return module.allclose(a_tensor, b_tensor, rtol=rtol, atol=atol)
+        test_func(actual_tensor, expected_tensor, rtol=rtol, atol=atol)
 
 
-def gather_array(arr, partition_dim, comm, rank):
+def process_group_broadcast(process_group, obj, root=0):
+    if isinstance(process_group, MPIProcessGroup):
+        return process_group._mpi_comm.bcast(obj, root=root)
+    else:
+        import torch
+        import torch.distributed as dist
+
+        result = [obj] if process_group.rank == root else [None]
+        if process_group.device_id != "cpu":
+            with torch.cuda.device(process_group.device_id):
+                dist.broadcast_object_list(result, group=process_group._torch_process_group, group_src=root)
+        else:
+            dist.broadcast_object_list(result, group=process_group._torch_process_group, group_src=root)
+        return result[0]
+
+
+def gather_array(arr, partition_dim, process_group, rank):
     """Gather CPU array on rank 0. `partition_dim` is the dimension on which this array
     is partitioned across ranks"""
 
@@ -240,29 +269,63 @@ def gather_array(arr, partition_dim, comm, rank):
         arr = transpose(arr, 1, 0, make_contiguous=True)
         transposed = True
 
-    from mpi4py import MPI
-
     # Note that after transposing, the partition dim is 0.
-    partitioned_extent = comm.allreduce(arr.shape[0], MPI.SUM)
-    global_shape = (partitioned_extent,) + arr.shape[1:]
+    partitioned_extent = np.array([arr.shape[0]])
+    process_group.allreduce_buffer(partitioned_extent, op=ReductionOp.SUM)
+    global_shape = (int(partitioned_extent[0]),) + arr.shape[1:]
 
-    recv_counts = comm.gather(math.prod(arr.shape))
-    if rank == 0:
-        global_arr = package.empty(global_shape, dtype=arr.dtype)
+    if isinstance(process_group, MPIProcessGroup):
+        comm = process_group._mpi_comm
+        recv_counts = comm.gather(math.prod(arr.shape))
+        if rank == 0:
+            global_arr = package.empty(global_shape, dtype=arr.dtype)
 
-        sendbuf = arr
-        recvbuf = (global_arr, recv_counts)
-        if NAME_TO_DATA_WIDTH[dtype_name] <= 16:
-            # WAR for MPI not having narrow-precision types.
-            sendbuf = arr.view(dtype=package.int8)
-            recv_counts = [x * (NAME_TO_DATA_WIDTH[dtype_name] // 8) for x in recv_counts]
-            recvbuf = (global_arr.view(dtype=package.int8), recv_counts)
+            sendbuf = arr
+            recvbuf = (global_arr, recv_counts)
+            if NAME_TO_DATA_WIDTH[dtype_name] <= 16:
+                # WAR for MPI not having narrow-precision types.
+                sendbuf = arr.view(dtype=package.int8)
+                recv_counts = [x * (NAME_TO_DATA_WIDTH[dtype_name] // 8) for x in recv_counts]
+                recvbuf = (global_arr.view(dtype=package.int8), recv_counts)
 
-        comm.Gatherv(sendbuf=sendbuf, recvbuf=recvbuf, root=0)
-        if transposed:
-            # Undo the transpose.
-            global_arr = transpose(global_arr, 1, 0, make_contiguous=True)
-        # Note that this is not a distributed tensor any longer.
-        return wrap_operand(global_arr)
+            comm.Gatherv(sendbuf=sendbuf, recvbuf=recvbuf, root=0)
+            if transposed:
+                # Undo the transpose.
+                global_arr = transpose(global_arr, 1, 0, make_contiguous=True)
+            # Note that this is not a distributed tensor any longer.
+            return wrap_operand(global_arr)
+        else:
+            comm.Gatherv(arr if NAME_TO_DATA_WIDTH[dtype_name] > 16 else arr.view(dtype=package.int8), None)
     else:
-        comm.Gatherv(arr if NAME_TO_DATA_WIDTH[dtype_name] > 16 else arr.view(dtype=package.int8), None)
+        assert isinstance(process_group, TorchProcessGroup)
+
+        import torch
+        import torch.distributed as dist
+
+        object_gather_list = None if rank != 0 else [None] * process_group.nranks
+
+        def do_gather():
+            dist.gather_object(
+                arr.view(dtype=package.int8),
+                object_gather_list,
+                group=process_group._torch_process_group,
+                group_dst=0,
+            )
+
+        if process_group.device_id != "cpu":
+            with torch.cuda.device(process_group.device_id):
+                do_gather()
+        else:
+            do_gather()
+
+        if rank == 0:
+            if package.__name__ == "torch":
+                global_arr = torch.cat(object_gather_list)
+            else:
+                global_arr = np.concatenate(object_gather_list)
+            global_arr = global_arr.view(dtype=arr.dtype).reshape(global_shape)
+            if transposed:
+                # Undo the transpose.
+                global_arr = transpose(global_arr, 1, 0, make_contiguous=True)
+            # Note that this is not a distributed tensor any longer.
+            return wrap_operand(global_arr)

@@ -17,11 +17,11 @@ except ImportError:
     cupy = None
 
 
-from nvmath.internal.tensor_ifc_cupy import HostTensor, CupyTensor
 from nvmath.internal.ndbuffer import ndbuffer
+from nvmath.internal.tensor_ifc_cupy import CupyTensor, HostTensor
 
 from .tensor_ifc import DistributedTensor
-from .tensor_ifc_host_device import HostDistributedTensorMixIn, CudaDistributedTensorMixIn
+from .tensor_ifc_host_device import CudaDistributedTensorMixIn, HostDistributedTensorMixIn
 
 
 class HostDistributedTensor(HostDistributedTensorMixIn, HostTensor, DistributedTensor):

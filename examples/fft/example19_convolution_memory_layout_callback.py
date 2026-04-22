@@ -14,6 +14,7 @@ For further details, please see :ref:`FFT callbacks <fft-callback>`.
 """
 
 import cupy as cp
+from common import is_blackwell, is_ctk12
 
 import nvmath
 
@@ -49,7 +50,12 @@ def convolve(data_out, offset, element, filter_data, unused):
 # device where the FFT to which the epilog is provided is executed. In this case we use the
 # current device context, where the operands have been created.
 with cp.cuda.Device():
-    epilog = nvmath.fft.compile_epilog(convolve, "complex128", "complex128")
+    # As a workaround for a known issue in cuFFT in CUDA Toolkit 12.8, 12.9
+    # on Blackwell devices,
+    # we explicitly set the compute capability to "50" for LTO-IR callback compilation.
+    epilog = nvmath.fft.compile_epilog(
+        convolve, "complex128", "complex128", compute_capability="50" if is_blackwell() and is_ctk12() else None
+    )
 
 # Perform the forward FFT...
 with nvmath.fft.FFT(a, axes=(0, 1), options={"result_layout": "optimized"}) as fft:

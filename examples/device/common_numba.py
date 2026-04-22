@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ctypes
+import math
+
 from cuda.bindings import driver as cudadrv
 from numba import cuda
 from numba.cuda.typing import typeof as cuda_typeof
-import math
+
 from nvmath.device import float16x2
 
 
@@ -30,6 +32,31 @@ def time_numba(kernel, grid_dim, block_dim, shared_memory_size, ncycles, *args, 
     start.record(stream)
     for _ in range(ncycles):
         kernel[grid_dim, block_dim, stream, shared_memory_size](*args)
+    stop.record(stream)
+    stream.synchronize()
+
+    time_ms = cuda.event_elapsed_time(start, stop) / ncycles
+    return time_ms
+
+
+def time_numba_prep_args(kernel, grid_dim, block_dim, shared_memory_size, ncycles, prep_args):
+    stream = cuda.stream()
+    start, stop = cuda.event(), cuda.event()
+    cuda.synchronize()
+
+    # warmup + jit
+    kernel[grid_dim, block_dim, stream, shared_memory_size](*prep_args())
+    stream.synchronize()
+
+    # prepare args
+    args = []
+    for _ in range(ncycles):
+        args.append(prep_args())
+
+    # time
+    start.record(stream)
+    for prepared_args in args:
+        kernel[grid_dim, block_dim, stream, shared_memory_size](*prepared_args)
     stop.record(stream)
     stream.synchronize()
 
@@ -85,7 +112,7 @@ def load_to_shared_batched(matrix, smem, batch, dim, ld, row_major=False):
         col = index % dim[1]
         row = index // dim[1]
         if row_major:
-            smem[batch * dim[1] * ld + row * ld + col] = matrix[batch, row, col]
+            smem[batch * dim[0] * ld + row * ld + col] = matrix[batch, row, col]
         else:
             smem[batch * dim[1] * ld + col * ld + row] = matrix[batch, row, col]
 
@@ -135,14 +162,18 @@ def load_to_shared_1d_float16x2(matrix, smem, dim, ld, row_major=False):
 
 
 @cuda.jit(device=True, forceinline=True)
-def store_from_shared_batched(smem, matrix, batch, dim, ld):
+def store_from_shared_batched(smem, matrix, batch, dim, ld, row_major=False):
     start = cuda.threadIdx.x
     step = cuda.blockDim.x
     stop = dim[0] * dim[1]
     for index in range(start, stop, step):
         col = index % dim[1]
         row = index // dim[1]
-        matrix[batch, row, col] = smem[batch * dim[1] * ld + col * ld + row]
+
+        if row_major:
+            matrix[batch, row, col] = smem[batch * dim[0] * ld + row * ld + col]
+        else:
+            matrix[batch, row, col] = smem[batch * dim[1] * ld + col * ld + row]
 
 
 @cuda.jit(device=True, forceinline=True)
@@ -181,3 +212,53 @@ def store_from_shared_1d_float16x2(smem, matrix, dim, ld):
         ri = smem[col * ld + row]
         matrix[row, 2 * col + 0] = ri.x
         matrix[row, 2 * col + 1] = ri.y
+
+
+@cuda.jit(device=True, forceinline=True)
+def load_to_shared_strided(matrix, smem, shape, strides):
+    start = cuda.threadIdx.x
+    step = cuda.blockDim.x
+
+    if len(shape) == 2:
+        stop = shape[0] * shape[1]
+
+        for index in range(start, stop, step):
+            col = index % shape[1]
+            row = index // shape[1]
+
+            smem[row * strides[0] + col * strides[1]] = matrix[row, col]
+    else:
+        stop = shape[0] * shape[1] * shape[2]
+
+        for index in range(start, stop, step):
+            col = index % shape[2]
+            temp = index // shape[2]
+            row = temp % shape[1]
+            sample_idx = temp // shape[1]
+
+            smem[sample_idx * strides[0] + row * strides[1] + col * strides[2]] = matrix[sample_idx, row, col]
+
+
+@cuda.jit(device=True, forceinline=True)
+def store_from_shared_strided(smem, matrix, shape, strides):
+    start = cuda.threadIdx.x
+    step = cuda.blockDim.x
+
+    if len(shape) == 2:
+        stop = shape[0] * shape[1]
+
+        for index in range(start, stop, step):
+            col = index % shape[1]
+            row = index // shape[1]
+
+            matrix[row, col] = smem[row * strides[0] + col * strides[1]]
+    else:
+        stop = shape[0] * shape[1] * shape[2]
+
+        for index in range(start, stop, step):
+            col = index % shape[2]
+            temp = index // shape[2]
+            row = temp % shape[1]
+            sample_idx = temp // shape[1]
+
+            matrix[sample_idx, row, col] = smem[sample_idx * strides[0] + row * strides[1] + col * strides[2]]

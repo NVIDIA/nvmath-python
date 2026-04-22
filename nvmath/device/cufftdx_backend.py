@@ -8,21 +8,20 @@ from typing import Protocol
 
 import numpy
 
+from nvmath.bindings import mathdx
 from nvmath.device.common_backend import DescriptorWrapper
 from nvmath.device.common_cuda import ComputeCapability
+
 from .common import check_contains, check_in, check_not_in, check_sm
 from .common_backend import (
-    NP_TYPES_TO_MATHDX_PRECISION,
     EXECUTION_STR_TO_MATHDX,
+    NP_TYPES_TO_MATHDX_PRECISION,
     NVARG_GEN_OPT_LTO,
     build_get_int_traits,
     build_get_str_trait,
     set_code_target_sm,
 )
 from .types import REAL_NP_TYPES
-
-from nvmath.bindings import mathdx
-
 
 _FFT_TYPE_TO_MATHDX = {t.name.lower(): t for t in mathdx.CufftdxType}
 
@@ -170,7 +169,7 @@ def generate_code(handle, version: ComputeCapability):
     code = mathdx.commondx_create_code()
 
     set_code_target_sm(code, version)
-    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
+    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVRTC_ARGS, NVARG_GEN_OPT_LTO)
     mathdx.cufftdx_finalize_code(code, handle)
 
     return DescriptorWrapper(code, mathdx.commondx_destroy_code)

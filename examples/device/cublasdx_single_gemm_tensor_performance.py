@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-from numba import cuda
-from nvmath.device import Matmul
 from common import mm_perf_GFlops, random_real
 from common_numba import time_numba
+from numba import cuda
+
+from nvmath.device import Matmul
 from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_tensor
 
 
@@ -63,7 +64,7 @@ def main():
         alpha = c.dtype.type(alpha)
         beta = c.dtype.type(beta)
 
-        for r in range(repeat):
+        for _r in range(repeat):
             MM.execute(smem_a, smem_b, rmem_c)
             axpby(alpha, rmem_c, beta, rmem_c_out)
 

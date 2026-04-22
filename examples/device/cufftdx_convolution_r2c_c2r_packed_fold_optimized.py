@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
+
 import numpy as np
+from common import random_real
 from numba import cuda
+
 from nvmath.device import FFT
 from nvmath.device.types import complex64
-from common import random_real
 
 
 def main():

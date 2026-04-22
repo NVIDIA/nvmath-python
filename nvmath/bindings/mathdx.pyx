@@ -1,4 +1,4 @@
-# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
+# This code was automatically generated across versions from 0.3.1 to 0.3.2, generator version 0.3.1.dev1418+g63712a33a.d20260318. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -19,7 +19,13 @@ from libcpp.vector cimport vector
 ###############################################################################
 
 class CommondxValueType(_IntEnum):
-    """See `commondxValueType`."""
+    """
+    The set of value types supported by the library.Note that, for complex
+    numbers, this combines real and imaginary part, and that all complex
+    numbers are overaligned on their size.
+
+    See `commondxValueType`.
+    """
     R_8F_E5M2 = COMMONDX_R_8F_E5M2
     C_8F_E5M2 = COMMONDX_C_8F_E5M2
     R_8F_E4M3 = COMMONDX_R_8F_E4M3
@@ -54,7 +60,12 @@ class CommondxValueType(_IntEnum):
     C_64UI = COMMONDX_C_64UI
 
 class CommondxStatusType(_IntEnum):
-    """See `commondxStatusType`."""
+    """
+    The set of status values that can be returned by APIs defined in the
+    library.
+
+    See `commondxStatusType`.
+    """
     SUCCESS = COMMONDX_SUCCESS
     INVALID_VALUE = COMMONDX_INVALID_VALUE
     INTERNAL_ERROR = COMMONDX_INTERNAL_ERROR
@@ -62,7 +73,12 @@ class CommondxStatusType(_IntEnum):
     CUFFT_ERROR = COMMONDX_CUFFT_ERROR
 
 class CommondxPrecision(_IntEnum):
-    """See `commondxPrecision`."""
+    """
+    The set of precisions supported by the library.For the actual input and
+    output value types, see commondxValueType_t
+
+    See `commondxPrecision`.
+    """
     F8_E5M2 = COMMONDX_PRECISION_F8_E5M2
     F8_E4M3 = COMMONDX_PRECISION_F8_E4M3
     BF16 = COMMONDX_PRECISION_BF16
@@ -79,52 +95,165 @@ class CommondxPrecision(_IntEnum):
     UI32 = COMMONDX_PRECISION_UI32
     UI64 = COMMONDX_PRECISION_UI64
 
+class CommondxArchModifier(_IntEnum):
+    """
+    The set of compute feature to target. See COMMONDX_OPTION_TARGET_SM
+    .See also https://docs.nvidia.com/cuda/cuda-c-programming-
+    guide/index.html#feature-set-compiler-targets
+
+    See `commondxArchModifier`.
+    """
+    GENERIC = COMMONDX_ARCH_MODIFIER_GENERIC
+    ARCH_SPECIFIC = COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC
+    FAMILY_SPECIFIC = COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC
+
 class CommondxOption(_IntEnum):
-    """See `commondxOption`."""
+    """
+    Options to tweak code generation.
+
+    See `commondxOption`.
+    """
     SYMBOL_NAME = COMMONDX_OPTION_SYMBOL_NAME
     TARGET_SM = COMMONDX_OPTION_TARGET_SM
     CODE_CONTAINER = COMMONDX_OPTION_CODE_CONTAINER
     CODE_ISA = COMMONDX_OPTION_CODE_ISA
-    EXTRA_NVTRC_ARGS = COMMONDX_OPTION_EXTRA_NVTRC_ARGS
+    EXTRA_NVRTC_ARGS = COMMONDX_OPTION_EXTRA_NVRTC_ARGS
+    TARGET_CODE = COMMONDX_OPTION_TARGET_CODE
 
 class CommondxExecution(_IntEnum):
-    """See `commondxExecution`."""
+    """
+    The set of execution modes supported by the library.
+
+    See `commondxExecution`.
+    """
     THREAD = COMMONDX_EXECUTION_THREAD
     BLOCK = COMMONDX_EXECUTION_BLOCK
 
 class CommondxCodeContainer(_IntEnum):
-    """See `commondxCodeContainer`."""
+    """
+    The set of device code container types supported by the library. See
+    commondxOption_t::COMMONDX_OPTION_CODE_CONTAINER.
+
+    See `commondxCodeContainer`.
+    """
     LTOIR = COMMONDX_CODE_CONTAINER_LTOIR
     FATBIN = COMMONDX_CODE_CONTAINER_FATBIN
+    PTX = COMMONDX_CODE_CONTAINER_PTX
 
 class CublasdxApi(_IntEnum):
-    """See `cublasdxApi`."""
+    """
+    Type of cublasDx API.Handling problems with default or custom/dynamic
+    leading dimensions. Check cublasdx::LeadingDimension operator
+    documentation for more details (https://docs.nvidia.com/cuda/cublasdx/a
+    pi/operators.html#leadingdimension-operator)
+
+    See `cublasdxApi`.
+    """
     SMEM = CUBLASDX_API_SMEM
     SMEM_DYNAMIC_LD = CUBLASDX_API_SMEM_DYNAMIC_LD
     TENSORS = CUBLASDX_API_TENSORS
 
+class CublasdxDevicePipelineType(_IntEnum):
+    """
+    Type of device pipeline.
+
+    See `cublasdxDevicePipelineType`.
+    """
+    SUGGESTED = CUBLASDX_DEVICE_PIPELINE_SUGGESTED
+
+class CublasdxTilePipelineType(_IntEnum):
+    """
+    Type of tile pipeline.
+
+    See `cublasdxTilePipelineType`.
+    """
+    PIPELINE_DEFAULT = CUBLASDX_TILE_PIPELINE_DEFAULT
+
+class CublasdxBlockSizeStrategy(_IntEnum):
+    """
+    Type of block size strategy used in device pipeline and tile pipeline
+    creation. This enum affects register usage in pipelining GEMM kernels
+    and should be considered for different architectures.
+
+    See `cublasdxBlockSizeStrategy`.
+    """
+    HEURISTIC = CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC
+    FIXED = CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED
+
 class CublasdxType(_IntEnum):
-    """See `cublasdxType`."""
+    """
+    Type of computation data.Check cubladx::Type operator documentation for
+    more details
+    (https://docs.nvidia.com/cuda/cublasdx/api/operators.html#type-
+    operator)
+
+    See `cublasdxType`.
+    """
     REAL = CUBLASDX_TYPE_REAL
     COMPLEX = CUBLASDX_TYPE_COMPLEX
 
+class CublasdxMemorySpace(_IntEnum):
+    """
+    Memory space.
+
+    See `cublasdxMemorySpace`.
+    """
+    RMEM = CUBLASDX_MEMORY_SPACE_RMEM
+    SMEM = CUBLASDX_MEMORY_SPACE_SMEM
+    GMEM = CUBLASDX_MEMORY_SPACE_GMEM
+    ANY = CUBLASDX_MEMORY_SPACE_ANY
+
 class CublasdxTransposeMode(_IntEnum):
-    """See `cublasdxTransposeMode`."""
+    """
+    Tensor transpose mode.The transpose mode depends on
+    cubladx::TransposeMode operator which is deprecated since cublasDx
+    0.2.0 and might be removed in future versions of mathDx libraries
+    Check cubladx::TransposeMode operator documentation for more details (h
+    ttps://docs.nvidia.com/cuda/cublasdx/api/operators.html#transposemode-
+    operator)
+
+    See `cublasdxTransposeMode`.
+    """
     NON_TRANSPOSED = CUBLASDX_TRANSPOSE_MODE_NON_TRANSPOSED
     TRANSPOSED = CUBLASDX_TRANSPOSE_MODE_TRANSPOSED
     CONJ_TRANSPOSED = CUBLASDX_TRANSPOSE_MODE_CONJ_TRANSPOSED
 
 class CublasdxArrangement(_IntEnum):
-    """See `cublasdxArrangement`."""
+    """
+    Data arrangement mode.Defines data arrangements in tensors' taking part
+    in the calculation.  Check cubladx::TransposeMode operator
+    documentation for more details
+    (https://docs.nvidia.com/cuda/cublasdx/api/operators.html#arrangement-
+    operator)
+
+    See `cublasdxArrangement`.
+    """
     COL_MAJOR = CUBLASDX_ARRANGEMENT_COL_MAJOR
     ROW_MAJOR = CUBLASDX_ARRANGEMENT_ROW_MAJOR
 
 class CublasdxFunction(_IntEnum):
-    """See `cublasdxFunction`."""
+    """
+    BLAS function.Sets the BLAS function that will be executed.  Check
+    cubladx::Function operator documentation for more details
+    (https://docs.nvidia.com/cuda/cublasdx/api/operators.html#function-
+    operator)
+
+    See `cublasdxFunction`.
+    """
     MM = CUBLASDX_FUNCTION_MM
 
 class CublasdxOperatorType(_IntEnum):
-    """See `cublasdxOperatorType`."""
+    """
+    cublasDx operatorsThe set of supported cublasDx operators.  Check
+    cublaDx description operator documentation for more details
+    (https://docs.nvidia.com/cuda/cublasdx/api/operators.html#function-
+    operator)  Check cublasDx execution operator documentation for more
+    details
+    (https://docs.nvidia.com/cuda/cublasdx/api/operators.html#execution-
+    operators)
+
+    See `cublasdxOperatorType`.
+    """
     FUNCTION = CUBLASDX_OPERATOR_FUNCTION
     SIZE = CUBLASDX_OPERATOR_SIZE
     TYPE = CUBLASDX_OPERATOR_TYPE
@@ -142,7 +271,14 @@ class CublasdxOperatorType(_IntEnum):
     WITH_PIPELINE = CUBLASDX_OPERATOR_WITH_PIPELINE
 
 class CublasdxTraitType(_IntEnum):
-    """See `cublasdxTraitType`."""
+    """
+    cublasDx traitsThe set of supported types of traits that can be
+    accessed from finalized sources that use cublasDx.  Check cublasDx
+    Execution Block Traits documentation for more details
+    (https://docs.nvidia.com/cuda/cublasdx/api/traits.html#block-traits)
+
+    See `cublasdxTraitType`.
+    """
     VALUE_TYPE = CUBLASDX_TRAIT_VALUE_TYPE
     SIZE = CUBLASDX_TRAIT_SIZE
     BLOCK_SIZE = CUBLASDX_TRAIT_BLOCK_SIZE
@@ -156,7 +292,30 @@ class CublasdxTraitType(_IntEnum):
     MAX_THREADS_PER_BLOCK = CUBLASDX_TRAIT_MAX_THREADS_PER_BLOCK
 
 class CublasdxTensorType(_IntEnum):
-    """See `cublasdxTensorType`."""
+    """
+    cuBLASDx desired tensor typeTensor types are opaque (layout is
+    unspecified), non-owning, and defined by  - Memory space (global,
+    shared or register memory)  - Size & alignment (in bytes)  Tensor's
+    representation in-memory and in-device depends on their memory space.
+    Shared & register tensors are defined as  **View CUDA Toolkit
+    Documentation for a C++ code example**  where `ptr` points to the
+    associated data.  Global memory tensors have an associated runtime
+    leading dimension (64b signed integer), and their representation is
+    **View CUDA Toolkit Documentation for a C++ code example**  where `ptr`
+    points to the associated data and `strides[0]` is the leading
+    dimension.  In either case, `ptr` must point to some storage (with
+    appropriate size and alignment, see below) and is not owning. The user
+    is expected to keep memory allocated beyond any use of the tensor.
+    `strides[1]` should be a signed, 64bit integer (`long long`) equal to
+    the leading dimension of the global memory tensor. The leading
+    dimension is the number of `elements` between two successive rows or
+    columns (not bytes), depending on the context.  All tensor APIs take
+    their argument by value (not by pointer) and expect the struct to be
+    passed as-is on the stack.  Each opaque tensor type is uniquely
+    identified by a unique ID and name, see cublasdxTensorTrait_t .
+
+    See `cublasdxTensorType`.
+    """
     SMEM_A = CUBLASDX_TENSOR_SMEM_A
     SMEM_B = CUBLASDX_TENSOR_SMEM_B
     SMEM_C = CUBLASDX_TENSOR_SMEM_C
@@ -172,11 +331,19 @@ class CublasdxTensorType(_IntEnum):
     ACCUMULATOR_C = CUBLASDX_TENSOR_ACCUMULATOR_C
 
 class CublasdxTensorOption(_IntEnum):
-    """See `cublasdxTensorOption`."""
+    """
+    Tensor options.
+
+    See `cublasdxTensorOption`.
+    """
     ALIGNMENT_BYTES = CUBLASDX_TENSOR_OPTION_ALIGNMENT_BYTES
 
 class CublasdxTensorTrait(_IntEnum):
-    """See `cublasdxTensorTrait`."""
+    """
+    Tensor traits, used to query informations.
+
+    See `cublasdxTensorTrait`.
+    """
     STORAGE_BYTES = CUBLASDX_TENSOR_TRAIT_STORAGE_BYTES
     ALIGNMENT_BYTES = CUBLASDX_TENSOR_TRAIT_ALIGNMENT_BYTES
     UID = CUBLASDX_TENSOR_TRAIT_UID
@@ -184,18 +351,44 @@ class CublasdxTensorTrait(_IntEnum):
     LOGICAL_SIZE = CUBLASDX_TENSOR_TRAIT_LOGICAL_SIZE
     MEMORY_SPACE = CUBLASDX_TENSOR_TRAIT_MEMORY_SPACE
 
+class CublasdxPipelineTrait(_IntEnum):
+    """
+    Pipeline traits, used to query informations.
+
+    See `cublasdxPipelineTrait`.
+    """
+    STORAGE_BYTES = CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES
+    STORAGE_ALIGNMENT_BYTES = CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES
+    BUFFER_SIZE = CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE
+    BUFFER_ALIGNMENT_BYTES = CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES
+    OPAQUE_NAME = CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME
+    BLOCK_DIM = CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM
+
 class CublasdxDeviceFunctionTrait(_IntEnum):
-    """See `cublasdxDeviceFunctionTrait`."""
+    """
+    Device function traits, used to query informations.
+
+    See `cublasdxDeviceFunctionTrait`.
+    """
     SYMBOL = CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL
 
 class CublasdxDeviceFunctionOption(_IntEnum):
-    """See `cublasdxDeviceFunctionOption`."""
+    """
+    Device function options.
+
+    See `cublasdxDeviceFunctionOption`.
+    """
     SYMBOL_NAME = CUBLASDX_DEVICE_FUNCTION_OPTION_SYMBOL_NAME
     COPY_ALIGNMENT = CUBLASDX_DEVICE_FUNCTION_OPTION_COPY_ALIGNMENT
     CALLBACK = CUBLASDX_DEVICE_FUNCTION_OPTION_CALLBACK
+    NUM_THREADS = CUBLASDX_DEVICE_FUNCTION_OPTION_NUM_THREADS
 
 class CublasdxDeviceFunctionType(_IntEnum):
-    """See `cublasdxDeviceFunctionType`."""
+    """
+    Device functions supported by the library.
+
+    See `cublasdxDeviceFunctionType`.
+    """
     EXECUTE = CUBLASDX_DEVICE_FUNCTION_EXECUTE
     COPY = CUBLASDX_DEVICE_FUNCTION_COPY
     COPY_WAIT = CUBLASDX_DEVICE_FUNCTION_COPY_WAIT
@@ -213,39 +406,89 @@ class CublasdxDeviceFunctionType(_IntEnum):
     EPILOGUE = CUBLASDX_DEVICE_FUNCTION_EPILOGUE
 
 class CufftdxApi(_IntEnum):
-    """See `cufftdxApi`."""
+    """
+    Type of cufftDx API.Handling problems with input in register or in
+    shared memory buffers.  Check cufftdx::execute method documentation for
+    more details
+    (https://docs.nvidia.com/cuda/cufftdx/api/methods.html#block-execute-
+    method)
+
+    See `cufftdxApi`.
+    """
     LMEM = CUFFTDX_API_LMEM
     SMEM = CUFFTDX_API_SMEM
 
 class CufftdxType(_IntEnum):
-    """See `cufftdxType`."""
+    """
+    Type of computation data.Check cufftdx::Type operator documentation for
+    more details
+    (https://docs.nvidia.com/cuda/cufftdx/api/methods.html#block-execute-
+    method)
+
+    See `cufftdxType`.
+    """
     C2C = CUFFTDX_TYPE_C2C
     R2C = CUFFTDX_TYPE_R2C
     C2R = CUFFTDX_TYPE_C2R
 
 class CufftdxDirection(_IntEnum):
-    """See `cufftdxDirection`."""
+    """
+    FFT direction.Check cufftdx::Direction operator documentation for more
+    details
+    (https://docs.nvidia.com/cuda/cufftdx/api/operators.html#direction-
+    operator)
+
+    See `cufftdxDirection`.
+    """
     FORWARD = CUFFTDX_DIRECTION_FORWARD
     INVERSE = CUFFTDX_DIRECTION_INVERSE
 
 class CufftdxComplexLayout(_IntEnum):
-    """See `cufftdxComplexLayout`."""
+    """
+    Complex data layout.Check cufftdx layout documentation for more details
+    (https://docs.nvidia.com/cuda/cufftdx/api/methods.html#complex-element-
+    layouts)
+
+    See `cufftdxComplexLayout`.
+    """
     NATURAL = CUFFTDX_COMPLEX_LAYOUT_NATURAL
     PACKED = CUFFTDX_COMPLEX_LAYOUT_PACKED
     FULL = CUFFTDX_COMPLEX_LAYOUT_FULL
 
 class CufftdxRealMode(_IntEnum):
-    """See `cufftdxRealMode`."""
+    """
+    Real data mode.Check cufftdx real data mode documentation for more
+    details (https://docs.nvidia.com/cuda/cufftdx/api/methods.html#real-
+    element-layouts)
+
+    See `cufftdxRealMode`.
+    """
     NORMAL = CUFFTDX_REAL_MODE_NORMAL
     FOLDED = CUFFTDX_REAL_MODE_FOLDED
 
 class CufftdxCodeType(_IntEnum):
-    """See `cufftdxCodeType`."""
+    """
+    Code type.Check cufftdx code type documentation for more details
+    (https://docs.nvidia.com/cuda/1.4.0-ea/cufftdx/api/methods.html#code-
+    type)
+
+    See `cufftdxCodeType`.
+    """
     PTX = CUFFTDX_CODE_TYPE_PTX
     LTOIR = CUFFTDX_CODE_TYPE_LTOIR
 
 class CufftdxOperatorType(_IntEnum):
-    """See `cufftdxOperatorType`."""
+    """
+    cufftDx operatorsThe set of supported cufftDx operators.  Check cufftDx
+    description operators documentation for more details
+    (https://docs.nvidia.com/cuda/cufftdx/api/operators.html#description-
+    operators)  Check cufftDx execution operators documentation for more
+    details
+    (https://docs.nvidia.com/cuda/cufftdx/api/operators.html#execution-
+    operators)
+
+    See `cufftdxOperatorType`.
+    """
     SIZE = CUFFTDX_OPERATOR_SIZE
     DIRECTION = CUFFTDX_OPERATOR_DIRECTION
     TYPE = CUFFTDX_OPERATOR_TYPE
@@ -260,12 +503,28 @@ class CufftdxOperatorType(_IntEnum):
     CODE_TYPE = CUFFTDX_OPERATOR_CODE_TYPE
 
 class CufftdxKnobType(_IntEnum):
-    """See `cufftdxKnobType`."""
+    """
+    cufftDx configuration knobsThe set of supported knobs used for
+    accessing cufftDx operator's performance configuration details.  Check
+    cufftDx Execution Traits documentation for more details
+    (https://docs.nvidia.com/cuda/cufftdx/api/traits.html#execution-traits)
+
+    See `cufftdxKnobType`.
+    """
     ELEMENTS_PER_THREAD = CUFFTDX_KNOB_ELEMENTS_PER_THREAD
     FFTS_PER_BLOCK = CUFFTDX_KNOB_FFTS_PER_BLOCK
 
 class CufftdxTraitType(_IntEnum):
-    """See `cufftdxTraitType`."""
+    """
+    cufftDx traitsThe set of supported types of traits that can be accessed
+    from finalized sources that use cufftDx.  Check cufftDx Execution
+    Thread Traits documentation for more details
+    (https://docs.nvidia.com/cuda/cufftdx/api/traits.html#thread-traits)
+    Check cufftDx Execution Block Traits documentation for more details
+    (https://docs.nvidia.com/cuda/cufftdx/api/traits.html#block-traits)
+
+    See `cufftdxTraitType`.
+    """
     VALUE_TYPE = CUFFTDX_TRAIT_VALUE_TYPE
     INPUT_TYPE = CUFFTDX_TRAIT_INPUT_TYPE
     OUTPUT_TYPE = CUFFTDX_TRAIT_OUTPUT_TYPE
@@ -284,17 +543,39 @@ class CufftdxTraitType(_IntEnum):
     SUGGESTED_FFTS_PER_BLOCK = CUFFTDX_TRAIT_SUGGESTED_FFTS_PER_BLOCK
 
 class CusolverdxApi(_IntEnum):
-    """See `cusolverdxApi`."""
+    """
+    Type of cusolverdx API.
+
+    See `cusolverdxApi`.
+    """
     SMEM = CUSOLVERDX_API_SMEM
     SMEM_DYNAMIC_LD = CUSOLVERDX_API_SMEM_DYNAMIC_LD
 
 class CusolverdxType(_IntEnum):
-    """See `cusolverdxType`."""
+    """
+    Type of input values.
+
+    See `cusolverdxType`.
+    """
     REAL = CUSOLVERDX_TYPE_REAL
     COMPLEX = CUSOLVERDX_TYPE_COMPLEX
 
 class CusolverdxFunction(_IntEnum):
-    """See `cusolverdxFunction`."""
+    """
+    Type of device function.The function signatures depend on the selected
+    cusolverdxApi_t:  - For CUSOLVERDX_API_SMEM: Leading dimensions are
+    fixed at compile time.  - For CUSOLVERDX_API_SMEM_DYNAMIC_LD: Leading
+    dimensions are passed as pointers to `unsigned` at runtime.  Type
+    definitions used in function signatures:  - `value_type`: The value
+    type determined by CUSOLVERDX_OPERATOR_TYPE and
+    CUSOLVERDX_OPERATOR_PRECISION. For real types: `float` or `double`. For
+    complex types: `cuFloatComplex` or `cuDoubleComplex`.  - `status_type`:
+    A signed 32b integer (`int`) used to return status information.  All
+    functions are `extern "C"` and the symbol name can be queried using
+    CUSOLVERDX_TRAIT_SYMBOL_NAME.
+
+    See `cusolverdxFunction`.
+    """
     GETRF_NO_PIVOT = CUSOLVERDX_FUNCTION_GETRF_NO_PIVOT
     GETRS_NO_PIVOT = CUSOLVERDX_FUNCTION_GETRS_NO_PIVOT
     POTRF = CUSOLVERDX_FUNCTION_POTRF
@@ -306,29 +587,73 @@ class CusolverdxFunction(_IntEnum):
     UNMQR = CUSOLVERDX_FUNCTION_UNMQR
     GELQF = CUSOLVERDX_FUNCTION_GELQF
     UNMLQ = CUSOLVERDX_FUNCTION_UNMLQ
+    POSV = CUSOLVERDX_FUNCTION_POSV
+    GESV_NO_PIVOT = CUSOLVERDX_FUNCTION_GESV_NO_PIVOT
+    GESV_PARTIAL_PIVOT = CUSOLVERDX_FUNCTION_GESV_PARTIAL_PIVOT
+    GELS = CUSOLVERDX_FUNCTION_GELS
+    UNGQR = CUSOLVERDX_FUNCTION_UNGQR
+    UNGLQ = CUSOLVERDX_FUNCTION_UNGLQ
+    GTSV_NO_PIVOT = CUSOLVERDX_FUNCTION_GTSV_NO_PIVOT
+    HTEV = CUSOLVERDX_FUNCTION_HTEV
+    HEEV = CUSOLVERDX_FUNCTION_HEEV
 
 class CusolverdxArrangement(_IntEnum):
-    """See `cusolverdxArrangement`."""
+    """
+    Data arrangement mode.Defines data arrangements in tensors' taking part
+    in the calculation.
+
+    See `cusolverdxArrangement`.
+    """
     COL_MAJOR = CUSOLVERDX_ARRANGEMENT_COL_MAJOR
     ROW_MAJOR = CUSOLVERDX_ARRANGEMENT_ROW_MAJOR
 
+class CusolverdxTransposeMode(_IntEnum):
+    """
+    Transpose mode.Indicates inputs or outputs must be considered
+    transposed.
+
+    See `cusolverdxTransposeMode`.
+    """
+    NON_TRANSPOSED = CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED
+    TRANSPOSED = CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED
+    CONJ_TRANSPOSED = CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED
+
 class CusolverdxFillMode(_IntEnum):
-    """See `cusolverdxFillMode`."""
+    """
+    Tensor fill mode.For symmetric matrix the fill mode can be upper or
+    lower triangular
+
+    See `cusolverdxFillMode`.
+    """
     UPPER = CUSOLVERDX_FILL_MODE_UPPER
     LOWER = CUSOLVERDX_FILL_MODE_LOWER
 
 class CusolverdxSide(_IntEnum):
-    """See `cusolverdxSide`."""
+    """
+    Side operator.Indicates which side an operator is applied from in
+    operations such as matrix multiplication.
+
+    See `cusolverdxSide`.
+    """
     LEFT = CUSOLVERDX_SIDE_LEFT
     RIGHT = CUSOLVERDX_SIDE_RIGHT
 
 class CusolverdxDiag(_IntEnum):
-    """See `cusolverdxDiag`."""
+    """
+    Diag operator.Indicates whether the matrix diagonal is unit (all ones)
+    or non-unit.
+
+    See `cusolverdxDiag`.
+    """
     UNIT = CUSOLVERDX_DIAG_UNIT
     NON_UNIT = CUSOLVERDX_DIAG_NON_UNIT
 
 class CusolverdxOperatorType(_IntEnum):
-    """See `cusolverdxOperatorType`."""
+    """
+    Operators.The set of supported cusolverDx operators.
+
+    See `cusolverdxOperatorType`.
+    """
     SIZE = CUSOLVERDX_OPERATOR_SIZE
     TYPE = CUSOLVERDX_OPERATOR_TYPE
     PRECISION = CUSOLVERDX_OPERATOR_PRECISION
@@ -344,56 +669,158 @@ class CusolverdxOperatorType(_IntEnum):
     TRANSPOSE_MODE = CUSOLVERDX_OPERATOR_TRANSPOSE_MODE
     LEADING_DIMENSION = CUSOLVERDX_OPERATOR_LEADING_DIMENSION
     BATCHES_PER_BLOCK = CUSOLVERDX_OPERATOR_BATCHES_PER_BLOCK
+    JOB = CUSOLVERDX_OPERATOR_JOB
 
 class CusolverdxTraitType(_IntEnum):
-    """See `cusolverdxTraitType`."""
+    """
+    Traits.The set of supported types of traits that can be accessed from
+    finalized sources that use cusolverdx.
+
+    See `cusolverdxTraitType`.
+    """
     SHARED_MEMORY_SIZE = CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE
     SYMBOL_NAME = CUSOLVERDX_TRAIT_SYMBOL_NAME
     BLOCK_DIM = CUSOLVERDX_TRAIT_BLOCK_DIM
-    SUGGESTED_LEADING_DIMENSION = CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION
     SUGGESTED_BLOCK_DIM = CUSOLVERDX_TRAIT_SUGGESTED_BLOCK_DIM
     SUGGESTED_BATCHES_PER_BLOCK = CUSOLVERDX_TRAIT_SUGGESTED_BATCHES_PER_BLOCK
+    ARRANGEMENT = CUSOLVERDX_TRAIT_ARRANGEMENT
+    BATCHES_PER_BLOCK = CUSOLVERDX_TRAIT_BATCHES_PER_BLOCK
+    TYPE = CUSOLVERDX_TRAIT_TYPE
+    LEADING_DIMENSION = CUSOLVERDX_TRAIT_LEADING_DIMENSION
+    VALUE_TYPE = CUSOLVERDX_TRAIT_VALUE_TYPE
+    WORKSPACE_SIZE = CUSOLVERDX_TRAIT_WORKSPACE_SIZE
+    SUGGESTED_LEADING_DIMENSION = CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION
 
-class CommondxArchModifier(_IntEnum):
-    """See `commondxArchModifier`."""
-    GENERIC = COMMONDX_ARCH_MODIFIER_GENERIC
-    ARCH_SPECIFIC = COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC
-    FAMILY_SPECIFIC = COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC
+class CuranddxDistribution(_IntEnum):
+    """
+    Distribution type.Indicate the random number generation to use. Can be
+    set using CURANDDX_OPERATOR_DISTRIBUTION and further customized using
+    CURANDDX_OPERATOR_NORMAL_METHOD. See cuRANDDx distributions in the
+    documentation:
+    https://docs.nvidia.com/cuda/curanddx/api/methods.html#random-number-
+    generation-with-distributions.
 
-class CublasdxDevicePipelineType(_IntEnum):
-    """See `cublasdxDevicePipelineType`."""
-    SUGGESTED = CUBLASDX_DEVICE_PIPELINE_SUGGESTED
+    See `curanddxDistribution`.
+    """
+    UNIFORM_BITS = CURANDDX_DISTRIBUTION_UNIFORM_BITS
+    UNIFORM = CURANDDX_DISTRIBUTION_UNIFORM
+    NORMAL = CURANDDX_DISTRIBUTION_NORMAL
+    LOG_NORMAL = CURANDDX_DISTRIBUTION_LOG_NORMAL
+    POISSON = CURANDDX_DISTRIBUTION_POISSON
 
-class CublasdxTilePipelineType(_IntEnum):
-    """See `cublasdxTilePipelineType`."""
-    PIPELINE_DEFAULT = CUBLASDX_TILE_PIPELINE_DEFAULT
+class CuranddxNormalMethod(_IntEnum):
+    """
+    Normal distribution method type.Specifies the method to use for normal
+    and log-normal distributions. Set using CURANDDX_OPERATOR_NORMAL_METHOD
+    . See cuRANDDx normal distribution documentation:
+    https://docs.nvidia.com/cuda/curanddx/api/methods.html#normal-
+    distribution
 
-class CublasdxBlockSizeStrategy(_IntEnum):
-    """See `cublasdxBlockSizeStrategy`."""
-    HEURISTIC = CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC
-    FIXED = CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED
+    See `curanddxNormalMethod`.
+    """
+    ICDF = CURANDDX_NORMAL_METHOD_ICDF
+    BOX_MULLER = CURANDDX_NORMAL_METHOD_BOX_MULLER
 
-class CublasdxMemorySpace(_IntEnum):
-    """See `cublasdxMemorySpace`."""
-    RMEM = CUBLASDX_MEMORY_SPACE_RMEM
-    SMEM = CUBLASDX_MEMORY_SPACE_SMEM
-    GMEM = CUBLASDX_MEMORY_SPACE_GMEM
-    ANY = CUBLASDX_MEMORY_SPACE_ANY
+class CuranddxGenerateMethod(_IntEnum):
+    """
+    Generation method type.Specifies which generation method to use for
+    cuRANDDx distributions. Set using CURANDDX_OPERATOR_GENERATE_METHOD .
+    See cuRANDDx execution methods in the documentation:
+    https://docs.nvidia.com/cuda/curanddx/api/methods.html
 
-class CublasdxPipelineTrait(_IntEnum):
-    """See `cublasdxPipelineTrait`."""
-    STORAGE_BYTES = CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES
-    STORAGE_ALIGNMENT_BYTES = CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES
-    BUFFER_SIZE = CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE
-    BUFFER_ALIGNMENT_BYTES = CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES
-    OPAQUE_NAME = CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME
-    BLOCK_DIM = CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM
+    See `curanddxGenerateMethod`.
+    """
+    SINGLE = CURANDDX_GENERATE_METHOD_SINGLE
+    PAIR = CURANDDX_GENERATE_METHOD_PAIR
+    QUAD = CURANDDX_GENERATE_METHOD_QUAD
 
-class CusolverdxTransposeMode(_IntEnum):
-    """See `cusolverdxTransposeMode`."""
-    NON_TRANSPOSED = CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED
-    TRANSPOSED = CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED
-    CONJ_TRANSPOSED = CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED
+class CuranddxGenerator(_IntEnum):
+    """
+    Generator type.Matches cuRANDDx generator kinds. Set using
+    CURANDDX_OPERATOR_GENERATOR . See cuRANDDx generators in the
+    documentation: https://docs.nvidia.com/cuda/curanddx/api/description_op
+    s.html#generator-operator-label
+
+    See `curanddxGenerator`.
+    """
+    XORWOW = CURANDDX_GENERATOR_XORWOW
+    MRG32K3A = CURANDDX_GENERATOR_MRG32K3A
+    PHILOX4_32 = CURANDDX_GENERATOR_PHILOX4_32
+    PCG = CURANDDX_GENERATOR_PCG
+    SOBOL32 = CURANDDX_GENERATOR_SOBOL32
+    SCRAMBLED_SOBOL32 = CURANDDX_GENERATOR_SCRAMBLED_SOBOL32
+    SOBOL64 = CURANDDX_GENERATOR_SOBOL64
+    SCRAMBLED_SOBOL64 = CURANDDX_GENERATOR_SCRAMBLED_SOBOL64
+
+class CuranddxOperatorType(_IntEnum):
+    """
+    Operators.The set of supported curandDx operators.
+
+    See `curanddxOperatorType`.
+    """
+    GENERATOR = CURANDDX_OPERATOR_GENERATOR
+    PHILOX_ROUNDS = CURANDDX_OPERATOR_PHILOX_ROUNDS
+    SM = CURANDDX_OPERATOR_SM
+    EXECUTION = CURANDDX_OPERATOR_EXECUTION
+    DISTRIBUTION = CURANDDX_OPERATOR_DISTRIBUTION
+    OUTPUT_TYPE = CURANDDX_OPERATOR_OUTPUT_TYPE
+    GENERATE_METHOD = CURANDDX_OPERATOR_GENERATE_METHOD
+    NORMAL_METHOD = CURANDDX_OPERATOR_NORMAL_METHOD
+    DEVICE_FUNCTIONS = CURANDDX_OPERATOR_DEVICE_FUNCTIONS
+    DISTRIBUTION_PARAMETERS = CURANDDX_OPERATOR_DISTRIBUTION_PARAMETERS
+
+class CuranddxDeviceFunctionType(_IntEnum):
+    """
+    Device functions.The set of supported device functions. Must be passed
+    using CURANDDX_OPERATOR_DEVICE_FUNCTIONS and can be or'ed to indicate
+    that libmathdx should generate multiple device functions.
+
+    See `curanddxDeviceFunctionType`.
+    """
+    GENERATE = CURANDDX_DEVICE_FUNCTION_GENERATE
+    INIT_STATE = CURANDDX_DEVICE_FUNCTION_INIT_STATE
+    DESTROY_STATE = CURANDDX_DEVICE_FUNCTION_DESTROY_STATE
+    SKIP_OFFSET = CURANDDX_DEVICE_FUNCTION_SKIP_OFFSET
+    SKIP_SUBSEQUENCE = CURANDDX_DEVICE_FUNCTION_SKIP_SUBSEQUENCE
+    SKIP_SEQUENCE = CURANDDX_DEVICE_FUNCTION_SKIP_SEQUENCE
+
+class CuranddxTraitType(_IntEnum):
+    """
+    Traits.The set of supported types of traits that can be accessed from
+    finalized sources that use curanddx.
+
+    See `curanddxTraitType`.
+    """
+    SYMBOL_GENERATE_NAME = CURANDDX_TRAIT_SYMBOL_GENERATE_NAME
+    SYMBOL_INIT_STATE_NAME = CURANDDX_TRAIT_SYMBOL_INIT_STATE_NAME
+    SYMBOL_DESTROY_STATE_NAME = CURANDDX_TRAIT_SYMBOL_DESTROY_STATE_NAME
+    SYMBOL_SKIP_OFFSET_NAME = CURANDDX_TRAIT_SYMBOL_SKIP_OFFSET_NAME
+    SYMBOL_SKIP_SUBSEQUENCE_NAME = CURANDDX_TRAIT_SYMBOL_SKIP_SUBSEQUENCE_NAME
+    SYMBOL_SKIP_SEQUENCE_NAME = CURANDDX_TRAIT_SYMBOL_SKIP_SEQUENCE_NAME
+    STATE_SIZE = CURANDDX_TRAIT_STATE_SIZE
+    STATE_ALIGNMENT = CURANDDX_TRAIT_STATE_ALIGNMENT
+
+class CommondxCodeType(_IntEnum):
+    """
+    The set of code types supported by the library. See
+    commondxOption_t::COMMONDX_OPTION_TARGET_CODE.
+
+    See `commondxCodeType`.
+    """
+    LTO = COMMONDX_CODE_TYPE_LTO
+    PTX = COMMONDX_CODE_TYPE_PTX
+
+class CusolverdxJob(_IntEnum):
+    """
+    Job operator.Specifies whether and how eigenvectors are computed and
+    stored in eigenvalue operations.
+
+    See `cusolverdxJob`.
+    """
+    NO_VECTORS = CUSOLVERDX_JOB_NO_VECTORS
+    ALL_VECTORS = CUSOLVERDX_JOB_ALL_VECTORS
+    MULTIPLY_VECTORS = CUSOLVERDX_JOB_MULTIPLY_VECTORS
+    OVERWRITE_VECTORS = CUSOLVERDX_JOB_OVERWRITE_VECTORS
 
 
 ###############################################################################
@@ -411,7 +838,17 @@ class LibMathDxError(Exception):
 
     def __init__(self, status):
         self.status = status
-        cdef str err = STATUS[status]
+        cdef str err = STATUS.get(status, f"Unknown error {status}")
+
+        cdef size_t err_size = 0
+        cdef commondxStatusType err_code
+        cdef vector[char] err_str
+
+        if commondxGetLastErrorStrSize(&err_size) == COMMONDX_SUCCESS and err_size > 0:
+            err_str.resize(err_size)
+            if commondxGetLastErrorStr(&err_code, err_size, err_str.data()) == COMMONDX_SUCCESS:
+                err += ": " + err_str.data().decode('utf-8', 'replace')
+
         super(LibMathDxError, self).__init__(err)
 
     def __reduce__(self):
@@ -455,6 +892,28 @@ cpdef commondx_set_code_option_int64(long long int code, int option, long long i
     """
     with nogil:
         __status__ = commondxSetCodeOptionInt64(<commondxCode>code, <_CommondxOption>option, value)
+    check_status(__status__)
+
+
+cpdef commondx_set_code_option_int64s(long long int code, int option, size_t count, values):
+    """Set an option on a code handle.
+
+    Args:
+        code (long long int): A code handle from commondxCreateCode.
+        option (CommondxOption): The option to set the code to.
+        count (size_t): The length of the array.
+        values (object): A pointer to ``count`` entries. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``int64_t``.
+
+
+    .. seealso:: `commondxSetCodeOptionInt64s`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _values_
+    get_resource_ptr[int64_t](_values_, values, <int64_t*>NULL)
+    with nogil:
+        __status__ = commondxSetCodeOptionInt64s(<commondxCode>code, <_CommondxOption>option, count, <long long int*>(_values_.data()))
     check_status(__status__)
 
 
@@ -745,8 +1204,8 @@ cpdef cublasdx_set_operator_int64s(long long int handle, int op, size_t count, a
     check_status(__status__)
 
 
-cpdef long long int cublasdx_bind_tensor(long long int handle, int tensor_type) except? 0:
-    """Binds (aka create) a tensor handle to a tensor The tensor is bound to the cuBLASDx descriptor and will be freed when the cuBLASDx descriptor is destroyed.
+cpdef long long int cublasdx_create_tensor(long long int handle, int tensor_type) except? 0:
+    """Create a tensor handle.
 
     Args:
         handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
@@ -755,13 +1214,136 @@ cpdef long long int cublasdx_bind_tensor(long long int handle, int tensor_type) 
     Returns:
         long long int: A valid tensor handle.
 
-    .. seealso:: `cublasdxBindTensor`
+    .. seealso:: `cublasdxCreateTensor`
     """
     cdef cublasdxTensor tensor
     with nogil:
-        __status__ = cublasdxBindTensor(<cublasdxDescriptor>handle, <_CublasdxTensorType>tensor_type, &tensor)
+        __status__ = cublasdxCreateTensor(<cublasdxDescriptor>handle, <_CublasdxTensorType>tensor_type, &tensor)
     check_status(__status__)
     return <long long int>tensor
+
+
+cpdef long long int cublasdx_create_tensor_strided(int memory_space, int value_type, intptr_t ptr, long long int rank, shape, stride) except? 0:
+    """Create a tensor handle for a N-dimensional strided tensor.
+
+    Args:
+        memory_space (CublasdxMemorySpace): The memory space for the tensor.
+        value_type (CommondxValueType): The datatype of the individual elements.
+        ptr (intptr_t): A pointer to the data. Currently, only ``NULL`` is supported.
+        rank (long long int): The rank of of tensor.
+        shape (object): An array of size ``rank`` indicating the tensor shape. LIBMATHDX_RUNTIME can be used to indicate a runtime shape. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``int64_t``.
+
+        stride (object): An array of size ``rank`` indicating the tensor stride. LIBMATHDX_RUNTIME can be used to indicate a runtime stride. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``int64_t``.
+
+
+    Returns:
+        long long int: The tensor handle.
+
+    .. seealso:: `cublasdxCreateTensorStrided`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _shape_
+    get_resource_ptr[int64_t](_shape_, shape, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _stride_
+    get_resource_ptr[int64_t](_stride_, stride, <int64_t*>NULL)
+    cdef cublasdxTensor tensor
+    with nogil:
+        __status__ = cublasdxCreateTensorStrided(<_CublasdxMemorySpace>memory_space, <_CommondxValueType>value_type, <void*>ptr, rank, <long long int*>(_shape_.data()), <long long int*>(_stride_.data()), &tensor)
+    check_status(__status__)
+    return <long long int>tensor
+
+
+cpdef long long int cublasdx_make_tensor_like(long long int input, int value_type) except? 0:
+    """Create an opaque tensor with a identical layout (smem/gmem) or partitioner (rmem), but with a different datatype.
+
+    Args:
+        input (long long int): An opaque tensors.
+        value_type (CommondxValueType): The new datatype.
+
+    Returns:
+        long long int: The output tensor.
+
+    .. seealso:: `cublasdxMakeTensorLike`
+    """
+    cdef cublasdxTensor output
+    with nogil:
+        __status__ = cublasdxMakeTensorLike(<cublasdxTensor>input, <_CommondxValueType>value_type, &output)
+    check_status(__status__)
+    return <long long int>output
+
+
+cpdef cublasdx_destroy_tensor(long long int tensor):
+    """Destroys a tensor handle created using cublasdxCreateTensor or cublasdxMakeTensorLike.
+
+    Args:
+        tensor (long long int): The tensor to destroy.
+
+    .. seealso:: `cublasdxDestroyTensor`
+    """
+    with nogil:
+        __status__ = cublasdxDestroyTensor(<cublasdxTensor>tensor)
+    check_status(__status__)
+
+
+cpdef cublasdx_destroy_pipeline(long long int pipeline):
+    """Destroys a pipeline handle created using cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
+
+    Args:
+        pipeline (long long int): The pipeline to destroy.
+
+    .. seealso:: `cublasdxDestroyPipeline`
+    """
+    with nogil:
+        __status__ = cublasdxDestroyPipeline(<cublasdxPipeline>pipeline)
+    check_status(__status__)
+
+
+cpdef long long int cublasdx_create_device_pipeline(long long int handle, int device_pipeline_type, long long int pipeline_depth, int block_size_strategy, long long int tensor_a, long long int tensor_b) except? 0:
+    """Create a device pipeline handle.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
+        device_pipeline_type (CublasdxDevicePipelineType): The type of the device pipeline.
+        pipeline_depth (long long int): The depth of the pipeline. If LIBMATHDX_MAX_PIPELINE_DEPTH is passed, the pipeline depth will be set to the maximal depth based on available shared memory.
+        block_size_strategy (CublasdxBlockSizeStrategy): The block size strategy to use, fixed (you use the number of threads specified) or heuristic (cuBLASDx can use more threads if needed).
+        tensor_a (long long int): The tensor handle for global matrix A.
+        tensor_b (long long int): The tensor handle for global matrix B.
+
+    Returns:
+        long long int: A valid device pipeline handle.
+
+    .. seealso:: `cublasdxCreateDevicePipeline`
+    """
+    cdef cublasdxPipeline device_pipeline
+    with nogil:
+        __status__ = cublasdxCreateDevicePipeline(<cublasdxDescriptor>handle, <_CublasdxDevicePipelineType>device_pipeline_type, pipeline_depth, <_CublasdxBlockSizeStrategy>block_size_strategy, <cublasdxTensor>tensor_a, <cublasdxTensor>tensor_b, &device_pipeline)
+    check_status(__status__)
+    return <long long int>device_pipeline
+
+
+cpdef long long int cublasdx_create_tile_pipeline(long long int handle, int tile_pipeline_type, long long int device_pipeline) except? 0:
+    """Create a tile pipeline handle.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
+        tile_pipeline_type (CublasdxTilePipelineType): The type of the tile pipeline.
+        device_pipeline (long long int): The device pipeline handle this tile pipeline is associated with.
+
+    Returns:
+        long long int: A valid tile pipeline handle.
+
+    .. seealso:: `cublasdxCreateTilePipeline`
+    """
+    cdef cublasdxPipeline tile_pipeline
+    with nogil:
+        __status__ = cublasdxCreateTilePipeline(<cublasdxDescriptor>handle, <_CublasdxTilePipelineType>tile_pipeline_type, <cublasdxPipeline>device_pipeline, &tile_pipeline)
+    check_status(__status__)
+    return <long long int>tile_pipeline
 
 
 cpdef cublasdx_set_tensor_option_int64(long long int tensor, int option, long long int value):
@@ -779,11 +1361,71 @@ cpdef cublasdx_set_tensor_option_int64(long long int tensor, int option, long lo
     check_status(__status__)
 
 
-cpdef cublasdx_finalize_tensors_new(size_t count, array):
+cpdef cublasdx_finalize_tensors(size_t count, array):
+    """Finalize the tensors. This is required before traits can be queried.
+
+    Args:
+        count (size_t): The number of tensors to finalized.
+        array (object): The array of tensors. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxTensor``.
+
+
+    .. seealso:: `cublasdxFinalizeTensors`
+    """
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        __status__ = cublasdxFinalizeTensorsNew(count, <const cublasdxTensor*>(_array_.data()))
+        __status__ = cublasdxFinalizeTensors(count, <const cublasdxTensor*>(_array_.data()))
+    check_status(__status__)
+
+
+cpdef cublasdx_finalize_pipelines(size_t count, array):
+    """Finalize the pipelines. This is required before traits can be queried.
+
+    Args:
+        count (size_t): The number of pipelines to finalized.
+        array (object): The array of pipelines. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxPipeline``.
+
+
+    .. seealso:: `cublasdxFinalizePipelines`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
+    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
+    with nogil:
+        __status__ = cublasdxFinalizePipelines(count, <const cublasdxPipeline*>(_array_.data()))
+    check_status(__status__)
+
+
+cpdef cublasdx_finalize(size_t count_tensors, tensors, size_t count_pipelines, pipelines):
+    """Finalize both tensors and pipelines. This is required before traits can be queried. Internally calls cublasdxFinalizeTensors and cublasdxFinalizePipelines.
+
+    Args:
+        count_tensors (size_t): The number of tensors to finalized.
+        tensors (object): The array of tensors. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxTensor``.
+
+        count_pipelines (size_t): The number of pipelines to finalized.
+        pipelines (object): The array of pipelines. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxPipeline``.
+
+
+    .. seealso:: `cublasdxFinalize`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _tensors_
+    get_resource_ptr[int64_t](_tensors_, tensors, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _pipelines_
+    get_resource_ptr[int64_t](_pipelines_, pipelines, <int64_t*>NULL)
+    with nogil:
+        __status__ = cublasdxFinalize(count_tensors, <const cublasdxTensor*>(_tensors_.data()), count_pipelines, <const cublasdxPipeline*>(_pipelines_.data()))
     check_status(__status__)
 
 
@@ -806,6 +1448,47 @@ cpdef long long int cublasdx_get_tensor_trait_int64(long long int tensor, int tr
     return value
 
 
+cpdef long long int cublasdx_get_pipeline_trait_int64(long long int pipeline, int trait) except? 0:
+    """Query an integer trait value from a finalized pipeline.
+
+    Args:
+        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
+        trait (CublasdxPipelineTrait): The trait to query.
+
+    Returns:
+        long long int: The trait value.
+
+    .. seealso:: `cublasdxGetPipelineTraitInt64`
+    """
+    cdef long long int value
+    with nogil:
+        __status__ = cublasdxGetPipelineTraitInt64(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, &value)
+    check_status(__status__)
+    return value
+
+
+cpdef cublasdx_get_pipeline_trait_int64s(long long int pipeline, int trait, size_t count, array):
+    """Returns an array trait's value from a finalized pipeline.
+
+    Args:
+        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
+        trait (CublasdxPipelineTrait): The trait to query.
+        count (size_t): The number of values to query.
+        array (object): The array of trait values. Must point to exactly ``count`` elements of type ``long long int``. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``int64_t``.
+
+
+    .. seealso:: `cublasdxGetPipelineTraitInt64s`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
+    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
+    with nogil:
+        __status__ = cublasdxGetPipelineTraitInt64s(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, count, <long long int*>(_array_.data()))
+    check_status(__status__)
+
+
 cpdef size_t cublasdx_get_tensor_trait_str_size(long long int tensor, int trait) except? 0:
     """Query an C-string trait's size from a finalized tensor.
 
@@ -821,6 +1504,25 @@ cpdef size_t cublasdx_get_tensor_trait_str_size(long long int tensor, int trait)
     cdef size_t size
     with nogil:
         __status__ = cublasdxGetTensorTraitStrSize(<cublasdxTensor>tensor, <_CublasdxTensorTrait>trait, &size)
+    check_status(__status__)
+    return size
+
+
+cpdef size_t cublasdx_get_pipeline_trait_str_size(long long int pipeline, int trait) except? 0:
+    """Query an C-string trait's size from a finalized pipeline.
+
+    Args:
+        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
+        trait (CublasdxPipelineTrait): The trait to query.
+
+    Returns:
+        size_t: The C-string size (including the ``\0``).
+
+    .. seealso:: `cublasdxGetPipelineTraitStrSize`
+    """
+    cdef size_t size
+    with nogil:
+        __status__ = cublasdxGetPipelineTraitStrSize(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, &size)
     check_status(__status__)
     return size
 
@@ -842,12 +1544,94 @@ cpdef cublasdx_get_tensor_trait_str(long long int tensor, int trait, size_t size
     check_status(__status__)
 
 
-cpdef long long int cublasdx_create_device_function_old(long long int handle, int device_function_type, size_t count, array) except? 0:
+cpdef cublasdx_get_pipeline_trait_str(long long int pipeline, int trait, size_t size, value):
+    """Query a C-string trait value from a finalized pipeline.
+
+    Args:
+        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
+        trait (CublasdxPipelineTrait): The trait to query.
+        size (size_t): The C-string size, as returned by cublasdxGetPipelineTraitStrSize.
+        value (bytes): The C-string trait value.
+
+    .. seealso:: `cublasdxGetPipelineTraitStr`
+    """
+    cdef void* _value_ = get_buffer_pointer(value, size, readonly=False)
+    with nogil:
+        __status__ = cublasdxGetPipelineTraitStr(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, size, <char*>_value_)
+    check_status(__status__)
+
+
+cpdef long long int cublasdx_create_device_function(long long int handle, int device_function_type, size_t count, array) except? 0:
+    """Create a device function from a set of tensor.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor or LIBMATHDX_NONE if no descriptor is required.
+        device_function_type (CublasdxDeviceFunctionType): The device function to create.
+        count (size_t): The number of input & output tensors to the device function.
+        array (object): The array of input & output tensors. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxTensor``.
+
+
+    Returns:
+        long long int: The device function.
+
+    .. seealso:: `cublasdxCreateDeviceFunction`
+    """
     cdef nullable_unique_ptr[ vector[int64_t] ] _array_
     get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     cdef cublasdxDeviceFunction device_function
     with nogil:
-        __status__ = cublasdxCreateDeviceFunctionOld(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, count, <const cublasdxTensor*>(_array_.data()), &device_function)
+        __status__ = cublasdxCreateDeviceFunction(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, count, <const cublasdxTensor*>(_array_.data()), &device_function)
+    check_status(__status__)
+    return <long long int>device_function
+
+
+cpdef cublasdx_destroy_device_function(long long int device_function):
+    """Destroys a device function handle.
+
+    Args:
+        device_function (long long int): A cuBLASDx device function, output of cublasdxCreateDeviceFunction.
+
+    .. seealso:: `cublasdxDestroyDeviceFunction`
+    """
+    with nogil:
+        __status__ = cublasdxDestroyDeviceFunction(<cublasdxDeviceFunction>device_function)
+    check_status(__status__)
+
+
+cpdef long long int cublasdx_create_device_function_with_pipelines(long long int handle, int device_function_type, size_t tensor_count, tensors, size_t pipeline_count, pipelines) except? 0:
+    """Binds (aka create) a device function from a set of tensor.
+
+    Args:
+        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
+        device_function_type (CublasdxDeviceFunctionType): The device function to create.
+        tensor_count (size_t): The number of input & output tensors to the device function.
+        tensors (object): The array of input & output tensors. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxTensor``.
+
+        pipeline_count (size_t): The number of pipelines to the device function.
+        pipelines (object): The array of pipelines. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``cublasdxPipeline``.
+
+
+    Returns:
+        long long int: The device function.
+
+    .. seealso:: `cublasdxCreateDeviceFunctionWithPipelines`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _tensors_
+    get_resource_ptr[int64_t](_tensors_, tensors, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[int64_t] ] _pipelines_
+    get_resource_ptr[int64_t](_pipelines_, pipelines, <int64_t*>NULL)
+    cdef cublasdxDeviceFunction device_function
+    with nogil:
+        __status__ = cublasdxCreateDeviceFunctionWithPipelines(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, tensor_count, <const cublasdxTensor*>(_tensors_.data()), pipeline_count, <const cublasdxPipeline*>(_pipelines_.data()), &device_function)
     check_status(__status__)
     return <long long int>device_function
 
@@ -1570,6 +2354,28 @@ cpdef long long int cusolverdx_get_trait_int64(long long int handle, int trait) 
     return value
 
 
+cpdef cusolverdx_get_trait_int64s(long long int handle, int trait, size_t count, values):
+    """Returns an integer array trait value.
+
+    Args:
+        handle (long long int): A cuSOLVERDx descriptor, output of cusolverdxCreateDescriptor .
+        trait (CusolverdxTraitType): A trait to query the descriptor for.
+        count (size_t): The size of the array to retrieve.
+        values (object): The trait values. Must point to an array of ``count`` values. It can be:
+
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``int64_t``.
+
+
+    .. seealso:: `cusolverdxGetTraitInt64s`
+    """
+    cdef nullable_unique_ptr[ vector[int64_t] ] _values_
+    get_resource_ptr[int64_t](_values_, values, <int64_t*>NULL)
+    with nogil:
+        __status__ = cusolverdxGetTraitInt64s(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, count, <long long int*>(_values_.data()))
+    check_status(__status__)
+
+
 cpdef cusolverdx_finalize_code(long long int code, long long int handle):
     """Fills a code handle with the descriptor's device function code.
 
@@ -1623,439 +2429,309 @@ cpdef str cusolverdx_trait_type_to_str(int trait):
     return _output_.decode()
 
 
-cpdef commondx_set_code_option_int64s(long long int code, int option, size_t count, values):
-    """Set an option on a code handle.
-
-    Args:
-        code (long long int): A code handle from commondxCreateCode.
-        option (CommondxOption): The option to set the code to.
-        count (size_t): The length of the array.
-        values (object): A pointer to ``count`` entries. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``int64_t``.
-
-
-    .. seealso:: `commondxSetCodeOptionInt64s`
-    """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _values_
-    get_resource_ptr[int64_t](_values_, values, <int64_t*>NULL)
-    with nogil:
-        __status__ = commondxSetCodeOptionInt64s(<commondxCode>code, <_CommondxOption>option, count, <long long int*>(_values_.data()))
-    check_status(__status__)
-
-
-cpdef long long int cublasdx_create_tensor_new(long long int handle, int tensor_type) except? 0:
-    cdef cublasdxTensor tensor
-    with nogil:
-        __status__ = cublasdxCreateTensorNew(<cublasdxDescriptor>handle, <_CublasdxTensorType>tensor_type, &tensor)
-    check_status(__status__)
-    return <long long int>tensor
-
-
-cpdef long long int cublasdx_create_tensor_strided(int memory_space, int value_type, intptr_t ptr, long long int rank, shape, stride) except? 0:
-    """Create a tensor handle for a N-dimensional strided tensor.
-
-    Args:
-        memory_space (CublasdxMemorySpace): The memory space for the tensor.
-        value_type (CommondxValueType): The datatype of the individual elements.
-        ptr (intptr_t): A pointer to the data. Currently, only ``NULL`` is supported.
-        rank (long long int): The rank of of tensor.
-        shape (object): An array of size ``rank`` indicating the tensor shape. LIBMATHDX_RUNTIME can be used to indicate a runtime shape. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``int64_t``.
-
-        stride (object): An array of size ``rank`` indicating the tensor stride. LIBMATHDX_RUNTIME can be used to indicate a runtime stride. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``int64_t``.
-
+cpdef tuple curanddx_get_version():
+    """Returns the major.minor.patch version of cuRANDDx.
 
     Returns:
-        long long int: The tensor handle.
+        A 3-tuple containing:
 
-    .. seealso:: `cublasdxCreateTensorStrided`
+        - int: The major version.
+        - int: The minor version.
+        - int: The patch version.
+
+    .. seealso:: `curanddxGetVersion`
     """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _shape_
-    get_resource_ptr[int64_t](_shape_, shape, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _stride_
-    get_resource_ptr[int64_t](_stride_, stride, <int64_t*>NULL)
-    cdef cublasdxTensor tensor
+    cdef int major
+    cdef int minor
+    cdef int patch
     with nogil:
-        __status__ = cublasdxCreateTensorStrided(<_CublasdxMemorySpace>memory_space, <_CommondxValueType>value_type, <void*>ptr, rank, <long long int*>(_shape_.data()), <long long int*>(_stride_.data()), &tensor)
+        __status__ = curanddxGetVersion(&major, &minor, &patch)
     check_status(__status__)
-    return <long long int>tensor
+    return (major, minor, patch)
 
 
-cpdef long long int cublasdx_make_tensor_like(long long int input, int value_type) except? 0:
-    """Create an opaque tensor with a identical layout (smem/gmem) or partitioner (rmem), but with a different datatype.
-
-    Args:
-        input (long long int): An opaque tensors.
-        value_type (CommondxValueType): The new datatype.
+cpdef long long int curanddx_create_descriptor() except? 0:
+    """Creates a cuRANDDx descriptor.
 
     Returns:
-        long long int: The output tensor.
+        long long int: A pointer to a descriptor handle. As output, an initialized cuRANDDx descriptor.
 
-    .. seealso:: `cublasdxMakeTensorLike`
+    .. seealso:: `curanddxCreateDescriptor`
     """
-    cdef cublasdxTensor output
+    cdef curanddxDescriptor handle
     with nogil:
-        __status__ = cublasdxMakeTensorLike(<cublasdxTensor>input, <_CommondxValueType>value_type, &output)
+        __status__ = curanddxCreateDescriptor(&handle)
     check_status(__status__)
-    return <long long int>output
+    return <long long int>handle
 
 
-cpdef cublasdx_destroy_tensor_new(long long int tensor):
-    with nogil:
-        __status__ = cublasdxDestroyTensorNew(<cublasdxTensor>tensor)
-    check_status(__status__)
-
-
-cpdef cublasdx_destroy_pipeline(long long int pipeline):
-    """Destroys a pipeline handle created using cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
+cpdef curanddx_set_option_str(long long int handle, int opt, value):
+    """Sets a C-string option on a cuRANDDx descriptor.
 
     Args:
-        pipeline (long long int): The pipeline to destroy.
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
+        opt (CommondxOption): The option to set.
+        value (str): The value for the option.
 
-    .. seealso:: `cublasdxDestroyPipeline`
+    .. seealso:: `curanddxSetOptionStr`
     """
+    if not isinstance(value, str):
+        raise TypeError("value must be a Python str")
+    cdef bytes _temp_value_ = (<str>value).encode()
+    cdef char* _value_ = _temp_value_
     with nogil:
-        __status__ = cublasdxDestroyPipeline(<cublasdxPipeline>pipeline)
+        __status__ = curanddxSetOptionStr(<curanddxDescriptor>handle, <_CommondxOption>opt, <const char*>_value_)
     check_status(__status__)
 
 
-cpdef long long int cublasdx_create_device_pipeline(long long int handle, int device_pipeline_type, long long int pipeline_depth, int block_size_strategy, long long int tensor_a, long long int tensor_b) except? 0:
-    """Create a device pipeline handle.
+cpdef curanddx_set_operator_int64(long long int handle, int op, long long int value):
+    """Sets an integer operator on a cuRANDDx descriptor.
 
     Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        device_pipeline_type (CublasdxDevicePipelineType): The type of the device pipeline.
-        pipeline_depth (long long int): The depth of the pipeline. If ``LIBMATHDX_MAX_PIPELINE_DEPTH`` is passed, the pipeline depth will be set to the maximal depth based on available shared memory.
-        block_size_strategy (CublasdxBlockSizeStrategy): The block size strategy to use, fixed (you use the number of threads specified) or heuristic (cuBLASDx can use more threads if needed).
-        tensor_a (long long int): The tensor handle for global matrix A.
-        tensor_b (long long int): The tensor handle for global matrix B.
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
+        op (CuranddxOperatorType): The operator to set.
+        value (long long int): A value for the operator.
 
-    Returns:
-        long long int: A valid device pipeline handle.
-
-    .. seealso:: `cublasdxCreateDevicePipeline`
+    .. seealso:: `curanddxSetOperatorInt64`
     """
-    cdef cublasdxPipeline device_pipeline
     with nogil:
-        __status__ = cublasdxCreateDevicePipeline(<cublasdxDescriptor>handle, <_CublasdxDevicePipelineType>device_pipeline_type, pipeline_depth, <_CublasdxBlockSizeStrategy>block_size_strategy, <cublasdxTensor>tensor_a, <cublasdxTensor>tensor_b, &device_pipeline)
+        __status__ = curanddxSetOperatorInt64(<curanddxDescriptor>handle, <_CuranddxOperatorType>op, value)
     check_status(__status__)
-    return <long long int>device_pipeline
 
 
-cpdef long long int cublasdx_create_tile_pipeline(long long int handle, int tile_pipeline_type, long long int device_pipeline) except? 0:
-    """Create a tile pipeline handle.
+cpdef curanddx_set_operator_doubles(long long int handle, int op, size_t count, values):
+    """Sets the parameters for the distribution.
 
     Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        tile_pipeline_type (CublasdxTilePipelineType): The type of the tile pipeline.
-        device_pipeline (long long int): The device pipeline handle this tile pipeline is associated with.
-
-    Returns:
-        long long int: A valid tile pipeline handle.
-
-    .. seealso:: `cublasdxCreateTilePipeline`
-    """
-    cdef cublasdxPipeline tile_pipeline
-    with nogil:
-        __status__ = cublasdxCreateTilePipeline(<cublasdxDescriptor>handle, <_CublasdxTilePipelineType>tile_pipeline_type, <cublasdxPipeline>device_pipeline, &tile_pipeline)
-    check_status(__status__)
-    return <long long int>tile_pipeline
-
-
-cpdef cublasdx_finalize_pipelines(size_t count, array):
-    """Finalize the pipelines. This is required before traits can be queried.
-
-    Args:
-        count (size_t): The number of pipelines to finalized.
-        array (object): The array of pipelines. It can be:
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
+        op (CuranddxOperatorType): The operator to set. Only supports CURANDDX_OPERATOR_DISTRIBUTION_PARAMETERS .
+        count (size_t): The number of parameters. Must be 1 or 2.
+        values (object): The parameters. It can be:
 
             - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxPipeline``.
+            - a Python sequence of ``float``.
 
 
-    .. seealso:: `cublasdxFinalizePipelines`
+    .. seealso:: `curanddxSetOperatorDoubles`
     """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
-    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
+    cdef nullable_unique_ptr[ vector[double] ] _values_
+    get_resource_ptr[double](_values_, values, <double*>NULL)
     with nogil:
-        __status__ = cublasdxFinalizePipelines(count, <const cublasdxPipeline*>(_array_.data()))
+        __status__ = curanddxSetOperatorDoubles(<curanddxDescriptor>handle, <_CuranddxOperatorType>op, count, <double*>(_values_.data()))
     check_status(__status__)
 
 
-cpdef cublasdx_finalize(size_t count_tensors, tensors, size_t count_pipelines, pipelines):
-    """Finalize both tensors and pipelines. This is required before traits can be queried. Internally calls cublasdxFinalizeTensors and cublasdxFinalizePipelines.
+cpdef size_t curanddx_get_trait_str_size(long long int handle, int trait) except? 0:
+    """Returns the size of a C-string trait value.
 
     Args:
-        count_tensors (size_t): The number of tensors to finalized.
-        tensors (object): The array of tensors. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxTensor``.
-
-        count_pipelines (size_t): The number of pipelines to finalized.
-        pipelines (object): The array of pipelines. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxPipeline``.
-
-
-    .. seealso:: `cublasdxFinalize`
-    """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _tensors_
-    get_resource_ptr[int64_t](_tensors_, tensors, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _pipelines_
-    get_resource_ptr[int64_t](_pipelines_, pipelines, <int64_t*>NULL)
-    with nogil:
-        __status__ = cublasdxFinalize(count_tensors, <const cublasdxTensor*>(_tensors_.data()), count_pipelines, <const cublasdxPipeline*>(_pipelines_.data()))
-    check_status(__status__)
-
-
-cpdef long long int cublasdx_get_pipeline_trait_int64(long long int pipeline, int trait) except? 0:
-    """Query an integer trait value from a finalized pipeline.
-
-    Args:
-        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
-        trait (CublasdxPipelineTrait): The trait to query.
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
+        trait (CuranddxTraitType): A trait to query the descriptor for.
 
     Returns:
-        long long int: The trait value.
+        size_t: The size of the C-string value for the trait (including the ``\0``).
 
-    .. seealso:: `cublasdxGetPipelineTraitInt64`
-    """
-    cdef long long int value
-    with nogil:
-        __status__ = cublasdxGetPipelineTraitInt64(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, &value)
-    check_status(__status__)
-    return value
-
-
-cpdef cublasdx_get_pipeline_trait_int64s(long long int pipeline, int trait, size_t count, array):
-    """Returns an array trait's value from a finalized pipeline.
-
-    Args:
-        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
-        trait (CublasdxPipelineTrait): The trait to query.
-        count (size_t): The number of values to query.
-        array (object): The array of trait values. Must point to exactly ``count`` elements of type ``long long int``. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``int64_t``.
-
-
-    .. seealso:: `cublasdxGetPipelineTraitInt64s`
-    """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
-    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
-    with nogil:
-        __status__ = cublasdxGetPipelineTraitInt64s(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, count, <long long int*>(_array_.data()))
-    check_status(__status__)
-
-
-cpdef size_t cublasdx_get_pipeline_trait_str_size(long long int pipeline, int trait) except? 0:
-    """Query an C-string trait's size from a finalized pipeline.
-
-    Args:
-        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
-        trait (CublasdxPipelineTrait): The trait to query.
-
-    Returns:
-        size_t: The C-string size (including the ``\0``).
-
-    .. seealso:: `cublasdxGetPipelineTraitStrSize`
+    .. seealso:: `curanddxGetTraitStrSize`
     """
     cdef size_t size
     with nogil:
-        __status__ = cublasdxGetPipelineTraitStrSize(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, &size)
+        __status__ = curanddxGetTraitStrSize(<curanddxDescriptor>handle, <_CuranddxTraitType>trait, &size)
     check_status(__status__)
     return size
 
 
-cpdef cublasdx_get_pipeline_trait_str(long long int pipeline, int trait, size_t size, value):
-    """Query a C-string trait value from a finalized pipeline.
+cpdef curanddx_get_trait_str(long long int handle, int trait, size_t size, value):
+    """Returns a C-string trait value.
 
     Args:
-        pipeline (long long int): A finalized pipeline handle, output of cublasdxCreateDevicePipeline or cublasdxCreateTilePipeline.
-        trait (CublasdxPipelineTrait): The trait to query.
-        size (size_t): The C-string size, as returned by cublasdxGetPipelineTraitStrSize.
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
+        trait (CuranddxTraitType): A trait to query the descriptor for.
+        size (size_t): The size of the C-string, output from curanddxGetTraitStrSize .
         value (bytes): The C-string trait value.
 
-    .. seealso:: `cublasdxGetPipelineTraitStr`
+    .. seealso:: `curanddxGetTraitStr`
     """
     cdef void* _value_ = get_buffer_pointer(value, size, readonly=False)
     with nogil:
-        __status__ = cublasdxGetPipelineTraitStr(<cublasdxPipeline>pipeline, <_CublasdxPipelineTrait>trait, size, <char*>_value_)
+        __status__ = curanddxGetTraitStr(<curanddxDescriptor>handle, <_CuranddxTraitType>trait, size, <char*>_value_)
     check_status(__status__)
 
 
-cpdef long long int cublasdx_create_device_function_new(long long int handle, int device_function_type, size_t count, array) except? 0:
-    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
-    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
-    cdef cublasdxDeviceFunction device_function
-    with nogil:
-        __status__ = cublasdxCreateDeviceFunctionNew(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, count, <const cublasdxTensor*>(_array_.data()), &device_function)
-    check_status(__status__)
-    return <long long int>device_function
-
-
-cpdef cublasdx_destroy_device_function_new(long long int device_function):
-    with nogil:
-        __status__ = cublasdxDestroyDeviceFunctionNew(<cublasdxDeviceFunction>device_function)
-    check_status(__status__)
-
-
-cpdef long long int cublasdx_create_device_function_with_pipelines(long long int handle, int device_function_type, size_t tensor_count, tensors, size_t pipeline_count, pipelines) except? 0:
-    """Binds (aka create) a device function from a set of tensor.
+cpdef long long int curanddx_get_trait_int64(long long int handle, int trait) except? 0:
+    """Returns an integer trait value.
 
     Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        device_function_type (CublasdxDeviceFunctionType): The device function to create.
-        tensor_count (size_t): The number of input & output tensors to the device function.
-        tensors (object): The array of input & output tensors. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxTensor``.
-
-        pipeline_count (size_t): The number of pipelines to the device function.
-        pipelines (object): The array of pipelines. It can be:
-
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxPipeline``.
-
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
+        trait (CuranddxTraitType): A trait to query the descriptor for.
 
     Returns:
-        long long int: The device function.
+        long long int: The trait value.
 
-    .. seealso:: `cublasdxCreateDeviceFunctionWithPipelines`
+    .. seealso:: `curanddxGetTraitInt64`
     """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _tensors_
-    get_resource_ptr[int64_t](_tensors_, tensors, <int64_t*>NULL)
-    cdef nullable_unique_ptr[ vector[int64_t] ] _pipelines_
-    get_resource_ptr[int64_t](_pipelines_, pipelines, <int64_t*>NULL)
-    cdef cublasdxDeviceFunction device_function
+    cdef long long int value
     with nogil:
-        __status__ = cublasdxCreateDeviceFunctionWithPipelines(<cublasdxDescriptor>handle, <_CublasdxDeviceFunctionType>device_function_type, tensor_count, <const cublasdxTensor*>(_tensors_.data()), pipeline_count, <const cublasdxPipeline*>(_pipelines_.data()), &device_function)
+        __status__ = curanddxGetTraitInt64(<curanddxDescriptor>handle, <_CuranddxTraitType>trait, &value)
     check_status(__status__)
-    return <long long int>device_function
+    return value
 
 
-cpdef cusolverdx_get_trait_int64s(long long int handle, int trait, size_t count, values):
-    """Returns an integer array trait value.
+cpdef curanddx_finalize_code(long long int code, long long int handle):
+    """Fills a code handle with the descriptor's device function code.
 
     Args:
-        handle (long long int): A cuSOLVERDx descriptor, output of cusolverdxCreateDescriptor .
-        trait (CusolverdxTraitType): A trait to query the descriptor for.
-        count (size_t): The size of the array to retrieve.
-        values (object): The trait values. Must point to an array of ``count`` values. It can be:
+        code (long long int): A code handle output from commondxCreateCode .
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
 
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``int64_t``.
-
-
-    .. seealso:: `cusolverdxGetTraitInt64s`
+    .. seealso:: `curanddxFinalizeCode`
     """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _values_
-    get_resource_ptr[int64_t](_values_, values, <int64_t*>NULL)
     with nogil:
-        __status__ = cusolverdxGetTraitInt64s(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, count, <long long int*>(_values_.data()))
+        __status__ = curanddxFinalizeCode(<commondxCode>code, <curanddxDescriptor>handle)
     check_status(__status__)
 
-cpdef cublasdx_finalize_tensors203(long long int handle, size_t count, array):
-    """Finalize the tensors. This is required before traits can be queried.
+
+cpdef curanddx_destroy_descriptor(long long int handle):
+    """Destroys a cuRANDDx descriptor.
 
     Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        count (size_t): The number of tensors to finalized.
-        array (object): The array of tensors. It can be:
+        handle (long long int): A cuRANDDx descriptor, output of curanddxCreateDescriptor .
 
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxTensor``.
-
-
-    .. seealso:: `cublasdxFinalizeTensors`
+    .. seealso:: `curanddxDestroyDescriptor`
     """
-    cdef nullable_unique_ptr[ vector[int64_t] ] _array_
-    get_resource_ptr[int64_t](_array_, array, <int64_t*>NULL)
     with nogil:
-        __status__ = cublasdxFinalizeTensors203(<cublasdxDescriptor>handle, count, <const cublasdxTensor*>(_array_.data()))
+        __status__ = curanddxDestroyDescriptor(<curanddxDescriptor>handle)
     check_status(__status__)
 
-cpdef cublasdx_finalize_tensors(long long int handle, size_t count, array):
-    """Finalize the tensors. This is required before traits can be queried.
+
+cpdef str curanddx_operator_type_to_str(int op):
+    """Converts an operator enum to a human readable C-string.
 
     Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        count (size_t): The number of tensors to finalized.
-        array (object): The array of tensors. It can be:
+        op (CuranddxOperatorType): An operator enum.
 
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxTensor``.
-
-
-    .. seealso:: `cublasdxFinalizeTensors`
+    .. seealso:: `curanddxOperatorTypeToStr`
     """
-    if get_version_ex() < (0, 3, 0):
-        return cublasdx_finalize_tensors203(handle, count, array)
-    else:
-        return cublasdx_finalize_tensors_new(count, array)
+    cdef bytes _output_
+    _output_ = curanddxOperatorTypeToStr(<_CuranddxOperatorType>op)
+    return _output_.decode()
 
-cpdef long long int cublasdx_create_device_function(long long int handle, int device_function_type, size_t count, array) except? 0:
-    """Binds (aka create) a device function from a set of tensor.
+
+cpdef str curanddx_distribution_to_str(int dist):
+    """Converts a distribution enum to a human readable C-string.
 
     Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        device_function_type (CublasdxDeviceFunctionType): The device function to create.
-        count (size_t): The number of input & output tensors to the device function.
-        array (object): The array of input & output tensors. It can be:
+        dist (CuranddxDistribution): A distribution enum.
 
-            - an :class:`int` as the pointer address to the array, or
-            - a Python sequence of ``cublasdxTensor``.
+    .. seealso:: `curanddxDistributionToStr`
+    """
+    cdef bytes _output_
+    _output_ = curanddxDistributionToStr(<_CuranddxDistribution>dist)
+    return _output_.decode()
 
+
+cpdef str curanddx_generator_to_str(int generator):
+    """Converts a generator enum to a human readable C-string.
+
+    Args:
+        generator (CuranddxGenerator): A generator enum.
+
+    .. seealso:: `curanddxGeneratorToStr`
+    """
+    cdef bytes _output_
+    _output_ = curanddxGeneratorToStr(<_CuranddxGenerator>generator)
+    return _output_.decode()
+
+
+cpdef str curanddx_generate_method_to_str(int generate_method):
+    """Converts a generate method enum to a human readable C-string.
+
+    Args:
+        generate_method (CuranddxGenerateMethod): A generate method enum.
+
+    .. seealso:: `curanddxGenerateMethodToStr`
+    """
+    cdef bytes _output_
+    _output_ = curanddxGenerateMethodToStr(<_CuranddxGenerateMethod>generate_method)
+    return _output_.decode()
+
+
+cpdef str curanddx_normal_method_to_str(int normal_method):
+    """Converts a normal method enum to a human readable C-string.
+
+    Args:
+        normal_method (CuranddxNormalMethod): A normal method enum.
+
+    .. seealso:: `curanddxNormalMethodToStr`
+    """
+    cdef bytes _output_
+    _output_ = curanddxNormalMethodToStr(<_CuranddxNormalMethod>normal_method)
+    return _output_.decode()
+
+
+cpdef str curanddx_trait_type_to_str(int trait):
+    """Converts a trait enum to a human readable C-string.
+
+    Args:
+        trait (CuranddxTraitType): A trait enum.
+
+    .. seealso:: `curanddxTraitTypeToStr`
+    """
+    cdef bytes _output_
+    _output_ = curanddxTraitTypeToStr(<_CuranddxTraitType>trait)
+    return _output_.decode()
+
+
+cpdef size_t commondx_get_code_ptx_size(long long int code) except? 0:
+    """Extract the PTX size, in bytes.
+
+    Args:
+        code (long long int): A code handle from commondxCreateCode.
 
     Returns:
-        long long int: The device function.
+        size_t: The PTX size, in bytes (including null terminator).
 
-    .. seealso:: `cublasdxCreateDeviceFunction`
+    .. seealso:: `commondxGetCodePTXSize`
     """
-    if get_version_ex() < (0, 3, 0):
-        return cublasdx_create_device_function_old(handle, device_function_type, count, array)
-    else:
-        return cublasdx_create_device_function_new(handle, device_function_type, count, array)
+    cdef size_t size
+    with nogil:
+        __status__ = commondxGetCodePTXSize(<commondxCode>code, &size)
+    check_status(__status__)
+    return size
 
-cpdef cublasdx_destroy_device_function(long long int device_function):
-    if get_version_ex() >= (0, 3, 0):
-        cublasdx_destroy_device_function_new(device_function)
 
-cpdef cublasdx_destroy_tensor(long long int tensor):
-    """Destroys a tensor handle created using cublasdxCreateTensor or cublasdxMakeTensorLike.
+cpdef commondx_get_code_ptx(long long int code, size_t size, out):
+    """Extract the PTX.
 
     Args:
-        tensor (long long int): The tensor to destroy.
+        code (long long int): A code handle from commondxCreateCode.
+        size (size_t): The PTX size, as returned by commondxGetCodePTXSize.
+        out (bytes): The PTX. Must be a pointer to a buffer of at least size bytes.
 
-    .. seealso:: `cublasdxDestroyTensor`
+    .. seealso:: `commondxGetCodePTX`
     """
-    if get_version_ex() >= (0, 3, 0):
-        cublasdx_destroy_tensor_new(tensor)
+    cdef void* _out_ = get_buffer_pointer(out, size, readonly=False)
+    with nogil:
+        __status__ = commondxGetCodePTX(<commondxCode>code, size, <void*>_out_)
+    check_status(__status__)
 
-cpdef long long int cublasdx_create_tensor(long long int handle, int tensor_type) except? 0:
-    """Create a tensor handle.
+
+cpdef cusolverdx_get_trait_commondx_data_types(long long int handle, int trait, size_t count, array):
+    """Returns an array of CommonDxValueType values representing value type traits.
 
     Args:
-        handle (long long int): A cuBLASDx descriptor, output of cublasdxCreateDescriptor.
-        tensor_type (CublasdxTensorType): The tensor type to bind to the handle.
+        handle (long long int): A cuSOLVERDx descriptor, output of cusolverdxCreateDescriptor.
+        trait (CusolverdxTraitType): A trait to query handle for.
+        count (size_t): The number of elements in the trait array, as indicated in the cusolverdxTraitType_t documentation.
+        array (object): The CommonDxValueType values. Must point to an array of ``count`` values. It can be:
 
-    Returns:
-        long long int: A valid tensor handle.
+            - an :class:`int` as the pointer address to the array, or
+            - a Python sequence of ``_CommondxValueType``.
 
-    .. seealso:: `cublasdxCreateTensor`
+
+    .. seealso:: `cusolverdxGetTraitCommondxDataTypes`
     """
-    if get_version_ex() < (0, 3, 0):
-        return cublasdx_bind_tensor(handle, tensor_type)
-    else:
-        return cublasdx_create_tensor_new(handle, tensor_type)
+    cdef nullable_unique_ptr[ vector[int] ] _array_
+    get_resource_ptr[int](_array_, array, <int*>NULL)
+    with nogil:
+        __status__ = cusolverdxGetTraitCommondxDataTypes(<cusolverdxDescriptor>handle, <_CusolverdxTraitType>trait, count, <_CommondxValueType*>(_array_.data()))
+    check_status(__status__)

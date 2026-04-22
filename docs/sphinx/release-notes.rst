@@ -1,6 +1,134 @@
 nvmath-python Release Notes
 ***************************
 
+nvmath-python v0.9.0
+====================
+
+Beta9 release.
+
+* New universal sparse tensor (UST) and generic sparse matrix multiplication API
+  (:mod:`nvmath.sparse.ust`, :class:`nvmath.sparse.Matmul`).
+* Support for NVFP4 in the advanced matrix multiplication API, along with new helpers
+  in :mod:`nvmath.linalg.advanced.helpers.matmul`:
+  :func:`~nvmath.linalg.advanced.helpers.matmul.quantize_to_fp4`,
+  :func:`~nvmath.linalg.advanced.helpers.matmul.unpack_fp4`,
+  :class:`~nvmath.linalg.advanced.helpers.matmul.BlockScalingFormat`,
+  :func:`~nvmath.linalg.advanced.helpers.matmul.to_block_scale`,
+  :func:`~nvmath.linalg.advanced.helpers.matmul.get_block_scale_offset`, and
+  :func:`~nvmath.linalg.advanced.helpers.matmul.expand_block_scale`.
+* Distributed matrix multiplication API:
+
+  * Support for FP8 and MXFP8 datatypes.
+  * Support for epilogs.
+  * Support for inplace operation.
+* New ``release_operand(s)`` methods on :class:`nvmath.fft.FFT`,
+  :class:`nvmath.linalg.advanced.Matmul`, :class:`nvmath.linalg.Matmul`,
+  :class:`nvmath.tensor.BinaryContraction`, :class:`nvmath.tensor.TernaryContraction`,
+  :class:`nvmath.sparse.advanced.DirectSolver`,
+  :class:`nvmath.distributed.fft.FFT`,
+  :class:`nvmath.distributed.linalg.advanced.Matmul`, and
+  :class:`nvmath.distributed.reshape.Reshape` for releasing operand memory
+  while preserving the plan.
+* New :class:`nvmath.distributed.ProcessGroup` abstraction
+  (:class:`nvmath.distributed.MPIProcessGroup`,
+  :class:`nvmath.distributed.TorchProcessGroup`) for distributed APIs, allowing for
+  initialization of ``nvmath.distributed`` with either ``mpi4py`` or ``torch.distributed``
+  (thus making ``mpi4py`` optional). :func:`nvmath.distributed.initialize` still directly
+  accepts an ``mpi4py`` communicator for convenience.
+* Added a new pip extra (numba) which installs the appropriate numba toolchain for
+  callback APIs without installing device API dependencies.
+* New cuSOLVERDx device API in :mod:`nvmath.device`: high-level adapter classes
+  and the lower-level :class:`nvmath.device.Solver` class that mimics
+  the C++ cuSOLVERDx API. The available operations depend on the installed
+  libmathdx version, see the
+  :ref:`supported functions table <device-api-cusolver-supported-functions>`
+  for the full list, version notes, and adapter mapping.
+* Bindings updated to support libmathdx 0.3.2, which extends cuSOLVERDx functionality,
+  and brings improvements to cuBLASDx and cuFFTDx.
+* New experimental ``reset_operand(s)_unchecked`` methods on
+  :class:`nvmath.linalg.advanced.Matmul`, :class:`nvmath.tensor.BinaryContraction`,
+  :class:`nvmath.tensor.TernaryContraction`, and
+  :class:`nvmath.distributed.fft.FFT` to minimize overhead in repeated calls,
+  analogous to :meth:`nvmath.fft.FFT.reset_operand_unchecked` which was added in
+  v0.8.0.
+* New :func:`nvmath.fft.estimate_workspace_size` free function for estimating FFT
+  workspace size.
+* Added bindings for new APIs introduced in CTK version 13.2.0
+* Added support for more compute types in the tensor contraction API and
+  improved property getters for :class:`nvmath.tensor.ContractionPlanPreference`.
+* Optimized internal ``release`` and ``reset_operand(s)`` code paths for FFT and tensor
+  contraction by retaining inner tensor references, reducing per-call overhead.
+* New preference classes :class:`nvmath.sparse.advanced.DirectSolverPlanPreferences`,
+  :class:`nvmath.sparse.advanced.DirectSolverFactorizationPreferences`, and
+  :class:`nvmath.sparse.advanced.DirectSolverSolutionPreferences` for configuring plan,
+  factorization, and solution phases in a stateless direct sparse solver API call.
+* Added Python 3.14 support.
+
+Bugs Fixed
+----------
+
+* Fixed in-place C2R FFT repeated execution silently producing wrong results due
+  to the input buffer being overwritten.
+* Fixed some incorrectly named enums in cuFFT bindings.
+* ``pivot_eps_algorithm``, ``pivot_eps``, ``hybrid_device_memory_limit``, and
+  ``hybrid_execute_mode`` properties were returning the wrong values.
+* cuFFT status codes from CUDA 13 were missing.
+* ``FFT.create_key()`` and ``FFT.get_key()`` had mismatched outputs.
+* ``apply_mxfp8_scale()`` could overflow.
+* ``BinaryContraction`` outputs were not fully-owned by user and were overwritten by
+  subsequent calls to ``BinaryContraction.contract()``.
+* cuDSS ``DirectSolver`` rejected valid F-order matrices with shape ``(..., m, 1)`` because
+  stride validation didn't account for the dummy last dimension
+  (`#53 <https://github.com/NVIDIA/nvmath-python/issues/53>`_).
+* Fixed LTOIR ABI correctness for device APIs where argument names and return types
+  did not match the libmathdx functions.
+* Fixed a missing synchronization for host-to-device torch tensor copy.
+* Fixed missing fields in the cuBLASDx Numba matmul cache key, which could lead to
+  stale cached results.
+* Improved error handling for unsupported cuDSS ``FactorizationInfo`` and ``PlanInfo``
+  attributes, which now raise ``RuntimeError`` instead of silently returning wrong
+  values.
+* Fixed ``reset_operands_unchecked`` semantics for FFT to match the checked version,
+  behaving correctly when called after releasing operands.
+
+Breaking Changes
+----------------
+
+* Removed the dx extra. Users should continue to use the cu12-dx or cu13-dx extra for
+  installing device API dependencies.
+* ``cuda-core >=0.4.2`` is now required.
+* ``libmathdx >=0.3.1`` is now required.
+* ``numba-cuda >=0.28.1`` is now required.
+* ``cuTensor >=2.5.0`` is now required.
+* ``cuBLASMp >=0.8.1`` is now required, which no longer uses NVSHMEM. This means that
+  the NVSHMEM backend is no longer required for the distributed matrix multiplication API.
+* The ``operand`` parameter to :class:`nvmath.fft.FFT` and
+  :class:`nvmath.distributed.fft.FFT` is now positional-only.
+* The following cusolverDn bindings getter functions now return their value directly:
+  :func:`nvmath.bindings.cusolverDn.get_math_mode`,
+  :func:`nvmath.bindings.cusolverDn.get_emulation_strategy`,
+  :func:`nvmath.bindings.cusolverDn.get_fixed_point_emulation_mantissa_control`,
+  :func:`nvmath.bindings.cusolverDn.get_fixed_point_emulation_max_mantissa_bit_count`,
+  :func:`nvmath.bindings.cusolverDn.get_fixed_point_emulation_mantissa_bit_offset`,
+  :func:`nvmath.bindings.cusolverDn.get_emulation_special_values_support`.
+* ``reset_operand(s)`` no longer accepts ``None`` to release operands across all
+  stateful APIs. The new ``release_operand(s)`` methods should be used instead.
+* All parameters to ``reset_operands()`` are now keyword-only for
+  tensor contraction, advanced matmul, generic matmul, distributed
+  matmul, and cuDSS direct solver.
+* :func:`nvmath.distributed.initialize` no longer accepts ``None`` for process group
+  / communicator. It requires a concrete :class:`nvmath.distributed.ProcessGroup`
+  instance or mpi4py communicator.
+
+Known Issues
+------------
+
+* cuFFT in CUDA Toolkit 12.8, 12.9 may fail to compile LTO-IR callbacks
+  on Blackwell devices (compute capability 12.0). As a workaround, the
+  ``compute_capability`` argument in :func:`nvmath.fft.compile_prolog` and
+  :func:`nvmath.fft.compile_epilog` can be set to ``'50'``.
+
+
 nvmath-python v0.8.0
 ====================
 

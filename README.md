@@ -225,8 +225,10 @@ shape = 512 // nranks, 256, 512
 a = nvmath.distributed.allocate_symmetric_memory(shape, cp, dtype=cp.complex128)
 # a is a cupy ndarray and can be operated on using in-place cupy operations.
 with cp.cuda.Device(device_id):
-    a[:] = cp.random.rand(*shape, dtype=cp.float64) + 1j *
+    a[:] = (
         cp.random.rand(*shape, dtype=cp.float64)
+        + 1j * cp.random.rand(*shape, dtype=cp.float64)
+    )
 
 # Forward FFT.
 # In this example, the forward FFT operand is distributed according

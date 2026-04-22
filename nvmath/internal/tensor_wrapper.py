@@ -8,15 +8,14 @@ Entry point to using tensors from different libraries seamlessly.
 
 __all__ = ["infer_tensor_package", "wrap_operand", "wrap_operands", "to", "copy_", "TensorHolder", "AnyTensor"]
 
-from collections.abc import Sequence
 import warnings
+from collections.abc import Sequence
 
 import numpy as np
 
 from . import formatters
-from .tensor_ifc import TensorHolder, Tensor, AnyTensor
-from .tensor_ifc_numpy import NumpyTensor, CudaTensor
-
+from .tensor_ifc import AnyTensor, Tensor, TensorHolder
+from .tensor_ifc_numpy import CudaTensor, NumpyTensor
 
 _TENSOR_TYPES: dict[str, type[TensorHolder]] = {"numpy": NumpyTensor, "cuda": CudaTensor}
 
@@ -39,19 +38,19 @@ def maybe_register_package(package):
     global _SUPPORTED_PACKAGES
     if package not in _SUPPORTED_PACKAGES:
         global _TENSOR_TYPES
-        from . import package_wrapper
         from .. import memory
+        from . import package_wrapper
 
         if package == "torch":
-            from .tensor_ifc_torch import TorchTensor
             from .package_ifc_torch import TorchPackage
+            from .tensor_ifc_torch import TorchTensor
 
             _TENSOR_TYPES[package] = TorchTensor
             package_wrapper.PACKAGE[package] = TorchPackage
             memory.lazy_load_torch()
         elif package == "cupy":
-            from .tensor_ifc_cupy import CupyTensor, HostTensor
             from .package_ifc_cupy import CupyPackage
+            from .tensor_ifc_cupy import CupyTensor, HostTensor
 
             _TENSOR_TYPES[package] = CupyTensor
             _TENSOR_TYPES["cupy_host"] = HostTensor
@@ -152,11 +151,7 @@ def to(operands: Sequence[TensorHolder], device_id, stream_holder) -> Sequence[T
 
 def copy_(src: Sequence[TensorHolder], dest: Sequence[TensorHolder], stream_holder):
     """
-    Copy the wrapped operands in dest to the corresponding wrapped operands in src.
+    Copy the wrapped operands in src to the corresponding wrapped operands in dest.
     """
     for s, d in zip(src, dest, strict=True):
-        if s.device_id == "cpu":
-            # FIXME: This is probably an extra step because it's supported to copy directly
-            # from cpu to device?
-            s = s.to(d.device_id, stream_holder=stream_holder)
         d.copy_(s, stream_holder=stream_holder)

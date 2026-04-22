@@ -9,16 +9,17 @@ This set of tests verifies the correctness of the epilog handling.
 import numpy as np
 import pytest
 
-from nvmath.linalg.advanced import matmul, Matmul, MatmulEpilog as Epilog
 from nvmath.bindings import cublasLt as cublaslt
+from nvmath.linalg.advanced import Matmul, matmul
+from nvmath.linalg.advanced import MatmulEpilog as Epilog
 
 from ...utils import (
+    assert_tensors_equal,
     compare_tensors,
     get_absolute_tolerance,
     get_framework,
     sample_float_tensor,
     sample_matrix,
-    assert_tensors_equal,
     skip_if_cublas_before,
     to_numpy,
 )

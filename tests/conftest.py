@@ -6,9 +6,9 @@
 # various reasons, see pytest-dev/pytest#3730. In particular, this strategy
 # is borrowed from https://github.com/pytest-dev/pytest/issues/3730#issuecomment-567142496.
 
-from collections.abc import Iterable
 import datetime
 import os
+from collections.abc import Iterable
 
 import hypothesis
 import pytest

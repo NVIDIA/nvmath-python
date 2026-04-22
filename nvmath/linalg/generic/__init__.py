@@ -8,19 +8,19 @@ from ._configuration import (
     HermitianMatrixQualifier,
     MatmulOptions,
     MatrixQualifier,
-    matrix_qualifiers_dtype,
     SymmetricMatrixQualifier,
     TriangularMatrixQualifier,
+    matrix_qualifiers_dtype,
 )
 from .matmulmod import (
+    DiagType,
     ExecutionCPU,
     ExecutionCUDA,
+    FillMode,
     InvalidMatmulState,
-    matmul,
     Matmul,
     SideMode,
-    FillMode,
-    DiagType,
+    matmul,
 )
 
 __all__ = (

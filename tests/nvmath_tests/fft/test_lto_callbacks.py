@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-import random
 import math
+import random
 from ast import literal_eval
 
 import pytest
@@ -22,84 +22,72 @@ except ImportError:
 import nvmath
 import nvmath.bindings
 
-from .utils.common_axes import (
-    ExecBackend,
-    MemBackend,
-    Framework,
-    DType,
-    OptFftLayout,
-    Direction,
-    ShapeKind,
-    OptFftBlocking,
-    OptFftInplace,
-    OptFftType,
-    AllowToFail,
-    LtoCallback,
-)
 from .utils.axes_utils import (
-    is_complex,
     get_dtype_from_array,
-    get_framework_from_array,
-    get_array_backend,
     get_fft_dtype,
-    get_ifft_dtype,
     get_framework_module,
-)
-from .utils.support_matrix import (
-    lto_callback_supperted_types,
-    supported_backends,
-    opt_fft_type_direction_support,
-    opt_fft_type_input_type_support,
-    inplace_opt_ftt_type_support,
-)
-from .utils.input_fixtures import (
-    get_random_input_data,
-    get_custom_stream,
-    get_primes_up_to,
-    init_assert_exec_backend_specified,
-    free_framework_pools,
-    # pytest fixture is used but not detected by linter because of strange syntax
-    fx_last_operand_layout,  # noqa: F401
+    get_ifft_dtype,
+    is_complex,
 )
 from .utils.check_helpers import (
     add_in_place,
-    get_fft_ref,
-    get_ifft_ref,
-    get_scaled,
-    get_norm,
-    get_permuted,
-    get_abs,
-    get_array_element_strides,
-    permute_copy_like,
-    r2c_shape,
-    use_stream,
-    assert_norm_close,
+    as_type,
     assert_array_type,
     assert_eq,
-    get_array_device_id,
-    unfold,
-    get_raw_ptr,
-    to_gpu,
+    assert_norm_close,
     copy_array,
-    as_type,
-    has_only_small_factors,
-    get_default_tolerance,
+    get_abs,
+    get_array_device_id,
+    get_array_element_strides,
+    get_callback_lto_cc,
     get_cc,
+    get_default_tolerance,
     get_device_ctx,
+    get_fft_ref,
+    get_ifft_ref,
+    get_norm,
+    get_permuted,
+    get_raw_ptr,
+    get_scaled,
+    has_only_small_factors,
+    permute_copy_like,
+    r2c_shape,
+    to_gpu,
+    unfold,
+    use_stream,
+)
+from .utils.common_axes import (
+    AllowToFail,
+    Direction,
+    DType,
+    ExecBackend,
+    Framework,
+    LtoCallback,
+    MemBackend,
+    OptFftBlocking,
+    OptFftInplace,
+    OptFftLayout,
+    OptFftType,
+    ShapeKind,
+)
+from .utils.input_fixtures import (
+    free_framework_pools,
+    # pytest fixture is used but not detected by linter because of strange syntax
+    fx_last_operand_layout,  # noqa: F401
+    get_custom_stream,
+    get_primes_up_to,
+    get_random_input_data,
+    init_assert_exec_backend_specified,
+)
+from .utils.support_matrix import (
+    inplace_opt_ftt_type_support,
+    lto_callback_supperted_types,
+    opt_fft_type_direction_support,
+    opt_fft_type_input_type_support,
+    supported_backends,
 )
 
 assert_exec_backend_specified = init_assert_exec_backend_specified()
-
-
-def get_tolerance(a, shape_kind=None):
-    dtype = get_dtype_from_array(a)
-    framework = get_framework_from_array(a)
-    mem_backend = get_array_backend(a)
-    rtol, atol = get_default_tolerance(dtype, shape_kind, exec_backend=ExecBackend.cufft)
-    # The torch CPU fft has bigger difference as well
-    if framework == Framework.torch and mem_backend == MemBackend.cpu:
-        rtol *= 1.2
-    return {"rtol": rtol, "atol": atol}
 
 
 def assert_norm_close_check_constant(a, a_ref, rtol=None, atol=None, axes=None, shape_kind=None):
@@ -110,7 +98,7 @@ def assert_norm_close_check_constant(a, a_ref, rtol=None, atol=None, axes=None, 
     when the root cause of the error is the callback being ignored.
     """
     if rtol is None and atol is None:
-        _, rtol, atol = (tol := get_tolerance(a, shape_kind)), tol["rtol"], tol["atol"]
+        rtol, atol = get_default_tolerance(get_dtype_from_array(a), shape_kind, exec_backend=ExecBackend.cufft)
     try:
         assert_norm_close(a, a_ref, rtol, atol, axes, shape_kind)
     except AssertionError as e:
@@ -123,7 +111,7 @@ def assert_norm_close_check_constant(a, a_ref, rtol=None, atol=None, axes=None, 
         try:
             assert_norm_close(a_scaled, a_ref, rtol, atol, axes, shape_kind)
         except AssertionError:
-            raise e
+            raise e from None
         else:
             raise AssertionError(f"The outputs differ by a constant factor of {factor}") from e
 
@@ -187,7 +175,7 @@ def skip_unsupported_device(fn=None, dev_count=1, min_cc=70):
             cc = get_cc(d_id)
             if cc < min_cc:
 
-                def test_skipped():
+                def test_skipped(d_id=d_id, cc=cc):
                     pytest.skip(f"Test requires device {d_id} with comp cap at least {min_cc}, got {cc}")
 
                 return test_skipped
@@ -390,13 +378,15 @@ def test_operand_shape_fft_ifft(
     scaling = 1
     cb_kwargs = {}
     if fft_callbacks.has_prolog():
-        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name)
+        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs["prolog"] = {"ltoir": prolog_ltoir}
         scaling *= 3
 
     if fft_callbacks.has_epilog():
         epilog_dtype = get_fft_dtype(dtype)
-        epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, epilog_dtype.name, epilog_dtype.name)
+        epilog_ltoir = nvmath.fft.compile_epilog(
+            epilog_cb, epilog_dtype.name, epilog_dtype.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs["epilog"] = {"ltoir": epilog_ltoir}
         scaling *= 5
     # Test create_key() function
@@ -451,12 +441,14 @@ def test_operand_shape_fft_ifft(
     iscaling = 1
     if ifft_callbacks.has_prolog():
         iprolog_dtype = get_fft_dtype(dtype)
-        iprolog_ltoir = nvmath.fft.compile_prolog(iprolog_cb, iprolog_dtype.name, iprolog_dtype.name)
+        iprolog_ltoir = nvmath.fft.compile_prolog(
+            iprolog_cb, iprolog_dtype.name, iprolog_dtype.name, compute_capability=get_callback_lto_cc(0)
+        )
         icb_kwargs["prolog"] = {"ltoir": iprolog_ltoir}
         iscaling *= 2
 
     if ifft_callbacks.has_epilog():
-        iepilog_ltoir = nvmath.fft.compile_epilog(iepilog_cb, dtype.name, dtype.name)
+        iepilog_ltoir = nvmath.fft.compile_epilog(iepilog_cb, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
         icb_kwargs["epilog"] = {"ltoir": iepilog_ltoir}
         iscaling *= 7
 
@@ -556,12 +548,14 @@ def test_operand_shape_ifft_c2r(
     scaling = 1
     cb_kwargs = {}
     if callbacks.has_prolog():
-        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, fft_dtype.name, fft_dtype.name)
+        prolog_ltoir = nvmath.fft.compile_prolog(
+            prolog_cb, fft_dtype.name, fft_dtype.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs["prolog"] = {"ltoir": prolog_ltoir}
         scaling *= 3
 
     if callbacks.has_epilog():
-        epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, dtype.name, dtype.name)
+        epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs["epilog"] = {"ltoir": epilog_ltoir}
         scaling *= 5
 
@@ -695,13 +689,15 @@ def test_sliced_operand(
     scaling = 1
     cb_kwargs = {}
     if callbacks.has_prolog():
-        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name)
+        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs["prolog"] = {"ltoir": prolog_ltoir}
         scaling *= 7
 
     if callbacks.has_epilog():
         epilog_dtype = get_fft_dtype(dtype)
-        epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, epilog_dtype.name, epilog_dtype.name)
+        epilog_ltoir = nvmath.fft.compile_epilog(
+            epilog_cb, epilog_dtype.name, epilog_dtype.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs["epilog"] = {"ltoir": epilog_ltoir}
         scaling *= 3
 
@@ -723,7 +719,7 @@ def test_sliced_operand(
             and any(e % 2 != 0 for e in shape_slice_start)
             and "CUFFT_INVALID_VALUE" in str(e)
         ):
-            raise pytest.skip("The case is allowed to fail because of alignment limitations in R2C")
+            pytest.skip("The case is allowed to fail because of alignment limitations in R2C")
         elif allow_to_fail:
             allow_to_fail_compund_shape(e, shape_slice_size, axes=axes)
         else:
@@ -824,13 +820,15 @@ def test_overlapping_stride_operand(
     scaling = 1
     cb_kwargs = {}
     if callbacks.has_prolog():
-        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name)
+        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs["prolog"] = {"ltoir": prolog_ltoir}
         scaling *= 7
 
     if callbacks.has_epilog():
         epilog_dtype = get_fft_dtype(dtype)
-        epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, epilog_dtype.name, epilog_dtype.name)
+        epilog_ltoir = nvmath.fft.compile_epilog(
+            epilog_cb, epilog_dtype.name, epilog_dtype.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs["epilog"] = {"ltoir": epilog_ltoir}
         scaling *= 3
 
@@ -1008,11 +1006,13 @@ def test_permuted_stride_operand(
 
     cb_kwargs = {}
     if callbacks.has_prolog():
-        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name)
+        prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs["prolog"] = {"ltoir": prolog_ltoir}
 
     if callbacks.has_epilog():
-        epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, epilog_dtype.name, epilog_dtype.name)
+        epilog_ltoir = nvmath.fft.compile_epilog(
+            epilog_cb, epilog_dtype.name, epilog_dtype.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs["epilog"] = {"ltoir": epilog_ltoir}
 
     with nvmath.fft.FFT(
@@ -1190,10 +1190,18 @@ def _operand_filter_dtype_shape_fft_ifft_case(
     )
     ifft_ref = iepilog_cb_ref(ifft_ref, prolog_filter)
 
-    prolog_ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, prolog_filter_dtype.name)
-    epilog_ltoir = nvmath.fft.compile_epilog(epilog_cb, get_fft_dtype(dtype).name, epilog_filter_dtype.name)
-    iprolog_ltoir = nvmath.fft.compile_prolog(iprolog_cb, get_fft_dtype(dtype).name, epilog_filter_dtype.name)
-    iepilog_ltoir = nvmath.fft.compile_epilog(iepilog_cb, dtype.name, prolog_filter_dtype.name)
+    prolog_ltoir = nvmath.fft.compile_prolog(
+        prolog_cb, dtype.name, prolog_filter_dtype.name, compute_capability=get_callback_lto_cc(0)
+    )
+    epilog_ltoir = nvmath.fft.compile_epilog(
+        epilog_cb, get_fft_dtype(dtype).name, epilog_filter_dtype.name, compute_capability=get_callback_lto_cc(0)
+    )
+    iprolog_ltoir = nvmath.fft.compile_prolog(
+        iprolog_cb, get_fft_dtype(dtype).name, epilog_filter_dtype.name, compute_capability=get_callback_lto_cc(0)
+    )
+    iepilog_ltoir = nvmath.fft.compile_epilog(
+        iepilog_cb, dtype.name, prolog_filter_dtype.name, compute_capability=get_callback_lto_cc(0)
+    )
 
     prolog_filter_dev = prolog_filter if mem_backend == MemBackend.cuda else to_gpu(prolog_filter)
     epilog_filter_dev = epilog_filter if mem_backend == MemBackend.cuda else to_gpu(epilog_filter)
@@ -1235,7 +1243,8 @@ def _operand_filter_dtype_shape_fft_ifft_case(
             allow_to_fail_compund_shape(e, shape, axes=axes)
 
         fft_out = f.execute(direction=Direction.forward.value)
-        assert_norm_close(fft_out, ref, axes=axes, **get_tolerance(signal))
+        rtol, atol = get_default_tolerance(get_dtype_from_array(signal), None, exec_backend=ExecBackend.cufft)
+        assert_norm_close(fft_out, ref, axes=axes, rtol=rtol, atol=atol)
 
     with nvmath.fft.FFT(
         fft_out,
@@ -1281,7 +1290,8 @@ def _operand_filter_dtype_shape_fft_ifft_case(
             allow_to_fail_compund_shape(e, shape, axes=axes)
 
         ifft_out = f.execute(direction=Direction.inverse.value)
-        assert_norm_close(ifft_out, ifft_ref, axes=axes, **get_tolerance(fft_out))
+        rtol, atol = get_default_tolerance(get_dtype_from_array(fft_out), None, exec_backend=ExecBackend.cufft)
+        assert_norm_close(ifft_out, ifft_ref, axes=axes, rtol=rtol, atol=atol)
 
 
 @skip_if_lto_unssuported
@@ -1571,7 +1581,7 @@ def test_two_plans_different_cbs(
     ref_0, ref_1 = signal_0, signal_1
 
     if callbacks_0.has_prolog():
-        ltoir = nvmath.fft.compile_prolog(prolog_cb_0, dtype_0.name, dtype_0.name)
+        ltoir = nvmath.fft.compile_prolog(prolog_cb_0, dtype_0.name, dtype_0.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs_0["prolog"] = {
             "ltoir": ltoir,
             "data": get_raw_ptr(dev_filters["prolog_0"]),
@@ -1581,7 +1591,9 @@ def test_two_plans_different_cbs(
     ref_0 = get_fft_ref(ref_0, axes=axes_0)
 
     if callbacks_0.has_epilog():
-        ltoir = nvmath.fft.compile_epilog(epilog_cb_0, epilog_dtype_0.name, epilog_dtype_0.name)
+        ltoir = nvmath.fft.compile_epilog(
+            epilog_cb_0, epilog_dtype_0.name, epilog_dtype_0.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs_0["epilog"] = {
             "ltoir": ltoir,
             "data": get_raw_ptr(dev_filters["epilog_0"]),
@@ -1589,7 +1601,7 @@ def test_two_plans_different_cbs(
         ref_0 = get_scaled(as_type(ref_0 * filters["epilog_0"], epilog_dtype_0), 5)
 
     if callbacks_1.has_prolog():
-        ltoir = nvmath.fft.compile_prolog(prolog_cb_1, dtype_1.name, dtype_1.name)
+        ltoir = nvmath.fft.compile_prolog(prolog_cb_1, dtype_1.name, dtype_1.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs_1["prolog"] = {
             "ltoir": ltoir,
             "data": get_raw_ptr(dev_filters["prolog_1"]),
@@ -1599,7 +1611,9 @@ def test_two_plans_different_cbs(
     ref_1 = get_fft_ref(ref_1, axes=axes_1)
 
     if callbacks_1.has_epilog():
-        ltoir = nvmath.fft.compile_epilog(epilog_cb_1, epilog_dtype_1.name, epilog_dtype_1.name)
+        ltoir = nvmath.fft.compile_epilog(
+            epilog_cb_1, epilog_dtype_1.name, epilog_dtype_1.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs_1["epilog"] = {
             "ltoir": ltoir,
             "data": get_raw_ptr(dev_filters["epilog_1"]),
@@ -1642,8 +1656,10 @@ def test_two_plans_different_cbs(
     assert_array_type(fft_0_out, framework, mem_backend, get_fft_dtype(dtype_0))
     assert_array_type(fft_1_out, framework, mem_backend, get_fft_dtype(dtype_1))
 
-    assert_norm_close(fft_0_out, ref_0, **get_tolerance(signal_0, shape_kind=shape_kind_0))
-    assert_norm_close(fft_1_out, ref_1, **get_tolerance(signal_1, shape_kind=shape_kind_1))
+    rtol_0, atol_0 = get_default_tolerance(get_dtype_from_array(signal_0), shape_kind_0, exec_backend=ExecBackend.cufft)
+    rtol_1, atol_1 = get_default_tolerance(get_dtype_from_array(signal_1), shape_kind_1, exec_backend=ExecBackend.cufft)
+    assert_norm_close(fft_0_out, ref_0, rtol=rtol_0, atol=atol_0)
+    assert_norm_close(fft_1_out, ref_1, rtol=rtol_1, atol=atol_1)
 
 
 @skip_if_lto_unssuported
@@ -1741,14 +1757,16 @@ def test_custom_stream(
     cb_kwargs = {}
 
     if callbacks.has_prolog():
-        ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name)
+        ltoir = nvmath.fft.compile_prolog(prolog_cb, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
         cb_kwargs["prolog"] = {
             "ltoir": ltoir,
             "data": get_raw_ptr(p_filt_dev),
         }
 
     if callbacks.has_epilog():
-        ltoir = nvmath.fft.compile_epilog(epilog_cb, epilog_dtype.name, epilog_dtype.name)
+        ltoir = nvmath.fft.compile_epilog(
+            epilog_cb, epilog_dtype.name, epilog_dtype.name, compute_capability=get_callback_lto_cc(0)
+        )
         cb_kwargs["epilog"] = {
             "ltoir": ltoir,
             "data": get_raw_ptr(e_filt_dev),
@@ -1782,7 +1800,8 @@ def test_custom_stream(
             add_in_place(e_filt_dev, e_filt_dev)
             add_in_place(fft, fft)
             assert_array_type(fft, framework, mem_backend, get_fft_dtype(dtype))
-            assert_norm_close(fft, ref, **get_tolerance(signal, shape_kind=shape_kind))
+            rtol, atol = get_default_tolerance(get_dtype_from_array(signal), shape_kind, exec_backend=ExecBackend.cufft)
+            assert_norm_close(fft, ref, rtol=rtol, atol=atol)
 
 
 @skip_if_lto_unssuported
@@ -1824,7 +1843,7 @@ def test_another_device(seeder, framework, exec_backend, mem_backend, dtype, sha
 
     device_id = 1
     device = get_device_ctx(device_id, framework)
-    cc = str(get_cc(device_id))
+    cc = get_callback_lto_cc(device_id)
 
     device_ctx = device if mem_backend == MemBackend.cuda else contextlib.nullcontext(device)
 
@@ -1897,7 +1916,8 @@ def test_another_device(seeder, framework, exec_backend, mem_backend, dtype, sha
         assert_eq(get_array_device_id(fft_out), device_id)
 
     with device_ctx:
-        assert_norm_close(fft_out, ref, **get_tolerance(signal))
+        rtol, atol = get_default_tolerance(get_dtype_from_array(signal), None, exec_backend=ExecBackend.cufft)
+        assert_norm_close(fft_out, ref, rtol=rtol, atol=atol)
 
 
 @skip_if_lto_unssuported
@@ -1909,8 +1929,10 @@ def test_another_device(seeder, framework, exec_backend, mem_backend, dtype, sha
         "mem_backend",
         "dtype",
         "shape_0",
+        "shape_kind_0",
         "axes_0",
         "shape_1",
+        "shape_kind_1",
         "axes_1",
         "callbacks_0",
         "callbacks_1",
@@ -1922,8 +1944,10 @@ def test_another_device(seeder, framework, exec_backend, mem_backend, dtype, sha
             mem_backend,
             dtype,
             repr(shape_0),
+            shape_kind_0,
             repr(axes_0),
             repr(shape_1),
+            shape_kind_1,
             repr(axes_1),
             callbacks_0,
             rng.choice(list(LtoCallback)),
@@ -1932,10 +1956,10 @@ def test_another_device(seeder, framework, exec_backend, mem_backend, dtype, sha
         if ExecBackend.cufft in supported_backends.exec
         for mem_backend in supported_backends.framework_mem[framework]
         for dtype in lto_callback_supperted_types
-        for shape_0, axes_0, shape_1, axes_1 in [
-            ((4200, 13), (0,), (7, 4199), (1,)),  # 2*2*2*3*5*5*7, 13*17*19
-            ((420, 512, 3), (0, 1), (5, 4, 4307), (1, 2)),  # 4307=59*73
-            ((2, 16, 16, 5), (0, 1, 2), (3, 9, 49, 25), (1, 2, 3)),
+        for shape_0, axes_0, shape_1, axes_1, shape_kind_0, shape_kind_1 in [
+            ((4200, 13), (0,), (7, 4199), (1,), ShapeKind.pow2357, ShapeKind.prime),  # 2*2*2*3*5*5*7, 13*17*19
+            ((420, 512, 3), (0, 1), (5, 4, 4307), (1, 2), ShapeKind.pow2357, ShapeKind.prime),  # 4307=59*73
+            ((2, 16, 16, 5), (0, 1, 2), (3, 9, 49, 25), (1, 2, 3), ShapeKind.pow2357, ShapeKind.pow2357),
         ]
         for callbacks_0 in LtoCallback
     ],
@@ -1947,9 +1971,11 @@ def test_two_devices(
     mem_backend,
     dtype,
     shape_0,
+    shape_kind_0,
     axes_0,
     shape_1,
     axes_1,
+    shape_kind_1,
     callbacks_0,
     callbacks_1,
 ):
@@ -1958,7 +1984,7 @@ def test_two_devices(
 
     device_id_0, device_id_1 = 0, 1
     device_0, device_1 = tuple(get_device_ctx(did, framework) for did in (device_id_0, device_id_1))
-    cc_0, cc_1 = str(get_cc(device_id_0)), str(get_cc(device_id_1))
+    cc_0, cc_1 = get_callback_lto_cc(device_id_0), get_callback_lto_cc(device_id_1)
 
     device_ctx_0, device_ctx_1 = (
         (device_0, device_1) if mem_backend == MemBackend.cuda else (contextlib.nullcontext(), contextlib.nullcontext())
@@ -2074,44 +2100,53 @@ def test_two_devices(
     if mem_backend == MemBackend.cpu:
         exec_options_0["device_id"] = device_id_0
 
-    fft_0 = nvmath.fft.FFT(
-        signal_0,
-        axes=axes_0,
-        execution=exec_options_0,
-        options={
-            "blocking": OptFftBlocking.auto.value,
-            "result_layout": OptFftLayout.natural.value,
-        },
-    )
+    fft_0, fft_1 = None, None
+    try:
+        fft_0 = nvmath.fft.FFT(
+            signal_0,
+            axes=axes_0,
+            execution=exec_options_0,
+            options={
+                "blocking": OptFftBlocking.auto.value,
+                "result_layout": OptFftLayout.natural.value,
+            },
+        )
 
-    exec_options_1 = {"name": exec_backend.nvname}
-    if mem_backend == MemBackend.cpu:
-        exec_options_1["device_id"] = device_id_1
-    fft_1 = nvmath.fft.FFT(
-        signal_1,
-        axes=axes_1,
-        execution=exec_options_1,
-        options={
-            "blocking": OptFftBlocking.auto.value,
-            "result_layout": OptFftLayout.natural.value,
-        },
-    )
-    fft_0.plan(**cb_kwargs_0)
-    fft_1.plan(**cb_kwargs_1)
-    fft_0_out = fft_0.execute(direction=Direction.forward.value)
-    fft_1_out = fft_1.execute(direction=Direction.forward.value)
+        exec_options_1 = {"name": exec_backend.nvname}
+        if mem_backend == MemBackend.cpu:
+            exec_options_1["device_id"] = device_id_1
+        fft_1 = nvmath.fft.FFT(
+            signal_1,
+            axes=axes_1,
+            execution=exec_options_1,
+            options={
+                "blocking": OptFftBlocking.auto.value,
+                "result_layout": OptFftLayout.natural.value,
+            },
+        )
+        fft_0.plan(**cb_kwargs_0)
+        fft_1.plan(**cb_kwargs_1)
+        fft_0_out = fft_0.execute(direction=Direction.forward.value)
+        fft_1_out = fft_1.execute(direction=Direction.forward.value)
 
-    assert_array_type(fft_0_out, framework, mem_backend, epilog_dtype)
-    assert_array_type(fft_1_out, framework, mem_backend, epilog_dtype)
-    if mem_backend == MemBackend.cuda:
-        assert_eq(get_array_device_id(fft_0_out), device_id_0)
-        assert_eq(get_array_device_id(fft_1_out), device_id_1)
+        assert_array_type(fft_0_out, framework, mem_backend, epilog_dtype)
+        assert_array_type(fft_1_out, framework, mem_backend, epilog_dtype)
+        if mem_backend == MemBackend.cuda:
+            assert_eq(get_array_device_id(fft_0_out), device_id_0)
+            assert_eq(get_array_device_id(fft_1_out), device_id_1)
 
-    with device_ctx_0:
-        assert_norm_close(fft_0_out, refs[0], **get_tolerance(signal_0))
+        with device_ctx_0:
+            rtol_0, atol_0 = get_default_tolerance(get_dtype_from_array(signal_0), shape_kind_0, exec_backend=ExecBackend.cufft)
+            assert_norm_close(fft_0_out, refs[0], rtol=rtol_0, atol=atol_0)
 
-    with device_ctx_1:
-        assert_norm_close(fft_1_out, refs[1], **get_tolerance(signal_1))
+        with device_ctx_1:
+            rtol_1, atol_1 = get_default_tolerance(get_dtype_from_array(signal_1), shape_kind_1, exec_backend=ExecBackend.cufft)
+            assert_norm_close(fft_1_out, refs[1], rtol=rtol_1, atol=atol_1)
+    finally:
+        if fft_1 is not None:
+            fft_1.free()
+        if fft_0 is not None:
+            fft_0.free()
 
 
 @skip_if_lto_unssuported
@@ -2165,12 +2200,12 @@ def test_unsupported_callback_signature(prolog_epilog, exec_backend, fn_name):
         "epilog_fn_ret_data": epilog_fn_ret_data,
         "data_only": data_only,
     }
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         if prolog_epilog == LtoCallback.prolog:
-            nvmath.fft.compile_prolog(fns[fn_name], "complex64", "complex64")
+            nvmath.fft.compile_prolog(fns[fn_name], "complex64", "complex64", compute_capability=get_callback_lto_cc(0))
         else:
             assert prolog_epilog == LtoCallback.epilog
-            nvmath.fft.compile_epilog(fns[fn_name], "complex64", "complex64")
+            nvmath.fft.compile_epilog(fns[fn_name], "complex64", "complex64", compute_capability=get_callback_lto_cc(0))
 
 
 @skip_if_lto_unssuported
@@ -2213,9 +2248,9 @@ def test_unsupported_type(element, exec_backend, dtype, callback):
 
     with pytest.raises(ValueError, match=msg):
         if callback == LtoCallback.prolog:
-            nvmath.fft.compile_prolog(prolog_fn, *args)
+            nvmath.fft.compile_prolog(prolog_fn, *args, compute_capability=get_callback_lto_cc(0))
         else:
-            nvmath.fft.compile_epilog(epilog_fn, *args)
+            nvmath.fft.compile_epilog(epilog_fn, *args, compute_capability=get_callback_lto_cc(0))
 
 
 @skip_if_lto_unssuported
@@ -2253,15 +2288,23 @@ def test_mismatched_operand_type(framework, exec_backend, mem_backend, callback,
 
     cb_kwargs = {}
     if callback == LtoCallback.prolog:
-        cb_kwargs["prolog"] = {"ltoir": nvmath.fft.compile_prolog(prolog_fn, declared_dtype.name, declared_dtype.name)}
+        cb_kwargs["prolog"] = {
+            "ltoir": nvmath.fft.compile_prolog(
+                prolog_fn, declared_dtype.name, declared_dtype.name, compute_capability=get_callback_lto_cc(0)
+            )
+        }
     else:
         assert callback == LtoCallback.epilog
-        cb_kwargs["epilog"] = {"ltoir": nvmath.fft.compile_epilog(epilog_fn, declared_dtype.name, declared_dtype.name)}
+        cb_kwargs["epilog"] = {
+            "ltoir": nvmath.fft.compile_epilog(
+                epilog_fn, declared_dtype.name, declared_dtype.name, compute_capability=get_callback_lto_cc(0)
+            )
+        }
 
     shape = (16,)
     signal = get_random_input_data(framework, shape, actual_dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(actual_dtype) else nvmath.fft.rfft
-    with pytest.raises(nvmath.bindings.cufft.cuFFTError, match="CUFFT_INTERNAL_ERROR"):
+    with pytest.raises(nvmath.bindings.cufft.cuFFTError, match=r"(CUFFT_INTERNAL_ERROR|CUFFT_NVJITLINK_FAILURE)"):
         fn(signal, execution=exec_backend.nvname, **cb_kwargs)
 
 
@@ -2298,10 +2341,14 @@ def test_prolog_epilog_unsupported_exec(framework, exec_backend, mem_backend, ca
 
     cb_kwargs = {}
     if callback == LtoCallback.prolog:
-        cb_kwargs["prolog"] = {"ltoir": nvmath.fft.compile_prolog(prolog_fn, dtype.name, dtype.name)}
+        cb_kwargs["prolog"] = {
+            "ltoir": nvmath.fft.compile_prolog(prolog_fn, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
+        }
     else:
         assert callback == LtoCallback.epilog
-        cb_kwargs["epilog"] = {"ltoir": nvmath.fft.compile_epilog(epilog_fn, dtype.name, dtype.name)}
+        cb_kwargs["epilog"] = {
+            "ltoir": nvmath.fft.compile_epilog(epilog_fn, dtype.name, dtype.name, compute_capability=get_callback_lto_cc(0))
+        }
 
     shape = (16,)
     signal = get_random_input_data(framework, shape, dtype, mem_backend)

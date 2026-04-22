@@ -7,10 +7,11 @@
 #
 
 import numpy as np
-from numba import cuda
-from nvmath.device import Matmul, FFT
 from common import random_complex
 from common_numba import load_to_shared
+from numba import cuda
+
+from nvmath.device import FFT, Matmul
 
 
 def main():

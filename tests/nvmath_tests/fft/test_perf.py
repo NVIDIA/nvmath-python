@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import nvmath
 import numpy as np
+
+import nvmath
 
 try:
     import cupy
@@ -11,7 +12,7 @@ except ImportError:
     cupy = None
 
 if cupy is not None:
-    from ..helpers import time_cupy, random_complex, print_aligned_table, fft_perf_GFlops
+    from ..helpers import fft_perf_GFlops, print_aligned_table, random_complex, time_cupy
 
     def test_fft():
         return _test_fft()
@@ -46,7 +47,7 @@ def _test_fft():
 
                 time_nvmath = time_cupy(lambda: f.execute(), ncycles)
 
-            time_cp = time_cupy(lambda x: cupy.fft.fftn(x, axes=[ax]), ncycles, data_in)
+            time_cp = time_cupy(lambda x, ax=ax: cupy.fft.fftn(x, axes=[ax]), ncycles, data_in)
 
             data.append(
                 {

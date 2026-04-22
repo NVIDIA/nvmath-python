@@ -5,21 +5,24 @@
 __all__ = ["Reshape", "reshape"]
 
 import logging
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, cast, Final
-import math
+from typing import Final, Literal, cast
+
 import numpy as np
 
 import nvmath.distributed
+from nvmath.bindings import (
+    cufftMp,  # type: ignore
+    nvshmem,  # type: ignore
+)
+from nvmath.distributed._internal import tensor_wrapper
+from nvmath.distributed._internal.nvshmem import NvshmemMemoryManager
+from nvmath.distributed._internal.tensor_ifc import DistributedTensor
 from nvmath.distributed.distribution import Box
 from nvmath.internal import formatters, utils
-from nvmath.internal.package_wrapper import StreamHolder, AnyStream
-from nvmath.bindings import cufftMp  # type: ignore
-from nvmath.bindings import nvshmem  # type: ignore
-from nvmath.distributed._internal import tensor_wrapper
-from nvmath.distributed._internal.tensor_ifc import DistributedTensor
-from nvmath.distributed._internal.nvshmem import NvshmemMemoryManager
+from nvmath.internal.package_wrapper import AnyStream, StreamHolder
 
 from ._configuration import ReshapeOptions
 
@@ -34,9 +37,9 @@ class TensorLayout:
 
 @dataclass
 class _ProblemSpec:
-    """This is used in a custom MPI reduction to check that the Reshape problem
-    specification is consistent across processes, and to infer global information
-    (e.g shape and memory layout)."""
+    """This is used in a custom reduction to check that the Reshape problem specification
+    is consistent across processes, and to infer global information (e.g shape and memory
+    layout)."""
 
     @dataclass
     class Options:
@@ -203,7 +206,7 @@ def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
             return Box(lower, upper)
 
         # Merge the boxes to get the global operand shape. Note that this is applied
-        # progressively throughout the MPI reduction, starting with the local boxes.
+        # progressively throughout the reduction, starting with the local boxes.
         p1.boxes = [reduce_boxes(p1.boxes[0], p2.boxes[0]), reduce_boxes(p1.boxes[1], p2.boxes[1])]
 
     except Exception as e:
@@ -263,19 +266,20 @@ class Reshape:
         stream: {stream}
 
     .. seealso::
-        :meth:`plan`, :meth:`reset_operand`, :meth:`execute`
+        :meth:`plan`, :meth:`reset_operand`, :meth:`execute`,
+        :meth:`release_operand`
 
     Examples:
 
         >>> import cupy as cp
         >>> import nvmath.distributed
 
-        Get MPI communicator used to initialize nvmath.distributed (for information on
+        Get process group used to initialize nvmath.distributed (for information on
         initializing nvmath.distributed, you can refer to the documentation or to the
         Reshape examples in `nvmath/examples/distributed/reshape
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/reshape>`_):
 
-        >>> comm = nvmath.distributed.get_context().communicator
+        >>> process_group = nvmath.distributed.get_context().process_group
 
         Let's create a 3D floating-point ndarray on GPU, distributed across a certain number
         of processes, with each holding a portion of the ndarray. As an example, process 0
@@ -286,7 +290,7 @@ class Reshape:
         Reshape uses the NVSHMEM PGAS model, which requires GPU operands to be on the
         symmetric heap:
 
-        >>> if comm.Get_rank() == 0:
+        >>> if process_group.rank == 0:
         ...     a[:] = cp.random.rand(*shape)
         ... else:
         ...     a = ...  # each process holds a different section of the global array.
@@ -301,7 +305,7 @@ class Reshape:
         of other processes, as each holds a different section of the global array.
 
         >>> from nvmath.distributed.distribution import Box
-        >>> if comm.Get_rank() == 0:
+        >>> if process_group.rank == 0:
         ...     input_lower = (0, 0, 0)
         ...     input_upper = (4, 4, 4)
         ...     input_box = Box(input_lower, input_upper)
@@ -402,8 +406,8 @@ class Reshape:
             )
         if not distributed_ctx.nvshmem_available:
             raise RuntimeError("nvmath.distributed wasn't initialized with NVSHMEM backend")
-        self.communicator = distributed_ctx.communicator
-        nranks = self.communicator.Get_size()
+        self.process_group = distributed_ctx.process_group
+        nranks = self.process_group.nranks
 
         self.operand = operand = tensor_wrapper.wrap_operand(operand)
         self.options = options = cast(
@@ -433,7 +437,7 @@ class Reshape:
             is_F=is_F,
         )
         if nranks > 1:
-            problem_spec = self.communicator.allreduce(problem_spec, op=_problem_spec_reducer)
+            problem_spec = self.process_group.allreduce_object(problem_spec, op=_problem_spec_reducer)
         else:
             # Ensure we error-check with one rank.
             problem_spec = _problem_spec_reducer(problem_spec, problem_spec)
@@ -554,6 +558,11 @@ class Reshape:
         # Attributes to establish stream ordering.
         self.workspace_stream = None
         self.last_compute_event = None
+
+        # Track whether the user has called release_operand(). This flag is
+        # checked in _check_valid_operand to prevent execution after the user
+        # has released their operand. It is cleared by reset_operand().
+        self._operand_released = False
 
         self.valid_state = True
         self.logger.info("The distributed Reshape operation has been created.")
@@ -694,22 +703,15 @@ class Reshape:
             self.logger.info(f"The Reshape planning phase took {elapsed.data:.3f} ms to complete.")
 
     @utils.precondition(_check_valid_reshape)
-    def reset_operand(self, operand=None, *, stream: AnyStream | None = None):
+    def reset_operand(self, operand, *, stream: AnyStream | None = None):
         """
-        Reset the operand held by this :class:`Reshape` instance. This method has two
-        use cases:
-
-        (1) it can be used to provide a new operand for execution
-        (2) it can be used to release the internal reference to the previous operand and
-            potentially make its memory available for other use by passing
-            ``operand=None``.
+        Reset the operand held by this :class:`Reshape` instance. This method is used
+        to provide a new operand for execution.
 
         Args:
-            operand: A tensor (ndarray-like object) compatible with the previous one or
-                `None` (default). A value of `None` will release the internal reference to
-                the previous operand and user is expected to set a new operand before again
-                calling :meth:`execute`. The new operand is considered compatible if all the
-                following properties match with the previous one:
+            operand: A tensor (ndarray-like object) compatible with the previous one.
+                The new operand is considered compatible if all the following properties
+                match with the previous one:
 
                 - The operand distribution, which must be (input_box, output_box)
                   where input_box and output_box are the boxes specified at plan time.
@@ -719,20 +721,23 @@ class Reshape:
                 - The memory space of the new operand (CPU or GPU).
                 - The device that new operand belongs to if it is on GPU.
 
-            stream: {stream}.
+            stream: {stream}
+
+        .. seealso::
+            :meth:`release_operand`
 
         Examples:
 
             >>> import cupy as cp
             >>> import nvmath.distributed
 
-            Get MPI communicator used to initialize nvmath.distributed (for information on
+            Get process group used to initialize nvmath.distributed (for information on
             initializing nvmath.distributed, you can refer to the documentation or to the
             Reshape examples in `nvmath/examples/distributed/reshape
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/reshape>`_):
 
-            >>> comm = nvmath.distributed.get_context().communicator
-            >>> nranks = comm.Get_size()
+            >>> process_group = nvmath.distributed.get_context().process_group
+            >>> nranks = process_group.nranks
 
             Create a 3-D complex128 ndarray on GPU symmetric memory, initially partitioned
             on the X axis (the global shape is (128, 128, 128)):
@@ -780,15 +785,7 @@ class Reshape:
         """
 
         if operand is None:
-            if self.memory_space == "cpu" and self.operand is not None:
-                with utils.device_ctx(self.device_id):
-                    # Since the execution when user passes CPU operands is blocking, it's
-                    # safe to call nvshmem_free here without additional synchronization.
-                    self.operand.free_symmetric()
-            self.operand = None  # type: ignore
-            self.operand_backup = None  # type: ignore
-            self.logger.info("The operand has been reset to None.")
-            return
+            raise ValueError("Resetting operand requires a valid operand. Use release_operand() to release the operand.")
 
         self.logger.info("Resetting operand...")
         # First wrap operand.
@@ -854,29 +851,35 @@ class Reshape:
         else:
             self.operand = operand
 
-    def _check_output(self, out):
-        utils.check_attribute_match(self.operand.dtype, out.dtype, "data type")
+        self._operand_released = False
 
-        operand = self.operand if self.memory_space == self.execution_space else self.operand_backup
-        if operand.data_ptr == out.data_ptr:
-            raise ValueError("Reshape does not support inplace operation (operand and output share the same memory address)")
+        self.logger.info("The operand has been reset to the specified operand.")
 
-        out_package = utils.infer_object_package(out.tensor)
-        if out_package != self.package:
-            raise ValueError(
-                f"The package for 'out' ({out_package}) must be the same as that of the operand ({{self.package}})."
-            )
+    @utils.precondition(_check_valid_reshape)
+    def release_operand(self):
+        """
+        {release_operand}
+        """
+        if self._operand_released:
+            self.logger.info("Operand has already been released; nothing to do.")
+            return
 
-        if len(out.shape) != self.operand_dim:
-            raise ValueError(
-                "operand and out dimensionality must be the same. The operand number of dimensions is"
-                f" {self.operand_dim} and the output number of dimensions is {len(out.shape)}"
-            )
+        if self.memory_space == self.execution_space:
+            # Same-space (GPU input): self.operand is the user's tensor.
+            self.operand = None
+        else:
+            # Cross-space (CPU input): self.operand_backup is the user's tensor,
+            # self.operand is an internal nvshmem device mirror.
+            # Release user reference and free the nvshmem mirror.
+            # Cross-space execution is always blocking, so no synchronization
+            # is needed before freeing.
+            self.operand_backup = None
+            with utils.device_ctx(self.device_id):
+                self.operand.free_symmetric()
+            self.operand = None
 
-        if out.device_id != self.operand_device_id:
-            raise ValueError(
-                f"The device ID for 'out' ({out.device_id}) must be the same as that of the operand ({self.operand_device_id})."
-            )
+        self._operand_released = True
+        self.logger.info("User-provided operand has been released.")
 
     def _check_planned(self, *args, **kwargs):
         """ """
@@ -887,10 +890,10 @@ class Reshape:
     def _check_valid_operand(self, *args, **kwargs):
         """ """
         what = kwargs["what"]
-        if self.operand is None:
+        if self._operand_released:
             raise RuntimeError(
-                f"{what} cannot be performed if the input operand has been set to None. Use reset_operand() to set the "
-                f"desired input before using performing the {what.lower()}."
+                f"{what} cannot be performed after the operand has been released. Use reset_operand() to provide a new "
+                f"operand before performing the {what.lower()}."
             )
 
     def _free_workspace_memory(self, exception: Exception | None = None) -> bool:
@@ -1087,7 +1090,7 @@ class Reshape:
         try:
             # Future operations on the workspace stream should be ordered after the
             # computation.
-            if self.last_compute_event is not None:
+            if self.last_compute_event is not None and self.workspace_stream is not None:
                 with utils.device_ctx(self.device_id):
                     self.workspace_stream.wait(self.last_compute_event)
                 self.last_compute_event = None
@@ -1104,8 +1107,12 @@ class Reshape:
                     # Since the execution when user passes CPU operands is blocking, it's
                     # safe to call nvshmem_free here without additional synchronization.
                     self.operand.free_symmetric()
-            self.operand = None
-            self.operand_backup = None
+
+            # Set all attributes to None except for logger and valid_state
+            _keep = {"logger", "valid_state"}
+            for attr in list(vars(self)):
+                if attr not in _keep:
+                    setattr(self, attr, None)
 
         except Exception as e:
             self.logger.critical("Internal error: only part of the Reshape object's resources have been released.")
@@ -1160,12 +1167,12 @@ def reshape(
         >>> import cupy as cp
         >>> import nvmath.distributed
 
-        Get MPI communicator used to initialize nvmath.distributed (for information on
+        Get process group used to initialize nvmath.distributed (for information on
         initializing nvmath.distributed, you can refer to the documentation or to the
         Reshape examples in `nvmath/examples/distributed/reshape
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/reshape>`_):
 
-        >>> comm = nvmath.distributed.get_context().communicator
+        >>> process_group = nvmath.distributed.get_context().process_group
 
         Let's create a 3D floating-point ndarray on GPU, distributed across a certain number
         of processes, with each holding a portion of the ndarray. As an example, process 0
@@ -1176,7 +1183,7 @@ def reshape(
         Reshape uses the NVSHMEM PGAS model, which requires GPU operands to be on the
         symmetric heap:
 
-        >>> if comm.Get_rank() == 0:
+        >>> if process_group.rank == 0:
         ...     a[:] = cp.random.rand(*shape)
         ... else:
         ...     a = ...  # each process holds a different section of the global array.
@@ -1191,7 +1198,7 @@ def reshape(
         of other processes, as each holds a different section of the global array.
 
         >>> from nvmath.distributed.distribution import Box
-        >>> if comm.Get_rank() == 0:
+        >>> if process_group.rank == 0:
         ...     input_lower = (0, 0, 0)
         ...     input_upper = (4, 4, 4)
         ...     input_box = Box(input_lower, input_upper)

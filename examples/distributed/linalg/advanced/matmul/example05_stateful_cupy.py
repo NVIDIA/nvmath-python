@@ -17,15 +17,16 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
-
-from nvmath.distributed.distribution import ProcessGrid, BlockNonCyclic
+from nvmath.distributed.distribution import BlockNonCyclic, ProcessGrid
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
+# cuBLASMp requires NCCL communication backend. In this example we also
+# initialize NVSHMEM backend to illustrate interoperation with operands
+# on NVSHMEM symmetric memory.
 nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
 
 # The global problem size m, n, k
@@ -39,13 +40,14 @@ col_wise_distribution = BlockNonCyclic(ProcessGrid(shape=(1, nranks)))  # partit
 
 a_shape = row_wise_distribution.shape(rank, (k, m))
 b_shape = col_wise_distribution.shape(rank, (n, k))
+# Allocate operands on NVSHMEM symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(a_shape, cp)
 b = nvmath.distributed.allocate_symmetric_memory(b_shape, cp)
 with cp.cuda.Device(device_id):
     a[:] = cp.random.rand(*a_shape)
     b[:] = cp.random.rand(*b_shape)
 
-# Get a transposed view to obtain column-major Fortran memory layout. Note that this
+# Get a transposed view to obtain column-major memory layout. Note that this
 # also changes the distribution of a and b (see example01 for more information).
 a = a.T  # a is now (m, k) with col_wise_distribution
 b = b.T  # b is now (k, n) with row_wise_distribution
@@ -61,7 +63,7 @@ with nvmath.distributed.linalg.advanced.Matmul(a, b, distributions=distributions
     # Execute the matrix multiplication.
     result = mm.execute()
 
-    # Note: if all of the input operands are on symmetric memory, the result is also
+    # Note: if all of the input operands are on NVSHMEM symmetric memory, the result is also
     # on symmetric memory.
 
     # Synchronize the default stream, since by default the execution is non-blocking for GPU
@@ -70,7 +72,7 @@ with nvmath.distributed.linalg.advanced.Matmul(a, b, distributions=distributions
     print(f"Input types = {type(a), type(b)}, device = {a.device, b.device}")
     print(f"Result type = {type(result)}, device = {result.device}")
 
-# GPU operands on the symmetric heap are not garbage-collected and the user is
+# GPU operands on the NVSHMEM symmetric heap are not garbage-collected and the user is
 # responsible for freeing any that they own (this deallocation is a collective
 # operation that must be called by all processes at the same point in the execution).
 nvmath.distributed.free_symmetric_memory(a, b, result)

@@ -6,12 +6,13 @@ try:
     import torch
 except ImportError:
     torch = None
-import pytest
 import numpy as np
-from ...utils import sample_matrix, assert_tensors_equal, to_numpy
+import pytest
+
 from nvmath.internal.utils import check_or_create_options
-from nvmath.linalg.advanced import matmul
-from nvmath.linalg.advanced import _configuration
+from nvmath.linalg.advanced import _configuration, matmul
+
+from ...utils import assert_tensors_equal, sample_matrix, to_numpy
 
 if torch is None:
     pytest.skip("Torch is required for FP8 tests", allow_module_level=True)
@@ -69,9 +70,9 @@ class Fp8Helper:
         Returns absolute difference between the ranges of quantized numbers and the expected
         values.
         """
-        l, r = np.vectorize(self.range)(quantized)
-        diff = np.minimum(abs(l - expected), abs(r - expected))
-        diff[(l <= expected) & (r >= expected)] = 0.0
+        left, right = np.vectorize(self.range)(quantized)
+        diff = np.minimum(abs(left - expected), abs(right - expected))
+        diff[(left <= expected) & (right >= expected)] = 0.0
         return diff
 
     def allclose(self, quantized, expected, atol=1e-2, rtol=1e-2, return_info=False):
@@ -212,7 +213,7 @@ def fp8_matmul_reference(
         assert len(aux) == 1
         key = list(aux.keys())[0]
         if epilog_aux_amax:
-            aux[f"{key}_amax"] = max(key)
+            aux[f"{key}_amax"] = aux[key].abs().max()
         if aux_scale is not None:
             aux[key] *= aux_scale
     else:

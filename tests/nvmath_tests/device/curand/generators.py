@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from numba import cuda, uint32, uint64
-import nvmath.device.random as R
-from .compiled_apis import compiled_apis
 import cffi
+from numba import cuda, uint32, uint64
+
+import nvmath.device.random as R
+
+from .compiled_apis import compiled_apis
 
 ffi = cffi.FFI()
 

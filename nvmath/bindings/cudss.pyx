@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.7.0. Do not modify it directly.
+# This code was automatically generated with version 0.7.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -28,13 +28,17 @@ import numpy as _numpy
 ###############################################################################
 
 class OpType(_IntEnum):
-    """See `cudssOpType_t`."""
+    """
+    See `cudssOpType_t`.
+    """
     SUM = CUDSS_SUM
     MAX = CUDSS_MAX
     MIN = CUDSS_MIN
 
 class ConfigParam(_IntEnum):
-    """See `cudssConfigParam_t`."""
+    """
+    See `cudssConfigParam_t`.
+    """
     REORDERING_ALG = CUDSS_CONFIG_REORDERING_ALG
     FACTORIZATION_ALG = CUDSS_CONFIG_FACTORIZATION_ALG
     SOLVE_ALG = CUDSS_CONFIG_SOLVE_ALG
@@ -63,7 +67,9 @@ class ConfigParam(_IntEnum):
     DETERMINISTIC_MODE = CUDSS_CONFIG_DETERMINISTIC_MODE
 
 class DataParam(_IntEnum):
-    """See `cudssDataParam_t`."""
+    """
+    See `cudssDataParam_t`.
+    """
     INFO = CUDSS_DATA_INFO
     LU_NNZ = CUDSS_DATA_LU_NNZ
     NPIVOTS = CUDSS_DATA_NPIVOTS
@@ -89,7 +95,9 @@ class DataParam(_IntEnum):
     USER_HOST_INTERRUPT = CUDSS_DATA_USER_HOST_INTERRUPT
 
 class Phase(_IntEnum):
-    """See `cudssPhase_t`."""
+    """
+    See `cudssPhase_t`.
+    """
     REORDERING = CUDSS_PHASE_REORDERING
     SYMBOLIC_FACTORIZATION = CUDSS_PHASE_SYMBOLIC_FACTORIZATION
     ANALYSIS = CUDSS_PHASE_ANALYSIS
@@ -104,7 +112,9 @@ class Phase(_IntEnum):
     SOLVE = CUDSS_PHASE_SOLVE
 
 class Status(_IntEnum):
-    """See `cudssStatus_t`."""
+    """
+    See `cudssStatus_t`.
+    """
     SUCCESS = CUDSS_STATUS_SUCCESS
     NOT_INITIALIZED = CUDSS_STATUS_NOT_INITIALIZED
     ALLOC_FAILED = CUDSS_STATUS_ALLOC_FAILED
@@ -114,7 +124,9 @@ class Status(_IntEnum):
     INTERNAL_ERROR = CUDSS_STATUS_INTERNAL_ERROR
 
 class MatrixType(_IntEnum):
-    """See `cudssMatrixType_t`."""
+    """
+    See `cudssMatrixType_t`.
+    """
     GENERAL = CUDSS_MTYPE_GENERAL
     SYMMETRIC = CUDSS_MTYPE_SYMMETRIC
     HERMITIAN = CUDSS_MTYPE_HERMITIAN
@@ -122,23 +134,31 @@ class MatrixType(_IntEnum):
     HPD = CUDSS_MTYPE_HPD
 
 class MatrixViewType(_IntEnum):
-    """See `cudssMatrixViewType_t`."""
+    """
+    See `cudssMatrixViewType_t`.
+    """
     FULL = CUDSS_MVIEW_FULL
     LOWER = CUDSS_MVIEW_LOWER
     UPPER = CUDSS_MVIEW_UPPER
 
 class IndexBase(_IntEnum):
-    """See `cudssIndexBase_t`."""
+    """
+    See `cudssIndexBase_t`.
+    """
     ZERO = CUDSS_BASE_ZERO
     ONE = CUDSS_BASE_ONE
 
 class Layout(_IntEnum):
-    """See `cudssLayout_t`."""
+    """
+    See `cudssLayout_t`.
+    """
     COL_MAJOR = CUDSS_LAYOUT_COL_MAJOR
     ROW_MAJOR = CUDSS_LAYOUT_ROW_MAJOR
 
 class AlgType(_IntEnum):
-    """See `cudssAlgType_t`."""
+    """
+    See `cudssAlgType_t`.
+    """
     ALG_DEFAULT = CUDSS_ALG_DEFAULT
     ALG_1 = CUDSS_ALG_1
     ALG_2 = CUDSS_ALG_2
@@ -147,13 +167,17 @@ class AlgType(_IntEnum):
     ALG_5 = CUDSS_ALG_5
 
 class PivotType(_IntEnum):
-    """See `cudssPivotType_t`."""
+    """
+    See `cudssPivotType_t`.
+    """
     PIVOT_COL = CUDSS_PIVOT_COL
     PIVOT_ROW = CUDSS_PIVOT_ROW
     PIVOT_NONE = CUDSS_PIVOT_NONE
 
 class MatrixFormat(_IntEnum):
-    """See `cudssMatrixFormat_t`."""
+    """
+    See `cudssMatrixFormat_t`.
+    """
     DENSE = CUDSS_MFORMAT_DENSE
     CSR = CUDSS_MFORMAT_CSR
     BATCH = CUDSS_MFORMAT_BATCH

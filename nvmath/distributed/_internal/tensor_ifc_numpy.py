@@ -10,9 +10,8 @@ from __future__ import annotations  # allows typehint of class methods to return
 
 __all__ = ["NumpyDistributedTensor", "CudaDistributedTensor"]
 
-from nvmath.internal.tensor_ifc_numpy import CudaTensor, NumpyTensor
-
 from nvmath.internal.ndbuffer import ndbuffer
+from nvmath.internal.tensor_ifc_numpy import CudaTensor, NumpyTensor
 
 from .tensor_ifc import DistributedTensor
 from .tensor_ifc_host_device import CudaDistributedTensorMixIn, HostDistributedTensorMixIn

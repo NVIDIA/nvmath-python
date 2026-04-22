@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from nvmath.linalg._internal.layout import BLASMMTraitsView, BLASMatrixTraits, MMLayoutChecker, MMLayoutCheckerLookupTable
 from nvmath.bindings import cublasLt as cublaslt
-from .qualifiers import MatrixQualifier
 from nvmath.bindings.cublasLt import Order
+from nvmath.linalg._internal.layout import BLASMatrixTraits, BLASMMTraitsView, MMLayoutChecker, MMLayoutCheckerLookupTable
+
+from .qualifiers import MatrixQualifier
 
 
 def mm_layout_checker_getter(qualifiers: MatrixQualifier) -> MMLayoutChecker:

@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
+
 import numpy as np
-from numba import cuda
-from nvmath.device import FFT
 from common import random_complex
+from numba import cuda
+
+from nvmath.device import FFT
 
 
 def main():

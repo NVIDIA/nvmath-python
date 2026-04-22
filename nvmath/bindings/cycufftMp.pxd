@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.2.6 to 11.4.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.2.6 to 11.4.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 ###############################################################################
@@ -138,6 +138,7 @@ ctypedef struct cufftXt1dFactors 'cufftXt1dFactors':
     int substringShift
     int factor1Shift
     int factor2Shift
+
 ctypedef cufftComplex (*cufftCallbackLoadC 'cufftCallbackLoadC')(
     void* dataIn,
     size_t offset,

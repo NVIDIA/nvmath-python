@@ -27,11 +27,12 @@ $ mpiexec -n 2 python example01_cupy.py
 """
 
 import cupy as cp
-import nvmath.distributed
-from nvmath.distributed.distribution import Box
 
 # Initialize nvmath.distributed.
 from mpi4py import MPI
+
+import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()

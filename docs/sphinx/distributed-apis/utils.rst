@@ -2,8 +2,8 @@
 Distributed API Utilities
 *************************
 
-Symmetric memory management
-===========================
+NVSHMEM symmetric memory management
+===================================
 
 Some distributed APIs like :class:`nvmath.distributed.fft.FFT` and
 :class:`nvmath.distributed.reshape.Reshape` use a Partitioned Global Address Space (PGAS)
@@ -18,8 +18,8 @@ To do so, simply specify the *local* shape, the array package and dtype:
     import torch
     import nvmath.distributed
 
-    # NVSHMEM backend required for symmetric memory operations.
-    nvmath.distributed.initialize(device_id, communicator, backends=["nvshmem"])
+    # NVSHMEM backend required for the following symmetric memory APIs.
+    nvmath.distributed.initialize(device_id, process_group, backends=["nvshmem"])
 
     # Allocate a CuPy array of shape (3,3) on each process
     a = nvmath.distributed.allocate_symmetric_memory((3,3), cupy, dtype=cupy.float32)
@@ -53,8 +53,8 @@ symmetric by using ``make_symmetric=True``:
 
 .. code-block:: python
 
-    # Get process rank from mpi4py communicator.
-    rank = communicator.Get_rank()
+    # Get my process rank.
+    rank = nvmath.distributed.get_context().process_group.rank
     # Note: this will raise an error if make_symmetric is False.
     if rank == 0:
         a = nvmath.distributed.allocate_symmetric_memory((3,3), cupy, make_symmetric=True)
@@ -126,8 +126,8 @@ distributed reshape:
     # The global dimensions of the matrix are 4x4. The matrix is distributed
     # column-wise, so each process has 4 rows and 2 columns.
 
-    # Get process rank from mpi4py communicator.
-    rank = communicator.Get_rank()
+    # Get my process rank.
+    rank = nvmath.distributed.get_context().process_group.rank
 
     # Initialize the matrix on each process, as a NumPy ndarray (on the CPU).
     A = np.zeros((4, 2)) if rank == 0 else np.ones((4, 2))
@@ -167,6 +167,8 @@ API Reference (:mod:`nvmath.distributed.reshape`)
    reshape
    Reshape
 
-   :template: dataclass.rst
+.. autosummary::
+   :toctree: generated/
+   :template: dataclass
 
    ReshapeOptions

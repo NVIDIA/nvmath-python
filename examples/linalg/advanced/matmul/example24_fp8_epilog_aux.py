@@ -10,8 +10,9 @@ be returned as FP8. To request FP8 auxiliary output, set epilog.aux_type to an F
 in MatmulPlanPreferences.
 
 You can specify the scale for this auxiliary output by passing the scale
-as "epilog_aux_scale" input in `epilog_inputs`. Additionally, you can request amax to be
-computed for this output by setting `epilog.aux_amax=True` in MatmulPlanPreferences.
+as "aux_quantization_scale" input in `epilog_inputs`. Additionally, you can
+request amax to be computed for this output by setting
+`epilog.aux_amax=True` in MatmulPlanPreferences.
 
 Note that FP8 auxiliary outputs are supported only for particular epilogs and type
 combinations. For more details on the supported configurations, please see the cuBLAS
@@ -65,5 +66,4 @@ print(aux)
 print()
 
 print(f"Note that gelu_aux is an FP8 tensor: {aux['gelu_aux'].dtype=}")
-print(f"Also, amax has been returned: {aux['gelu_aux_amax']=}")
 print(f"Also, amax has been returned: {aux['gelu_aux_amax']=}")

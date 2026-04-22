@@ -12,12 +12,12 @@ handle and stream management.
 import logging
 import typing
 
+import nvmath.bindings.cublas as cublas
+import nvmath.bindings.nvpl.blas as blas
 from nvmath._internal.templates import ExecutionCPU, ExecutionCUDA
 from nvmath.bindings._internal.utils import FunctionNotFoundError
 from nvmath.internal import typemaps, utils
 from nvmath.linalg._internal.utils import get_handle
-import nvmath.bindings.cublas as cublas
-import nvmath.bindings.nvpl.blas as blas
 
 
 def get_value_zeroth_element(array):

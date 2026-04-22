@@ -12,6 +12,8 @@ from collections.abc import Sequence
 from nvmath.internal.utils import infer_object_package
 from nvmath.sparse._internal.sparse_format_helpers import PACKAGE_HELPER_MAP
 
+RECOGNIZED_NAMED_FORMATS = {"BSR", "BSC", "CSR", "CSC", "COO", "DIA"}
+
 
 def check_supported_package(native_operands):
     """
@@ -33,8 +35,20 @@ def wrap_sparse_operand(native_operand):
     Wrap one "native" sparse operand so that package-agnostic API can be used.
     """
 
-    helper = PACKAGE_HELPER_MAP[infer_object_package(native_operand)]
+    package = infer_object_package(native_operand)
+    helper = PACKAGE_HELPER_MAP[package]
     sparse_format = helper.sparse_format_name(native_operand)
+
+    # The sparse format should be a recognized named format or an UST.
+    if sparse_format not in RECOGNIZED_NAMED_FORMATS:
+        if package == "nvmath":
+            from nvmath.sparse._internal.sparse_ust_ifc import USTensorHolder
+
+            return USTensorHolder(native_operand)
+
+        raise TypeError(f"The sparse format {sparse_format} is not currently supported.")
+
+    # Recognized named format.
     attr_name_map = getattr(helper, f"{sparse_format.lower()}_attribute_names")()
 
     module_name = f"nvmath.sparse._internal.sparse_{sparse_format.lower()}_ifc"
@@ -59,6 +73,16 @@ def wrap_sparse_operands(native_operands):
     if len(sparse_format) != 1:
         raise ValueError(f"The sparse operands do not have the same sparse format: {sparse_format}")
     sparse_format = sparse_format.pop()
+
+    # The sparse format should be a recognized named format or an UST.
+    if sparse_format not in RECOGNIZED_NAMED_FORMATS:
+        if package == "nvmath":
+            from nvmath.sparse._internal.sparse_ust_ifc import USTensor
+
+            return [USTensor(o) for o in native_operands]
+
+        raise TypeError(f"The sparse format {sparse_format} is not currently supported.")
+
     attr_name_map = getattr(helper, f"{sparse_format.lower()}_attribute_names")()
 
     module_name = f"nvmath.sparse._internal.sparse_{sparse_format.lower()}_ifc"
@@ -79,3 +103,42 @@ def get_operands_index_type(operands):
         index_types = {operand.index_type for operand in operands}
         raise ValueError(f"All operands must have the same index type. The index types found = {index_types}.")
     return index_type
+
+
+def sparse_or_dense(operand):
+    """
+    Determine if the operand is sparse or dense.
+    """
+
+    dense_tensor_modules = {"cupy", "numpy", "torch"}
+    sparse_tensor_modules = set(PACKAGE_HELPER_MAP.keys())
+
+    module = infer_object_package(operand)
+
+    if module == "torch":
+        import torch
+
+        if not torch.is_tensor(operand):
+            raise TypeError(f"The operand '{operand}' is not a tensor object.")
+
+        if operand.layout == torch.strided:
+            return "dense"
+
+        return "sparse"
+
+    # TODO: use the level spec instead of format name to infer if dense.
+    if module == "nvmath":
+        name = operand.tensor_format.name
+        if name == "Scalar" or "Dense" in name:
+            return "dense"
+        return "sparse"
+
+    # We'll check if the object is a tensor later, we'll assume here that it is
+    # solely based on the package.
+    if module in sparse_tensor_modules:
+        return "sparse"
+
+    if module in dense_tensor_modules:
+        return "dense"
+
+    raise TypeError(f"The package '{module}' is not supported.")

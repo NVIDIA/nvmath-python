@@ -21,14 +21,14 @@ from typing import Literal
 
 import numpy as _np
 
+from nvmath._utils import CudaDataType
 from nvmath.bindings import cublas  # type: ignore
 from nvmath.bindings import cublasLt as cublaslt  # type: ignore
 from nvmath.internal import enum_utils
+from nvmath.internal.mem_limit import check_memory_str
 from nvmath.internal.tensor_ifc import AnyTensor
 from nvmath.internal.utils import check_or_create_options
-from nvmath.internal.mem_limit import check_memory_str
 from nvmath.memory import BaseCUDAMemoryManager, BaseCUDAMemoryManagerAsync
-from nvmath._utils import CudaDataType
 
 MatmulEpilog = cublaslt.Epilogue
 MatmulInnerShape = cublaslt.MatmulInnerShape
@@ -66,7 +66,7 @@ class MatmulOptions:
             (FP8 and lower) data type, scales used for result quantization will be returned
             in the auxiliary output tensor as ``"d_out_scale"`` in UE8M0 format. For more
             information on UE8M0 format, see the documentation of
-            :class:`~linalg.advanced.MatmulQuantizationScales`.
+            :class:`~nvmath.linalg.advanced.MatmulQuantizationScales`.
             This option is only supported for narrow-precision (FP8 and lower) operations.
 
         sm_count_target (int) : The number of SMs to use for execution. The default is 0,
@@ -230,7 +230,7 @@ class MatmulPlanPreferences:
 
         numerical_impl_mask (:class:`nvmath.linalg.advanced.MatmulNumericalImplFlags`):
             Enumerators from
-            :class:`nvmath.nvmath.linalg.advanced.MatmulNumericalImplFlags` combined with
+            :class:`nvmath.linalg.advanced.MatmulNumericalImplFlags` combined with
             bitwise operator ``|``. The default is all numerical implementation flag
             choices.
 
@@ -276,13 +276,31 @@ class MatmulQuantizationScales:
 
     Scales can only be set for narrow-precision (FP8 and lower) matrices.
 
-    When ``MatmulOptions.block_scaling=False``, each scale can either be a scalar (integer
-    or float) or a single-element tensor of shape ``()`` or ``(1,)``.
+    **FP8 operations** (``block_scaling=False``, per-tensor scaling):
 
-    When ``MatmulOptions.block_scaling=True``, each scale should be a 1D ``uint8`` tensor
-    with layout matching the requirements of cuBLAS MXFP8 scaling tensor. Values in the
-    tensor will be interpreted as UE8M0 values. This means that a value :math:`x` in the
-    scaling tensor will cause cuBLAS to multiply the respective block by :math:`2^{x-127}`.
+    * Scale format: **scalar** (integer or float) or single-element tensor
+      of shape ``()`` or ``(1,)``
+    * A single scale value is applied to the entire tensor.
+
+    **MXFP8 operations** (``block_scaling=True``, microscaling with FP8 operands):
+
+    * Scale format: **1D tensor** with layout matching cuBLAS MXFP8 requirements
+    * Scale dtype: ``uint8`` (interpreted as UE8M0 values by cuBLAS)
+    * A scale value :math:`x` causes cuBLAS to multiply the respective
+      block by :math:`2^{x-127}`.
+
+    **NVFP4 operations** (``block_scaling=True``, block scaling with FP4 operands):
+
+    * Scale format: **1D tensor** with layout matching cuBLAS NVFP4 requirements
+    * Scale dtype: ``float8_e4m3fn`` (interpreted by cuBLAS as unsigned UE4M3 values,
+      i.e. the bit sign is ignored).
+    * FP4 only supports block scaling; ``block_scaling=False`` is not supported for FP4.
+
+    .. note::
+       MXFP8 and NVFP4 use "block scaling" where each block of elements has its own
+       scale factor, as opposed to FP8 which uses a single per-tensor scale.
+       When ``block_scaling=True``, tensor scales are required; scalar
+       scales are not allowed.
 
     .. note::
        When scales are provided as tensors, they must be from the same package

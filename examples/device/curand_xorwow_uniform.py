@@ -11,7 +11,6 @@ kernel and a sample generation kernel.
 """
 
 import numpy as np
-
 from numba import cuda
 
 from nvmath.device import random
@@ -43,7 +42,7 @@ def test_random_uniform():
         count = 0
 
         # Count the number of samples that falls greater than 0.5
-        for sample in range(n):
+        for _sample in range(n):
             x = random.uniform_double(states[i])
             if x > 0.5:
                 count += 1
@@ -55,7 +54,7 @@ def test_random_uniform():
 
     results = cuda.to_device(np.zeros(nthreads, dtype=np.int32))
 
-    for i in range(repetitions):
+    for _i in range(repetitions):
         count_upper_half[blocks, threads](states, sample_count, results)
 
     host_results = results.copy_to_host()

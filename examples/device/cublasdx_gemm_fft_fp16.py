@@ -7,10 +7,11 @@
 #
 
 import numpy as np
-from numba import cuda
-from nvmath.device import Matmul, FFT, float16x4, float16x2
-from common import random_complex, complex64_to_fp16x2, fp16x2_to_complex64
+from common import complex64_to_fp16x2, fp16x2_to_complex64, random_complex
 from common_numba import load_to_shared_1d_float16x2, store_from_shared_1d_float16x2
+from numba import cuda
+
+from nvmath.device import FFT, Matmul, float16x2, float16x4
 
 
 def main():

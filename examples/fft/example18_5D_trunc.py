@@ -9,11 +9,10 @@ This example brings together N-D FFTs, truncation/padding, and caching.
 import functools
 
 import cupy as cp
+from caching import FFTCache
+from caching import fft as cached_fft
 from cupyx.profiler import benchmark
-
-from caching import fft as cached_fft, FFTCache
 from fftn2 import fftn
-
 from truncation import fft as truncated_fft
 
 shape = 64, 128, 16, 48, 32

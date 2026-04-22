@@ -12,6 +12,7 @@ from nvmath.bindings import curand
 from nvmath.bindings import cusolver
 from nvmath.bindings import cusolverDn
 from nvmath.bindings import cusparse
+from nvmath.bindings import cusparseLt
 from nvmath.bindings import cutensor
 
 try:
@@ -25,12 +26,6 @@ try:
     from nvmath.bindings import nvshmem
 except ImportError:
     nvshmem = None
-
-try:
-    # NCCL is Linux-only.
-    from nvmath.bindings import nccl
-except ImportError:
-    nccl = None
 
 try:
     # cublasMp is Linux-only.
@@ -49,8 +44,8 @@ __all__ = [
     "cusolver",
     "cusolverDn",
     "cusparse",
+    "cusparseLt",
     "cutensor",
-    "nccl",
     "nvpl",
     "nvshmem",
 ]

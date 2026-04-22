@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import importlib
-import numpy as np
 from collections.abc import Sequence
 from typing import Union
+
+import numpy as np
 
 try:
     from cuda.core import Stream
@@ -27,8 +28,8 @@ except ImportError:
 
 from nvmath.internal import tensor_wrapper
 from nvmath.tensor import ComputeDesc, Operator
-
 from nvmath_tests.helpers import use_stream
+
 from .axes_utils import TORCH_TENSOR
 
 
@@ -110,7 +111,7 @@ atol_mapper = dict(zip(dtype_names, [10 * m_eps for m_eps in machine_epsilon_val
 def get_contraction_tolerance(dtype_name, compute_type):
     if compute_type == ComputeDesc.COMPUTE_32F() and dtype_name in {"float64", "complex128"}:
         return {"atol": atol_mapper["float32"], "rtol": rtol_mapper["float32"]}
-    elif compute_type in {ComputeDesc.COMPUTE_16F(), ComputeDesc.COMPUTE_16BF()}:
+    elif compute_type in {ComputeDesc.COMPUTE_16F(), ComputeDesc.COMPUTE_16BF(), ComputeDesc.COMPUTE_4X16F()}:
         return {"atol": atol_mapper["float16"], "rtol": rtol_mapper["float16"]}
     else:
         tolerance = {"atol": atol_mapper[dtype_name], "rtol": rtol_mapper[dtype_name]}
@@ -124,6 +125,7 @@ def assert_all_close(a, b, rtol, atol):
     if isinstance(a, np.ndarray):
         return np.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
     elif CP_NDARRAY is not None and isinstance(a, CP_NDARRAY):
+        assert a.device.id == b.device.id
         return cupy.testing.assert_allclose(a, b, rtol=rtol, atol=atol)
     elif TORCH_TENSOR is not None and isinstance(a, TORCH_TENSOR):
         return torch.testing.assert_close(a, b, rtol=rtol, atol=atol)

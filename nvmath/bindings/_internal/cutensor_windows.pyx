@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 2.3.1. Do not modify it directly.
+# This code was automatically generated with version 2.5.0, generator version 0.3.1.dev1393+g0a20dc9d7. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -100,6 +100,7 @@ cdef void* __cutensorOperationDescriptorSetAttribute = NULL
 cdef void* __cutensorOperationDescriptorGetAttribute = NULL
 cdef void* __cutensorCreatePlanPreference = NULL
 cdef void* __cutensorDestroyPlanPreference = NULL
+cdef void* __cutensorPlanPreferenceGetAttribute = NULL
 cdef void* __cutensorPlanPreferenceSetAttribute = NULL
 cdef void* __cutensorPlanGetAttribute = NULL
 cdef void* __cutensorEstimateWorkspaceSize = NULL
@@ -210,6 +211,9 @@ cdef int _check_or_init_cutensor() except -1 nogil:
 
         global __cutensorDestroyPlanPreference
         __cutensorDestroyPlanPreference = GetProcAddress(handle, 'cutensorDestroyPlanPreference')
+
+        global __cutensorPlanPreferenceGetAttribute
+        __cutensorPlanPreferenceGetAttribute = GetProcAddress(handle, 'cutensorPlanPreferenceGetAttribute')
 
         global __cutensorPlanPreferenceSetAttribute
         __cutensorPlanPreferenceSetAttribute = GetProcAddress(handle, 'cutensorPlanPreferenceSetAttribute')
@@ -357,6 +361,9 @@ cpdef dict _inspect_function_pointers():
 
     global __cutensorDestroyPlanPreference
     data["__cutensorDestroyPlanPreference"] = <intptr_t>__cutensorDestroyPlanPreference
+
+    global __cutensorPlanPreferenceGetAttribute
+    data["__cutensorPlanPreferenceGetAttribute"] = <intptr_t>__cutensorPlanPreferenceGetAttribute
 
     global __cutensorPlanPreferenceSetAttribute
     data["__cutensorPlanPreferenceSetAttribute"] = <intptr_t>__cutensorPlanPreferenceSetAttribute
@@ -650,6 +657,16 @@ cdef cutensorStatus_t _cutensorDestroyPlanPreference(cutensorPlanPreference_t pr
             raise FunctionNotFoundError("function cutensorDestroyPlanPreference is not found")
     return (<cutensorStatus_t (*)(cutensorPlanPreference_t) noexcept nogil>__cutensorDestroyPlanPreference)(
         pref)
+
+
+cdef cutensorStatus_t _cutensorPlanPreferenceGetAttribute(const cutensorHandle_t handle, cutensorPlanPreference_t pref, cutensorPlanPreferenceAttribute_t attr, void* buf, size_t sizeInBytes) except?_CUTENSORSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cutensorPlanPreferenceGetAttribute
+    _check_or_init_cutensor()
+    if __cutensorPlanPreferenceGetAttribute == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cutensorPlanPreferenceGetAttribute is not found")
+    return (<cutensorStatus_t (*)(const cutensorHandle_t, cutensorPlanPreference_t, cutensorPlanPreferenceAttribute_t, void*, size_t) noexcept nogil>__cutensorPlanPreferenceGetAttribute)(
+        handle, pref, attr, buf, sizeInBytes)
 
 
 cdef cutensorStatus_t _cutensorPlanPreferenceSetAttribute(const cutensorHandle_t handle, cutensorPlanPreference_t pref, cutensorPlanPreferenceAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUTENSORSTATUS_T_INTERNAL_LOADING_ERROR nogil:

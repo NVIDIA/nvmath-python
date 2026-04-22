@@ -20,13 +20,12 @@ def detect_cuda_paths():
     # isolation is on, the build prefix is added to sys.path, but this is the only
     # implementation detail that we rely on.
     # TODO: move to cuda.pathfinder.
-    potential_build_prefixes = (
-        [os.path.join(p, "nvidia/cu13") for p in sys.path]
-        # internal/bindings depends on cuda_bindings cydriver,
-        # which introduces dependency on cudaProfiler.h
-        + [os.path.join(p, "nvidia/cuda_profiler_api") for p in sys.path]
-        + [os.environ.get("CUDA_PATH", os.environ.get("CUDA_HOME", "")), "/usr/local/cuda"]
-    )
+    potential_build_prefixes = [os.path.join(p, "nvidia/cu13") for p in sys.path] + [
+        os.environ.get("CUDA_PATH", os.environ.get("CUDA_HOME", "")),
+        "/usr/local/cuda",
+    ]
+    # Filter out empty paths, e.g. when neither CUDA_PATH nor CUDA_HOME is set
+    potential_build_prefixes = [p for p in potential_build_prefixes if p]
     cuda_paths = []
 
     def check_path(header):
@@ -46,9 +45,6 @@ def detect_cuda_paths():
 
     check_path("cuda.h")
     check_path("crt/host_defines.h")
-    # internal/bindings depends on cuda_bindings cydriver,
-    # which introduces dependency on cudaProfiler.h
-    check_path("cudaProfiler.h")
     return cuda_paths
 
 
@@ -64,7 +60,6 @@ def decide_lib_name(ext_name):
         "curand",
         "nvpl",
         "nvshmem",
-        "nccl",
         "mathdx",
         "cudss",
         "cutensor",

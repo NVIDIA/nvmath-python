@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.2.0, generator version 0.3.1.dev1301+g7215ac36e. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -546,10 +546,10 @@ cpdef gemm_grouped_batched_ex(intptr_t handle, transa_array, transb_array, m_arr
 cpdef gemm_grouped_batched_ex_64(intptr_t handle, transa_array, transb_array, m_array, n_array, k_array, intptr_t alpha_array, intptr_t aarray, int atype, lda_array, intptr_t barray, int btype, ldb_array, intptr_t beta_array, intptr_t carray, int ctype, ldc_array, int64_t group_count, group_size, int compute_type)
 cpdef int get_emulation_strategy(intptr_t handle) except? -1
 cpdef set_emulation_strategy(intptr_t handle, int emulation_strategy)
-cpdef get_emulation_special_values_support(intptr_t handle, intptr_t mask)
-cpdef set_emulation_special_values_support(intptr_t handle, cudaEmulationSpecialValuesSupport mask)
-cpdef get_fixed_point_emulation_mantissa_control(intptr_t handle, intptr_t mantissa_control)
-cpdef set_fixed_point_emulation_mantissa_control(intptr_t handle, cudaEmulationMantissaControl mantissa_control)
+cpdef int get_emulation_special_values_support(intptr_t handle) except? -1
+cpdef set_emulation_special_values_support(intptr_t handle, int mask)
+cpdef int get_fixed_point_emulation_mantissa_control(intptr_t handle) except? -1
+cpdef set_fixed_point_emulation_mantissa_control(intptr_t handle, int mantissa_control)
 cpdef int get_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle) except? -1
 cpdef set_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle, int max_mantissa_bit_count)
 cpdef int get_fixed_point_emulation_mantissa_bit_offset(intptr_t handle) except? -1

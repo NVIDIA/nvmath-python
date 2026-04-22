@@ -5,11 +5,12 @@
 import itertools
 import logging
 import pprint
-import pytest
 import time
 
+import pytest
+
 from nvmath.bindings import cublasLt as cublaslt
-from nvmath.linalg._internal.layout import BLASMatrixTraits, InputMMTraits, BLASMMTraitsView
+from nvmath.linalg._internal.layout import BLASMatrixTraits, BLASMMTraitsView, InputMMTraits
 from nvmath.linalg.generic._configuration.layout import (
     is_supported_gemm_layout,
     is_supported_symm_layout_left,

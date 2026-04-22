@@ -7,8 +7,8 @@ Example using a thread pool to launch multiple independent FFT operations in par
 multiple GPUs.
 """
 
-from functools import partial
 import multiprocessing.dummy
+from functools import partial
 
 import cupy as cp
 

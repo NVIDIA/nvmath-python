@@ -17,7 +17,6 @@ import numpy as np
 from nvmath.bindings import cudss
 from nvmath.internal import utils
 
-
 ConfigParamEnum: TypeAlias = cudss.ConfigParam
 
 # Future-proofing - cuDSS is currently not thread-safe.
@@ -39,7 +38,7 @@ def _set_scalar_attribute(config_ptr, name, attribute, value):
     """
     name      = cudss enumerator for the attribute.
     attribute = numpy ndarray object into which the value is stored.
-    value     = the value to set the the attribute to.
+    value     = the value to set the attribute to.
     """
     attribute[0] = value
     cudss.config_set(config_ptr, name, attribute.ctypes.data, attribute.dtype.itemsize)
@@ -55,7 +54,7 @@ def _check_valid_solver(config):
         name = m.group(1)
         address = m.group(2)
 
-        raise RuntimeError(f"The {name} object at {address} cannot be used after it's solver object is free'd.")
+        raise RuntimeError(f"The {name} object at {address} cannot be used after its solver object is free'd.")
 
 
 # TODO: Set user permutation as part of PlanConfig, even though it sets the data object.
@@ -64,6 +63,20 @@ class PlanConfig:
     An interface to configure :meth:`nvmath.sparse.advanced.DirectSolver.plan`. The
     current configuration can also be queried.
     """
+
+    __slots__ = (
+        "_solver",
+        "_config_ptr",
+        "_host_nthreads",
+        "_reordering_alg",
+        "_pivot_type",
+        "_pivot_threshold",
+        "_max_lu_nnz",
+        "_use_matching",
+        "_matching_alg",
+        "_nd_nlevels",
+        "_use_superpanels",
+    )
 
     def __init__(self, solver):
         """
@@ -276,6 +289,14 @@ specification."
         `cuDSS documentation
         <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
         for more information.
+
+        .. note::
+            Matching is recommended for general sparse matrices as it typically
+            reduces pivot perturbations and improves solution accuracy with
+            minimal performance impact.
+            For symmetric positive definite (SPD) matrices, matching is unnecessary.
+            For symmetric indefinite matrices, the benefits of matching is unknown.
+
         """
         _get_scalar_attribute(self._config_ptr, ConfigParamEnum.USE_MATCHING, self._use_matching)
 
@@ -362,6 +383,14 @@ class FactorizationConfig:
     current configuration can also be queried.
     """
 
+    __slots__ = (
+        "_solver",
+        "_config_ptr",
+        "_factorization_alg",
+        "_pivot_epsilon_alg",
+        "_pivot_epsilon",
+    )
+
     def __init__(self, solver):
         """
         ctor for internal use only.
@@ -420,7 +449,7 @@ class FactorizationConfig:
         """
         _get_scalar_attribute(self._config_ptr, ConfigParamEnum.PIVOT_EPSILON_ALG, self._pivot_epsilon_alg)
 
-        return cudss.AlgType(self._factorization_alg.item())
+        return cudss.AlgType(self._pivot_epsilon_alg.item())
 
     @pivot_eps_algorithm.setter
     @utils.precondition(_check_valid_solver_wrapper)
@@ -450,7 +479,7 @@ class FactorizationConfig:
         """
         _get_scalar_attribute(self._config_ptr, ConfigParamEnum.PIVOT_EPSILON, self._pivot_epsilon)
 
-        return self._factorization_alg.item()
+        return self._pivot_epsilon.item()
 
     @pivot_eps.setter
     @utils.precondition(_check_valid_solver_wrapper)
@@ -473,6 +502,13 @@ class SolutionConfig:
     An interface to configure :meth:`nvmath.sparse.advanced.DirectSolver.solve`. The
     current configuration can also be queried.
     """
+
+    __slots__ = (
+        "_solver",
+        "_config_ptr",
+        "_solve_alg",
+        "_ir_n_steps",
+    )
 
     def __init__(self, solver):
         """
@@ -524,7 +560,7 @@ class SolutionConfig:
     @utils.precondition(_check_valid_solver_wrapper)
     def ir_num_steps(self):
         """
-        Query or set the number of steps used for iterative refinement. Set the
+        Query or set the number of steps used for iterative refinement. See the
         `cuDSS documentation
         <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
         for more information.
@@ -537,7 +573,7 @@ class SolutionConfig:
     @utils.precondition(_check_valid_solver_wrapper)
     def ir_num_steps(self, num_steps):
         """
-        Set the  number of steps to use for iterative refinement. Set the
+        Set the number of steps to use for iterative refinement. See the
         `cuDSS documentation
         <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
         for more information.
@@ -608,7 +644,7 @@ class InternalConfig:
         """
         _get_scalar_attribute(self._config_ptr, ConfigParamEnum.HYBRID_DEVICE_MEMORY_LIMIT, self._hybrid_device_memory_limit)
 
-        return self._hybrid_mode.item()
+        return self._hybrid_device_memory_limit.item()
 
     @hybrid_device_memory_limit.setter
     def hybrid_device_memory_limit(self, limit):
@@ -686,9 +722,9 @@ class InternalConfig:
         <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
         for more information.
         """
-        _get_scalar_attribute(self._config_ptr, ConfigParamEnum.HYBRID_MODE, self._hybrid_mode)
+        _get_scalar_attribute(self._config_ptr, ConfigParamEnum.HYBRID_EXECUTE_MODE, self._hybrid_execute_mode)
 
-        return self._hybrid_mode.item()
+        return self._hybrid_execute_mode.item()
 
     @hybrid_execute_mode.setter
     def hybrid_execute_mode(self, mode):

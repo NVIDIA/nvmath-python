@@ -72,9 +72,9 @@ with nvmath.distributed.reshape.Reshape(a, input_box, output_box, stream=s1) as 
 
     # Alternatively, if we want to use stream s1 for subsequent operations (s2 only for
     # operand creation), we need to order `reset_operand` after the event for
-    # cupy.random.rand on s2, e.g: e2 = s2.record() s1.wait_event(e2)
+    # cupy.random.rand on s2, e.g: e2 = s2.record(); s1.wait_event(e2)
 
-    # Set a new operand c on stream s2. Note that operand c is distributed in the same was
+    # Set a new operand c on stream s2. Note that operand c is distributed in the same way
     # as operand a.
     r.reset_operand(c, stream=s2)
 

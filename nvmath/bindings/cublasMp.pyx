@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 0.6.0 to 0.7.0. Do not modify it directly.
+# This code was automatically generated with version 0.8.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 cimport cython  # NOQA
 from libc.stdint cimport int64_t
@@ -17,7 +17,9 @@ import numpy as _numpy
 ###############################################################################
 
 class Status(_IntEnum):
-    """See `cublasMpStatus_t`."""
+    """
+    See `cublasMpStatus_t`.
+    """
     SUCCESS = CUBLASMP_STATUS_SUCCESS
     NOT_INITIALIZED = CUBLASMP_STATUS_NOT_INITIALIZED
     ALLOCATION_FAILED = CUBLASMP_STATUS_ALLOCATION_FAILED
@@ -28,12 +30,16 @@ class Status(_IntEnum):
     NOT_SUPPORTED = CUBLASMP_STATUS_NOT_SUPPORTED
 
 class GridLayout(_IntEnum):
-    """See `cublasMpGridLayout_t`."""
+    """
+    See `cublasMpGridLayout_t`.
+    """
     COL_MAJOR = CUBLASMP_GRID_LAYOUT_COL_MAJOR
     ROW_MAJOR = CUBLASMP_GRID_LAYOUT_ROW_MAJOR
 
 class MatmulDescriptorAttribute(_IntEnum):
-    """See `cublasMpMatmulDescriptorAttribute_t`."""
+    """
+    See `cublasMpMatmulDescriptorAttribute_t`.
+    """
     TRANSA = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_TRANSA
     TRANSB = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_TRANSB
     COMPUTE_TYPE = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_COMPUTE_TYPE
@@ -61,9 +67,13 @@ class MatmulDescriptorAttribute(_IntEnum):
     AMAX_D_POINTER = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_AMAX_D_POINTER
     D_OUT_SCALE_POINTER = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_POINTER
     D_OUT_SCALE_MODE = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_MODE
+    COMMUNICATION_TYPE = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_COMMUNICATION_TYPE
+    BIAS_RESULT_SCHEME = CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_BIAS_RESULT_SCHEME
 
 class MatmulAlgoType(_IntEnum):
-    """See `cublasMpMatmulAlgoType_t`."""
+    """
+    See `cublasMpMatmulAlgoType_t`.
+    """
     DEFAULT = CUBLASMP_MATMUL_ALGO_TYPE_DEFAULT
     SPLIT_P2P = CUBLASMP_MATMUL_ALGO_TYPE_SPLIT_P2P
     SPLIT_MULTICAST = CUBLASMP_MATMUL_ALGO_TYPE_SPLIT_MULTICAST
@@ -72,7 +82,9 @@ class MatmulAlgoType(_IntEnum):
     NO_OVERLAP = CUBLASMP_MATMUL_ALGO_TYPE_NO_OVERLAP
 
 class MatmulEpilogue(_IntEnum):
-    """See `cublasMpMatmulEpilogue_t`."""
+    """
+    See `cublasMpMatmulEpilogue_t`.
+    """
     DEFAULT = CUBLASMP_MATMUL_EPILOGUE_DEFAULT
     ALLREDUCE = CUBLASMP_MATMUL_EPILOGUE_ALLREDUCE
     RELU = CUBLASMP_MATMUL_EPILOGUE_RELU
@@ -92,7 +104,9 @@ class MatmulEpilogue(_IntEnum):
     BGRADB = CUBLASMP_MATMUL_EPILOGUE_BGRADB
 
 class MatmulMatrixScale(_IntEnum):
-    """See `cublasMpMatmulMatrixScale_t`."""
+    """
+    See `cublasMpMatmulMatrixScale_t`.
+    """
     SCALAR_FP32 = CUBLASMP_MATMUL_MATRIX_SCALE_SCALAR_FP32
     VEC16_UE4M3 = CUBLASMP_MATMUL_MATRIX_SCALE_VEC16_UE4M3
     VEC32_UE8M0 = CUBLASMP_MATMUL_MATRIX_SCALE_VEC32_UE8M0
@@ -101,10 +115,20 @@ class MatmulMatrixScale(_IntEnum):
     BLK128x128_FP32 = CUBLASMP_MATMUL_MATRIX_SCALE_BLK128x128_FP32
 
 class EmulationStrategy(_IntEnum):
-    """See `cublasMpEmulationStrategy_t`."""
+    """
+    See `cublasMpEmulationStrategy_t`.
+    """
     DEFAULT = CUBLASMP_EMULATION_STRATEGY_DEFAULT
     PERFORMANT = CUBLASMP_EMULATION_STRATEGY_PERFORMANT
     EAGER = CUBLASMP_EMULATION_STRATEGY_EAGER
+
+class ResultScheme(_IntEnum):
+    """
+    See `cublasMpResultScheme_t`.
+    """
+    DEFAULT = CUBLASMP_RESULT_SCHEME_DEFAULT
+    PARTIAL = CUBLASMP_RESULT_SCHEME_PARTIAL
+    FULL = CUBLASMP_RESULT_SCHEME_FULL
 
 
 ###############################################################################
@@ -116,8 +140,10 @@ class cuBLASMpError(Exception):
     def __init__(self, status):
         self.status = status
         s = Status(status)
-        cdef str err = f"{s.name} ({s.value})"
-        err = f"{err}. You can set CUBLASMP_LOG_LEVEL=5 and CUBLASLT_LOG_LEVEL=5 environment variables to enable logging to learn more."
+        cdef str err = (
+            f"{get_status_string(status)} ({s.name}). You can set CUBLASMP_LOG_LEVEL=5 "
+            "and CUBLASLT_LOG_LEVEL=5 environment variables to enable logging to learn more."
+        )
         super(cuBLASMpError, self).__init__(err)
 
     def __reduce__(self):
@@ -150,20 +176,36 @@ cpdef destroy(intptr_t handle):
     check_status(__status__)
 
 
-cpdef stream_set(intptr_t handle, intptr_t stream):
-    """See `cublasMpStreamSet`."""
+cpdef set_stream(intptr_t handle, intptr_t stream):
+    """See `cublasMpSetStream`."""
     with nogil:
-        __status__ = cublasMpStreamSet(<Handle>handle, <Stream>stream)
+        __status__ = cublasMpSetStream(<Handle>handle, <Stream>stream)
     check_status(__status__)
 
 
-cpdef intptr_t stream_get(intptr_t handle) except? 0:
-    """See `cublasMpStreamGet`."""
+cpdef intptr_t get_stream(intptr_t handle) except? 0:
+    """See `cublasMpGetStream`."""
     cdef Stream stream
     with nogil:
-        __status__ = cublasMpStreamGet(<Handle>handle, &stream)
+        __status__ = cublasMpGetStream(<Handle>handle, &stream)
     check_status(__status__)
     return <intptr_t>stream
+
+
+cpdef set_emulation_strategy(intptr_t handle, int emulation_strategy):
+    """See `cublasMpSetEmulationStrategy`."""
+    with nogil:
+        __status__ = cublasMpSetEmulationStrategy(<Handle>handle, <_EmulationStrategy>emulation_strategy)
+    check_status(__status__)
+
+
+cpdef int get_emulation_strategy(intptr_t handle) except? -1:
+    """See `cublasMpGetEmulationStrategy`."""
+    cdef _EmulationStrategy emulation_strategy
+    with nogil:
+        __status__ = cublasMpGetEmulationStrategy(<Handle>handle, &emulation_strategy)
+    check_status(__status__)
+    return <int>emulation_strategy
 
 
 cpdef int get_version() except? 0:
@@ -188,6 +230,20 @@ cpdef grid_destroy(intptr_t grid):
     """See `cublasMpGridDestroy`."""
     with nogil:
         __status__ = cublasMpGridDestroy(<Grid>grid)
+    check_status(__status__)
+
+
+cpdef buffer_register(intptr_t grid, intptr_t ptr, size_t size):
+    """See `cublasMpBufferRegister`."""
+    with nogil:
+        __status__ = cublasMpBufferRegister(<Grid>grid, <void*>ptr, size)
+    check_status(__status__)
+
+
+cpdef buffer_deregister(intptr_t grid, intptr_t ptr):
+    """See `cublasMpBufferDeregister`."""
+    with nogil:
+        __status__ = cublasMpBufferDeregister(<Grid>grid, <void*>ptr)
     check_status(__status__)
 
 
@@ -267,6 +323,8 @@ cdef dict matmul_descriptor_attribute_sizes = {
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_AMAX_D_POINTER: _numpy.intp,
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_POINTER: _numpy.intp,
     CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_D_OUT_SCALE_MODE: _numpy.int32,
+    CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_COMMUNICATION_TYPE: _numpy.int32,
+    CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_BIAS_RESULT_SCHEME: _numpy.int32,
 }
 
 cpdef get_matmul_descriptor_attribute_dtype(int attr):
@@ -279,24 +337,24 @@ cpdef get_matmul_descriptor_attribute_dtype(int attr):
         The data type of the queried attribute.
 
     .. note:: This API has no C counterpart and is a convenient helper for
-        allocating memory for :func:`matmul_descriptor_attribute_get`, :func:`matmul_descriptor_attribute_set`.
+        allocating memory for :func:`matmul_descriptor_get_attribute`, :func:`matmul_descriptor_set_attribute`.
     """
     return matmul_descriptor_attribute_sizes[attr]
 
 ###########################################################################
 
 
-cpdef matmul_descriptor_attribute_set(intptr_t matmul_desc, int attr, intptr_t buf, size_t size_in_bytes):
-    """See `cublasMpMatmulDescriptorAttributeSet`."""
+cpdef matmul_descriptor_set_attribute(intptr_t matmul_desc, int attr, intptr_t buf, size_t size_in_bytes):
+    """See `cublasMpMatmulDescriptorSetAttribute`."""
     with nogil:
-        __status__ = cublasMpMatmulDescriptorAttributeSet(<MatmulDescriptor>matmul_desc, <_MatmulDescriptorAttribute>attr, <const void*>buf, size_in_bytes)
+        __status__ = cublasMpMatmulDescriptorSetAttribute(<MatmulDescriptor>matmul_desc, <_MatmulDescriptorAttribute>attr, <const void*>buf, size_in_bytes)
     check_status(__status__)
 
 
-cpdef matmul_descriptor_attribute_get(intptr_t matmul_desc, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
-    """See `cublasMpMatmulDescriptorAttributeGet`."""
+cpdef matmul_descriptor_get_attribute(intptr_t matmul_desc, int attr, intptr_t buf, size_t size_in_bytes, intptr_t size_written):
+    """See `cublasMpMatmulDescriptorGetAttribute`."""
     with nogil:
-        __status__ = cublasMpMatmulDescriptorAttributeGet(<MatmulDescriptor>matmul_desc, <_MatmulDescriptorAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
+        __status__ = cublasMpMatmulDescriptorGetAttribute(<MatmulDescriptor>matmul_desc, <_MatmulDescriptorAttribute>attr, <void*>buf, size_in_bytes, <size_t*>size_written)
     check_status(__status__)
 
 
@@ -373,6 +431,13 @@ cpdef int64_t numroc(int64_t n, int64_t nb, uint32_t iproc, uint32_t isrcproc, u
     return cublasMpNumroc(n, nb, iproc, isrcproc, nprocs)
 
 
+cpdef str get_status_string(int status):
+    """See `cublasMpGetStatusString`."""
+    cdef bytes _output_
+    _output_ = cublasMpGetStatusString(<_Status>status)
+    return _output_.decode()
+
+
 cpdef tuple gemr2d_buffer_size(intptr_t handle, int64_t m, int64_t n, intptr_t a, int64_t ia, int64_t ja, intptr_t desc_a, intptr_t b, int64_t ib, int64_t jb, intptr_t desc_b, intptr_t global_comm):
     """See `cublasMpGemr2D_bufferSize`."""
     cdef size_t workspace_size_in_bytes_on_device
@@ -441,17 +506,17 @@ cpdef tradd(intptr_t handle, int uplo, int trans, int64_t m, int64_t n, intptr_t
     check_status(__status__)
 
 
-cpdef set_emulation_strategy(intptr_t handle, int emulation_strategy):
-    """See `cublasMpSetEmulationStrategy`."""
+cpdef intptr_t malloc(intptr_t grid, size_t size) except? 0:
+    """See `cublasMpMalloc`."""
+    cdef void* ptr
     with nogil:
-        __status__ = cublasMpSetEmulationStrategy(<Handle>handle, <_EmulationStrategy>emulation_strategy)
+        __status__ = cublasMpMalloc(<Grid>grid, &ptr, size)
     check_status(__status__)
+    return <intptr_t>ptr
 
 
-cpdef int get_emulation_strategy(intptr_t handle) except? -1:
-    """See `cublasMpGetEmulationStrategy`."""
-    cdef _EmulationStrategy emulation_strategy
+cpdef free(intptr_t grid, intptr_t ptr):
+    """See `cublasMpFree`."""
     with nogil:
-        __status__ = cublasMpGetEmulationStrategy(<Handle>handle, &emulation_strategy)
+        __status__ = cublasMpFree(<Grid>grid, <void*>ptr)
     check_status(__status__)
-    return <int>emulation_strategy

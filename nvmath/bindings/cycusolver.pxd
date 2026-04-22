@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.1, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -114,6 +114,13 @@ ctypedef enum cusolverDeterministicMode_t "cusolverDeterministicMode_t":
 ctypedef enum cusolverMathMode_t "cusolverMathMode_t":
     CUSOLVER_DEFAULT_MATH "CUSOLVER_DEFAULT_MATH" = 1
     CUSOLVER_FP32_EMULATED_BF16X9_MATH "CUSOLVER_FP32_EMULATED_BF16X9_MATH" = 2
+    CUSOLVER_FP64_EMULATED_FIXEDPOINT_MATH "CUSOLVER_FP64_EMULATED_FIXEDPOINT_MATH" = 4
+    CUSOLVER_FP32_FP64_EMULATED_MATH "CUSOLVER_FP32_FP64_EMULATED_MATH" = 6
+
+ctypedef enum cusolverEigComp_t "cusolverEigComp_t":
+    CUSOLVER_EIG_COMP_N "CUSOLVER_EIG_COMP_N" = 10
+    CUSOLVER_EIG_COMP_I "CUSOLVER_EIG_COMP_I" = 11
+    CUSOLVER_EIG_COMP_V "CUSOLVER_EIG_COMP_V" = 12
 
 
 # types

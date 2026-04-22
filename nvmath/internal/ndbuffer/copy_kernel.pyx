@@ -16,8 +16,8 @@ from .data_layout cimport (
     squeeze_layout, transpose_layout, get_axis_order,
     get_contiguous_axes_up_to_vol
 )
-from .jit cimport get_kernel, discover_includes, register_includes
-from ..bindings cimport launch_kernel, Dim3
+from .jit cimport get_kernel
+from .._bindings cimport launch_kernel
 
 ctypedef unique_ptr[void, function[void(void*)]] args_t
 
@@ -81,21 +81,23 @@ cdef extern from *:
 
 thread_local = threading.local()
 
-cdef _register_copy_kernel_includes(object logger):
-    cdef str copy_kernel_includes_key = "copy_kernel"
-    if not hasattr(thread_local, "registered_header_names"):
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        copy_kernel_dir = os.path.join(current_dir, "copy_kernel")
-        copy_kernel_impl_dir = os.path.join(copy_kernel_dir, "copy_kernel_impl")
-        include_dirs = [(copy_kernel_dir, copy_kernel_dir), (copy_kernel_dir, copy_kernel_impl_dir)]
-        header_names, headers = discover_includes(include_dirs)
-        if len(header_names) == 0:
-            raise RuntimeError(f"No headers found for copy kernel at {copy_kernel_dir}")
-        register_includes(copy_kernel_includes_key, header_names, headers)
-        thread_local.registered_header_names = header_names
-        if logger is not None:
-            logger.debug(f"Registered copy kernel includes: {header_names}")
-    return copy_kernel_includes_key
+
+cpdef str get_include_path(object logger):
+    """
+    Finds and caches the absolute path for the strided copy includes.
+    """
+    # TODO(ktokarski) Once Program API supports passing includes as strings and names,
+    # read all the headers once and cache them.
+    try:
+        return thread_local.strided_copy_include_dir
+    except AttributeError:
+        pass
+    cdef str current_dir = os.path.dirname(os.path.abspath(__file__))
+    cdef str copy_kernel_dir = os.path.normpath(os.path.join(current_dir, "copy_kernel"))
+    thread_local.strided_copy_include_dir = copy_kernel_dir
+    if logger is not None:
+        logger.debug(f"Cached strided copy include dir: {copy_kernel_dir}")
+    return copy_kernel_dir
 
 
 cdef int get_kernel_args(args_t& args, Layout dst, Layout src, intptr_t dst_ptr, intptr_t src_ptr, int64_t grid_arg) except-1 nogil:
@@ -202,8 +204,8 @@ cdef str _emit_transpose_kernel_code(Layout dst, Layout src, bint needs_wide_str
 
 cdef intptr_t _get_transpose_copy_kernel(Layout dst, Layout src, bint needs_wide_strides, bint needs_grid_stride_loop, int block_height, int block_width, char reading_order, int transposed_dim, int device_id, object logger) except? 0:
     cdef str kernel_code = _emit_transpose_kernel_code(dst, src, needs_wide_strides, needs_grid_stride_loop, block_height, block_width, reading_order, transposed_dim)
-    cdef str include_key = _register_copy_kernel_includes(logger)
-    return get_kernel(kernel_code, "transpose_copy", device_id, include_key, logger)
+    cdef str include_path = get_include_path(logger)
+    return get_kernel(kernel_code, "transpose_copy", device_id, include_path, logger)
 
 
 cdef str _emit_elementwise_kernel_code(Layout dst, Layout src, bint needs_wide_strides, bint needs_grid_stride_loop):
@@ -218,11 +220,11 @@ cdef str _emit_elementwise_kernel_code(Layout dst, Layout src, bint needs_wide_s
 
 cdef intptr_t _get_elementwise_copy_kernel(Layout dst, Layout src, bint needs_wide_strides, bint needs_grid_stride_loop, int device_id, object logger) except? 0:
     cdef str kernel_code = _emit_elementwise_kernel_code(dst, src, needs_wide_strides, needs_grid_stride_loop)
-    cdef str include_key = _register_copy_kernel_includes(logger)
-    return get_kernel(kernel_code, "elementwise_copy", device_id, include_key, logger)
+    cdef str include_path = get_include_path(logger)
+    return get_kernel(kernel_code, "elementwise_copy", device_id, include_path, logger)
 
 
-cdef int _launch_transpose_copy(Layout dst, Layout src, intptr_t dst_ptr, intptr_t src_ptr, int block_height, int block_width, char reading_order, int transposed_dim, int device_id, intptr_t stream, object logger) except -1 nogil:
+cdef int _launch_transpose_copy(Layout dst, Layout src, intptr_t dst_ptr, intptr_t src_ptr, int block_height, int block_width, char reading_order, int transposed_dim, int device_id, intptr_t stream_ptr, object logger) except -1 nogil:
     cdef int64_t block_size = block_height * block_width
     cdef int64_t num_blocks = 0
     cdef int64_t cuda_num_blocks = 0
@@ -230,24 +232,17 @@ cdef int _launch_transpose_copy(Layout dst, Layout src, intptr_t dst_ptr, intptr
     cdef bint needs_wide_strides = _needs_wide_strides(num_blocks * block_size, dst, src)
     cdef args_t args
     get_kernel_args(args, dst, src, dst_ptr, src_ptr, num_blocks)
-    cdef Dim3 grid_dim, block_dim
-    grid_dim.x = cuda_num_blocks
-    grid_dim.y = 1
-    grid_dim.z = 1
-    block_dim.x = block_size
-    block_dim.y = 1
-    block_dim.z = 1
     cdef void* args_ptr = args.get()
     cdef intptr_t kernel_fn_ptr
     with cython.gil:
         kernel_fn_ptr = _get_transpose_copy_kernel(dst, src, needs_wide_strides, needs_grid_stride_loop, block_height, block_width, reading_order, transposed_dim, device_id, logger)
         if logger is not None:
-            logger.debug(f"Launching transpose copy kernel {kernel_fn_ptr} with grid {grid_dim} and block {block_dim}.")
-    launch_kernel(kernel_fn_ptr, <intptr_t>&args_ptr, grid_dim, block_dim, 0, stream)
+            logger.debug(f"Launching transpose copy kernel {kernel_fn_ptr} with grid {cuda_num_blocks} and block {block_size}.")
+        launch_kernel(kernel_fn_ptr, <intptr_t>&args_ptr, cuda_num_blocks, 1, 1, block_size, 1, 1, 0, stream_ptr)
     return 0
 
 
-cdef int _launch_elementwise_copy(Layout dst, Layout src, intptr_t dst_ptr, intptr_t src_ptr, int block_size, int device_id, intptr_t stream, object logger) except -1 nogil:
+cdef int _launch_elementwise_copy(Layout dst, Layout src, intptr_t dst_ptr, intptr_t src_ptr, int block_size, int device_id, intptr_t stream_ptr, object logger) except -1 nogil:
     cdef int64_t volume = dst.volume
     cdef int64_t num_blocks = _div_ceil(volume, block_size)
     cdef int64_t cuda_num_blocks = 0
@@ -255,20 +250,13 @@ cdef int _launch_elementwise_copy(Layout dst, Layout src, intptr_t dst_ptr, intp
     cdef bint needs_wide_strides = _needs_wide_strides(num_blocks * block_size, dst, src)
     cdef args_t args
     get_kernel_args(args, dst, src, dst_ptr, src_ptr, volume)
-    cdef Dim3 grid_dim, block_dim
-    grid_dim.x = cuda_num_blocks
-    grid_dim.y = 1
-    grid_dim.z = 1
-    block_dim.x = block_size
-    block_dim.y = 1
-    block_dim.z = 1
     cdef void* args_ptr = args.get()
     cdef intptr_t kernel_fn_ptr
     with cython.gil:
         kernel_fn_ptr = _get_elementwise_copy_kernel(dst, src, needs_wide_strides, needs_grid_stride_loop, device_id, logger)
         if logger is not None:
-            logger.debug(f"Launching elementwise copy kernel {kernel_fn_ptr} with grid {grid_dim} and block {block_dim}.")
-    launch_kernel(kernel_fn_ptr, <intptr_t>&args_ptr, grid_dim, block_dim, 0, stream)
+            logger.debug(f"Launching elementwise copy kernel {kernel_fn_ptr} with grid {cuda_num_blocks} and block {block_size}.")
+        launch_kernel(kernel_fn_ptr, <intptr_t>&args_ptr, cuda_num_blocks, 1, 1, block_size, 1, 1, 0, stream_ptr)
     return 0
 
 

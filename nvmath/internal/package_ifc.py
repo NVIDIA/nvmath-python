@@ -27,6 +27,8 @@ try:
 except ImportError:
     from cuda.core.experimental import Stream
 
+from ._device_utils import get_device
+
 
 class AnyStream(Hashable, Protocol):
     """Any supported Stream object such as a Stream from cuda.core, CuPy, or PyTorch."""
@@ -42,6 +44,24 @@ A generic type for the third-party Stream which a given Package implementation w
 around.
 """
 S = TypeVar("S")
+
+
+class _cuda_core_stream_holder:
+    """
+    Dummy class implementing ``__cuda_stream__`` protocol for ``cuda.core.Stream``.
+
+    Calling ``cuda.core.Device.create_stream(_cuda_core_stream_holder(handle, external))``
+    is similar to ``Stream.from_handle(handle)``, but additionally makes sure
+    to extend the ``external`` reference lifetime as long as the created
+    ``cuda.core.Stream`` object is alive.
+    """
+
+    def __init__(self, handle: int, external: S):
+        self.handle = handle
+        self.external = external
+
+    def __cuda_stream__(self):
+        return (0, self.handle)
 
 
 class Package(ABC, Generic[S]):
@@ -91,14 +111,19 @@ class Package(ABC, Generic[S]):
         raise NotImplementedError
 
     @classmethod
-    def create_stream(cls, external: S) -> Stream:
+    def create_stream(cls, external: S, device_id: int) -> Stream:
         """
         Wrap an external Stream object into a cuda.core.Stream.
 
         Args:
             external: The external Stream object.
         """
-        return Stream.from_handle(cls.to_stream_pointer(external))
+        # use get_device to ensure the initial set_current is called
+        device = get_device(device_id)
+        # the stream holder ensures we tie the external reference to the
+        # cuda.core stream object, extending its lifetime.
+        holder = _cuda_core_stream_holder(cls.to_stream_pointer(external), external)
+        return device.create_stream(holder)
 
 
 @dataclass

@@ -4,17 +4,26 @@
 
 import contextlib
 import os
-import psutil
 import time
 
 import numpy as np
-from cuda.bindings import runtime as cudart, nvrtc, driver as cudadrv
-import cupy
+import psutil
+from cuda.bindings import driver as cudadrv
+from cuda.bindings import nvrtc
+from cuda.bindings import runtime as cudart
+
+try:
+    import cupy
+
+    HAS_CUPY = True
+except ImportError:
+    cupy = None
+    HAS_CUPY = False
 import pytest
 
+from nvmath._utils import get_nvrtc_version
 from nvmath.device import CodeType, ComputeCapability
 from nvmath.device.common_cuda import MAX_SUPPORTED_CC, current_device_sm, get_default_code_type
-from nvmath._utils import get_nvrtc_version
 
 
 def CHECK_CUDART(err):
@@ -116,6 +125,8 @@ def l2error(test, ref, module=np):
 
 
 def convert_to_cuda_array(cupy_array):
+    if not HAS_CUPY:
+        pytest.skip("cupy is not available")
     # Allocate
     size_bytes = np.prod(cupy_array.shape) * cupy_array.itemsize
     err, cuda_array = cudadrv.cuMemAlloc(size_bytes)
@@ -144,6 +155,8 @@ def copy_to_numpy(cuda_array, np_array):
 
 
 def copy_to_cupy(cuda_array, cupy_array):
+    if not HAS_CUPY:
+        pytest.skip("cupy is not available")
     size_bytes = np.prod(cupy_array.shape) * cupy_array.itemsize
     (err,) = cudadrv.cuMemcpyDtoD(cupy_array.__cuda_array_interface__["data"][0], cuda_array, size_bytes)
     CHECK_CUDA(err)
@@ -168,6 +181,8 @@ def get_unsigned(module, name):
 
 
 def time_check_cupy(fun, reference, ncycles, *args):
+    if not HAS_CUPY:
+        pytest.skip("cupy is not available")
     args = [(cupy.array(arg) if isinstance(arg, np.ndarray | np.generic) else arg) for arg in args]
     start, stop = cupy.cuda.Event(), cupy.cuda.Event()
     out = fun(*args)
@@ -250,6 +265,57 @@ def skip_unsupported_sm(sm=None):
         err, major, minor = nvrtc.nvrtcVersion()
         assert err == nvrtc.nvrtcResult.NVRTC_SUCCESS
         pytest.skip(f"nvrtc version {major}.{minor} does not support compute capability {cc}")
+
+
+def requires_ctk(min_version: tuple[int, int, int]):
+    """
+    A custom pytest decorator to skip tests if the installed NVRTC version is
+    less than the specified minimum version.
+
+    Args:
+        min_version (tuple[int, int, int]): The minimum NVRTC version as a tuple
+            (major, minor, build).
+    """
+    installed_version = get_nvrtc_version()
+    if installed_version < min_version:
+        return pytest.mark.skip(reason=f"Test requires NVRTC >= {min_version}, but found {installed_version}")
+
+    return pytest.mark.noop
+
+
+def _get_pipeline_unsupported_reason():
+    ctk_version = get_nvrtc_version()
+    cc = get_default_code_type().cc
+    sm_version = cc[0] * 10 + cc[1]
+
+    if sm_version >= 100 and ctk_version < (13, 1, 0) or ctk_version < (13, 0, 0):
+        return (
+            f"Test requires pipelines (CTK >= 13.0, or 13.1 for SM100+), "
+            f"but found CTK {ctk_version[0]}.{ctk_version[1]} and SM {sm_version}"
+        )
+    return None
+
+
+def skip_if_pipeline_unsupported():
+    """
+    Skip tests if the installed NVRTC version does not support pipelines.
+    Pipelines require CTK >= 13.0, and CTK >= 13.1 for SM100+.
+    """
+    reason = _get_pipeline_unsupported_reason()
+    if reason:
+        pytest.skip(reason)
+
+
+def requires_pipeline():
+    """
+    A custom pytest decorator to skip tests if the installed NVRTC version
+    does not support pipelines.
+    """
+    reason = _get_pipeline_unsupported_reason()
+    if reason:
+        return pytest.mark.skip(reason=reason)
+
+    return pytest.mark.noop
 
 
 SM70 = CodeType("lto", ComputeCapability(7, 0))

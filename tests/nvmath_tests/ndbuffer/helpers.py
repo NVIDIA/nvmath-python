@@ -4,18 +4,26 @@
 
 import ctypes
 
+import numpy as np
+
 import nvmath.internal.ndbuffer.package_utils as package_utils
+import nvmath.internal.tensor_wrapper as tw
 from nvmath.internal.memory import free_reserved_memory
 from nvmath.internal.tensor_wrapper import maybe_register_package
-from nvmath.internal.utils import get_or_create_stream
-import nvmath.internal.tensor_wrapper as tw
-
-import numpy as np
+from nvmath.internal.utils import device_ctx, get_or_create_stream
 
 try:
     import cupy as cp
 except ImportError:
     cp = None
+
+
+try:
+    from cuda.core import Buffer, MemoryResource
+except ImportError:
+    from cuda.core.experimental import Buffer, MemoryResource
+
+import cuda.bindings.driver as driver
 
 
 class Param:
@@ -235,3 +243,101 @@ def as_array(ndbuffer):
             dtype=ndbuffer.dtype_name,
             memptr=memptr,
         )
+
+
+# Cuda.core dummy memory resources
+
+
+def handle_return(ret):
+    if ret[0] != driver.CUresult.CUDA_SUCCESS:
+        raise RuntimeError(f"CUDA error: {driver.CUresult(ret[0]).name}")
+    if len(ret) == 1:
+        return
+    elif len(ret) == 2:
+        return ret[1]
+    else:
+        return ret[1:]
+
+
+class DummyDeviceMemoryResource(MemoryResource):
+    def __init__(self, device_id):
+        self._device_id = device_id
+        self.active_allocs = {}
+
+    def allocate(self, size, stream=None) -> Buffer:
+        with device_ctx(self.device_id):
+            ptr = handle_return(driver.cuMemAlloc(size))
+            ptr = int(ptr)
+            buffer = Buffer.from_handle(ptr=ptr, size=size, mr=self)
+            self.active_allocs[ptr] = ptr
+            return buffer
+
+    def deallocate(self, ptr, size, stream=None):
+        del self.active_allocs[ptr]
+        handle_return(driver.cuMemFree(ptr))
+
+    @property
+    def is_device_accessible(self) -> bool:
+        return True
+
+    @property
+    def is_host_accessible(self) -> bool:
+        return False
+
+    @property
+    def device_id(self) -> int:
+        return self._device_id
+
+
+class DummyHostMemoryResource(MemoryResource):
+    def __init__(self):
+        self.active_allocs = {}
+
+    def allocate(self, size, stream=None) -> Buffer:
+        a = np.zeros(size, dtype=np.uint8)
+        ptr = int(a.ctypes.data)
+        self.active_allocs[ptr] = a
+        return Buffer.from_handle(ptr=ptr, size=size, mr=self)
+
+    def deallocate(self, ptr, size, stream=None):
+        del self.active_allocs[ptr]
+
+    @property
+    def is_device_accessible(self) -> bool:
+        return False
+
+    @property
+    def is_host_accessible(self) -> bool:
+        return True
+
+    @property
+    def device_id(self) -> int:
+        return -1
+
+
+class DummyPinnedMemoryResource(MemoryResource):
+    def __init__(self):
+        self.active_allocs = {}
+
+    def allocate(self, size, stream=None) -> Buffer:
+        ptr = handle_return(driver.cuMemAllocHost(size))
+        ptr = int(ptr)
+        buffer = Buffer.from_handle(ptr=ptr, size=size, mr=self)
+        self.active_allocs[ptr] = ptr
+        return buffer
+
+    def deallocate(self, ptr, size, stream=None):
+        del self.active_allocs[ptr]
+        handle_return(driver.cuMemFreeHost(ptr))
+
+    @property
+    def is_device_accessible(self) -> bool:
+        return True
+
+    @property
+    def is_host_accessible(self) -> bool:
+        return True
+
+    @property
+    def device_id(self) -> int:
+        return -1

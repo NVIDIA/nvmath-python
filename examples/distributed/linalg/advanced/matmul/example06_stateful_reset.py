@@ -26,8 +26,7 @@ except ImportError:
 from mpi4py import MPI
 
 import nvmath.distributed
-
-from nvmath.distributed.distribution import ProcessGrid, BlockNonCyclic
+from nvmath.distributed.distribution import BlockNonCyclic, ProcessGrid
 
 # Initialize nvmath.distributed.
 try:
@@ -38,8 +37,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % num_devices
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
-nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
+# cuBLASMp requires NCCL communication backend.
+nvmath.distributed.initialize(device_id, comm, backends=["nccl"])
 
 # Turn on logging to see what's happening.
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
@@ -56,7 +55,7 @@ col_wise_distribution = BlockNonCyclic(ProcessGrid(shape=(1, nranks)))  # partit
 a = np.random.rand(*row_wise_distribution.shape(rank, (k, m)))
 b = np.random.rand(*col_wise_distribution.shape(rank, (n, k)))
 
-# Get a transposed view to obtain column-major Fortran memory layout. Note that this
+# Get a transposed view to obtain column-major memory layout. Note that this
 # also changes the distribution of a and b (see example01 for more information).
 a = a.T  # a is now (m, k) with col_wise_distribution
 b = b.T  # b is now (k, n) with row_wise_distribution
@@ -73,14 +72,14 @@ with nvmath.distributed.linalg.advanced.Matmul(a, b, distributions=distributions
     result = mm.execute()
 
     # Create new operands and bind them.
-    c = np.random.rand(*col_wise_distribution.shape(rank, (m, k)))
-    d = np.random.rand(*row_wise_distribution.shape(rank, (k, n)))
-    mm.reset_operands(c, d)
+    a_new = np.random.rand(*col_wise_distribution.shape(rank, (m, k)))
+    b_new = np.random.rand(*row_wise_distribution.shape(rank, (k, n)))
+    mm.reset_operands(a=a_new, b=b_new)
 
     # Execute the new matrix multiplication.
     result = mm.execute()
 
     # No synchronization is needed for CPU tensors, since the execution always blocks.
 
-    print(f"Input types = {type(c), type(d)}")
+    print(f"Input types = {type(a_new), type(b_new)}")
     print(f"Result type = {type(result)}")

@@ -17,12 +17,12 @@ input in the corresponding backward pass using the DRELU_BGRAD epilog. This epil
 generates an auxiliary output corresponding to the bias gradient.
 """
 
+# Enable logging.
+import logging
+
 import cupy as cp
 
 import nvmath
-
-# Enable logging.
-import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 

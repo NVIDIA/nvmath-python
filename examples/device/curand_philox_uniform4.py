@@ -12,7 +12,6 @@ kernel and a sample generation kernel.
 """
 
 import numpy as np
-
 from numba import cuda
 
 from nvmath.device import random
@@ -45,7 +44,7 @@ def test_random_uniform4():
 
         # Count the number of samples that falls greater than 0.5, getting 4 values at a
         # time.
-        for sample in range(n // 4):
+        for _sample in range(n // 4):
             v = random.uniform4(states[i])
             a = v.x, v.y, v.z, v.w
             for j in range(4):
@@ -59,7 +58,7 @@ def test_random_uniform4():
 
     results = cuda.to_device(np.zeros(nthreads, dtype=np.int32))
 
-    for i in range(repetitions):
+    for _i in range(repetitions):
         count_upper_half[blocks, threads](states, sample_count, results)
 
     host_results = results.copy_to_host()

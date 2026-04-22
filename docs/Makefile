@@ -17,6 +17,7 @@ clean:
 	rm -rf ${SOURCEDIR}/bindings/generated/
 	rm -rf ${SOURCEDIR}/host-apis/**/generated
 	rm -rf ${SOURCEDIR}/device-apis/generated
+	rm -rf ${SOURCEDIR}/distributed-apis/generated
 	rm -rf ${SOURCEDIR}/distributed-apis/**/generated
 
 html: Makefile

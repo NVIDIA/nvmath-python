@@ -3,27 +3,28 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+
 import numpy as np
+import pytest
 from numba import cuda, types
 
 from nvmath.device import (
-    float16x4,
-    float16x2,
-    float32x2,
-    float64x2,
-    float64x2_type,
-    float32x2_type,
-    float16x2_type,
-    float16x4_type,
     complex32,
     complex64,
     complex128,
+    float16x2,
+    float16x2_type,
+    float16x4,
+    float16x4_type,
+    float32x2,
+    float32x2_type,
+    float64x2,
+    float64x2_type,
     half2,
     half4,
     np_float16x2,
     np_float16x4,
 )
-import pytest
 
 
 # Tests we can use the types to build arrays and read to/from global arrays
@@ -66,16 +67,16 @@ def test_complex_numpy_numba_interop(numpy_type, numba_type, numba_fe_type):
 @pytest.mark.parametrize(
     "size,numpy_type,numba_type,numba_fe_type,numba_basic_type",
     [
-        (2, np.dtype([("x", np.float16), ("y", np.float16)]), float16x2_type, float16x2, np.float16),
+        (2, np.dtype([("x", np.float16), ("y", np.float16)], align=True), float16x2_type, float16x2, np.float16),
         (
             4,
-            np.dtype([("x", np.float16), ("y", np.float16), ("z", np.float16), ("w", np.float16)]),
+            np.dtype([("x", np.float16), ("y", np.float16), ("z", np.float16), ("w", np.float16)], align=True),
             float16x4_type,
             float16x4,
             np.float16,
         ),
-        (2, np.dtype([("x", np.float32), ("y", np.float32)]), float32x2_type, float32x2, np.float32),
-        (2, np.dtype([("x", np.float64), ("y", np.float64)]), float64x2_type, float64x2, np.float64),
+        (2, np.dtype([("x", np.float32), ("y", np.float32)], align=True), float32x2_type, float32x2, np.float32),
+        (2, np.dtype([("x", np.float64), ("y", np.float64)], align=True), float64x2_type, float64x2, np.float64),
     ],
 )
 def test_dtypes_numpy_numba_interop(size, numpy_type, numba_type, numba_fe_type, numba_basic_type):
@@ -218,15 +219,15 @@ def test_numba_type(dtype, expected_host_dtype, expected_alignment):
 
     @cuda.jit
     def kernel(a):
-        l = cuda.local.array(shape=(1,), dtype=dtype)
+        local = cuda.local.array(shape=(1,), dtype=dtype)
         if FOUR_ARGS:
-            l[0] = make_dtype(3.14, 2.71, -1.0, 1.0)
+            local[0] = make_dtype(3.14, 2.71, -1.0, 1.0)
         else:
-            l[0] = make_dtype(3.14, 2.71)
+            local[0] = make_dtype(3.14, 2.71)
         if HOST_COMPLEX:
-            a[0] = l[0]
+            a[0] = local[0]
         else:
-            a.view(dtype)[0] = l[0]
+            a.view(dtype)[0] = local[0]
 
     a = np.zeros(1, dtype=dtype)
     assert a.dtype == expected_host_dtype

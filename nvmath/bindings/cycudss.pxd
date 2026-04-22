@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.7.0. Do not modify it directly.
+# This code was automatically generated with version 0.7.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -171,14 +171,17 @@ ctypedef struct cudssDistributedInterface_t 'cudssDistributedInterface_t':
     int (*cudssScatterv)(const void*, const int*, const int*, cudaDataType_t, void*, int, cudaDataType_t, int, void*, cudaStream_t)
     int (*cudssCommSplit)(const void*, int, int, void*)
     int (*cudssCommFree)(void*)
+
 ctypedef struct cudssThreadingInterface_t 'cudssThreadingInterface_t':
     int (*cudssGetMaxThreads)()
     void (*cudssParallelFor)(int, int, void*, cudss_thr_func_t)
+
 ctypedef struct cudssDeviceMemHandler_t 'cudssDeviceMemHandler_t':
     void* ctx
     int (*device_alloc)(void*, void**, size_t, cudaStream_t)
     int (*device_free)(void*, void*, size_t, cudaStream_t)
     char name[64]
+
 
 
 ###############################################################################

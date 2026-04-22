@@ -2,42 +2,41 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["FFT", "fft", "ifft", "rfft", "irfft", "UnsupportedLayoutError"]
+__all__ = ["FFT", "fft", "ifft", "rfft", "irfft", "UnsupportedLayoutError", "estimate_workspace_size"]
 
-from typing import Literal
-from collections.abc import Sequence
-from dataclasses import dataclass, astuple as data_cls_astuple
 import enum
 import functools
 import logging
 import operator
-
-from ._configuration import ExecutionCPU, ExecutionCUDA, FFTOptions, FFTDirection, DeviceCallable
+from collections.abc import Sequence
+from dataclasses import astuple as data_cls_astuple
+from dataclasses import dataclass
+from typing import Literal
 
 from nvmath.bindings import cufft  # type: ignore
+
+from ._configuration import DeviceCallable, ExecutionCPU, ExecutionCUDA, FFTDirection, FFTOptions
 
 try:
     from nvmath.bindings.nvpl import fft as fftw  # type: ignore
 except ImportError:
     fftw = None  # type: ignore
+from nvmath import memory
+from nvmath._internal.layout import is_contiguous_in_memory, is_contiguous_layout, is_overlapping_layout
 from nvmath.bindings._internal import utils as _bindings_utils  # type: ignore
 from nvmath.fft._exec_utils import _cross_setup_execution_and_options
-from nvmath import memory
-
-from nvmath.internal import formatters
-from nvmath.internal import tensor_wrapper
-from nvmath.internal.typemaps import (
-    NAME_TO_DATA_TYPE,
-    DATA_TYPE_TO_NAME,
-    FFTW_SUPPORTED_SINGLE,
-    FFTW_SUPPORTED_DOUBLE,
-    FFTW_SUPPORTED_TYPES,
-    FFTW_SUPPORTED_FLOAT,
-    FFTW_SUPPORTED_COMPLEX,
-)
-from nvmath.internal import utils
-from nvmath._internal.layout import is_contiguous_layout, is_contiguous_in_memory, is_overlapping_layout
+from nvmath.internal import formatters, tensor_wrapper, utils
 from nvmath.internal.package_wrapper import AnyStream, StreamHolder
+from nvmath.internal.typemaps import (
+    DATA_TYPE_TO_NAME,
+    FFTW_SUPPORTED_COMPLEX,
+    FFTW_SUPPORTED_DOUBLE,
+    FFTW_SUPPORTED_FLOAT,
+    FFTW_SUPPORTED_SINGLE,
+    FFTW_SUPPORTED_TYPES,
+    NAME_TO_DATA_TYPE,
+    cudaDataType,
+)
 
 
 class UnsupportedLayoutError(Exception):
@@ -78,6 +77,7 @@ class PlanTraits:
 
     result_shape: Sequence[int]
     result_strides: Sequence[int]
+    optimized_result_layout: bool
     ordered_axes: Sequence[int]
     ordered_fft_in_shape: Sequence[int]
     ordered_fft_in_embedding_shape: Sequence[int]
@@ -144,6 +144,8 @@ A tuple as the key to represent the input FFT problem.""".replace("\n", " "),
         #
         "function_signature": """\
 operand,
+/,
+*,
 axes: Sequence[int] | None = None,
 options: FFTOptions | None = None,
 execution: ExecutionCPU | ExecutionCUDA | None = None,
@@ -509,10 +511,11 @@ def get_fft_plan_traits(
     # We can keep the input's layout (i.e. operand's extents order of increasing strides)
     # without performance hit, if the samples do not interleave.
     # Otherwise, we try to keep it only when explicitly asked (result_layout=natural)
-    is_sample_interleaved = sorted_batch_strides and sorted_batch_strides[0] <= ordered_in_strides[0]
-    logger.debug(f"Are the samples interleaved? {bool(is_sample_interleaved)}.")
+    is_sample_interleaved = bool(sorted_batch_strides and sorted_batch_strides[0] <= ordered_in_strides[0])
+    logger.debug(f"Are the samples interleaved? {is_sample_interleaved}.")
 
-    if not is_sample_interleaved or result_layout == "natural":  # Natural (== operand) layout.
+    use_optimized_result_layout = is_sample_interleaved and result_layout != "natural"
+    if not use_optimized_result_layout:  # Natural (== operand) layout.
         axis_order = axis_order_in_memory(operand_shape, operand_strides)
         result_strides = calculate_strides(result_shape, axis_order)
         # If the resulting output operand is not tilable, keeping the original layout is not
@@ -601,6 +604,7 @@ def get_fft_plan_traits(
     plan_traits = PlanTraits(
         result_shape=tuple(result_shape),
         result_strides=tuple(result_strides),
+        optimized_result_layout=use_optimized_result_layout,
         ordered_axes=tuple(ordered_axes),
         ordered_fft_in_shape=tuple(ordered_fft_in_shape),
         ordered_fft_in_embedding_shape=tuple(ordered_fft_in_embedding_shape),
@@ -614,9 +618,8 @@ def get_fft_plan_traits(
     return plan_traits
 
 
-def _copy_operand_perhaps(
-    internal_operand,
-    operand: utils.TensorHolder,
+def _allocate_operand_or_identity(
+    user_operand: utils.TensorHolder,
     stream_holder,
     execution_space,
     memory_space,
@@ -624,39 +627,71 @@ def _copy_operand_perhaps(
     fft_abstract_type,
     logger,
 ):
+    """
+    Allocate the internal operand for the given execution/memory space, or
+    return the user operand as-is (identity) when
+    no internal buffer/mirror is needed.
+
+    Used during construction and after release_operand() when the internal
+    buffer needs to be created from scratch.
+    """
     if execution_space == memory_space:
         if fft_abstract_type != "C2R":
-            return operand, None
+            return user_operand, None
         else:
             # For C2R, we need to take a copy to avoid input being overwritten
             logger.info("For C2R FFT with input operand on GPU, the input is copied to avoid being overwritten by cuFFT.")
-            operand_copy = utils.create_empty_tensor(
-                operand.__class__,
-                operand.shape,
-                operand.dtype,
+            internal_operand = utils.create_empty_tensor(
+                user_operand.__class__,
+                user_operand.shape,
+                user_operand.dtype,
                 device_id,
                 stream_holder,
                 verify_strides=True,
-                strides=operand.strides,
+                strides=user_operand.strides,
             )
-            operand_copy.copy_(operand, stream_holder=stream_holder)
+            internal_operand.copy_(user_operand, stream_holder=stream_holder)
             # We don't need to keep the operand backup, because C2R precludes `inplace=True`
-            return operand_copy, None
+            return internal_operand, None
     else:
         # Copy the `operand` to memory that matches the exec space
         # and keep the original `operand` to handle `options.inplace=True`
-        if internal_operand is None:
-            if execution_space == "cuda":
-                assert isinstance(device_id, int)
-                to_device: int | Literal["cpu"] = device_id
-            else:
-                assert execution_space == "cpu"
-                to_device = "cpu"
-            exec_space_copy = operand.to(to_device, stream_holder)
-            return exec_space_copy, operand
+        if execution_space == "cuda":
+            assert isinstance(device_id, int)
+            to_device: int | Literal["cpu"] = device_id
         else:
-            internal_operand.copy_(operand, stream_holder=stream_holder)
-            return internal_operand, operand
+            assert execution_space == "cpu"
+            to_device = "cpu"
+        exec_space_copy = user_operand.to(to_device, stream_holder)
+        return exec_space_copy, user_operand
+
+
+def _copy_operand_or_identity(
+    internal_operand: utils.TensorHolder,
+    new_operand: utils.TensorHolder,
+    stream_holder,
+    execution_space,
+    memory_space,
+    fft_abstract_type,
+    logger,
+):
+    """
+    Copy new operand data into an existing internal buffer, or return the
+    new operand as-is (identity) when no internal buffer is needed.
+
+    Used by reset_operand() when the operand has NOT been released, so the
+    internal buffer is still valid and can be reused via in-place copy.
+    """
+    if execution_space == memory_space:
+        if fft_abstract_type != "C2R":
+            return new_operand, None
+        else:
+            logger.info("For C2R FFT with input operand on GPU, the input is copied to avoid being overwritten by cuFFT.")
+            internal_operand.copy_(new_operand, stream_holder=stream_holder)
+            return internal_operand, None
+    else:
+        internal_operand.copy_(new_operand, stream_holder=stream_holder)
+        return internal_operand, new_operand
 
 
 def create_xt_plan_args(*, plan_traits=None, fft_abstract_type=None, operand_data_type=None, inplace=None):
@@ -791,64 +826,98 @@ def setup_options(operand: utils.TensorHolder, options, execution) -> tuple[FFTO
     return _cross_setup_execution_and_options(options, execution)
 
 
-def create_fft_key(
-    operand,
+def _compute_fft_plan_args_and_traits(
+    operand: utils.TensorHolder,
     *,
     axes: Sequence[int] | None = None,
-    options: FFTOptions | None = None,
-    execution: ExecutionCPU | ExecutionCUDA | None = None,
-    inplace=None,
+    options: FFTOptions,
+    execution: ExecutionCPU | ExecutionCUDA,
+    inplace: bool | None = None,
+) -> tuple[tuple, PlanTraits]:
+    """
+    (private method) Compute plan_args and plan_traits for FFT operations.
+
+    Args:
+        operand: The input operand wrapped as a TensorHolder.
+        axes: The axes along which to perform the FFT.
+        options: Normalized FFTOptions object (use setup_options to normalize).
+        execution: ExecutionCPU or ExecutionCUDA object.
+        inplace: Whether the operation is in-place. If None, computed from
+            options.inplace with cross-device override.
+
+    Returns:
+        tuple: (plan_args, plan_traits) containing the plan arguments and traits.
+    """
+    fft_abstract_type = _get_default_fft_abstract_type(operand.dtype, options.fft_type)
+    if axes is None:
+        axes = range(len(operand.shape))
+    else:
+        operand_dim = len(operand.shape)
+        # Mirror FFT.__init__: enforce bounds and support negative indices.
+        if any(axis >= operand_dim or axis < -operand_dim for axis in axes):
+            raise ValueError(f"The specified FFT axes {tuple(axes)} are out of bounds for a {operand_dim}-D tensor.")
+        axes = tuple(axis % operand_dim for axis in axes)
+
+    # Determine plan traits.
+    plan_traits = get_fft_plan_traits(
+        operand.shape,
+        operand.strides,
+        operand.dtype,
+        axes,
+        execution,
+        fft_abstract_type=fft_abstract_type,
+        last_axis_parity=options.last_axis_parity,
+        result_layout=options.result_layout,
+        logger=None,
+    )
+
+    # If inplace is not explicitly provided, use options.inplace.
+    # For cross-device, inplace is always True (the operand needs to be copied once anyway).
+    if inplace is None:
+        memory_space = operand.device
+        execution_space = execution.name
+        assert execution.name in ("cpu", "cuda")
+        inplace = memory_space != execution_space or options.inplace
+
+    if inplace:
+        check_inplace_overlapping_layout(operand)
+
+    # Get the arguments to xt_make_plan_many.
+    plan_args = create_xt_plan_args(
+        plan_traits=plan_traits,
+        fft_abstract_type=fft_abstract_type,
+        operand_data_type=operand.dtype,
+        inplace=inplace,
+    )
+
+    return plan_args, plan_traits
+
+
+def create_fft_key(
+    plan_args: tuple,
+    execution: ExecutionCPU | ExecutionCUDA,
+    *,
     prolog: DeviceCallable | None = None,
     epilog: DeviceCallable | None = None,
-    plan_args=None,
-):
+) -> tuple[tuple, tuple | None, tuple]:
     """
+    Create an FFT key from plan_args and execution options.
+
     This key is not designed to be serialized and used on a different machine. It is meant
-    for runtime use only. We use a specific inplace argument instead of taking it from
-    options, because self.inplace != self.options.inplace for CPU tensors for efficiency.
+    for runtime use only.
 
     It is the user's responsibility to augment this key with the stream in case they use
     stream-ordered memory pools.
+
+    Args:
+        plan_args: The plan arguments from create_xt_plan_args.
+        execution: The execution options (ExecutionCPU or ExecutionCUDA).
+        prolog: Optional prolog callback.
+        epilog: Optional epilog callback.
+
+    Returns:
+        tuple: (plan_args, callable_data, execution_tuple) representing the FFT key.
     """
-    if plan_args is None:
-        operand = tensor_wrapper.wrap_operand(operand)
-        options, execution = setup_options(operand, options, execution)
-        fft_abstract_type = _get_default_fft_abstract_type(operand.dtype, options.fft_type)
-        if axes is None:
-            axes = range(len(operand.shape))
-
-        # Determine plan traits.
-        plan_traits = get_fft_plan_traits(
-            operand.shape,
-            operand.strides,
-            operand.dtype,
-            axes,
-            execution,
-            fft_abstract_type=fft_abstract_type,
-            last_axis_parity=options.last_axis_parity,
-            result_layout=options.result_layout,
-            logger=None,
-        )
-
-        # Inplace is always True when execution space is different than the operand's memory
-        # space (as the operand needs to be copied once anyway)
-        if inplace is None:
-            memory_space = operand.device
-            execution_space = execution.name
-            assert execution.name in ("cpu", "cuda")
-            inplace = memory_space != execution_space or options.inplace
-
-        if inplace:
-            check_inplace_overlapping_layout(operand)
-
-        # Get the arguments to xt_make_plan_many.
-        plan_args = create_xt_plan_args(
-            plan_traits=plan_traits,
-            fft_abstract_type=fft_abstract_type,
-            operand_data_type=operand.dtype,
-            inplace=inplace,
-        )
-
     # Prolog and epilog, if used.
     if prolog is not None or epilog is not None:
         prolog = utils.check_or_create_options(DeviceCallable, prolog, "prolog", keep_none=True)
@@ -865,6 +934,109 @@ def create_fft_key(
     # DeviceCallback or None) and the execution options (in "normalized" form of
     # ("cpu"/"cuda", *execution_options)).
     return plan_args, callable_data, data_cls_astuple(execution)  # type: ignore[arg-type]
+
+
+_CUDA_TYPES_TO_CUFFT_TYPE = {
+    (cudaDataType.CUDA_C_32F, cudaDataType.CUDA_C_32F): cufft.Type.C2C,
+    (cudaDataType.CUDA_R_32F, cudaDataType.CUDA_C_32F): cufft.Type.R2C,
+    (cudaDataType.CUDA_C_32F, cudaDataType.CUDA_R_32F): cufft.Type.C2R,
+    (cudaDataType.CUDA_C_64F, cudaDataType.CUDA_C_64F): cufft.Type.Z2Z,
+    (cudaDataType.CUDA_R_64F, cudaDataType.CUDA_C_64F): cufft.Type.D2Z,
+    (cudaDataType.CUDA_C_64F, cudaDataType.CUDA_R_64F): cufft.Type.Z2D,
+}
+
+
+def estimate_workspace_size(
+    key: tuple[tuple, tuple | None, tuple],
+    *,
+    technique: str = "default",
+    handle: int | None = None,
+) -> int:
+    """
+    Estimate the workspace size in bytes for the given FFT key.
+
+    Args:
+        key: The FFT key returned by :meth:`FFT.create_key`.
+
+        technique: The estimation technique to use.
+
+          - ``"default"``: Uses ``cufftEstimateMany``, which returns
+            the workspace size for default plan settings without
+            requiring a handle. Does not support half or bfloat16
+            precision keys.
+          - ``"refined"``: Uses ``cufftXtGetSizeMany``, which requires
+            a ``handle`` and returns the workspace size accounting for
+            any settings in the handle (e.g., plan properties).
+            With a freshly-created handle, this returns the
+            same value as ``"default"``.
+
+        handle: A cuFFT handle as returned by
+          ``nvmath.bindings.cufft.create()``. Required when
+          ``technique="refined"``; ignored otherwise. The caller is
+          responsible to ensure the handle was created on the same
+          CUDA device that the key targets.
+
+    Returns:
+        int: The estimated workspace size in bytes.
+
+    Semantics:
+        - This function does not create a full plan. The callback data
+          (prolog/epilog) in the key is ignored, as the underlying
+          cuFFT size estimation APIs do not account for callbacks.
+
+        - The returned value is 0 in two cases: (1) the key specifies
+          CPU execution, since workspace management is not applicable to
+          the CPU backend, or (2) the key specifies CUDA execution but
+          no temporary workspace is needed for the given FFT configuration.
+
+    .. seealso::
+        :meth:`FFT.create_key`
+    """
+    if technique not in ("default", "refined"):
+        raise ValueError(f"technique must be 'default' or 'refined', got {technique!r}.")
+
+    if not isinstance(key, tuple) or len(key) != 3:
+        raise ValueError(f"The key must be a 3-tuple as returned by FFT.create_key(). Got {key}.")
+
+    plan_args, _, execution_tuple = key
+    if not isinstance(plan_args, tuple) or len(plan_args) != 12:
+        raise ValueError("The first element of the key (plan_args) must be a 12-element tuple as returned by FFT.create_key().")
+    if not isinstance(execution_tuple, tuple) or len(execution_tuple) < 1:
+        raise ValueError("The third element of the key (execution) must be a non-empty tuple as returned by FFT.create_key().")
+
+    assert execution_tuple[0] in ("cpu", "cuda"), (
+        f"Internal error: expected execution_tuple[0] to be 'cuda' or 'cpu', got {execution_tuple[0]!r}."
+    )
+    if execution_tuple[0] == "cpu":
+        return 0
+
+    if technique == "refined":
+        if handle is None:
+            raise ValueError("A cuFFT handle is required when technique='refined'.")
+        return cufft.xt_get_size_many(handle, *plan_args)
+
+    # technique == "default"
+    inputtype = plan_args[5]
+    outputtype = plan_args[9]
+    cufft_type = _CUDA_TYPES_TO_CUFFT_TYPE.get((inputtype, outputtype))
+    if cufft_type is None:
+        raise ValueError(
+            f"technique='default' (cufftEstimateMany) does not support "
+            f"the data types in this key (inputtype={inputtype}, "
+            f"outputtype={outputtype}). Use technique='refined' instead."
+        )
+    return cufft.estimate_many(
+        plan_args[0],  # rank
+        plan_args[1],  # n
+        plan_args[2],  # inembed
+        plan_args[3],  # istride
+        plan_args[4],  # idist
+        plan_args[6],  # onembed
+        plan_args[7],  # ostride
+        plan_args[8],  # odist
+        cufft_type,
+        plan_args[10],  # batch
+    )
 
 
 def set_prolog_and_epilog(handle, prolog, epilog, operand_dtype, result_dtype, logger):
@@ -936,6 +1108,9 @@ class FFT:
         ...     datefmt="%m-%d %H:%M:%S",
         ... )
 
+    .. versionchanged:: 0.9.0
+        The `operand` parameter is now positional-only.
+
     Args:
         operand: {operand}
 
@@ -949,7 +1124,7 @@ class FFT:
 
     .. seealso::
         :meth:`plan`, :meth:`reset_operand`, :meth:`reset_operand_unchecked`,
-        :meth:`execute`, :meth:`create_key`
+        :meth:`release_operand`, :meth:`execute`, :meth:`create_key`
 
     Examples:
 
@@ -1039,6 +1214,7 @@ class FFT:
     def __init__(
         self,
         operand,
+        /,
         *,
         axes: Sequence[int] | None = None,
         options: FFTOptions | None = None,
@@ -1128,9 +1304,41 @@ class FFT:
                 f"The FFT type is '{self.fft_abstract_type}'."
             )
 
+        # Key and plan_args computed from the user's original operand
+        # before any copy across memory spaces occurs.
+        #
+        # When a copy occurs (cross-device or C2R), the copied operand may have different
+        # strides than the original. We always compute the key from the user's original
+        # operand to match what create_key() does. This ensures:
+        # 1. get_key() returns the same value as create_key() for the same operand
+        # 2. reset_operand() validates against the user-facing key, not the internal copy
+        # We only need one key because reset_operand() validation
+        # ensures the new operand produces the same key.
+        self.key_from_user_operand: tuple[tuple, tuple | None, tuple] | None = None
+        self.plan_args_from_user_operand: tuple | None = None
+
+        # Compute from original operand whenever a copy will occur:
+        # - Cross-device: .to() may change strides
+        # - C2R: copy preserves strides, but we compute for consistency
+        if self.memory_space != self.execution_space or self.fft_abstract_type == "C2R":
+            try:
+                # Pass inplace explicitly to match what create_key() does.
+                self.plan_args_from_user_operand, _ = _compute_fft_plan_args_and_traits(
+                    operand,
+                    axes=self.axes,
+                    options=self.options,
+                    execution=self.execution_options,
+                    inplace=self.options.inplace,
+                )
+                self.key_from_user_operand = create_fft_key(self.plan_args_from_user_operand, self.execution_options)
+            except UnsupportedLayoutError:
+                # If the layout is unsupported, we won't be able to compute a key.
+                # This is fine - validation will fall back to other checks.
+                self.key_from_user_operand = None
+                self.plan_args_from_user_operand = None
+
         # Copy the operand to execution_space's device if needed.
-        self.operand, self.operand_backup = _copy_operand_perhaps(
-            None,
+        self.operand, self.operand_backup = _allocate_operand_or_identity(
             operand,
             operand_stream_holder,
             self.execution_space,
@@ -1140,9 +1348,31 @@ class FFT:
             self.logger,
         )
 
+        # Track whether the user has called release_operand(). This flag is
+        # checked in _check_valid_operand to prevent execution after the user
+        # has released their operand. It is cleared by reset_operand() and
+        # reset_operand_unchecked().
+        self._operand_released = False
+
+        # For C2R transforms, cuFFT and FFTW overwrite the input buffer
+        # during execute(). This flag marks the operand as stale after each
+        # execute() call so that users must call reset_operand() or
+        # reset_operand_unchecked() before executing again.
+        self._c2r_operand_stale = False
+
+        # For C2R with same-space CUDA, we allocated an auxiliary buffer above
+        # on operand_stream_holder. Track its allocation stream so we can ensure
+        # proper ordering, for example when the buffer is freed in free().
+        self.c2r_buffer_stream = None
+        if self.execution_space == "cuda" and self.execution_space == self.memory_space and self.fft_abstract_type == "C2R":
+            assert operand_stream_holder is not None
+            self.c2r_buffer_stream = operand_stream_holder.obj
+
         operand = self.operand
-        # Capture operand layout for consistency checks when resetting operands.
-        self.operand_layout = TensorLayout(shape=operand.shape, strides=operand.strides)
+        # Class invariant: self.internal_operand_layout always reflects the layout of
+        # self.operand. For same-space this is the user's operand; for
+        # cross-space it is the execution-space copy.
+        self.internal_operand_layout = TensorLayout(shape=operand.shape, strides=operand.strides)
 
         self._preallocated_result: utils.TensorHolder | None = None
 
@@ -1164,12 +1394,26 @@ class FFT:
             logger=self.logger,
         )
 
+        # Derive plan_args_from_user_operand from plan_traits if not already set.
+        if self.plan_args_from_user_operand is None:
+            self.plan_args_from_user_operand = create_xt_plan_args(
+                plan_traits=self.plan_traits,
+                fft_abstract_type=self.fft_abstract_type,
+                operand_data_type=self.operand_data_type,
+                inplace=self.options.inplace,
+            )
+
+        # Ensure key_from_user_operand is set (for same-device case
+        # and cross-device fallback).
+        if self.key_from_user_operand is None:
+            self.key_from_user_operand = create_fft_key(self.plan_args_from_user_operand, self.execution_options)
+
         self.logger.info(
-            f"The operand data type = {self.operand_data_type}, shape = {self.operand_layout.shape}, and "
-            f"strides = {self.operand_layout.strides}."
+            f"The operand data type = {self.operand_data_type}, shape = {self.internal_operand_layout.shape}, and "
+            f"strides = {self.internal_operand_layout.strides}."
         )
         result_data_type, result_shape, result_strides = (
-            (self.operand_data_type, self.operand_layout.shape, self.operand_layout.strides)
+            (self.operand_data_type, self.internal_operand_layout.shape, self.internal_operand_layout.strides)
             if self.inplace
             else (self.result_data_type, self.plan_traits.result_shape, self.plan_traits.result_strides)
         )
@@ -1236,15 +1480,21 @@ class FFT:
         self.workspace_stream = None
         self.last_compute_event = None
 
-        # Keep track of key (sans callback) for resetting operands, once plan in available.
-        self.orig_key = None
-
         self.valid_state = True
         self.logger.info("The FFT operation has been created.")
 
+    def _check_planned(self, *args, **kwargs):
+        """ """
+        what = kwargs["what"]
+        if not self.fft_planned:
+            raise RuntimeError(f"{what} cannot be performed before plan() has been called.")
+
+    @utils.precondition(_check_planned, "Returning the key")
     def get_key(self, *, prolog: DeviceCallable | None = None, epilog: DeviceCallable | None = None):
         """
-        Get the key for this object's data supplemented with the callbacks.
+        Get the key based on the current state of this FFT object,
+        supplemented with the callbacks. The key is computed from the object's
+        current plan, execution options, and operand properties.
 
         Args:
             prolog: {prolog}
@@ -1254,14 +1504,12 @@ class FFT:
             {fft_key}
 
         .. seealso::
-            :meth:`create_key`
+            :meth:`create_key`, :func:`estimate_workspace_size`
         """
+        # plan_args_from_user_operand is guaranteed to be set after __init__
         return create_fft_key(
-            self.operand.tensor,
-            axes=self.axes,
-            options=self.options,
-            execution=self.execution_options,
-            inplace=self.inplace,
+            self.plan_args_from_user_operand,  # type: ignore[arg-type]
+            self.execution_options,
             prolog=prolog,
             epilog=epilog,
         )
@@ -1308,8 +1556,16 @@ class FFT:
               used on a different machine.
             - It is the user's responsibility to augment this key with the stream in case
               they use stream-ordered memory pools.
+
+        .. seealso::
+            :meth:`get_key`, :func:`estimate_workspace_size`
         """
-        return create_fft_key(operand, axes=axes, options=options, execution=execution, prolog=prolog, epilog=epilog)
+        operand = tensor_wrapper.wrap_operand(operand)
+        options, execution = setup_options(operand, options, execution)
+        plan_args, _ = _compute_fft_plan_args_and_traits(
+            operand, axes=axes, options=options, execution=execution, inplace=options.inplace
+        )
+        return create_fft_key(plan_args, execution, prolog=prolog, epilog=epilog)
 
     def __enter__(self):
         return self
@@ -1426,7 +1682,6 @@ class FFT:
         else:
             assert isinstance(self.device_id, int)
             stream_holder = utils.get_or_create_stream(self.device_id, stream, self.internal_op_package)
-            self.workspace_stream = stream_holder.obj
 
             # Set stream for the FFT.
             cufft.set_stream(self.handle, stream_holder.ptr)
@@ -1449,17 +1704,8 @@ class FFT:
             inplace=self.inplace,
         )
 
-        # Keep track of original key (sans callback) for resetting operands. Pass in plan
-        # args to avoid recomputation.
-        self.orig_key = create_fft_key(
-            self.operand.tensor,
-            axes=self.axes,
-            options=self.options,
-            execution=self.execution_options,
-            plan_args=plan_args,
-        )
         if log_debug:
-            self.logger.debug(f"The FFT key (sans callback) is {self.orig_key}.")
+            self.logger.debug(f"The FFT key (sans callback) is {self.key_from_user_operand}.")
 
             self.logger.debug(
                 f"The operand CUDA type is {NAME_TO_DATA_TYPE[self.operand_data_type].name}, and the result CUDA type is "
@@ -1519,21 +1765,275 @@ class FFT:
         if log_info and elapsed.data is not None:
             self.logger.info(f"The FFT planning phase took {elapsed.data:.3f} ms to complete.")
 
-    @utils.precondition(_check_valid_fft)
-    def reset_operand(self, operand=None, *, stream: AnyStream | None = None):
+    def _maybe_wait_c2r_aux_buffer_on_last_compute(self):
         """
-        Reset the operand held by this :class:`FFT` instance. This method has two use cases:
+        (private) Make the C2R same-space auxiliary buffer's alloc stream
+        wait on ``self.last_compute_event``, so any in-flight compute using
+        the buffer is ordered before its (potentially stream-ordered-async)
+        free. No-op in every other configuration, or when there is no
+        outstanding compute event.
+        """
+        if (
+            self.execution_space == self.memory_space
+            and self.fft_abstract_type == "C2R"
+            and self.c2r_buffer_stream is not None
+            and self.last_compute_event is not None
+        ):
+            self.c2r_buffer_stream.wait(self.last_compute_event)
 
-        (1) it can be used to provide a new operand for execution
-        (2) it can be used to release the internal reference to the previous operand and
-            potentially make its memory available for other use by passing
-            ``operand=None``.
+    def _reset_operand_validate(self, operand):
+        """(private method) Validate operand compatibility.
+        This method is used by :meth:`reset_operand` to validate that the new
+        user-provided operand satisfies all the requirements listed in
+        the :meth:`reset_operand` docstring.
 
         Args:
-            operand: A tensor (ndarray-like object) compatible with the previous one or
-                `None` (default). A value of `None` will release the internal reference to
-                the previous operand and user is expected to set a new operand before again
-                calling :meth:`execute`. The new operand is considered compatible if all the
+            operand: The new operand tensor to validate.
+
+        Raises:
+            TypeError: If the library package or data type doesn't match.
+            ValueError: If the device doesn't match or if the operand's traits
+                        are incompatible with the original operand.
+        """
+
+        # Validate package match
+        package = utils.infer_object_package(operand.tensor)
+        if self.package != package:
+            message = f"Library package mismatch: '{self.package}' => '{package}'"
+            raise TypeError(message)
+
+        # Validate data type match
+        utils.check_attribute_match(self.operand_data_type, operand.dtype, "data type")
+
+        # Validate device match
+        # In principle, we could support memory_space change, but it would require
+        # updating self.memory_space and dependent properties like self.blocking,
+        # which could be error-prone and would prevent inplace optimizations.
+        operand_device_id = operand.device_id
+        if operand_device_id != self.operand_device_id:
+
+            def device_str(device_id: int | Literal["cpu"]) -> str:
+                return f"cuda:{device_id}" if isinstance(device_id, int) else f"{device_id}"
+
+            raise ValueError(
+                f"The new operand must be on the same device as the original one. "
+                f"The new operand's device is {device_str(operand_device_id)}, "
+                f"the original device is {device_str(self.operand_device_id)}"
+            )
+
+        # Validate FFT plan compatibility using key_from_user_operand,
+        # matches create_key() behavior.
+        # key_from_user_operand is always set after __init__.
+        assert self.key_from_user_operand is not None, "Internal error: key_from_user_operand not set."
+
+        try:
+            # Pass inplace explicitly to match what create_key() does.
+            new_plan_args, _ = _compute_fft_plan_args_and_traits(
+                operand,
+                axes=self.axes,
+                options=self.options,
+                execution=self.execution_options,
+                inplace=self.options.inplace,
+            )
+            new_key = create_fft_key(new_plan_args, self.execution_options)
+        except UnsupportedLayoutError:
+            new_key = None
+
+        if self.key_from_user_operand != new_key:
+            self.logger.debug(f"The FFT key corresponding to the original operand is: {self.key_from_user_operand}.")
+            if new_key is None:
+                self.logger.debug(
+                    "The FFT key for the new operand cannot be computed since the layout "
+                    f"(shape = {operand.shape}, strides = {operand.strides}) and axes = {self.axes} combination "
+                    "is unsupported."
+                )
+            else:
+                self.logger.debug(f"The FFT key corresponding to the new operand is: {new_key}.")
+            raise ValueError(
+                "The new operand's traits (data type, shape, or strides) are incompatible with that of the original operand."
+            )
+
+        # Validation passed. No updates needed because:
+        # - key_from_user_operand == new_key
+        # - plan_args_from_user_operand produces same key, get_key() returns correct value
+        # - plan_traits stays unchanged (copy produces the same layout)
+        self.logger.debug("Validation passed; no updates needed since keys match.")
+
+    def _update_plan_traits_for_new_operand(self, new_operand_shape, new_operand_strides):
+        """
+        (private) Recompute plan_traits.result_shape/strides after
+        a reset whose operand has different properties but a matching key.
+
+        Args:
+            new_operand_shape: Shape of the internal buffer. Batch
+                dimensions may differ from the original (e.g.
+                (2,3,64) -> (3,2,64) with axes=(2,)).
+            new_operand_strides: Strides of the internal buffer. Used to
+                recompute the result axis order.
+
+        The FFT axis sizes in result_shape may differ from the operand
+        (R2C/C2R), so we preserve them from the old result_shape and only
+        replace the batch dimensions from the new operand.
+
+        The axis order used to compute result_strides depends on the
+        layout strategy chosen at plan time (stored in
+        plan_traits.optimized_result_layout):
+        - Natural: axis_order_in_memory (mirrors the operand layout).
+        - Optimized: reversed FFT axes + batch axes sorted by stride.
+        """
+        new_shape = list(new_operand_shape)
+        old_result_shape = self.plan_traits.result_shape
+        # Preserve FFT axis sizes (they differ from operand for R2C/C2R).
+        for ax in self.plan_traits.ordered_axes:
+            new_shape[ax] = old_result_shape[ax]
+        new_result_shape = tuple(new_shape)
+
+        if self.plan_traits.optimized_result_layout:
+            fft_axes_set = set(self.plan_traits.ordered_axes)
+            batch_axes = [a for a in range(len(new_operand_shape)) if a not in fft_axes_set]
+            axis_order = tuple(
+                list(reversed(self.plan_traits.ordered_axes))
+                + sorted(batch_axes, key=lambda v: (new_operand_strides[v], new_operand_shape[v]))
+            )
+        else:
+            axis_order = axis_order_in_memory(new_operand_shape, new_operand_strides)
+
+        self.plan_traits.result_shape = new_result_shape
+        self.plan_traits.result_strides = calculate_strides(new_result_shape, axis_order)
+
+    def _update_layout_and_plan_traits_if_needed(self):
+        """
+        (private) Update internal_operand_layout from the current internal operand,
+        and recompute plan_traits if shape or strides changed.
+
+        The comparison is against self.operand (the internal buffer), not the
+        user's original operand. For cross-space scenarios, the internal
+        buffer is always a contiguous copy, so stride-only user changes are
+        invisible here — which is correct because cuFFT sees contiguous data.
+
+        When does _update_plan_traits_for_new_operand get called?
+        The columns below refer to the *internal buffer* (self.operand),
+        not the user's original operand.
+
+                                                  internal   internal
+                                                  shape      strides   plan_traits
+            Scenario (user's operand)             changed    changed   updated
+            --------------------------------      --------   --------  -----------
+            Same operand (no change)              No         No        No
+            Different shape, same-space           Yes        Yes       Yes
+            Different shape, cross-space          Yes        Yes       Yes
+            Different strides only, same-space    No         Yes       Yes
+            Different strides only, cross-space   No         No        No
+              (cross-space copy is always contiguous, so internal strides
+               are unchanged regardless of the user's strides)
+        """
+        new_layout = TensorLayout(shape=self.operand.shape, strides=self.operand.strides)
+        if tuple(self.internal_operand_layout.shape) != tuple(new_layout.shape) or tuple(
+            self.internal_operand_layout.strides
+        ) != tuple(new_layout.strides):
+            self._update_plan_traits_for_new_operand(new_layout.shape, new_layout.strides)
+
+        # Always update: the new operand may have a different layout but a
+        # compatible key. Class invariant: self.internal_operand_layout
+        # always reflects the layout of the currently stored operand.
+        self.internal_operand_layout = new_layout
+
+    def _reset_operand_set_stream_and_update_operand(self, operand, stream: AnyStream | None):
+        """(private method) Set the stream, copy the operand, and update layout information.
+        This method is used by ``reset_operand()`` after validation has passed.
+        It performs the following operations:
+
+        1. Gets or creates the execution and operand streams
+        2. Sets the stream for the cuFFT handle (for CUDA execution)
+        3. Copies the operand tensor if necessary (reallocates when shape changed)
+        4. Updates internal_operand_layout and plan_traits if needed
+
+        Args:
+            operand: The validated operand tensor to use.
+            stream: Optional stream to use for execution.
+                    If None, a stream is created or retrieved.
+        """
+
+        exec_stream_holder, operand_stream_holder = self._get_or_create_stream_maybe(stream)
+        self.logger.info(
+            "The specified stream for reset_operand() is "
+            f"{(exec_stream_holder or operand_stream_holder) and (exec_stream_holder or operand_stream_holder).obj}."  # type: ignore[union-attr]
+        )
+
+        # Allocate a new internal buffer when the previous one was released
+        # or when the new operand has a different shape (e.g., same FFT key but
+        # rearranged batch dimensions). copy_() rejects incompatible shapes
+        # due to broadcasting, and the underlying tensor type varies across
+        # backends, so there is no uniform reshape; we reallocate instead.
+        needs_reallocation = self._operand_released or self.operand.shape != operand.shape
+        if needs_reallocation:
+            # When the shape changes, the old self.operand buffer is implicitly
+            # released here (replaced by the new allocation). For the C2R
+            # same-space case this is an internal aux buffer the user cannot
+            # stream-order against; in the other cases the old buffer is
+            # either the user's tensor (same-space non-C2R, user orders) or a
+            # cross-space mirror (cross-space operations are blocking).
+            # When the operand was already released, release_operand() already
+            # performed this ordering, so we skip it here.
+            if not self._operand_released:
+                self._maybe_wait_c2r_aux_buffer_on_last_compute()
+            self.operand, self.operand_backup = _allocate_operand_or_identity(
+                operand,
+                operand_stream_holder,
+                self.execution_space,
+                self.memory_space,
+                self.device_id,
+                self.fft_abstract_type,
+                self.logger,
+            )
+        else:
+            self.operand, self.operand_backup = _copy_operand_or_identity(
+                self.operand,
+                operand,
+                operand_stream_holder,
+                self.execution_space,
+                self.memory_space,
+                self.fft_abstract_type,
+                self.logger,
+            )
+
+        # No-op for non-C2R; for C2R same-space, the operand copy above
+        # provides fresh data so the stale flag can be cleared.
+        self._c2r_operand_stale = False
+
+        if (
+            needs_reallocation
+            and self.execution_space == "cuda"
+            and self.execution_space == self.memory_space
+            and self.fft_abstract_type == "C2R"
+        ):
+            assert operand_stream_holder is not None
+            self.c2r_buffer_stream = operand_stream_holder.obj
+
+        self._update_layout_and_plan_traits_if_needed()
+
+        # Log final result layout
+        self.logger.info(
+            f"The reset operand shape = {self.internal_operand_layout.shape}, "
+            f"and strides = {self.internal_operand_layout.strides}."
+        )
+        result_shape, result_strides = (
+            (self.internal_operand_layout.shape, self.internal_operand_layout.strides)
+            if self.inplace
+            else (self.plan_traits.result_shape, self.plan_traits.result_strides)
+        )
+        self.logger.info(f"The result shape = {result_shape}, and strides = {result_strides}.")
+        self.logger.info("The operand has been reset to the specified operand.")
+
+    @utils.precondition(_check_valid_fft)
+    def reset_operand(self, operand, *, stream: AnyStream | None = None):
+        """
+        Reset the operand held by this :class:`FFT` instance to a new compatible
+        operand for subsequent execution.
+
+        Args:
+            operand: A tensor (ndarray-like object) compatible with the previous one.
+                The new operand is considered compatible if all the
                 following properties match with the previous one:
 
                 - The problem specification key for the new operand. Generally the keys will
@@ -1544,12 +2044,9 @@ class FFT:
                 - The memory space of the new operand (CPU or GPU).
                 - The device that new operand belongs to if it is on GPU.
 
-            stream: {stream}.
+            stream: {stream}
 
         Semantics:
-            When used for the use case of providing a new valid operand,
-            the following scenarios apply:
-
             - If execution space == memory space and the FFT is not a C2R transform:
               operand reference update with no data copying.
 
@@ -1607,110 +2104,19 @@ class FFT:
 
             For more details, please refer to `inplace update example
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example05_stateful_inplace.py>`_.
+
+        .. seealso::
+            :meth:`reset_operand_unchecked`, :meth:`release_operand`
         """
 
-        if operand is None:
-            self.operand = None  # type: ignore
-            self.operand_backup = None  # type: ignore
-            self.logger.info("The operand has been reset to None.")
-            return
-
         self.logger.info("Resetting operand...")
-        # First wrap operand.
+        if operand is None:
+            raise ValueError("Resetting operand requires a valid operand. Use release_operand() to release the operand.")
+
         operand = tensor_wrapper.wrap_operand(operand)
-
-        # Check package match.
-        package = utils.infer_object_package(operand.tensor)
-        if self.package != package:
-            message = f"Library package mismatch: '{self.package}' => '{package}'"
-            raise TypeError(message)
-
-        utils.check_attribute_match(self.operand_data_type, operand.dtype, "data type")
-
-        exec_stream_holder, operand_stream_holder = self._get_or_create_stream_maybe(stream)
-        self.logger.info(
-            "The specified stream for reset_operand() is "
-            f"{(exec_stream_holder or operand_stream_holder) and (exec_stream_holder or operand_stream_holder).obj}."  # type: ignore[union-attr]
-        )
-
-        # In principle, we could support memory_space change,
-        # but to handle it properly we need to update self.memory_space and
-        # some dependent properties, like self.blocking, which may be error-prone
-        # from the user perspective. It would prevent inplace optimizations as well.
-        operand_device_id = operand.device_id
-        if operand_device_id != self.operand_device_id:
-
-            def device_str(device_id: int | Literal["cpu"]) -> str:
-                return f"cuda:{device_id}" if isinstance(device_id, int) else f"{device_id}"
-
-            raise ValueError(
-                f"The new operand must be on the same device as the original one. "
-                f"The new operand's device is {device_str(operand_device_id)}, "
-                f"the original device is {device_str(self.operand_device_id)}"
-            )
-
-        if self.orig_key is not None:
-            # Compute the key corresponding to the new operand (sans callback).
-            try:
-                new_key = create_fft_key(
-                    operand.tensor,
-                    axes=self.axes,
-                    options=self.options,
-                    execution=self.execution_options,
-                    inplace=self.inplace,
-                )
-            except UnsupportedLayoutError:
-                new_key = None
-            if self.orig_key != new_key:
-                self.logger.debug(f"The FFT key corresponding to the original operand is: {self.orig_key}.")
-                if new_key is None:
-                    self.logger.debug(
-                        "The FFT key for the new operand cannot be computed since the layout "
-                        f"(shape = {operand.shape}, strides = {operand.strides}) and axes = {self.axes} combination "
-                        "is unsupported."
-                    )
-                else:
-                    self.logger.debug(f"The FFT key corresponding to the new operand is:      {new_key}.")
-                raise ValueError(
-                    "The new operand's traits (data type, shape, or strides) are incompatible with that of the "
-                    "original operand."
-                )
-
-        self.operand, self.operand_backup = _copy_operand_perhaps(
-            self.operand,
-            operand,
-            operand_stream_holder,
-            self.execution_space,
-            self.memory_space,
-            self.device_id,
-            self.fft_abstract_type,
-            self.logger,
-        )
-        operand = self.operand
-
-        # Update operand layout and plan traits.
-        self.operand_layout = TensorLayout(shape=operand.shape, strides=operand.strides)
-        self.logger.info(f"The reset operand shape = {self.operand_layout.shape}, and strides = {self.operand_layout.strides}.")
-
-        self.plan_traits = get_fft_plan_traits(
-            operand.shape,
-            operand.strides,
-            operand.dtype,
-            self.axes,
-            self.execution_options,
-            fft_abstract_type=self.fft_abstract_type,
-            last_axis_parity=self.options.last_axis_parity,
-            result_layout=self.options.result_layout,
-            logger=self.logger,
-        )
-        result_shape, result_strides = (
-            (self.operand_layout.shape, self.operand_layout.strides)
-            if self.inplace
-            else (self.plan_traits.result_shape, self.plan_traits.result_strides)
-        )
-        self.logger.info(f"The result shape = {result_shape}, and strides = {result_strides}.")
-
-        self.logger.info("The operand has been reset to the specified operand.")
+        self._reset_operand_validate(operand)
+        self._reset_operand_set_stream_and_update_operand(operand, stream)
+        self._operand_released = False
 
     def reset_operand_unchecked(self, operand, *, stream: AnyStream | None = None):
         """
@@ -1726,20 +2132,15 @@ class FFT:
                 See the ``operand`` parameter in :meth:`reset_operand` for the definition
                 of compatibility.
 
-            stream: {stream}.
+            stream: {stream}
 
         Returns:
             None
 
         Semantics:
             The semantics are the same as in :meth:`reset_operand`,
-            except for the following differences:
-
-            - This method does not perform any validation (e.g. package match,
-              data type match, key match, etc.) and logging.
-
-            - This method does not support releasing the operand by passing None
-              as an argument. To release the operand, use :meth:`reset_operand` instead.
+            except that this method does not perform any validation (e.g. package
+            match, data type match, key match, etc.) or logging.
 
         When to Use:
             - Performance-critical loops with repeated FFT executions on different operands
@@ -1801,51 +2202,101 @@ class FFT:
 
         .. seealso::
             :meth:`reset_operand`: Safe, validated method for changing operands.
+            :meth:`release_operand`: Release the internal references to the operand.
             :meth:`create_key`: For understanding FFT key compatibility.
+            :func:`estimate_workspace_size`: For estimating workspace size.
         """
         # Case 1: Same execution and memory space, non-C2R transform
         # The user guarantees that the operand is in the same memory space as the original
-        # operand so we can directly update the operand reference without copying data
+        # operand so we can directly update the operand reference without copying data.
+        # The TensorHolder wrapper is always alive (release_operand only clears
+        # .tensor), so we can unconditionally swap the inner tensor.
         if self.execution_space == self.memory_space and self.fft_abstract_type != "C2R":
-            # Directly assign the new tensor to the wrapped operand's internal tensor.
             self.operand.tensor = operand
             self.operand_backup = None
+            self._operand_released = False
+            self._update_layout_and_plan_traits_if_needed()
             return
 
         # Cases 2 and 3 require data copying, so we need the stream
         _, operand_stream_holder = self._get_or_create_stream_maybe(stream)
+        # and also require the wrapped operand
+        operand_wrapped = tensor_wrapper.wrap_operand(operand)
 
         # Case 2: C2R transform with same execution and memory space
         # Data must be copied to prevent cuFFT from overwriting the user's input buffer.
         # This is a corner case that stems from cuFFT behavior.
         if self.execution_space == self.memory_space:
-            # At this point, we have:
-            # - self.fft_abstract_type == "C2R" (guaranteed by the if condition above)
-            # - self.execution_space == self.memory_space
-            #
-            # For C2R, self.operand points to an auxiliary buffer (allocated in __init__
-            # or reset_operand via _copy_operand_perhaps) rather than the user's original
-            # operand. This is necessary because cuFFT's C2R transform overwrites the input
-            # buffer in-place, and we must preserve the user's data.
-            # We copy the new operand's data into this pre-allocated auxiliary buffer.
+            needs_reallocation = self._operand_released or self.operand.shape != operand_wrapped.shape
+            if needs_reallocation:
+                self.operand = utils.create_empty_tensor(
+                    operand_wrapped.__class__,
+                    operand_wrapped.shape,
+                    operand_wrapped.dtype,
+                    self.device_id,
+                    operand_stream_holder,
+                    verify_strides=True,
+                    strides=operand_wrapped.strides,
+                )
+                if self.execution_space == "cuda":
+                    self.c2r_buffer_stream = operand_stream_holder.obj  # type: ignore[union-attr]
 
-            # Wrap the new operand using the same wrapper class as the existing operand,
-            # since they are guaranteed to be identical except for memory location.
-            operand_wrapped = self.operand.__class__(operand)
             self.operand.copy_(operand_wrapped, stream_holder=operand_stream_holder)
             self.operand_backup = None
+            self._operand_released = False
+            self._c2r_operand_stale = False
+            self._update_layout_and_plan_traits_if_needed()
             return
 
         # Case 3: Cross-space scenario (execution_space != memory_space)
         # Example: CPU operand with CUDA execution, or CUDA operand with CPU execution.
         # Data must be copied between memory spaces.
-        # Wrap the new operand with the appropriate wrapper based on its actual type
-        # (not self.operand's class, since they may be in different memory spaces).
-        operand_wrapped = tensor_wrapper.wrap_operand(operand)
-        # Copy from the source operand to the execution space buffer.
-        self.operand.copy_(operand_wrapped, stream_holder=operand_stream_holder)
-        # Keep a reference to the original operand.
-        self.operand_backup = operand_wrapped
+        needs_reallocation = self._operand_released or self.operand.shape != operand_wrapped.shape
+        if needs_reallocation:
+            if self.execution_space == "cuda":
+                to_device = self.device_id
+            else:
+                to_device = "cpu"
+            self.operand = operand_wrapped.to(to_device, operand_stream_holder)
+        else:
+            self.operand.copy_(operand_wrapped, stream_holder=operand_stream_holder)
+        self.operand_backup.tensor = operand_wrapped.tensor
+        self._operand_released = False
+        self._c2r_operand_stale = False
+        self._update_layout_and_plan_traits_if_needed()
+
+    @utils.precondition(_check_valid_fft)
+    def release_operand(self):
+        """
+        {release_operand}
+        """
+        # We release the references to the user-provided
+        # operand and/or GPU mirrors of the user-provided operand
+        # and/or the internal auxiliary buffer for C2R transforms
+        # since it can be non-negligible memory.
+        # Note that we do not release the whole wrapper objects,
+        # but only their internal tensor references, which allow
+        # us to reuse them without re-wrapping saving some overhead.
+
+        # Case 1 (same-space, non-C2R):
+        #   self.operand is the user's tensor,
+        #   self.operand_backup is None.
+        # Case 2 (same-space, C2R):
+        #   self.operand references the internal auxiliary buffer
+        #   The user's tensor is not referenced. We must ensure the compute
+        #   that used this buffer has completed before releasing it.
+        # Case 3 (cross-space):
+        #   self.operand is an internal mirror, self.operand_backup
+        #   is the user's tensor. Release both.
+
+        self._maybe_wait_c2r_aux_buffer_on_last_compute()
+        self.c2r_buffer_stream = None
+        self.operand.tensor = None
+        if self.operand_backup is not None:
+            self.operand_backup.tensor = None
+
+        self._operand_released = True
+        self.logger.info("User-provided operand has been released.")
 
     def get_input_layout(self):
         """
@@ -1857,31 +2308,25 @@ class FFT:
             The copied tensor strides may differ from the input tensor passed by the user,
             if the original tensor's strides do not conform to dense C-like layout.
         """
-        return self.operand_layout.shape, self.operand_layout.strides
+        return self.internal_operand_layout.shape, self.internal_operand_layout.strides
 
     def get_output_layout(self):
         """
         Returns a pair of tuples: shape and strides of the FFT output.
         """
         return (
-            (self.operand_layout.shape, self.operand_layout.strides)
+            (self.internal_operand_layout.shape, self.internal_operand_layout.strides)
             if self.inplace
             else (self.plan_traits.result_shape, self.plan_traits.result_strides)
         )
 
-    def _check_planned(self, *args, **kwargs):
-        """ """
-        what = kwargs["what"]
-        if not self.fft_planned:
-            raise RuntimeError(f"{what} cannot be performed before plan() has been called.")
-
     def _check_valid_operand(self, *args, **kwargs):
         """ """
         what = kwargs["what"]
-        if self.operand is None:
+        if self._operand_released:
             raise RuntimeError(
-                f"{what} cannot be performed if the input operand has been set to None. Use reset_operand() to set the "
-                f"desired input before using performing the {what.lower()}."
+                f"{what} cannot be performed after the operand has been released. Use reset_operand() to provide a new "
+                f"operand before performing the {what.lower()}."
             )
 
     def _free_workspace_memory(self, exception: Exception | None = None) -> bool:
@@ -1997,6 +2442,13 @@ class FFT:
             - For R2C and C2R FFT, both data type and shape differ from the input.
         """
 
+        if self.fft_abstract_type == "C2R" and self._c2r_operand_stale:
+            raise RuntimeError(
+                "For C2R FFTs, execute() cannot be called multiple times without "
+                "resetting the operand in between. Please call reset_operand() or "
+                "reset_operand_unchecked() before executing again."
+            )
+
         log_info = self.logger.isEnabledFor(logging.INFO)
         log_debug = self.logger.isEnabledFor(logging.DEBUG)
 
@@ -2043,6 +2495,9 @@ class FFT:
                     self.logger.debug("The cuFFT execution function is 'xt_exec'.")
                 cufft.xt_exec(self.handle, self.operand.data_ptr, result_ptr, direction)
 
+        if self.fft_abstract_type == "C2R":
+            self._c2r_operand_stale = True
+
         if log_info and elapsed.data is not None:
             self.logger.info(f"The FFT calculation took {elapsed.data:.3f} ms to complete.")
 
@@ -2084,11 +2539,12 @@ class FFT:
             return
 
         try:
-            # Future operations on the workspace stream should be ordered after the
-            # computation.
-            if self.last_compute_event is not None:
+            # Ensure ordering with respect to the last computation
+            # to avoid race conditions when releasing internal resources.
+            self._maybe_wait_c2r_aux_buffer_on_last_compute()
+            if self.last_compute_event is not None and self.workspace_stream is not None:
                 self.workspace_stream.wait(self.last_compute_event)
-                self.last_compute_event = None
+            self.last_compute_event = None
 
             self._free_workspace_memory()
 
@@ -2099,12 +2555,11 @@ class FFT:
                     fftw.destroy(self.handle)
                 self.handle = None
 
-            # Release references to operand to ensure proper reference counting
-            self.operand = None
-            self.operand_backup = None
-            self.result = None
-            self._preallocated_result = None
-            self.plan_traits = None
+            # Set all attributes to None except for logger and valid_state
+            _keep = {"logger", "valid_state"}
+            for attr in list(vars(self)):
+                if attr not in _keep:
+                    setattr(self, attr, None)
 
         except Exception as e:
             self.logger.critical("Internal error: only part of the FFT object's resources have been released.")
@@ -2117,7 +2572,8 @@ class FFT:
 
 
 def _fft(
-    x,
+    operand,
+    /,
     *,
     axes: Sequence[int] | None = None,
     direction: FFTDirection | None = None,
@@ -2223,11 +2679,11 @@ def _fft(
     """
     if check_dtype is not None:
         assert check_dtype in {"real", "complex"}, "internal error"
-        operand = tensor_wrapper.wrap_operand(x)
-        if ("complex" in operand.dtype) != (check_dtype == "complex"):
-            raise ValueError(f"This function expects {check_dtype} operand, found {operand.dtype}")
+        wrapped = tensor_wrapper.wrap_operand(operand)
+        if ("complex" in wrapped.dtype) != (check_dtype == "complex"):
+            raise ValueError(f"This function expects {check_dtype} operand, found {wrapped.dtype}")
 
-    with FFT(x, axes=axes, options=options, execution=execution, stream=stream) as fftobj:
+    with FFT(operand, axes=axes, options=options, execution=execution, stream=stream) as fftobj:
         # Plan the FFT.
         fftobj.plan(stream=stream, prolog=prolog, epilog=epilog, direction=direction)
 
@@ -2247,6 +2703,7 @@ fft.__name__ = "fft"
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
 def rfft(
     operand,
+    /,
     *,
     axes: Sequence[int] | None = None,
     options: FFTOptions | None = None,
@@ -2259,6 +2716,9 @@ def rfft(
     rfft({function_signature})
 
     Perform an N-D *real-to-complex* (R2C) FFT on the provided real operand.
+
+    .. versionchanged:: 0.9.0
+        The ``operand`` parameter is now positional-only.
 
     Args:
         operand: {operand}
@@ -2346,7 +2806,8 @@ ifft.__name__ = "ifft"
 # Inverse C2R FFT Function.
 @utils.docstring_decorator(SHARED_FFT_DOCUMENTATION, skip_missing=False)
 def irfft(
-    x,
+    operand,
+    /,
     *,
     axes: Sequence[int] | None = None,
     options: FFTOptions | None = None,
@@ -2430,7 +2891,7 @@ def irfft(
     assert options is not None
     options.fft_type = "C2R"
     return _fft(
-        x,
+        operand,
         axes=axes,
         direction=FFTDirection.INVERSE,
         options=options,

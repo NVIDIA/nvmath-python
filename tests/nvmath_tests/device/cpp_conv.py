@@ -3,10 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-import cupy
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
+import pytest
 from cuda.bindings import driver as cudadrv
-from .helpers import CHECK_CUDA, _TOLERANCE, l2error, free_array, convert_to_cuda_array, copy_to_cupy
-from .helpers_cpp import run_and_time, compile_cpp_kernel
+
+from .helpers import _TOLERANCE, CHECK_CUDA, convert_to_cuda_array, copy_to_cupy, free_array, l2error
+from .helpers_cpp import compile_cpp_kernel, run_and_time
 
 
 class FFTConvCpp:
@@ -126,6 +132,8 @@ class FFTConvCpp:
         assert num_blocks * self._ffts_per_block == batch
 
         # Create input
+        if cupy is None:
+            pytest.skip("cupy is not available")
         output = cupy.zeros_like(input)
         dInput = convert_to_cuda_array(input)
         dOutput = convert_to_cuda_array(output)

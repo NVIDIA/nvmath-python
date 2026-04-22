@@ -2,11 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .helpers import l2error, _TOLERANCE
 import numpy as np
+import pytest
+
 from nvmath.device import matmul
-import cupy
+
+from .helpers import _TOLERANCE, l2error
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 from numba import cuda
+
 from .helpers_numba import run_and_time
 
 
@@ -63,7 +71,7 @@ class NumbaGemmLoop:
             cuda.syncthreads()
 
             # Execute FFT
-            for r in range(repeat):
+            for _r in range(repeat):
                 MM(alpha, a_smem, b_smem, beta, c_smem)
 
             cuda.syncthreads()
@@ -88,6 +96,8 @@ class NumbaGemmLoop:
         assert reference.shape == (m, n)
         print(f"NumbaGemmLoop ncycles {ncycles}")
 
+        if cupy is None:
+            pytest.skip("cupy is not available")
         c = cuda.to_device(cupy.zeros((m, n), dtype=self._precision))
         a_d = cuda.to_device(a)
         b_d = cuda.to_device(b)

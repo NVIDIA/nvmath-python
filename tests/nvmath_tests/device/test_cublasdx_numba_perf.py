@@ -3,16 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-import cupy
+import pytest
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 
 from nvmath.device import TransposeMode
 from nvmath.device.common_cuda import ComputeCapability
-from .cpp_gemm_loop import MatmulLoopCpp
-from .cpp_gemm_batched import MatmulBatchedCpp
-from .numba_gemm_loop import NumbaGemmLoop
-from .helpers import random_real, set_device, time_check_cupy
+
 from ..helpers import print_aligned_table
+from .cpp_gemm_batched import MatmulBatchedCpp
+from .cpp_gemm_loop import MatmulLoopCpp
+from .helpers import random_real, set_device, time_check_cupy
 from .numba_gemm_batched import NumbaGemmBatched
+from .numba_gemm_loop import NumbaGemmLoop
 
 
 def test_batched_gemm_perf():
@@ -44,11 +50,13 @@ def test_batched_gemm_perf():
         if SM.major * 100 + SM.minor * 10 not in {900, 1000, 1030, 1100}:
             SM = ComputeCapability(SM.major, SM.minor)
 
+        if cupy is None:
+            pytest.skip("cupy is not available")
         a = random_real((batch, m, k), np.float32, module=cupy)
         b = random_real((batch, k, n), np.float32, module=cupy)
         reference = cupy.einsum("bmk,bkn->bmn", a, b)
 
-        def fun(a, b):
+        def fun(a, b, repeat=repeat):
             for _ in range(repeat):
                 out = cupy.einsum("bmk,bkn->bmn", a, b)
             return out
@@ -93,6 +101,8 @@ def test_gemm_loop_perf():
         m, n, k = size
         block_size = 128
         trans = TransposeMode("non_transposed", "non_transposed")
+        if cupy is None:
+            pytest.skip("cupy is not available")
         a = cupy.ones((m, k), dtype=np.float32)
         b = cupy.ones((k, n), dtype=np.float32)
         reference = a.dot(b)

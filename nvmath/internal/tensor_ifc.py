@@ -10,12 +10,12 @@ from __future__ import annotations  # allows typehint of class methods to return
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
-from typing import Any, Literal, Generic, Protocol, TypeVar
 from types import ModuleType
+from typing import Any, Generic, Literal, Protocol, TypeVar
 
 from . import typemaps
-from .package_ifc import StreamHolder
 from .ndbuffer import ndbuffer
+from .package_ifc import StreamHolder
 
 
 class AnyTensor(Protocol):
@@ -158,6 +158,18 @@ class TensorHolder(ABC, Generic[Tensor]):
         raise NotImplementedError
 
     @abstractmethod
+    def memory_buffer(self) -> TensorHolder[Tensor]:
+        """Creates a view of the memory buffer as a 1D tensor."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def memory_buffer_to_tensor(self, shape, strides) -> TensorHolder[Tensor]:
+        """
+        Creates a N-D tensor view of the memory buffer according to the specified
+        shape and strides.
+        """
+        raise NotImplementedError
+
     def _broadcast_to(self, shape: Sequence[int]) -> TensorHolder[Tensor]:
         """Returns a view of the tensor broadcast to the desired shape.
 
@@ -170,7 +182,6 @@ class TensorHolder(ABC, Generic[Tensor]):
 
         Args:
             shape: a new shape compatible with the original shape.
-
         """
         raise NotImplementedError
 

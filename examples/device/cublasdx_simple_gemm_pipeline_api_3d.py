@@ -8,15 +8,17 @@
 
 import cupy
 import numpy as np
-from numba import cuda
-from nvmath.device import Matmul, axpby
 from common import random_real
+from common_numba import set_max_dynamic_shared_size_bytes
+from numba import cuda
+
+from nvmath.bindings import mathdx
+from nvmath.device import Matmul, axpby
 from nvmath.device.common import make_tensor
 from nvmath.device.common_cuda import Dim3, get_current_device_cc
 from nvmath.device.cublasdx import DevicePipeline
 from nvmath.device.cublasdx_backend import MAX_ALIGNMENT
 from nvmath.device.cublasdx_numba import pipeline_extensions
-from common_numba import set_max_dynamic_shared_size_bytes
 
 
 def main():
@@ -45,7 +47,7 @@ def main():
         with_pipeline=True,
         enable_input_streaming=True,
         # WAR for the TMA descriptor issue on SM 12.0
-        sm=89 if get_current_device_cc().major >= 12 else None,
+        sm=89 if get_current_device_cc().major >= 12 and mathdx.get_version_ex() < (0, 3, 2) else None,
     )
 
     print(f"SM: {MM.sm}")

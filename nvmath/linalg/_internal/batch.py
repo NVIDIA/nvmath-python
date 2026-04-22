@@ -4,12 +4,12 @@
 
 from __future__ import annotations  # allows typehint of class methods to return the self class
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-import math
 
-from nvmath.linalg._internal.utils import axis_order_in_memory, check_batch_tileable, calculate_strides
 from nvmath._internal.layout import is_overlapping_layout
+from nvmath.linalg._internal.utils import axis_order_in_memory, calculate_strides, check_batch_tileable
 
 
 @dataclass(slots=True, frozen=True)

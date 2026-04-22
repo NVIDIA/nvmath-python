@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.1, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -14,7 +14,9 @@ from enum import IntEnum as _IntEnum
 ###############################################################################
 
 class Status(_IntEnum):
-    """See `cusolverStatus_t`."""
+    """
+    See `cusolverStatus_t`.
+    """
     SUCCESS = CUSOLVER_STATUS_SUCCESS
     NOT_INITIALIZED = CUSOLVER_STATUS_NOT_INITIALIZED
     ALLOC_FAILED = CUSOLVER_STATUS_ALLOC_FAILED
@@ -42,31 +44,41 @@ class Status(_IntEnum):
     INVALID_WORKSPACE = CUSOLVER_STATUS_INVALID_WORKSPACE
 
 class EigType(_IntEnum):
-    """See `cusolverEigType_t`."""
+    """
+    See `cusolverEigType_t`.
+    """
     TYPE_1 = CUSOLVER_EIG_TYPE_1
     TYPE_2 = CUSOLVER_EIG_TYPE_2
     TYPE_3 = CUSOLVER_EIG_TYPE_3
 
 class EigMode(_IntEnum):
-    """See `cusolverEigMode_t`."""
+    """
+    See `cusolverEigMode_t`.
+    """
     NOVECTOR = CUSOLVER_EIG_MODE_NOVECTOR
     VECTOR = CUSOLVER_EIG_MODE_VECTOR
 
 class EigRange(_IntEnum):
-    """See `cusolverEigRange_t`."""
+    """
+    See `cusolverEigRange_t`.
+    """
     ALL = CUSOLVER_EIG_RANGE_ALL
     I = CUSOLVER_EIG_RANGE_I
     V = CUSOLVER_EIG_RANGE_V
 
 class Norm(_IntEnum):
-    """See `cusolverNorm_t`."""
+    """
+    See `cusolverNorm_t`.
+    """
     INF_NORM = CUSOLVER_INF_NORM
     MAX_NORM = CUSOLVER_MAX_NORM
     ONE_NORM = CUSOLVER_ONE_NORM
     FRO_NORM = CUSOLVER_FRO_NORM
 
 class IRSRefinement(_IntEnum):
-    """See `cusolverIRSRefinement_t`."""
+    """
+    See `cusolverIRSRefinement_t`.
+    """
     IRS_REFINE_NOT_SET = CUSOLVER_IRS_REFINE_NOT_SET
     IRS_REFINE_NONE = CUSOLVER_IRS_REFINE_NONE
     IRS_REFINE_CLASSICAL = CUSOLVER_IRS_REFINE_CLASSICAL
@@ -79,7 +91,9 @@ class IRSRefinement(_IntEnum):
     PREC_SHT = CUSOLVER_PREC_SHT
 
 class PrecType(_IntEnum):
-    """See `cusolverPrecType_t`."""
+    """
+    See `cusolverPrecType_t`.
+    """
     R_8I = CUSOLVER_R_8I
     R_8U = CUSOLVER_R_8U
     R_64F = CUSOLVER_R_64F
@@ -98,30 +112,50 @@ class PrecType(_IntEnum):
     C_AP = CUSOLVER_C_AP
 
 class AlgMode(_IntEnum):
-    """See `cusolverAlgMode_t`."""
+    """
+    See `cusolverAlgMode_t`.
+    """
     ALG_0 = CUSOLVER_ALG_0
     ALG_1 = CUSOLVER_ALG_1
     ALG_2 = CUSOLVER_ALG_2
 
 class StorevMode(_IntEnum):
-    """See `cusolverStorevMode_t`."""
+    """
+    See `cusolverStorevMode_t`.
+    """
     COLUMNWISE = CUBLAS_STOREV_COLUMNWISE
     ROWWISE = CUBLAS_STOREV_ROWWISE
 
 class DirectMode(_IntEnum):
-    """See `cusolverDirectMode_t`."""
+    """
+    See `cusolverDirectMode_t`.
+    """
     FORWARD = CUBLAS_DIRECT_FORWARD
     BACKWARD = CUBLAS_DIRECT_BACKWARD
 
 class DeterministicMode(_IntEnum):
-    """See `cusolverDeterministicMode_t`."""
+    """
+    See `cusolverDeterministicMode_t`.
+    """
     DETERMINISTIC_RESULTS = CUSOLVER_DETERMINISTIC_RESULTS
     ALLOW_NON_DETERMINISTIC_RESULTS = CUSOLVER_ALLOW_NON_DETERMINISTIC_RESULTS
 
 class MathMode(_IntEnum):
-    """See `cusolverMathMode_t`."""
+    """
+    See `cusolverMathMode_t`.
+    """
     DEFAULT_MATH = CUSOLVER_DEFAULT_MATH
     FP32_EMULATED_BF16X9_MATH = CUSOLVER_FP32_EMULATED_BF16X9_MATH
+    FP64_EMULATED_FIXEDPOINT_MATH = CUSOLVER_FP64_EMULATED_FIXEDPOINT_MATH
+    FP32_FP64_EMULATED_MATH = CUSOLVER_FP32_FP64_EMULATED_MATH
+
+class EigComp(_IntEnum):
+    """
+    See `cusolverEigComp_t`.
+    """
+    N = CUSOLVER_EIG_COMP_N
+    I = CUSOLVER_EIG_COMP_I
+    V = CUSOLVER_EIG_COMP_V
 
 
 ###############################################################################

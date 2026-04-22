@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-from .common_axes import (
-    DType,
+from nvmath.sparse.advanced import DirectSolverMatrixType
+
+from ...utils.common_axes import (
     DenseRHS,
+    DType,
     ExecutionSpace,
     SparseArrayType,
 )
-from nvmath.sparse.advanced import DirectSolverMatrixType
-
 
 supported_dtypes = (DType.float32, DType.float64, DType.complex64, DType.complex128)
 supported_index_dtypes = (DType.int32, DType.int64)

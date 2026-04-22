@@ -8,10 +8,10 @@ classes.
 """
 
 import dataclasses
-from enum import IntEnum
 import re
-from typing import Any, ClassVar
 from collections.abc import Callable
+from enum import IntEnum
+from typing import Any, ClassVar
 
 import numpy
 

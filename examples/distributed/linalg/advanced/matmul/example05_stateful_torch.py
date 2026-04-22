@@ -13,13 +13,12 @@ The global operation performed in this example is: A.T @ B
 $ mpiexec -n 4 python example05_stateful_torch.py
 """
 
-import torch
 import numpy as np
+import torch
 from mpi4py import MPI
 
 import nvmath.distributed
-
-from nvmath.distributed.distribution import ProcessGrid, BlockNonCyclic
+from nvmath.distributed.distribution import BlockNonCyclic, ProcessGrid
 from nvmath.distributed.linalg.advanced import matrix_qualifiers_dtype
 
 # Initialize nvmath.distributed.
@@ -27,7 +26,9 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % torch.cuda.device_count()
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
+# cuBLASMp requires NCCL communication backend. In this example we also
+# initialize NVSHMEM backend to illustrate interoperation with operands
+# on NVSHMEM symmetric memory.
 nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
 
 # The global problem size m, n, k
@@ -41,13 +42,14 @@ col_wise_distribution = BlockNonCyclic(ProcessGrid(shape=(1, nranks)))  # partit
 
 a_shape = col_wise_distribution.shape(rank, (m, k))
 b_shape = col_wise_distribution.shape(rank, (n, k))
+# Allocate operands on NVSHMEM symmetric heap.
 a = nvmath.distributed.allocate_symmetric_memory(a_shape, torch)
 b = nvmath.distributed.allocate_symmetric_memory(b_shape, torch)
 with torch.cuda.device(device_id):
-    a[:] = torch.rand(*a_shape, device=f"cuda:{device_id}")
-    b[:] = torch.rand(*b_shape, device=f"cuda:{device_id}")
+    a[:] = torch.rand(*a_shape, device="cuda")
+    b[:] = torch.rand(*b_shape, device="cuda")
 
-# Get a transposed view to obtain column-major Fortran memory layout. Note that this
+# Get a transposed view to obtain column-major memory layout. Note that this
 # also changes the distribution of a and b (see example01 for more information).
 a = a.T  # a is now (k, m) with row_wise_distribution
 b = b.T  # b is now (k, n) with row_wise_distribution
@@ -66,7 +68,7 @@ with nvmath.distributed.linalg.advanced.Matmul(a, b, distributions=distributions
     # Execute the matrix multiplication.
     result = mm.execute()
 
-    # Note: if all of the input operands are on symmetric memory, the result is also
+    # Note: if all of the input operands are on NVSHMEM symmetric memory, the result is also
     # on symmetric memory.
 
     # Synchronize the default stream, since by default the execution is non-blocking for GPU
@@ -75,7 +77,7 @@ with nvmath.distributed.linalg.advanced.Matmul(a, b, distributions=distributions
     print(f"Input types = {type(a), type(b)}, device = {a.device, b.device}")
     print(f"Result type = {type(result)}, device = {result.device}")
 
-# GPU operands on the symmetric heap are not garbage-collected and the user is
+# GPU operands on the NVSHMEM symmetric heap are not garbage-collected and the user is
 # responsible for freeing any that they own (this deallocation is a collective
 # operation that must be called by all processes at the same point in the execution).
 nvmath.distributed.free_symmetric_memory(a, b, result)

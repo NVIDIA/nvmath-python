@@ -15,12 +15,17 @@ Installation
 To quickly install nvmath-python just run the following command:
 
 .. code-block:: bash
+   :substitutions:
 
-    pip install nvmath-python[cu12-dx]
+    pip install nvmath-python[cu12-dx]==|nvmath-python_version|
 
 .. important::
     Using at least one of the ``pip`` extras is required for all ``pip`` installs to
     ensure that nvmath-python's dependencies are correctly constrained.
+
+.. note::
+    Specify the version of nvmath-python to ensure that pip doesn't install
+    an outdated version if you're using a version of Python that is no longer supported.
 
 For more details visit the :doc:`Installation Guide<installation>`.
 

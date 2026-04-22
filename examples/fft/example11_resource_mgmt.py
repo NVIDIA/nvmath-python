@@ -18,7 +18,6 @@ import cupy as cp
 
 import nvmath
 
-
 shape = 256, 512, 512
 axes = 0, 1
 

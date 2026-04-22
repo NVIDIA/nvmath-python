@@ -2,11 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .helpers import l2error, _TOLERANCE
 import numpy as np
-from nvmath.device import matmul, TransposeMode
-import cupy
+import pytest
+
+from nvmath.device import TransposeMode, matmul
+
+from .helpers import _TOLERANCE, l2error
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 from numba import cuda
+
 from .helpers_numba import run_and_time, shared_load_3d, shared_store_3d
 
 
@@ -55,7 +63,7 @@ class NumbaGemmBatched:
             cuda.syncthreads()
 
             # Execute FFT
-            for r in range(repeat):
+            for _r in range(repeat):
                 MM(alpha, a_smem, b_smem, beta, c_smem)
 
             cuda.syncthreads()
@@ -76,6 +84,8 @@ class NumbaGemmBatched:
         assert reference.shape == (batch, m, n)
         print(f"NumbaGemmBatched ncycles {ncycles}")
 
+        if cupy is None:
+            pytest.skip("cupy is not available")
         c = cuda.to_device(cupy.zeros_like(reference))
         a_d = cuda.to_device(a)
         b_d = cuda.to_device(b)

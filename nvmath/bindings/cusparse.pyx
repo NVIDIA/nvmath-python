@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.0, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -16,7 +16,9 @@ import numpy as _numpy
 ###############################################################################
 
 class Status(_IntEnum):
-    """See `cusparseStatus_t`."""
+    """
+    See `cusparseStatus_t`.
+    """
     SUCCESS = CUSPARSE_STATUS_SUCCESS
     NOT_INITIALIZED = CUSPARSE_STATUS_NOT_INITIALIZED
     ALLOC_FAILED = CUSPARSE_STATUS_ALLOC_FAILED
@@ -31,65 +33,89 @@ class Status(_IntEnum):
     INSUFFICIENT_RESOURCES = CUSPARSE_STATUS_INSUFFICIENT_RESOURCES
 
 class PointerMode(_IntEnum):
-    """See `cusparsePointerMode_t`."""
+    """
+    See `cusparsePointerMode_t`.
+    """
     HOST = CUSPARSE_POINTER_MODE_HOST
     DEVICE = CUSPARSE_POINTER_MODE_DEVICE
 
 class Action(_IntEnum):
-    """See `cusparseAction_t`."""
+    """
+    See `cusparseAction_t`.
+    """
     SYMBOLIC = CUSPARSE_ACTION_SYMBOLIC
     NUMERIC = CUSPARSE_ACTION_NUMERIC
 
 class MatrixType(_IntEnum):
-    """See `cusparseMatrixType_t`."""
+    """
+    See `cusparseMatrixType_t`.
+    """
     GENERAL = CUSPARSE_MATRIX_TYPE_GENERAL
     SYMMETRIC = CUSPARSE_MATRIX_TYPE_SYMMETRIC
     HERMITIAN = CUSPARSE_MATRIX_TYPE_HERMITIAN
     TRIANGULAR = CUSPARSE_MATRIX_TYPE_TRIANGULAR
 
 class FillMode(_IntEnum):
-    """See `cusparseFillMode_t`."""
+    """
+    See `cusparseFillMode_t`.
+    """
     LOWER = CUSPARSE_FILL_MODE_LOWER
     UPPER = CUSPARSE_FILL_MODE_UPPER
 
 class DiagType(_IntEnum):
-    """See `cusparseDiagType_t`."""
+    """
+    See `cusparseDiagType_t`.
+    """
     NON_UNIT = CUSPARSE_DIAG_TYPE_NON_UNIT
     UNIT = CUSPARSE_DIAG_TYPE_UNIT
 
 class IndexBase(_IntEnum):
-    """See `cusparseIndexBase_t`."""
+    """
+    See `cusparseIndexBase_t`.
+    """
     ZERO = CUSPARSE_INDEX_BASE_ZERO
     ONE = CUSPARSE_INDEX_BASE_ONE
 
 class Operation(_IntEnum):
-    """See `cusparseOperation_t`."""
+    """
+    See `cusparseOperation_t`.
+    """
     NON_TRANSPOSE = CUSPARSE_OPERATION_NON_TRANSPOSE
     TRANSPOSE = CUSPARSE_OPERATION_TRANSPOSE
     CONJUGATE_TRANSPOSE = CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE
 
 class Direction(_IntEnum):
-    """See `cusparseDirection_t`."""
+    """
+    See `cusparseDirection_t`.
+    """
     ROW = CUSPARSE_DIRECTION_ROW
     COLUMN = CUSPARSE_DIRECTION_COLUMN
 
 class SolvePolicy(_IntEnum):
-    """See `cusparseSolvePolicy_t`."""
+    """
+    See `cusparseSolvePolicy_t`.
+    """
     NO_LEVEL = CUSPARSE_SOLVE_POLICY_NO_LEVEL
     USE_LEVEL = CUSPARSE_SOLVE_POLICY_USE_LEVEL
 
 class ColorAlg(_IntEnum):
-    """See `cusparseColorAlg_t`."""
+    """
+    See `cusparseColorAlg_t`.
+    """
     COLOR_ALG0 = CUSPARSE_COLOR_ALG0
     COLOR_ALG1 = CUSPARSE_COLOR_ALG1
 
 class Csr2CscAlg(_IntEnum):
-    """See `cusparseCsr2CscAlg_t`."""
+    """
+    See `cusparseCsr2CscAlg_t`.
+    """
     DEFAULT = CUSPARSE_CSR2CSC_ALG_DEFAULT
     ALG1 = CUSPARSE_CSR2CSC_ALG1
 
 class Format(_IntEnum):
-    """See `cusparseFormat_t`."""
+    """
+    See `cusparseFormat_t`.
+    """
     CSR = CUSPARSE_FORMAT_CSR
     CSC = CUSPARSE_FORMAT_CSC
     COO = CUSPARSE_FORMAT_COO
@@ -98,31 +124,43 @@ class Format(_IntEnum):
     SLICED_ELLPACK = CUSPARSE_FORMAT_SLICED_ELLPACK
 
 class Order(_IntEnum):
-    """See `cusparseOrder_t`."""
+    """
+    See `cusparseOrder_t`.
+    """
     COL = CUSPARSE_ORDER_COL
     ROW = CUSPARSE_ORDER_ROW
 
 class IndexType(_IntEnum):
-    """See `cusparseIndexType_t`."""
+    """
+    See `cusparseIndexType_t`.
+    """
     INDEX_16U = CUSPARSE_INDEX_16U
     INDEX_32I = CUSPARSE_INDEX_32I
     INDEX_64I = CUSPARSE_INDEX_64I
 
 class SpMatAttribute(_IntEnum):
-    """See `cusparseSpMatAttribute_t`."""
+    """
+    See `cusparseSpMatAttribute_t`.
+    """
     FILL_MODE = CUSPARSE_SPMAT_FILL_MODE
     DIAG_TYPE = CUSPARSE_SPMAT_DIAG_TYPE
 
 class SparseToDenseAlg(_IntEnum):
-    """See `cusparseSparseToDenseAlg_t`."""
+    """
+    See `cusparseSparseToDenseAlg_t`.
+    """
     DEFAULT = CUSPARSE_SPARSETODENSE_ALG_DEFAULT
 
 class DenseToSparseAlg(_IntEnum):
-    """See `cusparseDenseToSparseAlg_t`."""
+    """
+    See `cusparseDenseToSparseAlg_t`.
+    """
     DEFAULT = CUSPARSE_DENSETOSPARSE_ALG_DEFAULT
 
 class SpMVAlg(_IntEnum):
-    """See `cusparseSpMVAlg_t`."""
+    """
+    See `cusparseSpMVAlg_t`.
+    """
     DEFAULT = CUSPARSE_SPMV_ALG_DEFAULT
     CSR_ALG1 = CUSPARSE_SPMV_CSR_ALG1
     CSR_ALG2 = CUSPARSE_SPMV_CSR_ALG2
@@ -132,15 +170,21 @@ class SpMVAlg(_IntEnum):
     BSR_ALG1 = CUSPARSE_SPMV_BSR_ALG1
 
 class SpSVAlg(_IntEnum):
-    """See `cusparseSpSVAlg_t`."""
+    """
+    See `cusparseSpSVAlg_t`.
+    """
     DEFAULT = CUSPARSE_SPSV_ALG_DEFAULT
 
 class SpSMAlg(_IntEnum):
-    """See `cusparseSpSMAlg_t`."""
+    """
+    See `cusparseSpSMAlg_t`.
+    """
     DEFAULT = CUSPARSE_SPSM_ALG_DEFAULT
 
 class SpMMAlg(_IntEnum):
-    """See `cusparseSpMMAlg_t`."""
+    """
+    See `cusparseSpMMAlg_t`.
+    """
     DEFAULT = CUSPARSE_SPMM_ALG_DEFAULT
     COO_ALG1 = CUSPARSE_SPMM_COO_ALG1
     COO_ALG2 = CUSPARSE_SPMM_COO_ALG2
@@ -153,7 +197,9 @@ class SpMMAlg(_IntEnum):
     BSR_ALG1 = CUSPARSE_SPMM_BSR_ALG1
 
 class SpGEMMAlg(_IntEnum):
-    """See `cusparseSpGEMMAlg_t`."""
+    """
+    See `cusparseSpGEMMAlg_t`.
+    """
     DEFAULT = CUSPARSE_SPGEMM_DEFAULT
     CSR_ALG_DETERMINITIC = CUSPARSE_SPGEMM_CSR_ALG_DETERMINITIC
     CSR_ALG_NONDETERMINITIC = CUSPARSE_SPGEMM_CSR_ALG_NONDETERMINITIC
@@ -162,20 +208,28 @@ class SpGEMMAlg(_IntEnum):
     ALG3 = CUSPARSE_SPGEMM_ALG3
 
 class SDDMMAlg(_IntEnum):
-    """See `cusparseSDDMMAlg_t`."""
+    """
+    See `cusparseSDDMMAlg_t`.
+    """
     DEFAULT = CUSPARSE_SDDMM_ALG_DEFAULT
 
 class SpMMOpAlg(_IntEnum):
-    """See `cusparseSpMMOpAlg_t`."""
+    """
+    See `cusparseSpMMOpAlg_t`.
+    """
     DEFAULT = CUSPARSE_SPMM_OP_ALG_DEFAULT
 
 class SpSVUpdate(_IntEnum):
-    """See `cusparseSpSVUpdate_t`."""
+    """
+    See `cusparseSpSVUpdate_t`.
+    """
     GENERAL = CUSPARSE_SPSV_UPDATE_GENERAL
     DIAGONAL = CUSPARSE_SPSV_UPDATE_DIAGONAL
 
 class SpSMUpdate(_IntEnum):
-    """See `cusparseSpSMUpdate_t`."""
+    """
+    See `cusparseSpSMUpdate_t`.
+    """
     UPDATE_GENERAL = CUSPARSE_SPSM_UPDATE_GENERAL
     UPDATE_DIAGONAL = CUSPARSE_SPSM_UPDATE_DIAGONAL
 
@@ -2343,3 +2397,58 @@ cpdef sp_sm_update_matrix(intptr_t handle, intptr_t spsm_descr, intptr_t new_val
     with nogil:
         __status__ = cusparseSpSM_updateMatrix(<Handle>handle, <SpSMDescr>spsm_descr, <void*>new_values, <_SpSMUpdate>update_part)
     check_status(__status__)
+
+
+cpdef intptr_t sp_mv_op_create_descr(intptr_t handle, int op_a, intptr_t mat_a, intptr_t vec_x, intptr_t vec_y, intptr_t vec_z, int compute_type, intptr_t buffer) except? 0:
+    """See `cusparseSpMVOp_createDescr`."""
+    cdef SpMVOpDescr desc
+    with nogil:
+        __status__ = cusparseSpMVOp_createDescr(<Handle>handle, &desc, <_Operation>op_a, <ConstSpMatDescr>mat_a, <ConstDnVecDescr>vec_x, <DnVecDescr>vec_y, <DnVecDescr>vec_z, <DataType>compute_type, <void*>buffer)
+    check_status(__status__)
+    return <intptr_t>desc
+
+
+cpdef sp_mv_op_destroy_descr(intptr_t desc):
+    """See `cusparseSpMVOp_destroyDescr`."""
+    with nogil:
+        __status__ = cusparseSpMVOp_destroyDescr(<SpMVOpDescr>desc)
+    check_status(__status__)
+
+
+cpdef intptr_t sp_mv_op_create_plan(intptr_t handle, intptr_t desc, intptr_t code, size_t code_size) except? 0:
+    """See `cusparseSpMVOp_createPlan`."""
+    cdef SpMVOpPlan plan
+    with nogil:
+        __status__ = cusparseSpMVOp_createPlan(<Handle>handle, <SpMVOpDescr>desc, &plan, <const void*>code, code_size)
+    check_status(__status__)
+    return <intptr_t>plan
+
+
+cpdef sp_mv_op_destroy_plan(intptr_t plan):
+    """See `cusparseSpMVOp_destroyPlan`."""
+    with nogil:
+        __status__ = cusparseSpMVOp_destroyPlan(<SpMVOpPlan>plan)
+    check_status(__status__)
+
+
+cpdef sp_mv_op_set_global_user_data(intptr_t handle, intptr_t plan, intptr_t global_data_name, intptr_t input_data, size_t data_size):
+    """See `cusparseSpMVOp_setGlobalUserData`."""
+    with nogil:
+        __status__ = cusparseSpMVOp_setGlobalUserData(<Handle>handle, <SpMVOpPlan>plan, <const char*>global_data_name, <void*>input_data, data_size)
+    check_status(__status__)
+
+
+cpdef sp_mv_op(intptr_t handle, intptr_t plan, intptr_t alpha, intptr_t beta, intptr_t vec_x, intptr_t vec_y, intptr_t vec_z):
+    """See `cusparseSpMVOp`."""
+    with nogil:
+        __status__ = cusparseSpMVOp(<Handle>handle, <SpMVOpPlan>plan, <const void*>alpha, <const void*>beta, <ConstDnVecDescr>vec_x, <ConstDnVecDescr>vec_y, <DnVecDescr>vec_z)
+    check_status(__status__)
+
+
+cpdef size_t sp_mv_op_buffer_size(intptr_t handle, int op_a, intptr_t mat_a, intptr_t vec_x, intptr_t vec_y, intptr_t vec_z, int compute_type) except? 0:
+    """See `cusparseSpMVOp_bufferSize`."""
+    cdef size_t buffer_size
+    with nogil:
+        __status__ = cusparseSpMVOp_bufferSize(<Handle>handle, <_Operation>op_a, <ConstSpMatDescr>mat_a, <ConstDnVecDescr>vec_x, <DnVecDescr>vec_y, <DnVecDescr>vec_z, <DataType>compute_type, &buffer_size)
+    check_status(__status__)
+    return buffer_size

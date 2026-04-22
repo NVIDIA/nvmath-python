@@ -8,11 +8,13 @@ try:
 except ImportError:
     torch = None
 import pytest
-from ...utils import sample_matrix, assert_tensors_equal, matmul_with_random_autotune
-from .fp8_utils import choose_scales, generate_inputs, assert_fp8_equal, fp8_matmul_reference
-from nvmath.linalg.advanced import Matmul, matmul, MatmulQuantizationScales
-from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
+
 from nvmath.bindings import cublasLt as cublaslt
+from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
+from nvmath.linalg.advanced import Matmul, MatmulQuantizationScales, matmul
+
+from ...utils import assert_tensors_equal, matmul_with_random_autotune, pad_and_slice, sample_matrix
+from .fp8_utils import assert_fp8_equal, choose_scales, fp8_matmul_reference, generate_inputs
 
 if torch is None:
     pytest.skip("Torch is required for FP8 tests", allow_module_level=True)
@@ -98,21 +100,35 @@ SUPPORTED_TYPE_COMBINATIONS_WITH_NON_FP8_D = [
     ),
 )
 @pytest.mark.parametrize(("use_cuda"), (True, False))
-def test_stateful(m, n, k, atype, btype, ctype, dtype, use_cuda):
+@pytest.mark.parametrize(
+    "pad_a,pad_b",
+    [(False, False), (True, False), (False, True), (True, True)],
+    ids=["no_pad", "pad_a", "pad_b", "pad_ab"],
+)
+def test_stateful(m, n, k, atype, btype, ctype, dtype, use_cuda, pad_a, pad_b):
     """
     General test of FP8 multiplication.
     """
-    a, b, c, alpha, beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
+    if not use_cuda and (pad_a or pad_b):
+        pytest.skip("Padded slicing skipped on CPU")
+
+    a_orig, b_orig, c, alpha, beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
+    a = pad_and_slice(a_orig) if pad_a else a_orig
+    b = pad_and_slice(b_orig) if pad_b else b_orig
+
     quantization_scales = choose_scales(a, b, c, atype, btype, ctype, dtype, alpha=alpha, beta=beta)
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None}
 
-    mm = Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
-    mm.plan()
-    result = mm.execute()
+    with Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options) as mm:
+        mm.plan()
+        result = mm.execute()
 
     assert str(result.dtype).split(".")[-1] == expected_result_type(atype, btype, ctype, dtype)
 
-    reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
+    # important: we use the original (non-padded) matrices for the reference computation
+    reference = fp8_matmul_reference(
+        a_orig, b_orig, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options
+    )
     assert_fp8_equal(result, reference)
 
 
@@ -131,10 +147,11 @@ def test_autotuning(m, n, k, atype, btype, ctype, dtype, amax, use_cuda):
     quantization_scales = choose_scales(a, b, c, atype, btype, ctype, dtype, alpha=alpha, beta=beta)
     result_type = expected_result_type(atype, btype, ctype, dtype)
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "result_amax": amax and "float8" in result_type}
-    mm = Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
-    mm.plan()
-    mm.autotune()
-    result = mm.execute()
+    with Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options) as mm:
+        mm.plan()
+        result = mm.execute()
+        mm.autotune()
+        result = mm.execute()
     if isinstance(result, tuple):
         result = result[0]
     reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
@@ -179,7 +196,12 @@ def test_stateless(m, n, k, atype, btype, ctype, dtype, use_cuda):
     ((16, 16, 16),),
 )
 @pytest.mark.parametrize(("use_cuda"), (True,))
-def test_batching(m, n, k, atype, btype, ctype, dtype, a_batch, b_batch, c_batch, d_batch, use_cuda):
+@pytest.mark.parametrize(
+    "pad_a,pad_b",
+    [(False, False), (True, False), (False, True), (True, True)],
+    ids=["no_pad", "pad_a", "pad_b", "pad_ab"],
+)
+def test_batching(m, n, k, atype, btype, ctype, dtype, a_batch, b_batch, c_batch, d_batch, use_cuda, pad_a, pad_b):
     """
     Tests if batching works with FP8.
     """
@@ -191,8 +213,10 @@ def test_batching(m, n, k, atype, btype, ctype, dtype, a_batch, b_batch, c_batch
         x = sample_matrix("torch", type, shape, use_cuda=use_cuda, min=0, max=2)
         return x.swapaxes(-1, -2) if transposed else x
 
-    a = sample_batch(a_batch, (m, k), atype, transposed=False)
-    b = sample_batch(b_batch, (k, n), btype, transposed=True)
+    a_orig = sample_batch(a_batch, (m, k), atype, transposed=False)
+    b_orig = sample_batch(b_batch, (k, n), btype, transposed=True)
+    a = pad_and_slice(a_orig) if pad_a else a_orig
+    b = pad_and_slice(b_orig) if pad_b else b_orig
 
     if ctype is not None:
         c = sample_batch(c_batch, (m, n), ctype, transposed=False)
@@ -212,7 +236,10 @@ def test_batching(m, n, k, atype, btype, ctype, dtype, a_batch, b_batch, c_batch
     expected_result_shape = (*d_batch, m, n)
     assert result.shape == expected_result_shape
 
-    reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
+    # important: we use the original (non-padded) matrices for the reference computation
+    reference = fp8_matmul_reference(
+        a_orig, b_orig, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options
+    )
     assert_fp8_equal(result, reference)
 
 
@@ -254,39 +281,39 @@ def test_tensor_scales(m, n, k, atype, btype, ctype, dtype, a_scale_kind, b_scal
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None}
 
     scales = prepare_scales(scalar_scales)
-    mm = Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=scales, options=options)
-    mm.plan()
-    result = mm.execute()
-    reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=scalar_scales, options=options)
-    assert_fp8_equal(result, reference)
+    with Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=scales, options=options) as mm:
+        mm.plan()
+        result = mm.execute()
+        reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=scalar_scales, options=options)
+        assert_fp8_equal(result, reference)
 
-    # In-place modification of device tensor scales.
-    if a_scale_kind == "tensor" and use_cuda:
-        scalar_scales["a"] *= 0.5
-        scales["a"].copy_(scalar_scales["a"])
-    if b_scale_kind == "tensor" and use_cuda:
-        scalar_scales["b"] *= -1
-        scales["b"].copy_(scalar_scales["b"])
-    if c_scale_kind == "tensor" and use_cuda and scalar_scales["c"] is not None:
-        scalar_scales["c"] *= -1
-        scales["c"].copy_(scalar_scales["c"])
-    if d_scale_kind == "tensor" and use_cuda and scalar_scales["d"] is not None:
-        scalar_scales["d"] *= 0.5
-        scales["d"].copy_(scalar_scales["d"])
-    result = mm.execute()
-    reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=scalar_scales, options=options)
-    assert_fp8_equal(result, reference)
+        # In-place modification of device tensor scales.
+        if a_scale_kind == "tensor" and use_cuda:
+            scalar_scales["a"] *= 0.5
+            scales["a"].copy_(scalar_scales["a"])
+        if b_scale_kind == "tensor" and use_cuda:
+            scalar_scales["b"] *= -1
+            scales["b"].copy_(scalar_scales["b"])
+        if c_scale_kind == "tensor" and use_cuda and scalar_scales["c"] is not None:
+            scalar_scales["c"] *= -1
+            scales["c"].copy_(scalar_scales["c"])
+        if d_scale_kind == "tensor" and use_cuda and scalar_scales["d"] is not None:
+            scalar_scales["d"] *= 0.5
+            scales["d"].copy_(scalar_scales["d"])
+        result = mm.execute()
+        reference = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=scalar_scales, options=options)
+        assert_fp8_equal(result, reference)
 
-    # Reset of the scales
-    new_a, new_b, new_c, new_alpha, new_beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
-    new_scalar_scales = choose_scales(new_a, new_b, new_c, atype, btype, ctype, dtype, alpha=new_alpha, beta=new_beta)
-    new_scales = prepare_scales(new_scalar_scales)
-    mm.reset_operands(a=new_a, b=new_b, c=new_c, quantization_scales=new_scales, alpha=new_alpha, beta=new_beta)
-    result = mm.execute()
-    reference = fp8_matmul_reference(
-        new_a, new_b, new_c, alpha=new_alpha, beta=new_beta, quantization_scales=new_scalar_scales, options=options
-    )
-    assert_fp8_equal(result, reference)
+        # Reset of the scales
+        new_a, new_b, new_c, new_alpha, new_beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
+        new_scalar_scales = choose_scales(new_a, new_b, new_c, atype, btype, ctype, dtype, alpha=new_alpha, beta=new_beta)
+        new_scales = prepare_scales(new_scalar_scales)
+        mm.reset_operands(a=new_a, b=new_b, c=new_c, quantization_scales=new_scales, alpha=new_alpha, beta=new_beta)
+        result = mm.execute()
+        reference = fp8_matmul_reference(
+            new_a, new_b, new_c, alpha=new_alpha, beta=new_beta, quantization_scales=new_scalar_scales, options=options
+        )
+        assert_fp8_equal(result, reference)
 
 
 @pytest.mark.parametrize("atype,btype,ctype,dtype", SUPPORTED_TYPE_COMBINATIONS_WITH_FP8_D)
@@ -347,28 +374,30 @@ def test_reset_operands(m, n, k, atype, btype, ctype, dtype, reset_a, reset_b, r
     quantization_scales = choose_scales(a, b, c, atype, btype, ctype, dtype, alpha=alpha, beta=beta)
 
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None}
-    mm = Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
-    mm.plan()
-    result1 = mm.execute()
-    reference1 = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
-    assert_fp8_equal(result1, reference1)
+    with Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options) as mm:
+        mm.plan()
+        result1 = mm.execute()
+        reference1 = fp8_matmul_reference(
+            a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options
+        )
+        assert_fp8_equal(result1, reference1)
 
-    new_a, new_b, new_c, new_alpha, new_beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
+        new_a, new_b, new_c, new_alpha, new_beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
 
-    reset_kwargs = {}
-    if reset_a:
-        reset_kwargs["a"] = a = new_a
-    if reset_b:
-        reset_kwargs["b"] = b = new_b
-    if reset_c:
-        reset_kwargs["c"] = c = new_c
-    if reset_alpha:
-        reset_kwargs["alpha"] = alpha = new_alpha
-    if reset_beta:
-        reset_kwargs["beta"] = beta = new_beta
+        reset_kwargs = {}
+        if reset_a:
+            reset_kwargs["a"] = a = new_a
+        if reset_b:
+            reset_kwargs["b"] = b = new_b
+        if reset_c:
+            reset_kwargs["c"] = c = new_c
+        if reset_alpha:
+            reset_kwargs["alpha"] = alpha = new_alpha
+        if reset_beta:
+            reset_kwargs["beta"] = beta = new_beta
 
-    mm.reset_operands(**reset_kwargs)
-    result2 = mm.execute()
+        mm.reset_operands(**reset_kwargs)
+        result2 = mm.execute()
     reference2 = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
     assert_fp8_equal(result2, reference2)
 
@@ -390,31 +419,33 @@ def test_reset_quantization_scales(
     quantization_scales = choose_scales(a, b, c, atype, btype, ctype, dtype, alpha=alpha, beta=beta)
 
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None}
-    mm = Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
-    mm.plan()
-    result1 = mm.execute()
-    reference1 = fp8_matmul_reference(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
-    assert_fp8_equal(result1, reference1)
+    with Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options) as mm:
+        mm.plan()
+        result1 = mm.execute()
+        reference1 = fp8_matmul_reference(
+            a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options
+        )
+        assert_fp8_equal(result1, reference1)
 
-    new_a, new_b, new_c, new_alpha, new_beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
-    new_quantization_scales = choose_scales(new_a, new_b, new_c, atype, btype, ctype, dtype, alpha=new_alpha, beta=new_beta)
+        new_a, new_b, new_c, new_alpha, new_beta = generate_inputs(m, n, k, atype, btype, ctype, use_cuda=use_cuda)
+        new_quantization_scales = choose_scales(new_a, new_b, new_c, atype, btype, ctype, dtype, alpha=new_alpha, beta=new_beta)
 
-    reset_kwargs = {"a": new_a}
+        reset_kwargs = {"a": new_a}
 
-    reset_quantization_scales = {}
-    if reset_a_scale:
-        reset_quantization_scales["a"] = quantization_scales["a"] = new_quantization_scales["a"]
-    if reset_b_scale:
-        reset_quantization_scales["b"] = quantization_scales["b"] = new_quantization_scales["b"]
-    if reset_c_scale:
-        reset_quantization_scales["c"] = quantization_scales["c"] = new_quantization_scales["c"]
-    if reset_d_scale:
-        reset_quantization_scales["d"] = quantization_scales["d"] = new_quantization_scales["d"]
-    if reset_quantization_scales:
-        reset_kwargs["quantization_scales"] = reset_quantization_scales
+        reset_quantization_scales = {}
+        if reset_a_scale:
+            reset_quantization_scales["a"] = quantization_scales["a"] = new_quantization_scales["a"]
+        if reset_b_scale:
+            reset_quantization_scales["b"] = quantization_scales["b"] = new_quantization_scales["b"]
+        if reset_c_scale:
+            reset_quantization_scales["c"] = quantization_scales["c"] = new_quantization_scales["c"]
+        if reset_d_scale:
+            reset_quantization_scales["d"] = quantization_scales["d"] = new_quantization_scales["d"]
+        if reset_quantization_scales:
+            reset_kwargs["quantization_scales"] = reset_quantization_scales
 
-    mm.reset_operands(**reset_kwargs)
-    result2 = mm.execute()
+        mm.reset_operands(**reset_kwargs)
+        result2 = mm.execute()
     reference2 = fp8_matmul_reference(
         new_a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options
     )
@@ -645,3 +676,48 @@ def test_validation_non_fp8_amax(m, n, k, atype, btype, ctype, dtype, stateless,
     options = {"result_type": NAME_TO_DATA_TYPE[dtype] if dtype else None, "result_amax": True}
     with pytest.raises(ValueError, match=r"result_amax=True is allowed only for narrow-precision \(FP8 and lower\) results"):
         matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=scales, options=options)
+
+
+def test_release_operands_quantization_scales():
+    """
+    Test that after release_operands(), the refcounts of user-provided
+    tensor quantization scales return to their initial values.
+    """
+    import sys
+
+    m, n, k = 128, 256, 128
+
+    a = torch.randn(m, k, dtype=torch.float32).cuda().to(torch.float8_e4m3fn)
+    b = torch.randn(n, k, dtype=torch.float32).cuda().to(torch.float8_e4m3fn).T
+    scale_a = torch.tensor([1.0], dtype=torch.float32).cuda()
+    scale_b = torch.tensor([2.0], dtype=torch.float32).cuda()
+    scale_d = torch.tensor([1.0], dtype=torch.float32).cuda()
+
+    # Record initial refcounts
+    initial_refcounts = {
+        "a": sys.getrefcount(a),
+        "b": sys.getrefcount(b),
+        "scale_a": sys.getrefcount(scale_a),
+        "scale_b": sys.getrefcount(scale_b),
+        "scale_d": sys.getrefcount(scale_d),
+    }
+
+    quantization_scales = MatmulQuantizationScales(a=scale_a, b=scale_b, d=scale_d)
+
+    mm = Matmul(a, b, quantization_scales=quantization_scales)
+    mm.plan()
+    _ = mm.execute()
+    torch.cuda.current_stream().synchronize()
+
+    mm.release_operands()
+    # Drop reference to quantization_scales or
+    # an extra reference leaks and corrupts the test
+    del quantization_scales
+
+    assert sys.getrefcount(a) == initial_refcounts["a"]
+    assert sys.getrefcount(b) == initial_refcounts["b"]
+    assert sys.getrefcount(scale_a) == initial_refcounts["scale_a"]
+    assert sys.getrefcount(scale_b) == initial_refcounts["scale_b"]
+    assert sys.getrefcount(scale_d) == initial_refcounts["scale_d"]
+
+    mm.free()

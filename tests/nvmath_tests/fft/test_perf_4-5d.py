@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
-import itertools
 import functools
-import sys
+import itertools
 import os
+import sys
+
+import numpy as np
 
 try:
     import cupy
@@ -14,7 +15,7 @@ except ImportError:
     cupy = None
 
 if cupy is not None:
-    from nvmath_tests.helpers import time_cupy, print_aligned_table, fft_perf_GFlops
+    from nvmath_tests.helpers import fft_perf_GFlops, print_aligned_table, time_cupy
 
     def test_fft():
         try:
@@ -27,7 +28,8 @@ if cupy is not None:
 
 
 def run_test():
-    from fft.caching import fft as cachedfft, FFTCache
+    from fft.caching import FFTCache
+    from fft.caching import fft as cachedfft
     from fft.fftn2 import fftn
 
     cols = [
@@ -60,13 +62,16 @@ def run_test():
             fft_size = int(np.prod([shape[a] for a in axes]))
             batch_size = int(np.prod([shape[a] for a in range(rank) if a not in axes]))
 
-            time_nvmath_noncaching = time_cupy(lambda: fftn(a, axes=axes), ncycles)
+            time_nvmath_noncaching = time_cupy(lambda a=a, axes=axes: fftn(a, axes=axes), ncycles)
 
             with FFTCache() as cache:
                 cached_fft = functools.partial(cachedfft, cache=cache)
-                time_nvmath_caching = time_cupy(lambda: fftn(a, axes=axes, engine=cached_fft), ncycles)
+                time_nvmath_caching = time_cupy(
+                    lambda a=a, axes=axes, cached_fft=cached_fft: fftn(a, axes=axes, engine=cached_fft),
+                    ncycles,
+                )
 
-            time_cp = time_cupy(lambda: cupy.fft.fftn(a, axes=axes), ncycles)
+            time_cp = time_cupy(lambda a=a, axes=axes: cupy.fft.fftn(a, axes=axes), ncycles)
 
             data.append(
                 {

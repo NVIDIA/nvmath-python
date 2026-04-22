@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+
 import pytest
 
 from nvmath.internal.typemaps import cudaDataType
 from nvmath.linalg.generic import ExecutionCPU, ExecutionCUDA
 from nvmath.linalg.generic._configuration import wrap
-
 
 from . import CUBLAS_AVAILABLE, NVPL_AVAILABLE
 

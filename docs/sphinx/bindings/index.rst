@@ -45,6 +45,10 @@ follows:
      - :mod:`nvmath.bindings.cusolverDn`
    * - cuSPARSE
      - :mod:`nvmath.bindings.cusparse`
+   * - cuSPARSELt
+     - :mod:`nvmath.bindings.cusparseLt`
+   * - cuTENSOR
+     - :mod:`nvmath.bindings.cutensor`
    * - NVPL BLAS
      - :mod:`nvmath.bindings.nvpl.blas`
    * - NVPL FFT
@@ -200,6 +204,8 @@ This reference describes all nvmath-python's math primitives.
    cusolver
    cusolverDn
    cusparse
+   cusparseLt
+   cutensor
    curand
    nvpl.blas
    nvpl.fft

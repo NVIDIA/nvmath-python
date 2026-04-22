@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import hashlib
-import pytest
+
 import numpy as np
+import pytest
 
 try:
     import cupy as cp

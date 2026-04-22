@@ -5,13 +5,12 @@
 from functools import cached_property
 
 import numpy
-
 from llvmlite import ir as llir
 from numba.core import cgutils
 from numba.core.base import BaseContext
-from numba.extending import types, models
+from numba.cuda.extending import lower_builtin, make_attribute_wrapper, type_callable
 from numba.cuda.models import register_model
-from numba.cuda.extending import make_attribute_wrapper, lower_builtin, type_callable
+from numba.extending import models, types
 
 from nvmath.device.common import Layout, OpaqueTensor
 from nvmath.device.common_numba import NUMBA_FE_TYPES_TO_NUMBA_IR, overload_type_attribute

@@ -10,32 +10,27 @@ __all__ = [
 import dataclasses
 import logging
 import math
-from typing import TypeAlias, Final
 from collections.abc import Sequence
+from typing import Final, TypeAlias
 
 import numpy as np
 
-try:
-    from cuda.core import Stream, Event
-except ImportError:
-    from cuda.core.experimental import Stream, Event
-
-from nvmath.bindings import cublas
 from nvmath._internal import templates
-from nvmath.internal import utils, tensor_wrapper, typemaps, formatters
+from nvmath.bindings import cublas
+from nvmath.internal import formatters, tensor_wrapper, typemaps, utils
 from nvmath.linalg._internal.batch import BatchTraits
-from nvmath.linalg._internal.layout import BLASMMTraitsView, BLASMatrixTraits, InputMMTraits, check_extents, check_strides
+from nvmath.linalg._internal.layout import BLASMatrixTraits, BLASMMTraitsView, InputMMTraits, check_extents, check_strides
+from nvmath.linalg.advanced.matmulmod import SHARED_MM_DOCUMENTATION
 from nvmath.linalg.generic._configuration import (
+    CACHED_LAYOUT_CHECKERS,
     GeneralMatrixQualifier,
+    MatmulOptions,
     MatrixQualifier,
     matrix_qualifiers_dtype,
-    MatmulOptions,
+    mm_layout_checker_getter,
     select_blas_mm_function,
     vector_to_square,
-    mm_layout_checker_getter,
-    CACHED_LAYOUT_CHECKERS,
 )
-from nvmath.linalg.advanced.matmulmod import SHARED_MM_DOCUMENTATION
 from nvmath.linalg.generic._dtype import check_dtype
 
 AnyTensor: TypeAlias = tensor_wrapper.AnyTensor
@@ -467,9 +462,8 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
         self._logger.info("Result D has batch traits of %s.", d_batch)
         self._batch_traits = (a_batch, b_batch, c_batch, d_batch)
 
-        # Attributes to establish stream ordering.
-        self.workspace_stream: Stream | None = None
-        self.last_compute_event: Event | None = None
+        # Track whether user-provided operands have been released
+        self._operands_released = False
 
         self.valid_state = True
         self._logger.info("The Matmul operation has been created.")
@@ -480,6 +474,15 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
         """
         if not self.valid_state:
             raise InvalidMatmulState("The Matmul object cannot be used after resources are free'd")
+
+    def _check_valid_operands(self, *args, **kwargs):
+        """
+        Check if operands are available for operations.
+        """
+        if self._operands_released:
+            raise ValueError(
+                "Operands have been released. Call reset_operands() to provide new operands before using this method."
+            )
 
     @utils.precondition(_check_valid_matmul)
     def plan(self, *, stream: utils.AnyStream | int | None = None) -> None:
@@ -588,34 +591,27 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
     @utils.precondition(_check_valid_matmul)
     def reset_operands(
         self,
+        *,
         a=None,
         b=None,
         c=None,
-        *,
         alpha=None,
         beta=None,
         stream: utils.AnyStream | int | None = None,
     ):
         """
-        Reset the operands held by this :class:`Matmul` instance.
-
-        This method has two use cases:
-            (1) it can be used to provide new operands for execution when the original
-                operands are on the CPU
-            (2) it can be used to release the internal reference to the previous operands
-                and make their memory available for other use by passing ``None`` for *all*
-                arguments. In this case, this method must be called again to provide the
-                desired operands before another call to execution APIs like :meth:`autotune`
-                or :meth:`execute`.
-
-        This method is not needed when the operands reside on the GPU and in-place
-        operations are used to update the operand values.
+        Reset one or more of the operands held by this :class:`Matmul` instance.
+        Only the operands explicitly passed are updated; omitted operands retain
+        their current values.
 
         This method will perform various checks on the new operands to make sure:
 
         - The shapes, strides, datatypes match those of the old ones.
         - The packages that the operands belong to match those of the old ones.
         - If input tensors are on GPU, the device must match.
+
+        .. versionchanged:: 0.9
+            All parameters are now keyword-only.
 
         Args:
             a: {a}
@@ -651,9 +647,9 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             ...     r1 = mm.execute()
             ...
             ...     # Reset the operands to new CuPy ndarrays.
-            ...     c = cp.random.rand(M, K)
-            ...     d = cp.random.rand(K, N)
-            ...     mm.reset_operands(c, d)
+            ...     a_new = cp.random.rand(M, K)
+            ...     b_new = cp.random.rand(K, N)
+            ...     mm.reset_operands(a=a_new, b=b_new)
             ...
             ...     # Execute to get the new result corresponding to the updated operands.
             ...     r2 = mm.execute()
@@ -664,14 +660,10 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             With :meth:`reset_operands`, minimal overhead is achieved as problem
             specification and planning are only performed once.
 
-            For the particular example above, explicitly calling :meth:`reset_operands` is
-            equivalent to updating the operands in-place, i.e, replacing
-            ``mm.reset_operand(c, d)`` with ``a[:]=c`` and ``b[:]=d``. Note that updating
-            the operand in-place should be adopted with caution as it can only yield the
-            expected result under the additional constraint below:
-
-                - The operand is on the GPU (more precisely, the operand memory space should
-                  be accessible from the execution space).
+            For the particular example above, a slower alternative to calling
+            :meth:`reset_operands` would be to modify the operands in-place (e.g.,
+            ``a[:] = a_new`` and ``b[:] = b_new``), but this approach is less efficient
+            as it involves copying data rather than just updating pointers.
 
             For more details, please refer to `inplace update example
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/linalg/advanced/matmul/example05_stateful_inplace.py>`_.
@@ -682,28 +674,18 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                 "The matrix multiplication problem specification does not include operand C, so it cannot be reset."
             )
 
-        if a is None and b is None and c is None and alpha is None and beta is None:
-            self._operands = None  # type: ignore[assignment]
-            self._logger.info("The operands have been reset to None.")
-            return
+        # If operands have been released, all required operands must be provided
+        if self._operands_released:
+            all_provided = a is not None and b is not None and (self.num_operands != 3 or c is not None)
+            if not all_provided:
+                raise ValueError(
+                    "After release_operands(), all required operands must be provided to reset_operands(). "
+                    f"Required: a, b{', c' if self.num_operands == 3 else ''}"
+                )
 
-        # If the operands have been reset to None, then all required operands (a, b, c, and
-        # epilog_inputs need to be provided).
-        if not self._operands:
-            if a is None or b is None or (c is None and self.num_operands == 3):
-                op_names = "A, B"
-                if c is None and self.num_operands == 3:
-                    op_names += ", C"
-                raise ValueError(f"Operands {op_names} must be provided.")
+            # Initialize operands to prepare for new values
             self._operands = [None] * self.num_operands  # type: ignore[list-item]
-
-        # Future operations on the workspace stream should be ordered after the computation.
-        if self.last_compute_event is not None:
-            # FIMXE: What if result is in-place? Then don't we need to wait for copy
-            # from result to out?
-            assert self.workspace_stream is not None
-            self.workspace_stream.wait(self.last_compute_event)
-            self.last_compute_event = None
+            self._operands_backup = [None] * self.num_operands
 
         # Update alpha.
         if alpha is not None:
@@ -726,7 +708,7 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                         f"The value provided for beta {beta} is not convertible to dtype '{self.beta.dtype}'."
                     ) from e
 
-        exec_stream_holder, operand_stream_holder = self._get_or_create_stream_maybe(stream)
+        _, operand_stream_holder = self._get_or_create_stream_maybe(stream)
 
         # Reset the provided operands.
         if a is not None:
@@ -768,9 +750,12 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
                 strides=self.operand_strides[index],
             )
 
+        # Clear the released flag since we now have valid operands
+        self._operands_released = False
+
     @utils.precondition(_check_valid_matmul)
     @utils.precondition(templates.StatefulAPI._check_planned, "Execution")
-    @utils.precondition(templates.StatefulAPI._check_valid_operands, "Execution")
+    @utils.precondition(_check_valid_operands)
     def execute(self, *, stream: utils.AnyStream | int | None = None) -> utils.AnyTensor:
         """
         Execute a prepared (planned) matrix multiplication.
@@ -843,9 +828,8 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
 
         if self.execution.name == "cuda":
             assert exec_stream_holder is not None
-            self.workspace_stream = exec_stream_holder.obj
             with utils.cuda_call_ctx(exec_stream_holder, self._blocking, timing=log_info) as (
-                self.last_compute_event,
+                _,
                 elapsed,
             ):
                 self._function(
@@ -888,6 +872,23 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
 
         return out
 
+    @utils.precondition(_check_valid_matmul)
+    def release_operands(self):
+        """
+        {release_operands}
+        """
+        # Same space: _operands hold direct user references.
+        # Cross space: _operands hold internal device mirrors,
+        #   _operands_backup hold direct user references.
+        # In both cases, release _operands.
+        # Also release _operands_backup in cross-space.
+        self._operands = [None] * len(self._operands)  # type: ignore[list-item]
+        if getattr(self.execution, "device_id", "cpu") != self._operands_device_id:
+            self._operands_backup = [None] * len(self._operands_backup)
+
+        self._operands_released = True
+        self._logger.info("User-provided operands have been released.")
+
     def free(self):
         """Free Matmul resources.
 
@@ -899,8 +900,21 @@ class Matmul(templates.StatefulAPI[MatmulOptions]):
             return
 
         try:
+            # Note that here we don't need to enforce any ordering:
+            # - for CPU operands, the execution is blocking so this method
+            # will only be called after the execution is complete.
+            # - for GPU operands, the execution is non-blocking, but
+            # it operates on the user's operands and they are responsible
+            # to ensure use-after-free does not happen.
+
             # Call parent class free
             super().free()
+
+            # Set all attributes to None except for logger and valid_state
+            _keep = {"_logger", "valid_state"}
+            for attr in list(vars(self)):
+                if attr not in _keep:
+                    setattr(self, attr, None)
 
         except Exception as e:
             self._logger.critical("Internal error: only part of the Matmul object's resources have been released.")
@@ -958,7 +972,7 @@ def matmul(
 
         alpha: {alpha}
 
-        beta: {beta} from a previously planned and autotuned matrix multiplication.
+        beta: {beta}
 
         qualifiers: {qualifiers}
 

@@ -13,10 +13,10 @@ https://docs.nvidia.com/cuda/cudss/advanced_features.html#threading-layer-api-in
 or use the prebuilt library provided for Linux based on GNU OpenMP libcudss_mtlayer_gomp.so.
 """
 
-import nvmath
-
 import cupy as cp
 import cupyx.scipy.sparse as sp
+
+import nvmath
 
 # The number of equations.
 n = 8

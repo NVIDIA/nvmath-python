@@ -2,14 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from collections.abc import Callable
 import weakref
+from collections.abc import Callable
+
 import numpy as np
 
-from nvmath.device.common_cuda import ComputeCapability, ISAVersion
-from .types import complex32, complex64, complex128, half2, half4
-
 from nvmath.bindings import mathdx
+from nvmath.device.common_cuda import ComputeCapability, ISAVersion
+
+from .types import complex32, complex64, complex128, half2, half4
 
 MATHDX_TYPES_TO_NP = {
     mathdx.CommondxValueType.R_16F: np.float16,

@@ -13,8 +13,8 @@ from collections.abc import Sequence
 
 import torch
 
-from .tensor_ifc import TensorHolder
 from .package_ifc import StreamHolder
+from .tensor_ifc import TensorHolder
 
 
 class TorchTensor(TensorHolder[torch.Tensor]):
@@ -95,9 +95,27 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         if not (device_id == "cpu" or isinstance(device_id, int)):
             raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
 
-        assert stream_holder is not None, "Internal Error: moving TorchTensor requires a stream."
-        with stream_holder.ctx:
-            tensor_device = self.tensor.to(device=device_id, non_blocking=(device_id != "cpu"))
+        # For h2d the data on the CPU is available and we block on `to()`, so a stream
+        # is not needed. It is currently ignored if provided.
+
+        # For d2h and d2d, we require a stream to ensure that the source data is ready
+        # before the copy operation is launched.
+        if self.device_id != "cpu" and stream_holder is None:
+            raise AssertionError("Internal error: a stream holder should be provided for d2h or d2d copies.")
+
+        # Always block for h2d and d2h copies to ensure that the copied data is ready
+        # for consumption when `to()` return.
+
+        # For d2d, the `torch.to()` operation is launched on the source device on the
+        # specified stream, so this stream must be on the source device. Their
+        # implementation ensures correct ordering between the current streams on the
+        # source and target devices.
+
+        blocking = self.device_id == "cpu" or device_id == "cpu"
+
+        stream_ctx = contextlib.nullcontext() if stream_holder is None else stream_holder.ctx
+        with stream_ctx:
+            tensor_device = self.tensor.to(device=device_id, non_blocking=not blocking)
 
         return TorchTensor(tensor_device)
 
@@ -105,7 +123,14 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         """
         Inplace copy of src (copy the data from src into self).
         """
-        with (stream_holder and stream_holder.ctx) or contextlib.nullcontext():
+
+        # For d2h and d2d, we require a stream to ensure that the source data is ready
+        # before the copy operation is launched.
+        if src.device_id != "cpu" and stream_holder is None:
+            raise AssertionError("Internal error: a stream holder should be provided for d2h or d2d copies.")
+
+        stream_ctx = contextlib.nullcontext() if stream_holder is None else stream_holder.ctx
+        with stream_ctx:
             self.tensor.copy_(src.tensor)
 
     def istensor(self):
@@ -120,6 +145,27 @@ class TorchTensor(TensorHolder[torch.Tensor]):
         if copy is False:
             return self.__class__(self.tensor.view(shape))
         return self.__class__(self.tensor.reshape(shape))
+
+    def memory_buffer(self):
+        """Creates a view of the memory buffer as a 1D tensor."""
+        storage = self.tensor.untyped_storage()
+        size = self.size
+        v = self.tensor.view(self.shape)
+        # TODO: ensure tensor is dense for now, and later support linear
+        # memory with constant stride.
+        v.set_(storage, self.tensor.storage_offset(), (size,), (1,))
+        return TorchTensor(v)
+
+    def memory_buffer_to_tensor(self, shape, strides):
+        """
+        Creates a N-D tensor view of the memory buffer according to the specified
+        shape and strides.
+        """
+        assert len(self.shape) == 1, "Internal error."
+        storage = self.tensor.untyped_storage()
+        t = self.tensor.view(self.shape)
+        t.set_(storage, self.tensor.storage_offset(), shape, strides)
+        return TorchTensor(t)
 
     def _broadcast_to(self, shape):
         reshaped_tensor = torch.broadcast_to(self.tensor, shape)

@@ -6,13 +6,12 @@ import abc
 import contextlib
 import dataclasses
 import logging
-
-from logging import Logger
-from typing import Literal, ClassVar, Final, TypeVar, Generic
 from collections.abc import MutableSequence
+from logging import Logger
+from typing import ClassVar, Final, Generic, Literal, TypeVar
 
-from nvmath.internal import utils
 from nvmath import memory
+from nvmath.internal import utils
 
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True)

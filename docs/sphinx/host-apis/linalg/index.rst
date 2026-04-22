@@ -37,14 +37,20 @@ algorithm selection and planning.
    matmul
    Matmul
    matrix_qualifiers_dtype
+   ComputeType
    DiagonalMatrixQualifier
    GeneralMatrixQualifier
    HermitianMatrixQualifier
    InvalidMatmulState
    SymmetricMatrixQualifier
    TriangularMatrixQualifier
+   SideMode
+   FillMode
+   DiagType
 
-   :template: dataclass.rst
+.. autosummary::
+   :toctree: generated/
+   :template: dataclass
 
    ExecutionCPU
    ExecutionCUDA
@@ -73,7 +79,9 @@ planning.
    MatmulNumericalImplFlags
    MatmulReductionScheme
 
-   :template: dataclass.rst
+.. autosummary::
+   :toctree: generated/
+   :template: dataclass
 
    MatmulEpilogPreferences
    MatmulOptions
@@ -95,10 +103,16 @@ Matmul helpers (:mod:`nvmath.linalg.advanced.helpers.matmul`)
 .. autosummary::
    :toctree: generated/
 
+   BlockScalingFormat
    create_mxfp8_scale
    invert_mxfp8_scale
    apply_mxfp8_scale
+   quantize_to_fp4
+   unpack_fp4
+   get_block_scale_offset
    get_mxfp8_scale_offset
+   to_block_scale
+   expand_block_scale
 
 .. rubric:: Footnotes
 

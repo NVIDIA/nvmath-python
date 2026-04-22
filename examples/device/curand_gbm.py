@@ -15,13 +15,14 @@ iteration.
 To learn more about the GBM, see: https://en.wikipedia.org/wiki/Geometric_Brownian_motion.
 """
 
-from numba import cuda
-from nvmath.device import random
 import math
-import numpy as np
+
 import cupy as cp
+import numpy as np
+from numba import cuda
 from scipy import stats
 
+from nvmath.device import random
 
 # Pre-compile the random number generator into IR to use alongside other device code
 compiled_rng = random.Compile(cc=None)

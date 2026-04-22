@@ -7,9 +7,10 @@ try:
     import torch
 except ImportError:
     torch = None
-import pytest
-from .fp8_utils import fp8helpers
 import numpy as np
+import pytest
+
+from .fp8_utils import fp8helpers
 
 if torch is None:
     pytest.skip("Torch is required for FP8 tests", allow_module_level=True)

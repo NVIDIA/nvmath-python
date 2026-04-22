@@ -23,7 +23,6 @@ except ImportError:
 
 from nvmath.tensor import ExecutionCUDA, binary_contraction
 
-
 a = np.random.rand(4, 4, 12, 12)
 b = np.random.rand(12, 12, 8, 8)
 

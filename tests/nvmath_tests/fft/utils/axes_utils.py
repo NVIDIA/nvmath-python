@@ -17,8 +17,7 @@ try:
 except ImportError:
     torch = TORCH_TENSOR = None
 
-from .common_axes import MemBackend, Framework, DType, OptFftType
-
+from .common_axes import DType, Framework, MemBackend, OptFftType
 
 size_of_dtype = {
     DType.int8: 1,

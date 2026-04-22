@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-from numba import cuda
 import pytest
+from numba import cuda
 
-from nvmath.device import FFT
-from nvmath.device import fft, float16x4, float16x2
-from nvmath.device.types import half4, complex64, complex128
+from nvmath.device import FFT, fft, float16x2, float16x4
 from nvmath.device.common_cuda import current_device_sm
-from .helpers import _TOLERANCE, random_complex, random_real, show_FFT_traits, complex64_to_fp16x2, fp16x2_to_complex64
+from nvmath.device.types import complex64, complex128, half4
+
+from .helpers import _TOLERANCE, complex64_to_fp16x2, fp16x2_to_complex64, random_complex, random_real, show_FFT_traits
 
 np.random.seed(314 + 271)
 
@@ -102,14 +102,14 @@ IMPLICIT_BATCHING_MAP = {
 DEFAULT_REAL_FFT_OPTIONS = {"complex_layout": "natural", "real_mode": "normal"}
 
 SIZES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 18, 20]
-SIZES += [2**l for l in range(1, 8)]
-SIZES += [3**l for l in range(1, 3)]
-SIZES += [5**l for l in range(1, 3)]
-SIZES += [6**l for l in range(1, 3)]
-SIZES += [7**l for l in range(1, 3)]
-SIZES += [10**l for l in range(1, 3)]
-SIZES += [11**l for l in range(1, 2)]
-SIZES += [12**l for l in range(1, 2)]
+SIZES += [2**n for n in range(1, 8)]
+SIZES += [3**n for n in range(1, 3)]
+SIZES += [5**n for n in range(1, 3)]
+SIZES += [6**n for n in range(1, 3)]
+SIZES += [7**n for n in range(1, 3)]
+SIZES += [10**n for n in range(1, 3)]
+SIZES += [11**n for n in range(1, 2)]
+SIZES += [12**n for n in range(1, 2)]
 SIZES = sorted(set(SIZES))
 
 TEST_CASES = []

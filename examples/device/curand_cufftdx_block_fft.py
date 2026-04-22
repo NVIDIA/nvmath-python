@@ -10,7 +10,8 @@ an FFT.
 
 import numpy as np
 from numba import cuda
-from nvmath.device import FFT, random, float32x2
+
+from nvmath.device import FFT, float32x2, random
 
 # Compile the random device APIs for the current device.
 compiled_random_apis = random.Compile(cc=None)

@@ -6,12 +6,10 @@ from __future__ import annotations
 
 __all__ = ["allocate_symmetric_memory", "free_symmetric_memory"]
 
-from logging import Logger
 from collections.abc import Iterable, Sequence
+from logging import Logger
 from types import ModuleType
-from typing import Literal
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     import torch
@@ -20,9 +18,8 @@ import numpy as np
 from numpy.typing import DTypeLike
 
 import nvmath.distributed
-from nvmath.internal.utils import device_ctx
 from nvmath.distributed._internal import tensor_wrapper
-
+from nvmath.internal.utils import device_ctx
 
 # Supported packages for tensors backed by symmetric memory.
 _SUPPORTED_PACKAGES = ("cupy", "torch")
@@ -53,9 +50,9 @@ def allocate_symmetric_memory(
     skip_symmetric_check: bool = False,
     logger: Logger | None = None,
 ):
-    """Return uninitialized tensor of given shape and type, allocated from the symmetric
-    heap, on the device on which nvmath.distributed was initialized. The tensor type is
-    determined by the provided package (e.g. cupy, torch).
+    """Return uninitialized tensor of given shape and type, allocated from the NVSHMEM
+    symmetric heap, on the device on which nvmath.distributed was initialized. The
+    tensor type is determined by the provided package (e.g. cupy, torch).
     **This is a collective operation and must be called by all processes**.
     Note that the buffer size must be the same on all processes, or you can
     use ``make_symmetric=True`` to pad all buffers to the same max size.
@@ -148,9 +145,9 @@ def allocate_symmetric_memory(
 
 
 def free_symmetric_memory(*tensors) -> None:
-    """Frees tensors' data buffer where the buffer was allocated on the symmetric heap.
-    Note that this is only meant to be called on tensors returned by
-    ``allocate_symmetric_memory()``.
+    """Frees tensors' data buffer where the buffer was allocated on the NVSHMEM
+    symmetric heap. Note that this is only meant to be called on tensors returned
+    by ``allocate_symmetric_memory()``.
 
     **This is a collective operation and must be called by all processes, with tensors
     in the same order**."""

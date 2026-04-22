@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 2.3.1. Do not modify it directly.
+# This code was automatically generated with version 2.5.0, generator version 0.3.1.dev1393+g0a20dc9d7. Do not modify it directly.
 
 from ._internal cimport cutensor as _cutensor
 
@@ -93,6 +93,10 @@ cdef cutensorStatus_t cutensorCreatePlanPreference(const cutensorHandle_t handle
 
 cdef cutensorStatus_t cutensorDestroyPlanPreference(cutensorPlanPreference_t pref) except?_CUTENSORSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cutensor._cutensorDestroyPlanPreference(pref)
+
+
+cdef cutensorStatus_t cutensorPlanPreferenceGetAttribute(const cutensorHandle_t handle, cutensorPlanPreference_t pref, cutensorPlanPreferenceAttribute_t attr, void* buf, size_t sizeInBytes) except?_CUTENSORSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cutensor._cutensorPlanPreferenceGetAttribute(handle, pref, attr, buf, sizeInBytes)
 
 
 cdef cutensorStatus_t cutensorPlanPreferenceSetAttribute(const cutensorHandle_t handle, cutensorPlanPreference_t pref, cutensorPlanPreferenceAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUTENSORSTATUS_T_INTERNAL_LOADING_ERROR nogil:

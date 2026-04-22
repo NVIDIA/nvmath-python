@@ -13,7 +13,6 @@ The LHS is a CuPy CSR matrix while the RHS and solution are CuPy ndarrays on the
 import cupy as cp
 import cupyx.scipy.sparse as sp
 
-
 import nvmath
 
 # The number of equations.

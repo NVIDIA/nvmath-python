@@ -8,8 +8,8 @@ Functions to link type names with CUDA data and compute types.
 
 __all__ = ["COMPUTE_TYPE_TO_NAME", "DATA_TYPE_TO_NAME", "NAME_TO_DATA_TYPE", "NAME_TO_COMPUTE_TYPE", "NAME_TO_DATA_WIDTH"]
 
-from enum import IntEnum
 import re
+from enum import IntEnum
 
 
 class ComputeType(IntEnum):
@@ -60,6 +60,7 @@ class cudaDataType(IntEnum):
     CUDA_C_64U = 27
     CUDA_R_8F_E4M3 = 28
     CUDA_R_8F_E5M2 = 29
+    CUDA_R_4F_E2M1 = 33  # supported on SM 10.0+
 
 
 def create_cuda_data_type_map(cuda_data_type_enum_class):
@@ -71,7 +72,13 @@ def create_cuda_data_type_map(cuda_data_type_enum_class):
     type_code_map = {"i": "int", "u": "uint", "f": "float", "bf": "bfloat"}
     # A map from (width, exponent kind) to qualifiers (finite, unsigned zero, ...) for data
     # types.
-    type_qualifier_map = {(8, "e4m3"): "fn"}
+    type_qualifier_map = {
+        (8, "e4m3"): "fn",
+        # FP4: finite-only, packed 2 per byte, see for example:
+        # - https://github.com/pytorch/pytorch/issues/146414
+        # - https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+        (4, "e2m1"): "fn_x2",
+    }
 
     complex_types = {"float": "complex", "bfloat": "bcomplex"}
 

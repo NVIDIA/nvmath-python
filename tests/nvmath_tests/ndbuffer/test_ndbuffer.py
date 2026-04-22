@@ -2,51 +2,67 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import math
+import contextlib
 import itertools
-import random
 import logging
+import math
+import random
+from io import StringIO
+
+import pytest
 
 from nvmath.internal import tensor_wrapper
-import pytest
 
 try:
     from cuda.core import system
 except ImportError:
     from cuda.core.experimental import system
-import nvmath.internal.tensor_ifc_ndbuffer as tndb
 import nvmath.internal.ndbuffer.ndbuffer as ndb
+import nvmath.internal.tensor_ifc_ndbuffer as tndb
 from nvmath.internal.tensor_ifc_numpy import CudaTensor
-from nvmath.internal.tensor_ifc_cupy import HostTensor
-from nvmath.internal.utils import create_empty_tensor, device_ctx
+from nvmath.internal.utils import create_empty_tensor, device_ctx, get_or_create_stream
+
 from .helpers import (
-    np,
-    cp,
-    Param,
     _SL,
-    idfn,
-    assert_equal,
+    DummyDeviceMemoryResource,
+    DummyHostMemoryResource,
+    DummyPinnedMemoryResource,
+    Param,
+    abs_strides,
+    arange,
+    as_array,
     as_ndbuffer,
+    assert_equal,
+    cp,
+    create_stream,
+    dense_c_strides,
+    free_memory,
+    idfn,
+    inv,
+    np,
+    permuted,
+    random_negated_strides,
+    random_non_empty_slice,
     sliced_or_broadcast_1d,
     stride_tricks,
-    arange,
-    zeros,
-    random_non_empty_slice,
-    random_negated_strides,
-    inv,
-    permuted,
-    dense_c_strides,
-    abs_strides,
-    as_array,
-    create_stream,
-    free_memory,
     wrap_operand,
+    zeros,
 )
+
+try:
+    from nvmath.internal.tensor_ifc_cupy import HostTensor
+except ModuleNotFoundError:
+    HostTensor = None
 
 try:
     num_devices = system.get_num_devices()
 except AttributeError:
     num_devices = system.num_devices
+
+try:
+    from nvmath.internal.tensor_ifc_cupy import HostTensor
+except ModuleNotFoundError:
+    HostTensor = None
 
 
 def _permutations(rng, ndim, sample_size=10):
@@ -60,10 +76,10 @@ def _permutations(rng, ndim, sample_size=10):
         return [p_id, p_reverse]
 
 
-def _shuffled(rng, l):
-    l = list(l)
-    rng.shuffle(l)
-    return l
+def _shuffled(rng, x):
+    x = list(x)
+    rng.shuffle(x)
+    return x
 
 
 def _shape(rng, ndim):
@@ -158,6 +174,144 @@ def test_empty_tensor(ndim, shape, device_id, dtype):
     assert dst.tensor.size == 0
     assert dst.device_id == dst_device_id
     assert dst.tensor.data_ptr == 0
+
+
+def _fill_const(ndbuffer, fill_value, stream_holder, logger):
+    shape = ndbuffer.shape
+    dtype = np.dtype(ndbuffer.dtype_name)
+    const = np.array([fill_value], dtype=dtype)
+    const = np.broadcast_to(const, shape)
+    const = wrap_operand(const)
+    ndb.copy_into(ndbuffer, const.asndbuffer(), stream=stream_holder, logger=logger)
+    if ndbuffer.device_id == "cpu":
+        host_tensor = ndbuffer
+    else:
+        host_tensor = ndb.empty_like(ndbuffer, device_id=ndb.CPU_DEVICE_ID, stream=stream_holder)
+        ndb.copy_into(host_tensor, ndbuffer, stream=stream_holder, logger=logger)
+    array = as_array(host_tensor)
+    assert isinstance(array, np.ndarray)
+    assert array.dtype == dtype
+    assert np.all(array == fill_value)
+
+
+@pytest.mark.parametrize(
+    (
+        "use_custom_alloc",
+        "use_logging",
+        "alloc_kind",
+        "device",
+        "dtype",
+        "shape",
+    ),
+    [
+        (
+            Param("use_custom_alloc", use_custom_alloc),
+            Param("use_logging", use_logging),
+            Param("alloc_kind", alloc_kind),
+            Param("device", device),
+            Param("dtype", dtype),
+            Param("shape", shape),
+        )
+        for use_custom_alloc in [False, True]
+        for use_logging in [False, True]
+        for alloc_kind in ["host", "pinned", "device"]
+        if use_custom_alloc or alloc_kind != "pinned"
+        for device in (["cpu"] if alloc_kind == "host" else [0, 1])
+        for dtype in [py_rng.choice(dtypes)]
+        for shape in [_shape(py_rng, 3)]
+    ],
+    ids=idfn,
+)
+def test_allocators(use_custom_alloc, use_logging, alloc_kind, device, dtype, shape):
+    use_custom_alloc = use_custom_alloc.value
+    use_logging = use_logging.value
+    alloc_kind = alloc_kind.value
+    device = device.value
+    dtype = dtype.value
+    shape = shape.value
+
+    if isinstance(device, int) and device > 0 and num_devices < 2:
+        pytest.skip("Test requires at least 2 gpus")
+
+    if use_logging:
+        logger_name = "ndbuffer_test_allocators"
+        log_stream = StringIO()
+        logger = logging.Logger(logger_name, level=logging.DEBUG)
+        logger.addHandler(logging.StreamHandler(log_stream))
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger = None
+
+    if not use_custom_alloc:
+        extra = {}
+    else:
+        if alloc_kind == "host":
+            memory_resource = DummyHostMemoryResource()
+            extra = {"host_memory_pool": memory_resource}
+        elif alloc_kind == "pinned":
+            memory_resource = DummyPinnedMemoryResource()
+            extra = {"host_memory_pool": memory_resource}
+        elif alloc_kind == "device":
+            memory_resource = DummyDeviceMemoryResource(device)
+            extra = {"device_memory_pool": memory_resource}
+        else:
+            raise ValueError(f"Invalid allocation kind: {alloc_kind}")
+
+    np_dtype = np.dtype(dtype)
+    itemsize = np_dtype.itemsize
+
+    if use_custom_alloc:
+        assert len(memory_resource.active_allocs) == 0
+
+    tensors = []
+    for _ in range(2):
+        tensor = ndb.empty(
+            shape=shape,
+            dtype_name=dtype,
+            itemsize=itemsize,
+            device_id=device if alloc_kind == "device" else ndb.CPU_DEVICE_ID,
+            logger=logger,
+            **extra,
+        )
+        if alloc_kind == "device":
+            assert tensor.device_id == device
+        else:
+            assert tensor.device_id == "cpu"
+
+        assert tensor.itemsize == itemsize
+        assert tensor.shape == shape
+        assert tensor.data_ptr != 0
+        if use_custom_alloc:
+            assert tensor.data_ptr in memory_resource.active_allocs
+        tensors.append(tensor)
+        tensor = None
+
+    stream_holder = None
+    if isinstance(device, int):
+        stream_holder = get_or_create_stream(device, None, "cuda")
+
+    # test doing something meaningful with the tensors
+    ctx = device_ctx(device) if isinstance(device, int) and device > 0 else contextlib.nullcontext()
+    with ctx:
+        for i, tensor in enumerate(tensors):
+            _fill_const(tensor, 42 + i, stream_holder, logger)
+            tensor = None
+
+    if use_custom_alloc:
+        assert len(memory_resource.active_allocs) == 2
+        assert len(set(memory_resource.active_allocs)) == 2
+
+    tensors.clear()
+
+    if use_custom_alloc:
+        assert len(memory_resource.active_allocs) == 0
+
+    # TODO(ktokarski): there's a gap in logging
+    # we don't log default host allocations
+    if use_logging and (use_custom_alloc or alloc_kind != "host"):
+        log = log_stream.getvalue()
+        assert log.count("allocate memory") == 2
+        assert log.count("release memory") == 2
 
 
 def test_size_overflow():
@@ -390,7 +544,6 @@ def test_layout_preservation(ndim, shape, permutation, slice, negate, direction,
 )
 def test_multithreaded(shape, transformation, direction, device_id, dtype, num_threads, use_barrier):
     import threading
-    from io import StringIO
 
     if cp is None:
         pytest.skip("Cupy is required to run this test")
@@ -445,9 +598,9 @@ def test_multithreaded(shape, transformation, direction, device_id, dtype, num_t
                 launched_kernel = "Launching elementwise copy kernel" in logs or "Launching transpose copy kernel" in logs
                 if launched_kernel:
                     if i == 0:
-                        assert "Registered copy kernel includes" in logs
+                        assert "Cached strided copy include dir" in logs
                     else:
-                        assert "Registered copy kernel includes" not in logs, logs
+                        assert "Cached strided copy include dir" not in logs, logs
                 if "Compiling kernel" in logs:
                     thread_data["compiled"] += 1
                 assert_equal(as_array(nd_dst), a)
@@ -474,12 +627,12 @@ def test_multithreaded(shape, transformation, direction, device_id, dtype, num_t
     if direction != "d2h":
         import nvmath.internal.memory
 
-        pool = nvmath.internal.memory.get_device_current_memory_pool(device_id)
-        reserved_memory = pool.get_reserved_memory_size()
+        pool = nvmath.internal.memory.get_device_memory_resource(device_id)
+        reserved_memory = nvmath.internal._bindings.get_memory_pool_reserved_memory_size(pool.handle)
         with device_ctx(device_id) as device:
             device.sync()
             nvmath.internal.memory.free_reserved_memory()
-            reserved_memory_after = pool.get_reserved_memory_size()
+            reserved_memory_after = nvmath.internal._bindings.get_memory_pool_reserved_memory_size(pool.handle)
             assert reserved_memory_after < reserved_memory, (
                 f"reserved_memory_after={reserved_memory_after} >= reserved_memory={reserved_memory}"
             )

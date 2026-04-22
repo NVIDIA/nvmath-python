@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from . import advanced
 from nvmath.bindings.cublas import ComputeType  # type: ignore
+
+from . import advanced
 
 __all__ = [
     "advanced",

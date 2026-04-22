@@ -62,9 +62,6 @@ choice and pass them as :class:`~nvmath.fft.DeviceCallable` to the FFT call.
 Examples illustrating use of prolog and epilog functions can be found in the `FFT examples
 directory <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft>`_.
 
-.. note::
-
-    FFT Callbacks are not currently supported on Windows.
 
 Setting-up
 ----------
@@ -89,7 +86,7 @@ For those who need to collect the required dependencies manually:
   the same major CUDA release. For example, if cuFFT comes from CUDA Toolkit 13.X, then
   nvJitLink must come from CUDA Toolkit 13.Y, such that ``Y >= X``.
 - Compiling the callbacks with the :func:`nvmath.fft.compile_prolog` and
-  :func:`nvmath.fft.compile_epilog` helpers requires numba-cuda 0.18.1 or newer.
+  :func:`nvmath.fft.compile_epilog` helpers requires numba-cuda 0.27.0 or newer.
 
 For further details, refer to the `cuFFT LTO documentation
 <https://docs.nvidia.com/cuda/cufft/index.html#lto-load-and-store-callback-routines>`_.
@@ -106,9 +103,6 @@ explicitly controlled with :class:`~nvmath.fft.ExecutionCUDA` and
 :class:`~nvmath.fft.ExecutionCPU` passed as the ``execution`` option to the call (for
 example :class:`~nvmath.fft.FFT` or :func:`~nvmath.fft.fft`).
 
-.. note::
-
-    CPU execution is not currently supported on Windows.
 
 Required dependencies
 ---------------------
@@ -172,11 +166,14 @@ FFT support (:mod:`nvmath.fft`)
    rfft
    irfft
    FFT
+   estimate_workspace_size
    compile_prolog
    compile_epilog
    UnsupportedLayoutError
 
-   :template: dataclass.rst
+.. autosummary::
+   :toctree: generated/
+   :template: dataclass
 
    FFTOptions
    FFTDirection

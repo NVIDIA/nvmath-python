@@ -8,10 +8,10 @@ try:
     import cupy
 except ModuleNotFoundError:
     pytest.skip("cupy required for matmul tests", allow_module_level=True)
-import nvmath
 import numpy as np
 
-from nvmath_tests.helpers import time_cupy, print_aligned_table, matmul_perf_GFlops, matmul_flops
+import nvmath
+from nvmath_tests.helpers import matmul_flops, matmul_perf_GFlops, print_aligned_table, time_cupy
 
 
 def run_test(data, precision, m, n, k, autotune=False, ncycles=10):

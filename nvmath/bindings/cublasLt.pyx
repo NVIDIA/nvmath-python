@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.0.3 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.0.3 to 13.2.0, generator version 0.3.1.dev1301+g7215ac36e. Do not modify it directly.
 
 cimport cython  # NOQA
 from libcpp.vector cimport vector
@@ -14,6 +14,7 @@ from libc.stdlib cimport calloc, free, malloc
 from cython cimport view
 cimport cpython.buffer
 cimport cpython.memoryview
+cimport cpython
 from libc.string cimport memcmp, memcpy
 import numpy as _numpy
 
@@ -29,6 +30,34 @@ cdef __from_data(data, dtype_name, expected_dtype, lowpp_type):
     if data.dtype != expected_dtype:
         raise ValueError(f"data array must be of dtype {dtype_name}")
     return lowpp_type.from_ptr(data.ctypes.data, not data.flags.writeable, data)
+
+
+cdef __from_buffer(buffer, size, lowpp_type):
+    cdef Py_buffer view
+    if cpython.PyObject_GetBuffer(buffer, &view, cpython.PyBUF_SIMPLE) != 0:
+        raise TypeError("buffer argument does not support the buffer protocol")
+    try:
+        if view.itemsize != 1:
+            raise ValueError("buffer itemsize must be 1 byte")
+        if view.len != size:
+            raise ValueError(f"buffer length must be {size} bytes")
+        return lowpp_type.from_ptr(<intptr_t><void *>view.buf, not view.readonly, buffer)
+    finally:
+        cpython.PyBuffer_Release(&view)
+
+
+cdef __getbuffer(object self, cpython.Py_buffer *buffer, void *ptr, int size, bint readonly):
+    buffer.buf = <char *>ptr
+    buffer.format = 'b'
+    buffer.internal = NULL
+    buffer.itemsize = 1
+    buffer.len = size
+    buffer.ndim = 1
+    buffer.obj = self
+    buffer.readonly = readonly
+    buffer.shape = &buffer.len
+    buffer.strides = &buffer.itemsize
+    buffer.suboffsets = NULL
 
 
 ###############################################################################
@@ -100,6 +129,12 @@ cdef class MatmulAlgo:
             return False
         return bool((self_data == other._data).all())
 
+    def __getbuffer__(self, Py_buffer *buffer, int flags):
+        cpython.PyObject_GetBuffer(self._data, buffer, flags)
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        cpython.PyBuffer_Release(buffer)
+
     @property
     def data_(self):
         """~_numpy.uint64: (array of length 8)."""
@@ -127,6 +162,11 @@ cdef class MatmulAlgo:
 
     def __setitem__(self, key, val):
         self._data[key] = val
+
+    @staticmethod
+    def from_buffer(buffer):
+        """Create an MatmulAlgo instance with the memory from the given buffer."""
+        return MatmulAlgo.from_data(_numpy.frombuffer(buffer, dtype=matmul_algo_dtype))
 
     @staticmethod
     def from_data(data):
@@ -236,6 +276,12 @@ cdef class MatmulHeuristicResult:
             return False
         return bool((self_data == other._data).all())
 
+    def __getbuffer__(self, Py_buffer *buffer, int flags):
+        cpython.PyObject_GetBuffer(self._data, buffer, flags)
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        cpython.PyBuffer_Release(buffer)
+
     @property
     def algo(self):
         """matmul_algo_dtype: """
@@ -298,6 +344,11 @@ cdef class MatmulHeuristicResult:
         self._data[key] = val
 
     @staticmethod
+    def from_buffer(buffer):
+        """Create an MatmulHeuristicResult instance with the memory from the given buffer."""
+        return MatmulHeuristicResult.from_data(_numpy.frombuffer(buffer, dtype=matmul_heuristic_result_dtype))
+
+    @staticmethod
     def from_data(data):
         """Create an MatmulHeuristicResult instance wrapping the given NumPy array.
 
@@ -342,7 +393,9 @@ cdef class MatmulHeuristicResult:
 ###############################################################################
 
 class MatmulTile(_IntEnum):
-    """See `cublasLtMatmulTile_t`."""
+    """
+    See `cublasLtMatmulTile_t`.
+    """
     TILE_UNDEFINED = CUBLASLT_MATMUL_TILE_UNDEFINED
     TILE_8x8 = CUBLASLT_MATMUL_TILE_8x8
     TILE_8x16 = CUBLASLT_MATMUL_TILE_8x16
@@ -980,7 +1033,9 @@ class MatmulTile(_IntEnum):
     TILE_512x1024 = CUBLASLT_MATMUL_TILE_512x1024
 
 class MatmulStages(_IntEnum):
-    """See `cublasLtMatmulStages_t`."""
+    """
+    See `cublasLtMatmulStages_t`.
+    """
     STAGES_UNDEFINED = CUBLASLT_MATMUL_STAGES_UNDEFINED
     STAGES_16x1 = CUBLASLT_MATMUL_STAGES_16x1
     STAGES_16x2 = CUBLASLT_MATMUL_STAGES_16x2
@@ -1022,7 +1077,9 @@ class MatmulStages(_IntEnum):
     STAGES_64x80 = CUBLASLT_MATMUL_STAGES_64x80
 
 class PointerMode(_IntEnum):
-    """See `cublasLtPointerMode_t`."""
+    """
+    See `cublasLtPointerMode_t`.
+    """
     HOST = CUBLASLT_POINTER_MODE_HOST
     DEVICE = CUBLASLT_POINTER_MODE_DEVICE
     DEVICE_VECTOR = CUBLASLT_POINTER_MODE_DEVICE_VECTOR
@@ -1030,7 +1087,9 @@ class PointerMode(_IntEnum):
     ALPHA_DEVICE_VECTOR_BETA_HOST = CUBLASLT_POINTER_MODE_ALPHA_DEVICE_VECTOR_BETA_HOST
 
 class PointerModeMask(_IntEnum):
-    """See `cublasLtPointerModeMask_t`."""
+    """
+    See `cublasLtPointerModeMask_t`.
+    """
     HOST = CUBLASLT_POINTER_MODE_MASK_HOST
     DEVICE = CUBLASLT_POINTER_MODE_MASK_DEVICE
     DEVICE_VECTOR = CUBLASLT_POINTER_MODE_MASK_DEVICE_VECTOR
@@ -1039,7 +1098,9 @@ class PointerModeMask(_IntEnum):
     NO_FILTERING = CUBLASLT_POINTER_MODE_MASK_NO_FILTERING
 
 class Order(_IntEnum):
-    """See `cublasLtOrder_t`."""
+    """
+    See `cublasLtOrder_t`.
+    """
     COL = CUBLASLT_ORDER_COL
     ROW = CUBLASLT_ORDER_ROW
     COL32 = CUBLASLT_ORDER_COL32
@@ -1047,7 +1108,9 @@ class Order(_IntEnum):
     COL32_2R_4R4 = CUBLASLT_ORDER_COL32_2R_4R4
 
 class MatrixLayoutAttribute(_IntEnum):
-    """See `cublasLtMatrixLayoutAttribute_t`."""
+    """
+    See `cublasLtMatrixLayoutAttribute_t`.
+    """
     TYPE = CUBLASLT_MATRIX_LAYOUT_TYPE
     ORDER = CUBLASLT_MATRIX_LAYOUT_ORDER
     ROWS = CUBLASLT_MATRIX_LAYOUT_ROWS
@@ -1064,7 +1127,9 @@ class MatrixLayoutAttribute(_IntEnum):
     GROUPED_LD_ARRAY_INTEGER_WIDTH = CUBLASLT_GROUPED_MATRIX_LAYOUT_LD_ARRAY_INTEGER_WIDTH
 
 class MatmulDescAttribute(_IntEnum):
-    """See `cublasLtMatmulDescAttributes_t`."""
+    """
+    See `cublasLtMatmulDescAttributes_t`.
+    """
     COMPUTE_TYPE = CUBLASLT_MATMUL_DESC_COMPUTE_TYPE
     SCALE_TYPE = CUBLASLT_MATMUL_DESC_SCALE_TYPE
     POINTER_MODE = CUBLASLT_MATMUL_DESC_POINTER_MODE
@@ -1106,14 +1171,18 @@ class MatmulDescAttribute(_IntEnum):
     ATOMIC_SYNC_OUT_COUNTERS_POINTER = CUBLASLT_MATMUL_DESC_ATOMIC_SYNC_OUT_COUNTERS_POINTER
 
 class MatrixTransformDescAttribute(_IntEnum):
-    """See `cublasLtMatrixTransformDescAttributes_t`."""
+    """
+    See `cublasLtMatrixTransformDescAttributes_t`.
+    """
     SCALE_TYPE = CUBLASLT_MATRIX_TRANSFORM_DESC_SCALE_TYPE
     POINTER_MODE = CUBLASLT_MATRIX_TRANSFORM_DESC_POINTER_MODE
     TRANSA = CUBLASLT_MATRIX_TRANSFORM_DESC_TRANSA
     TRANSB = CUBLASLT_MATRIX_TRANSFORM_DESC_TRANSB
 
 class ReductionScheme(_IntEnum):
-    """See `cublasLtReductionScheme_t`."""
+    """
+    See `cublasLtReductionScheme_t`.
+    """
     NONE = CUBLASLT_REDUCTION_SCHEME_NONE
     INPLACE = CUBLASLT_REDUCTION_SCHEME_INPLACE
     COMPUTE_TYPE = CUBLASLT_REDUCTION_SCHEME_COMPUTE_TYPE
@@ -1121,7 +1190,9 @@ class ReductionScheme(_IntEnum):
     MASK = CUBLASLT_REDUCTION_SCHEME_MASK
 
 class Epilogue(_IntEnum):
-    """See `cublasLtEpilogue_t`."""
+    """
+    See `cublasLtEpilogue_t`.
+    """
     DEFAULT = CUBLASLT_EPILOGUE_DEFAULT
     RELU = CUBLASLT_EPILOGUE_RELU
     RELU_AUX = CUBLASLT_EPILOGUE_RELU_AUX
@@ -1140,7 +1211,9 @@ class Epilogue(_IntEnum):
     BGRADB = CUBLASLT_EPILOGUE_BGRADB
 
 class MatmulSearch(_IntEnum):
-    """See `cublasLtMatmulSearch_t`."""
+    """
+    See `cublasLtMatmulSearch_t`.
+    """
     BEST_FIT = CUBLASLT_SEARCH_BEST_FIT
     LIMITED_BY_ALGO_ID = CUBLASLT_SEARCH_LIMITED_BY_ALGO_ID
     RESERVED_02 = CUBLASLT_SEARCH_RESERVED_02
@@ -1153,7 +1226,9 @@ class MatmulSearch(_IntEnum):
     RESERVED_09 = CUBLASLT_SEARCH_RESERVED_09
 
 class MatmulPreferenceAttribute(_IntEnum):
-    """See `cublasLtMatmulPreferenceAttributes_t`."""
+    """
+    See `cublasLtMatmulPreferenceAttributes_t`.
+    """
     SEARCH_MODE = CUBLASLT_MATMUL_PREF_SEARCH_MODE
     MAX_WORKSPACE_BYTES = CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES
     REDUCTION_SCHEME_MASK = CUBLASLT_MATMUL_PREF_REDUCTION_SCHEME_MASK
@@ -1173,7 +1248,9 @@ class MatmulPreferenceAttribute(_IntEnum):
     SM_COUNT_TARGET = CUBLASLT_MATMUL_PREF_SM_COUNT_TARGET
 
 class MatmulAlgoCapAttribute(_IntEnum):
-    """See `cublasLtMatmulAlgoCapAttributes_t`."""
+    """
+    See `cublasLtMatmulAlgoCapAttributes_t`.
+    """
     SPLITK_SUPPORT = CUBLASLT_ALGO_CAP_SPLITK_SUPPORT
     REDUCTION_SCHEME_MASK = CUBLASLT_ALGO_CAP_REDUCTION_SCHEME_MASK
     CTA_SWIZZLING_SUPPORT = CUBLASLT_ALGO_CAP_CTA_SWIZZLING_SUPPORT
@@ -1200,7 +1277,9 @@ class MatmulAlgoCapAttribute(_IntEnum):
     GAUSSIAN_IMPL = CUBLASLT_ALGO_CAP_GAUSSIAN_IMPL
 
 class MatmulAlgoConfigAttribute(_IntEnum):
-    """See `cublasLtMatmulAlgoConfigAttributes_t`."""
+    """
+    See `cublasLtMatmulAlgoConfigAttributes_t`.
+    """
     ID = CUBLASLT_ALGO_CONFIG_ID
     TILE_ID = CUBLASLT_ALGO_CONFIG_TILE_ID
     SPLITK_NUM = CUBLASLT_ALGO_CONFIG_SPLITK_NUM
@@ -1212,7 +1291,9 @@ class MatmulAlgoConfigAttribute(_IntEnum):
     CLUSTER_SHAPE_ID = CUBLASLT_ALGO_CONFIG_CLUSTER_SHAPE_ID
 
 class ClusterShape(_IntEnum):
-    """See `cublasLtClusterShape_t`."""
+    """
+    See `cublasLtClusterShape_t`.
+    """
     SHAPE_AUTO = CUBLASLT_CLUSTER_SHAPE_AUTO
     SHAPE_1x1x1 = CUBLASLT_CLUSTER_SHAPE_1x1x1
     SHAPE_2x1x1 = CUBLASLT_CLUSTER_SHAPE_2x1x1
@@ -1266,7 +1347,9 @@ class ClusterShape(_IntEnum):
     SHAPE_1x15x1 = CUBLASLT_CLUSTER_SHAPE_1x15x1
 
 class MatmulInnerShape(_IntEnum):
-    """See `cublasLtMatmulInnerShape_t`."""
+    """
+    See `cublasLtMatmulInnerShape_t`.
+    """
     UNDEFINED = CUBLASLT_MATMUL_INNER_SHAPE_UNDEFINED
     MMA884 = CUBLASLT_MATMUL_INNER_SHAPE_MMA884
     MMA1684 = CUBLASLT_MATMUL_INNER_SHAPE_MMA1684
@@ -1274,7 +1357,9 @@ class MatmulInnerShape(_IntEnum):
     MMA16816 = CUBLASLT_MATMUL_INNER_SHAPE_MMA16816
 
 class MatmulMatrixScale(_IntEnum):
-    """See `cublasLtMatmulMatrixScale_t`."""
+    """
+    See `cublasLtMatmulMatrixScale_t`.
+    """
     SCALAR_32F = CUBLASLT_MATMUL_MATRIX_SCALE_SCALAR_32F
     VEC16_UE4M3 = CUBLASLT_MATMUL_MATRIX_SCALE_VEC16_UE4M3
     VEC32_UE8M0 = CUBLASLT_MATMUL_MATRIX_SCALE_VEC32_UE8M0
@@ -1284,18 +1369,24 @@ class MatmulMatrixScale(_IntEnum):
     PER_BATCH_SCALAR_32F = CUBLASLT_MATMUL_MATRIX_SCALE_PER_BATCH_SCALAR_32F
 
 class BatchMode(_IntEnum):
-    """See `cublasLtBatchMode_t`."""
+    """
+    See `cublasLtBatchMode_t`.
+    """
     STRIDED = CUBLASLT_BATCH_MODE_STRIDED
     POINTER_ARRAY = CUBLASLT_BATCH_MODE_POINTER_ARRAY
     GROUPED = CUBLASLT_BATCH_MODE_GROUPED
 
 class IntegerWidth(_IntEnum):
-    """See `cublasLtIntegerWidth_t`."""
+    """
+    See `cublasLtIntegerWidth_t`.
+    """
     WIDTH_32 = CUBLASLT_INTEGER_WIDTH_32
     WIDTH_64 = CUBLASLT_INTEGER_WIDTH_64
 
 class EmulationDescAttribute(_IntEnum):
-    """See `cublasLtEmulationDescAttributes_t`."""
+    """
+    See `cublasLtEmulationDescAttributes_t`.
+    """
     STRATEGY = CUBLASLT_EMULATION_DESC_STRATEGY
     SPECIAL_VALUES_SUPPORT = CUBLASLT_EMULATION_DESC_SPECIAL_VALUES_SUPPORT
     FIXEDPOINT_MANTISSA_CONTROL = CUBLASLT_EMULATION_DESC_FIXEDPOINT_MANTISSA_CONTROL

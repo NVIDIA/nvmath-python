@@ -13,18 +13,18 @@ For this reason, the functionality is implemented as mixins, so that
 we can delegate the `super()` calls without specifying the parent class.
 """
 
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 __all__ = ["HostDistributedTensorMixIn", "CudaDistributedTensorMixIn"]
 
 import nvmath.distributed
-from nvmath.internal.tensor_ifc import TensorHolder
-from nvmath.internal.package_ifc import StreamHolder
-from nvmath.internal.utils import device_ctx
 from nvmath.distributed._internal.nvshmem import NvshmemNDBufferAllocator
-from nvmath.internal.typemaps import NAME_TO_ITEM_SIZE
 from nvmath.internal.ndbuffer import ndbuffer
+from nvmath.internal.package_ifc import StreamHolder
+from nvmath.internal.tensor_ifc import TensorHolder
+from nvmath.internal.typemaps import NAME_TO_ITEM_SIZE
+from nvmath.internal.utils import device_ctx
 
 
 class HostDistributedTensorMixIn(ABC):  # noqa: B024
@@ -72,9 +72,9 @@ class CudaDistributedTensorMixIn(ABC):
         Note, that the strides, if specified, MUST correspond to a dense (possibly permuted)
         tensor, otherwise the created tensor may be corrupted.
         """
-        symmetric_memory = context.get("symmetric_memory", False)
-        make_symmetric = context.get("make_symmetric", False)
-        skip_symmetric_check = context.get("skip_symmetric_check", False)
+        symmetric_memory = context.pop("symmetric_memory", False)
+        make_symmetric = context.pop("make_symmetric", False)
+        skip_symmetric_check = context.pop("skip_symmetric_check", False)
 
         if not symmetric_memory:
             if make_symmetric or skip_symmetric_check:

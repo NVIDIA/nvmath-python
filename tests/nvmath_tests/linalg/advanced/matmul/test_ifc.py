@@ -8,17 +8,16 @@ This set of tests verifies the lower level interfaces
 
 import numpy as np
 
-from nvmath.linalg.advanced import Matmul
-from nvmath.linalg._internal.matmul_desc_ifc import MatmulDescInterface
-from nvmath.linalg._internal.matrix_layout_ifc import MatrixLayoutInterface
-from nvmath.linalg._internal.matmul_pref_ifc import MatmulPreferenceInterface
-
 from nvmath.internal import typemaps
+from nvmath.linalg._internal.matmul_desc_ifc import MatmulDescInterface
+from nvmath.linalg._internal.matmul_pref_ifc import MatmulPreferenceInterface
+from nvmath.linalg._internal.matrix_layout_ifc import MatrixLayoutInterface
+from nvmath.linalg.advanced import Matmul
 
 
 def test_matmul_desc_ifc():
     """
-    Test MatmulDescInterface.__getattr__ (not used anywhere yet)
+    Test MatmulDescInterface property access.
     """
     a = np.zeros((1, 1))
     with Matmul(a, a) as mm:
@@ -29,7 +28,7 @@ def test_matmul_desc_ifc():
 
 def test_matrix_layout_ifc():
     """
-    Test MatrixLayoutInterface.__getattr__
+    Test MatrixLayoutInterface property access.
     """
     a = np.zeros((1, 1), dtype=np.float32)
     with Matmul(a, a) as mm:
@@ -40,7 +39,7 @@ def test_matrix_layout_ifc():
 
 def test_matmul_pref_ifc():
     """
-    Test MatmulPreferenceInterface.__getattr__
+    Test MatmulPreferenceInterface property access.
     """
     a = np.zeros((1, 1))
     with Matmul(a, a) as mm:

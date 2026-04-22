@@ -9,9 +9,9 @@ This example brings together truncation/padding, and caching.
 import functools
 
 import cupy as cp
+from caching import FFTCache
+from caching import fft as cached_fft
 from cupyx.profiler import benchmark
-
-from caching import fft as cached_fft, FFTCache
 from truncation import fft as truncated_fft
 
 shape = 512, 512, 512

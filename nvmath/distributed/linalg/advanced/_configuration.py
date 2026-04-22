@@ -8,6 +8,7 @@ __all__ = [
     "MatmulOptions",
     "MatmulEpilogPreferences",
     "MatmulPlanPreferences",
+    "MatmulQuantizationScales",
     "matrix_qualifiers_dtype",
 ]
 
@@ -17,10 +18,13 @@ from typing import Literal
 
 import numpy as _np
 
-from nvmath.bindings import cublas  # type: ignore
-from nvmath.bindings import cublasMp  # type: ignore
-from nvmath.internal.utils import check_or_create_options
 from nvmath._utils import CudaDataType
+from nvmath.bindings import (
+    cublas,  # type: ignore
+    cublasMp,  # type: ignore
+)
+from nvmath.internal.utils import check_or_create_options
+from nvmath.linalg.advanced import MatmulQuantizationScales
 
 MatmulEpilog = cublasMp.MatmulEpilogue
 MatmulAlgoType = cublasMp.MatmulAlgoType
@@ -32,6 +36,9 @@ class MatmulOptions:
     function :func:`matmul`.
 
     Attributes:
+        inplace: Whether the matrix multiplication is performed in-place (operand C is
+            overwritten). The default is ``inplace=False``.
+
         compute_type (nvmath.distributed.linalg.ComputeType): CUDA compute type. A suitable
             compute type will be selected if not specified.
 
@@ -40,10 +47,24 @@ class MatmulOptions:
 
         result_type (nvmath.CudaDataType): CUDA data type. A requested datatype of the
             result. If not specified, this type will be determined based on the input types.
+            Non-default result types are only supported for narrow-precision (FP8 and lower)
+            operations.
 
         algo_type (nvmath.distributed.linalg.advanced.MatmulAlgoType): Hints the algorithm
             type to be used. If not supported, cuBLASMp will fallback to the default
             algorithm.
+
+        result_amax (bool): If set, the absolute maximum (amax) of the result will be
+            returned in the auxiliary output tensor. Only supported for narrow-precision
+            (FP8 and lower) operations.
+
+        block_scaling (bool): If set, block scaling (MXFP8) will be used instead of
+            tensor-wide scaling for FP8 operations. If the result is a narrow-precision
+            (FP8 and lower) data type, scales used for result quantization will be returned
+            in the auxiliary output tensor as ``"d_out_scale"`` in UE8M0 format. For more
+            information on UE8M0 format, see the documentation of
+            :class:`~linalg.advanced.MatmulQuantizationScales`.
+            This option is only supported for narrow-precision (FP8 and lower) operations.
 
         sm_count_communication (int) : The number of SMs to use for communication. This is
             only relevant for some algorithms (please consult cuBLASMp documentation).
@@ -63,10 +84,13 @@ class MatmulOptions:
        :class:`Matmul`, :func:`matmul`
     """
 
+    inplace: bool = False
     compute_type: int | None = None
     scale_type: int | None = None
     result_type: int | None = None
     algo_type: int | None = None
+    result_amax: bool = False
+    block_scaling: bool = False
     sm_count_communication: int | None = None
     logger: Logger | None = None
     blocking: Literal[True, "auto"] = "auto"
@@ -102,15 +126,23 @@ class MatmulEpilogPreferences:
         aux_type (nvmath.CudaDataType): The requested datatype of the
             epilog auxiliary output. If not specified, this type will be determined based on
             the input types. Non-default auxiliary output types are only supported for
-            certain epilogs. For more details on the supported combinations, see
+            narrow-precision operations and certain epilogs. For more details on the
+            supported combinations, see
             ``CUBLASMP_MATMUL_DESCRIPTOR_ATTRIBUTE_EPILOGUE_AUX_DATA_TYPE`` in cuBLASMp
-            documentation.
+            documentation. If this option is set to a narrow-precision data type, an
+            additional epilog input ``"aux_quantization_scale"`` needs to be specified.
+
+        aux_amax (bool): If set, the absolute maximum (amax) of the epilog
+            auxiliary output will be returned in the auxiliary output tensor.
+            Only supported when ``aux_type`` option is set to a narrow-precision
+            data type.
 
     .. seealso::
        :meth:`Matmul.plan`, :func:`matmul`, :class:`MatmulPlanPreferences`
     """
 
     aux_type: int | None = None
+    aux_amax: bool = False
 
 
 @dataclasses.dataclass

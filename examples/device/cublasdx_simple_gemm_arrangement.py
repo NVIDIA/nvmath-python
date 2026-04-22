@@ -7,10 +7,11 @@
 #
 
 import numpy as np
-from numba import cuda
-from nvmath.device import Matmul
 from common import random_real
 from common_numba import load_to_shared_2d, store_from_shared_2d
+from numba import cuda
+
+from nvmath.device import Matmul
 
 
 def main():

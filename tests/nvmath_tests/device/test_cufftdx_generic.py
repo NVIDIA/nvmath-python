@@ -3,17 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
-from nvmath.device import fft, Code, CodeType, ComputeCapability, FFT
-from nvmath.device.cufftdx import compile_fft_execute
-from nvmath.device.types import half4, complex64, complex128
-import pytest
+
 import numpy as np
+import pytest
+
+from nvmath.device import FFT, Code, CodeType, ComputeCapability, fft
+from nvmath.device.cufftdx import compile_fft_execute
+from nvmath.device.types import complex64, complex128, half4
+
 from .helpers import (
-    SM100,
-    SM101,
-    SM103,
-    SM120,
-    SM121,
     SM70,
     SM72,
     SM75,
@@ -21,6 +19,11 @@ from .helpers import (
     SM86,
     SM89,
     SM90,
+    SM100,
+    SM101,
+    SM103,
+    SM120,
+    SM121,
     skip_unsupported_sm,
 )
 
@@ -374,7 +377,7 @@ def test_negative(opt, value):
         del opts[opt]
     else:
         opts[opt] = value
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         FFT = fft(**opts)
         # trigger compilation
         value_type = FFT.value_type  # noqa: F841
@@ -395,7 +398,7 @@ def test_negative(opt, value):
 def test_negative_compile(opt, value):
     fft = FFT(fft_type="c2c", size=256, precision=np.float32, direction="forward", execution="Block")
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         compile_fft_execute(fft, code_type=value)
 
 

@@ -15,11 +15,10 @@ corresponding C example.
 """
 
 import cffi
-
 import numpy as np
+from numba import cuda
 from numpy.testing import assert_allclose
 
-from numba import cuda
 from nvmath.device import random
 
 # Various parameters
@@ -60,7 +59,7 @@ def test_sobol_scramble():
         offset = ndim * id
         count = 0
 
-        for sample in range(n):
+        for _sample in range(n):
             x = random.uniform_double(states[offset])
             y = random.uniform_double(states[offset + 1])
             z = random.uniform_double(states[offset + 2])
@@ -87,7 +86,7 @@ def test_sobol_scramble():
 
     setup[blocks, threads](sobolDirectionVectors, sobolScrambleConstants, states)
 
-    for i in range(repetitions):
+    for _i in range(repetitions):
         count_within_unit_sphere[blocks, threads](states, sample_count, devResult)
 
     result = devResult.copy_to_host()

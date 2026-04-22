@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 2.3.1. Do not modify it directly.
+# This code was automatically generated with version 2.5.0, generator version 0.3.1.dev1393+g0a20dc9d7. Do not modify it directly.
 
 cimport cython  # NOQA
 cimport cpython
@@ -27,6 +27,9 @@ _COMPUTE_DESC_TF32 = None
 _COMPUTE_DESC_3XTF32 = None
 _COMPUTE_DESC_32F = None
 _COMPUTE_DESC_64F = None
+_COMPUTE_DESC_4X16F = None
+_COMPUTE_DESC_9X16BF = None
+_COMPUTE_DESC_8XINT8 = None
 
 def _load_cutensor_compute_descriptors():
     global _COMPUTE_DESC_INIT
@@ -41,12 +44,16 @@ def _load_cutensor_compute_descriptors():
             else:
                 lib = ctypes.CDLL(lib_handle.abs_path)
             global _COMPUTE_DESC_16F, _COMPUTE_DESC_16BF, _COMPUTE_DESC_TF32, _COMPUTE_DESC_3XTF32, _COMPUTE_DESC_32F, _COMPUTE_DESC_64F
+            global _COMPUTE_DESC_4X16F, _COMPUTE_DESC_9X16BF, _COMPUTE_DESC_8XINT8
             _COMPUTE_DESC_16F = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_16F").value
             _COMPUTE_DESC_16BF = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_16BF").value
             _COMPUTE_DESC_TF32 = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_TF32").value
             _COMPUTE_DESC_3XTF32 = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_3XTF32").value
             _COMPUTE_DESC_32F = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_32F").value
             _COMPUTE_DESC_64F = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_64F").value
+            _COMPUTE_DESC_4X16F = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_4X16F").value
+            _COMPUTE_DESC_9X16BF = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_9X16BF").value
+            _COMPUTE_DESC_8XINT8 = ctypes.c_void_p.in_dll(lib, "CUTENSOR_COMPUTE_DESC_8XINT8").value
             _COMPUTE_DESC_INIT = True
         except:
             raise ImportError("Failed to load cutensor library")
@@ -85,13 +92,32 @@ class ComputeDesc:
         _load_cutensor_compute_descriptors()
         return _COMPUTE_DESC_64F
 
+    @classmethod
+    def COMPUTE_4X16F(cls):
+        _load_cutensor_compute_descriptors()
+        return _COMPUTE_DESC_4X16F
+
+    @classmethod
+    def COMPUTE_9X16BF(cls):
+        _load_cutensor_compute_descriptors()
+        return _COMPUTE_DESC_9X16BF
+
+    @classmethod
+    def COMPUTE_8XINT8(cls):
+        _load_cutensor_compute_descriptors()
+        return _COMPUTE_DESC_8XINT8
 
 ###############################################################################
 # Enum
 ###############################################################################
 
 class Operator(_IntEnum):
-    """See `cutensorOperator_t`."""
+    """
+    This enum captures all unary and binary element-wise operations
+    supported by the cuTENSOR library.
+
+    See `cutensorOperator_t`.
+    """
     OP_IDENTITY = CUTENSOR_OP_IDENTITY
     OP_SQRT = CUTENSOR_OP_SQRT
     OP_RELU = CUTENSOR_OP_RELU
@@ -127,7 +153,13 @@ class Operator(_IntEnum):
     OP_UNKNOWN = CUTENSOR_OP_UNKNOWN
 
 class Status(_IntEnum):
-    """See `cutensorStatus_t`."""
+    """
+    cuTENSOR status type returnsThe type is used for function status
+    returns. All cuTENSOR library functions return their status, which can
+    have the following values.
+
+    See `cutensorStatus_t`.
+    """
     SUCCESS = CUTENSOR_STATUS_SUCCESS
     NOT_INITIALIZED = CUTENSOR_STATUS_NOT_INITIALIZED
     ALLOC_FAILED = CUTENSOR_STATUS_ALLOC_FAILED
@@ -145,7 +177,12 @@ class Status(_IntEnum):
     IO_ERROR = CUTENSOR_STATUS_IO_ERROR
 
 class Algo(_IntEnum):
-    """See `cutensorAlgo_t`."""
+    """
+    Allows users to specify the algorithm to be used for performing the
+    desired tensor operation.
+
+    See `cutensorAlgo_t`.
+    """
     DEFAULT_PATIENT = CUTENSOR_ALGO_DEFAULT_PATIENT
     GETT = CUTENSOR_ALGO_GETT
     TGETT = CUTENSOR_ALGO_TGETT
@@ -153,13 +190,25 @@ class Algo(_IntEnum):
     DEFAULT = CUTENSOR_ALGO_DEFAULT
 
 class WorksizePreference(_IntEnum):
-    """See `cutensorWorksizePreference_t`."""
+    """
+    This enum gives users finer control over the suggested workspace.This
+    enum gives users finer control over the amount of workspace that is
+    suggested by `cutensorEstimateWorkspaceSize`
+
+    See `cutensorWorksizePreference_t`.
+    """
     WORKSPACE_MIN = CUTENSOR_WORKSPACE_MIN
     WORKSPACE_DEFAULT = CUTENSOR_WORKSPACE_DEFAULT
     WORKSPACE_MAX = CUTENSOR_WORKSPACE_MAX
 
 class OperationDescriptorAttribute(_IntEnum):
-    """See `cutensorOperationDescriptorAttribute_t`."""
+    """
+    This enum lists all attributes of a `cutensorOperationDescriptor_t`
+    that can be modified (see `cutensorOperationDescriptorSetAttribute` and
+    `cutensorOperationDescriptorGetAttribute`).
+
+    See `cutensorOperationDescriptorAttribute_t`.
+    """
     TAG = CUTENSOR_OPERATION_DESCRIPTOR_TAG
     SCALAR_TYPE = CUTENSOR_OPERATION_DESCRIPTOR_SCALAR_TYPE
     FLOPS = CUTENSOR_OPERATION_DESCRIPTOR_FLOPS
@@ -169,7 +218,12 @@ class OperationDescriptorAttribute(_IntEnum):
     PADDING_VALUE = CUTENSOR_OPERATION_DESCRIPTOR_PADDING_VALUE
 
 class PlanPreferenceAttribute(_IntEnum):
-    """See `cutensorPlanPreferenceAttribute_t`."""
+    """
+    This enum lists all attributes of a `cutensorPlanPreference_t` object
+    that can be modified.
+
+    See `cutensorPlanPreferenceAttribute_t`.
+    """
     AUTOTUNE_MODE = CUTENSOR_PLAN_PREFERENCE_AUTOTUNE_MODE
     CACHE_MODE = CUTENSOR_PLAN_PREFERENCE_CACHE_MODE
     INCREMENTAL_COUNT = CUTENSOR_PLAN_PREFERENCE_INCREMENTAL_COUNT
@@ -178,22 +232,40 @@ class PlanPreferenceAttribute(_IntEnum):
     JIT = CUTENSOR_PLAN_PREFERENCE_JIT
 
 class AutotuneMode(_IntEnum):
-    """See `cutensorAutotuneMode_t`."""
+    """
+    This enum determines the mode w.r.t. cuTENSOR's auto-tuning capability.
+
+    See `cutensorAutotuneMode_t`.
+    """
     NONE = CUTENSOR_AUTOTUNE_MODE_NONE
     INCREMENTAL = CUTENSOR_AUTOTUNE_MODE_INCREMENTAL
 
 class JitMode(_IntEnum):
-    """See `cutensorJitMode_t`."""
+    """
+    This enum determines the mode w.r.t. cuTENSOR's just-in-time
+    compilation capability.
+
+    See `cutensorJitMode_t`.
+    """
     NONE = CUTENSOR_JIT_MODE_NONE
     DEFAULT = CUTENSOR_JIT_MODE_DEFAULT
 
 class CacheMode(_IntEnum):
-    """See `cutensorCacheMode_t`."""
+    """
+    This enum defines what is considered a cache hit.
+
+    See `cutensorCacheMode_t`.
+    """
     NONE = CUTENSOR_CACHE_MODE_NONE
     PEDANTIC = CUTENSOR_CACHE_MODE_PEDANTIC
 
 class PlanAttribute(_IntEnum):
-    """See `cutensorPlanAttribute_t`."""
+    """
+    This enum lists all attributes of a `cutensorPlan_t` object that can be
+    retrieved via `cutensorPlanGetAttribute`.
+
+    See `cutensorPlanAttribute_t`.
+    """
     REQUIRED_WORKSPACE = CUTENSOR_PLAN_REQUIRED_WORKSPACE
 
 
@@ -493,7 +565,7 @@ cpdef intptr_t create_elementwise_binary(intptr_t handle, intptr_t desc_a, mode_
             - an :class:`int` as the pointer address to the array, or
             - a Python sequence of ``int32_t``.
 
-        op_ac (Operator): Element-wise binary operator (see  above).
+        op_ac (Operator): Element-wise binary operator (corresponding to  above).
         desc_compute (intptr_t): Determines the precision in which this operations is performed.
 
     Returns:
@@ -705,14 +777,14 @@ cpdef operation_descriptor_set_attribute(intptr_t handle, intptr_t desc, int att
 
 
 cpdef operation_descriptor_get_attribute(intptr_t handle, intptr_t desc, int attr, intptr_t buf, size_t size_in_bytes):
-    """This function retrieves an attribute of the provided cutensorOperationDescriptor_t object (see cutensorOperationDescriptorAttribute_t).
+    """This function retrieves an attribute of the provided cutensorOperationDescriptor_t object (see ``cutensorOperationDescriptorAttribute_t``).
 
     Args:
         handle (intptr_t): Opaque handle holding cuTENSOR's library context.
         desc (intptr_t): The cutensorOperationDescriptor_t object whos attribute is queried.
         attr (OperationDescriptorAttribute): Specifies the attribute that will be retrieved.
         buf (intptr_t): This buffer (of size size_in_bytes) will hold the requested attribute of the provided cutensorOperationDescriptor_t object.
-        size_in_bytes (size_t): Size of buf (in bytes); see cutensorOperationDescriptorAttribute_t for the exact size.
+        size_in_bytes (size_t): Size of buf (in bytes); see ``cutensorOperationDescriptorAttribute_t`` for the exact size.
 
     .. note:: To compute the attribute size, use the itemsize of the corresponding data
         type, which can be queried using :func:`get_operation_descriptor_attribute_dtype`.
@@ -729,11 +801,11 @@ cpdef intptr_t create_plan_preference(intptr_t handle, int algo, int jit_mode) e
 
     Args:
         handle (intptr_t): Opaque handle holding cuTENSOR's library context.
-        algo (Algo): Allows users to select a specific algorithm. CUTENSOR_ALGO_DEFAULT lets the heuristic choose the algorithm. Any value >= 0 selects a specific GEMM-like algorithm and deactivates the heuristic. If a specified algorithm is not supported CUTENSOR_STATUS_NOT_SUPPORTED is returned. See cutensorAlgo_t for additional choices.
-        jit_mode (JitMode): Determines if cuTENSOR is allowed to use JIT-compiled kernels (leading to a longer plan-creation phase); see cutensorJitMode_t.
+        algo (Algo): Allows users to select a specific algorithm. CUTENSOR_ALGO_DEFAULT lets the heuristic choose the algorithm. Any value >= 0 selects a specific GEMM-like algorithm and deactivates the heuristic. If a specified algorithm is not supported CUTENSOR_STATUS_NOT_SUPPORTED is returned. See ``cutensorAlgo_t`` for additional choices.
+        jit_mode (JitMode): Determines if cuTENSOR is allowed to use JIT-compiled kernels (leading to a longer plan-creation phase); see ``cutensorJitMode_t``.
 
     Returns:
-        intptr_t: Pointer to the structure holding the cutensorPlanPreference_t allocated by this function. See cutensorPlanPreference_t.
+        intptr_t: Pointer to the structure holding the ``cutensorPlanPreference_t`` allocated by this function. See ``cutensorPlanPreference_t``.
 
     .. seealso:: `cutensorCreatePlanPreference`
     """
@@ -778,11 +850,31 @@ cpdef get_plan_preference_attribute_dtype(int attr):
         The data type of the queried attribute.
 
     .. note:: This API has no C counterpart and is a convenient helper for
-        allocating memory for :func:`plan_preference_set_attribute`.
+        allocating memory for :func:`plan_preference_get_attribute`, :func:`plan_preference_set_attribute`.
     """
     return plan_preference_attribute_sizes[attr]
 
 ###########################################################################
+
+
+cpdef plan_preference_get_attribute(intptr_t handle, intptr_t pref, int attr, intptr_t buf, size_t size_in_bytes):
+    """Get attribute of a cutensorPlanPreference_t object.
+
+    Args:
+        handle (intptr_t): Opaque handle holding cuTENSOR's library context.
+        pref (intptr_t): This opaque struct restricts the search space of viable candidates.
+        attr (PlanPreferenceAttribute): Requested attribute.
+        buf (intptr_t): On successful exit: Holds the information of the requested attribute.
+        size_in_bytes (size_t): Size of buf (in bytes); see ``cutensorPlanPreferenceAttribute_t`` for the exact size.
+
+    .. note:: To compute the attribute size, use the itemsize of the corresponding data
+        type, which can be queried using :func:`get_plan_preference_attribute_dtype`.
+
+    .. seealso:: `cutensorPlanPreferenceGetAttribute`
+    """
+    with nogil:
+        __status__ = cutensorPlanPreferenceGetAttribute(<const Handle>handle, <PlanPreference>pref, <_PlanPreferenceAttribute>attr, <void*>buf, size_in_bytes)
+    check_status(__status__)
 
 
 cpdef plan_preference_set_attribute(intptr_t handle, intptr_t pref, int attr, intptr_t buf, size_t size_in_bytes):
@@ -793,7 +885,7 @@ cpdef plan_preference_set_attribute(intptr_t handle, intptr_t pref, int attr, in
         pref (intptr_t): This opaque struct restricts the search space of viable candidates.
         attr (PlanPreferenceAttribute): Specifies the attribute that will be set.
         buf (intptr_t): This buffer (of size size_in_bytes) determines the value to which ``attr`` will be set.
-        size_in_bytes (size_t): Size of buf (in bytes); see cutensorPlanPreferenceAttribute_t for the exact size.
+        size_in_bytes (size_t): Size of buf (in bytes); see ``cutensorPlanPreferenceAttribute_t`` for the exact size.
 
     .. note:: To compute the attribute size, use the itemsize of the corresponding data
         type, which can be queried using :func:`get_plan_preference_attribute_dtype`.
@@ -829,7 +921,7 @@ cpdef get_plan_attribute_dtype(int attr):
 
 
 cpdef plan_get_attribute(intptr_t handle, intptr_t plan, int attr, intptr_t buf, size_t size_in_bytes):
-    """Retrieves information about an already-created plan (see cutensorPlanAttribute_t).
+    """Retrieves information about an already-created plan (see ``cutensorPlanAttribute_t``).
 
     Args:
         handle (intptr_t): Denotes an already-created plan (e.g., via ``cutensorCreatePlan`` or cutensorCreatePlanAutotuned).
@@ -855,7 +947,7 @@ cpdef uint64_t estimate_workspace_size(intptr_t handle, intptr_t desc, intptr_t 
         handle (intptr_t): Opaque handle holding cuTENSOR's library context.
         desc (intptr_t): This opaque struct encodes the operation.
         plan_pref (intptr_t): This opaque struct restricts the space of viable candidates.
-        workspace_pref (int): This parameter influences the size of the workspace; see cutensorWorksizePreference_t for details.
+        workspace_pref (int): This parameter influences the size of the workspace; see ``cutensorWorksizePreference_t`` for details.
 
     Returns:
         uint64_t: The workspace size (in bytes) that is required for the given operation.
@@ -875,7 +967,7 @@ cpdef intptr_t create_plan(intptr_t handle, intptr_t desc, intptr_t pref, uint64
     Args:
         handle (intptr_t): Opaque handle holding cuTENSOR's library context.
         desc (intptr_t): This opaque struct encodes the given operation (see ``cutensorCreateContraction``, ``cutensorCreateReduction``, ``cutensorCreatePermutation``, ``cutensorCreateElementwiseBinary``, ``cutensorCreateElementwiseTrinary``, or ``cutensorCreateContractionTrinary``).
-        pref (intptr_t): This opaque struct is used to restrict the space of applicable candidates/kernels (see ``cutensorCreatePlanPreference`` or cutensorPlanPreferenceAttribute_t). May be ``nullptr``, in that case default choices are assumed. Block-sparse contractions currently only support these default settings and ignore other supplied preferences.
+        pref (intptr_t): This opaque struct is used to restrict the space of applicable candidates/kernels (see ``cutensorCreatePlanPreference`` or ``cutensorPlanPreferenceAttribute_t``). May be ``nullptr``, in that case default choices are assumed. Block-sparse contractions currently only support these default settings and ignore other supplied preferences.
         workspace_size_limit (uint64_t): Denotes the maximal workspace that the corresponding operation is allowed to use (see ``cutensorEstimateWorkspaceSize``).
 
     Returns:
@@ -1098,7 +1190,7 @@ cpdef intptr_t create_block_sparse_tensor_descriptor(intptr_t handle, uint32_t n
             - an :class:`int` as the pointer address to the array, or
             - a Python sequence of ``int64_t``.
 
-        non_zero_coordinates (object): Block-coordinates of each non-zero block (host array of size ``num_modes`` x ``num_non_zero_blocks`` Blocks can be specified in any order, however, that order must be consistent with stride and alignmentRequirement arrays. It can be:
+        non_zero_coordinates (object): Block-coordinates of each non-zero block (host array of size ``num_modes`` x ``num_non_zero_blocks``). Blocks can be specified in any order, however, that order must be consistent with stride and alignmentRequirement arrays. It can be:
 
             - an :class:`int` as the pointer address to the array, or
             - a Python sequence of ``int32_t``.

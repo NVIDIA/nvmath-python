@@ -43,7 +43,7 @@ result_fp8_e4m3fn = nvmath.linalg.advanced.matmul(
 )
 
 # Finally, request FP8 (e5m2) output.
-result_fp8_e5m2fn = nvmath.linalg.advanced.matmul(
+result_fp8_e5m2 = nvmath.linalg.advanced.matmul(
     a, b, quantization_scales={"a": 1, "b": 1, "d": 1}, options={"result_type": nvmath.CudaDataType.CUDA_R_8F_E5M2}
 )
 
@@ -64,6 +64,6 @@ print(
     f"{mean_relative_error_vs_fp32(result_fp8_e4m3fn):.07f}."
 )
 print(
-    f"{result_fp8_e5m2fn.dtype=}. The mean relative error to the FP32 reference is "
-    f"{mean_relative_error_vs_fp32(result_fp8_e5m2fn):.07f}."
+    f"{result_fp8_e5m2.dtype=}. The mean relative error to the FP32 reference is "
+    f"{mean_relative_error_vs_fp32(result_fp8_e5m2):.07f}."
 )

@@ -7,14 +7,18 @@ try:
     import torch
 except ImportError:
     torch = None
-import pytest
-from ...utils import sample_matrix, allow_cublas_unsupported, matmul_with_random_autotune
-from .fp8_utils import assert_fp8_equal, fp8_matmul_reference, simple_scales, generate_inputs, choose_scales
-from nvmath.linalg.advanced import Matmul, MatmulEpilog as Epilog
-from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
-from nvmath.bindings import cublasLt as cublaslt
-from .test_fp8 import SUPPORTED_TYPE_COMBINATIONS, expected_result_type
 from contextlib import nullcontext
+
+import pytest
+
+from nvmath.bindings import cublasLt as cublaslt
+from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
+from nvmath.linalg.advanced import Matmul
+from nvmath.linalg.advanced import MatmulEpilog as Epilog
+
+from ...utils import allow_cublas_unsupported, matmul_with_random_autotune, sample_matrix
+from .fp8_utils import assert_fp8_equal, choose_scales, fp8_matmul_reference, generate_inputs, simple_scales
+from .test_fp8 import SUPPORTED_TYPE_COMBINATIONS, expected_result_type
 
 if torch is None:
     pytest.skip("Torch is required for FP8 tests", allow_module_level=True)
@@ -113,7 +117,10 @@ def test_epilogs(
     allow_not_supported |= epilog_aux_type is not None and not (
         atype == "float8_e4m3fn" and btype == "float8_e4m3fn" and ctype == "float16" and epilog_name == "GELU_AUX"
     )
-    if COMPUTE_CAPABILITY <= (8, 9):
+    # We expect these epilogs to be supported for Blackwell, but they aren't. We have
+    # filed a bug with cuBLAS: bug/5856128
+    # Fix will be included in some release after 130201
+    if COMPUTE_CAPABILITY <= (8, 9) or (COMPUTE_CAPABILITY == (12, 0) and cublaslt.get_version() <= 130201):
         allow_not_supported |= "AUX" in epilog_name and "float8" in result_type and d_batch != ()
         allow_not_supported |= epilog_name.startswith("GELU_AUX") and atype != btype
 
@@ -153,7 +160,10 @@ def test_epilogs(
         inputs["bias"] = bias
     if "DRELU" in epilog_name:
         round_16 = lambda x: (x + 15) // 16 * 16
-        inputs["relu_aux"] = torch.randint(low=0, high=256, size=(n, round_16(m // 16))).type(torch.uint8).T
+        relu_aux = torch.randint(low=0, high=256, size=(n, round_16(m // 16))).type(torch.uint8).T
+        if use_cuda:
+            relu_aux = relu_aux.cuda()
+        inputs["relu_aux"] = relu_aux
     if "DGELU" in epilog_name:
         if order == "col":
             inputs["gelu_aux"] = sample_matrix("torch", result_type, (n, m), use_cuda=use_cuda, min=-5, max=5).T
@@ -221,6 +231,16 @@ def test_epilogs(
             if epilog_aux_type is not None:
                 assert str(aux[key].dtype).split(".")[-1] == epilog_aux_type
         elif key == "gelu_aux_amax":
+            # check that the amax computed matches the reference amax.
+            # both sides are 1-element float32 tensors, use small tolerance.
+            assert torch.allclose(
+                aux["gelu_aux_amax"],
+                reference_aux["gelu_aux_amax"],
+                atol=1e-3,
+                rtol=1e-3,
+            )
+            # use looser tolerance for the next comparison because
+            # we recover amax from the FP8-quantized tensor
             assert torch.allclose(
                 aux["gelu_aux_amax"],
                 (aux["gelu_aux"].type(torch.float32) / inputs.get("aux_quantization_scale", 1)).abs().max(),
@@ -273,27 +293,27 @@ def test_epilog_aux_scale_reset(
         }
     }
     inputs = {"aux_quantization_scale": 10}
-    mm = Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options)
-    mm.plan(epilog=epilog, epilog_inputs=inputs, preferences=preferences)
-    result, aux = mm.execute()
-    reference, reference_aux = fp8_matmul_reference(
-        a,
-        b,
-        c,
-        alpha=alpha,
-        beta=beta,
-        quantization_scales=quantization_scales,
-        options=options,
-        preferences=preferences,
-        epilog_inputs=inputs,
-        epilog=epilog,
-    )
-    assert_fp8_equal(result, reference)
-    assert_fp8_equal(aux["gelu_aux"], reference_aux["gelu_aux"])
+    with Matmul(a, b, c, alpha=alpha, beta=beta, quantization_scales=quantization_scales, options=options) as mm:
+        mm.plan(epilog=epilog, epilog_inputs=inputs, preferences=preferences)
+        result, aux = mm.execute()
+        reference, reference_aux = fp8_matmul_reference(
+            a,
+            b,
+            c,
+            alpha=alpha,
+            beta=beta,
+            quantization_scales=quantization_scales,
+            options=options,
+            preferences=preferences,
+            epilog_inputs=inputs,
+            epilog=epilog,
+        )
+        assert_fp8_equal(result, reference)
+        assert_fp8_equal(aux["gelu_aux"], reference_aux["gelu_aux"])
 
-    inputs2 = {"aux_quantization_scale": -0.1}
-    mm.reset_operands(a=a, epilog_inputs=inputs2)
-    result2, aux2 = mm.execute()
+        inputs2 = {"aux_quantization_scale": -0.1}
+        mm.reset_operands(a=a, epilog_inputs=inputs2)
+        result2, aux2 = mm.execute()
     reference2, reference_aux2 = fp8_matmul_reference(
         a,
         b,

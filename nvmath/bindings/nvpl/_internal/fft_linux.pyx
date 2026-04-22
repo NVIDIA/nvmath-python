@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.4.2. Do not modify it directly.
+# This code was automatically generated with version 25.5, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 cimport cython
 from libc.stdint cimport intptr_t
@@ -84,6 +84,7 @@ cdef void* load_library() except* with gil:
         raise RuntimeError(
             f"Failed to dlopen either of the following libraries: {all_libs}. {all_err_msg}"
         )
+    return handle
 
 
 cdef int _check_or_init_nvpl_fft() except -1 nogil:
@@ -94,6 +95,10 @@ cdef int _check_or_init_nvpl_fft() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_nvpl_fft_init:
+            return 0
+
         # Load function
         global __nvpl_fft_get_version
         __nvpl_fft_get_version = dlsym(RTLD_DEFAULT, 'nvpl_fft_get_version')

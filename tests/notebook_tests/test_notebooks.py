@@ -4,11 +4,13 @@
 
 import glob
 import os
-import pytest
-import nbformat
-from nbconvert.preprocessors import ExecutePreprocessor
-from nvmath import bindings
+
 import cupy
+import nbformat
+import pytest
+from nbconvert.preprocessors import ExecutePreprocessor
+
+from nvmath import bindings
 
 try:
     import torch

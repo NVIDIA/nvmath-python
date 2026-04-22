@@ -12,12 +12,13 @@ from collections.abc import Sequence
 
 import numpy
 import numpy.typing as npt
+
 from nvmath.internal.tensor_ifc_ndbuffer import NDBufferTensor
 
-from .ndbuffer import ndbuffer, package_utils
 from . import utils
-from .tensor_ifc import TensorHolder
+from .ndbuffer import ndbuffer, package_utils
 from .package_ifc import StreamHolder
+from .tensor_ifc import TensorHolder
 
 
 class CudaTensor(NDBufferTensor):
@@ -152,6 +153,27 @@ class NumpyTensor(TensorHolder[npt.NDArray]):
             return self.__class__(numpy.reshape(self.tensor, shape))
         else:
             return self.__class__(numpy.reshape(self.tensor, shape, copy=copy))
+
+    def memory_buffer(self):
+        """Creates a view of the memory buffer as a 1D tensor."""
+        t = self.tensor
+        # TODO: ensure tensor is dense for now, and later support linear
+        # memory with constant stride.
+        v = NumpyTensor(t.ravel(order="K"))
+        assert v.data_ptr == self.data_ptr, "Internal error."
+        return v
+
+    def memory_buffer_to_tensor(self, shape, strides):
+        """
+        Creates a N-D tensor view of the memory buffer according to the specified
+        shape and strides.
+        """
+        assert len(self.shape) == 1, "Internal error."
+        t = self.tensor
+        strides = [s * self.itemsize for s in strides]
+        v = NumpyTensor(numpy.lib.stride_tricks.as_strided(t, shape=shape, strides=strides))
+        assert v.data_ptr == self.data_ptr, "Internal error."
+        return v
 
     def _broadcast_to(self, shape):
         reshaped_tensor = numpy.broadcast_to(self.tensor, shape)

@@ -28,11 +28,10 @@ The APIs provided by nvmath-python can be categorized into:
 The nvmath-python library is dedicated to delivering the following key features and
 commitments:
 
-1. **Interoperability with array and tensor libraries**: Instead of providing a native array
-   or tensor data structure, nvmath-python provides seamless interoperability with
-   widely-used array libraries such as NumPy, CuPy, and PyTorch, through APIs compatible
-   with their data representations. nvmath-python should not be regarded as a replacement,
-   but rather as a complementary tool to these libraries.
+1. **Interoperability with array and tensor libraries**: nvmath-python provides seamless
+   interoperability with widely-used array libraries such as NumPy, CuPy, and PyTorch,
+   through APIs compatible with their data representations. nvmath-python should not be
+   regarded as a replacement, but rather as a complementary tool to these libraries.
 2. **Logical Feature Parity**: While the Pythonic API surface (the number of APIs and the
    complexity of each) is more concise compared to that of the C libraries, it provides
    access to their complete functionality.
@@ -63,7 +62,7 @@ flexibility allows:
 - Alice, a **Python package developer**, to utilize core math operations to compose into
   higher-level algorithms or adapt these operations into her preferred interfaces.
 - Bob, an **application developer**, to use core operations directly from nvmath-python or
-  indirectly through other libraries that leverage math-python.
+  indirectly through other libraries that leverage nvmath-python.
 - Carol, a **researcher**, to write kernels entirely in Python that call core math
   operations such as FFT.
 
@@ -133,54 +132,36 @@ Stateless and Stateful APIs
 The host APIs within nvmath-python can be generally categorized into two types: stateless
 function-form APIs and stateful class-form APIs.
 
-The function-form APIs, such as :func:`nvmath.fft.fft` and
-:func:`nvmath.linalg.advanced.matmul`, are designed to deliver quick, end-to-end results
-with a single function call. These APIs are ideal for instances where a user needs to
-perform a single computation without the need for intermediate steps, customization of
-algorithm selection, or cost amortization of preparatory steps. Conversely, the stateful
-class-form APIs, like :class:`nvmath.fft.FFT` and :class:`nvmath.linalg.advanced.Matmul`,
-offer a more comprehensive and flexible approach. They not only encompass the functionality
-found in their function-form counterparts but also allow for amortization of one-time costs,
-potentially enhancing performance significantly.
-
-The design pattern for all stateful APIs in nvmath-python consists of several key phases:
-
-- Problem Specification: This initial phase involves defining the operation and setting
-  options that affect its execution. It's designed to be as lightweight as possible,
-  ensuring the problem is well-defined and supported by the current implementation.
-- Preparation: Using FFT as an example, this phase includes a planning step to select
-  the optimal algorithm for the defined FFT operation. An optional autotuning operation,
-  when available, also falls within the preparation phase. The preparation phase is
-  generally the most resource-intensive and may incorporate user-specified planning and
-  autotuning options.
-- Execution: This phase allows for repeated execution, where the operand can be either
-  modified in-place or explicitly reset using the ``reset_operand``/``reset_operands``
-  method. The costs associated with the first two phases are therefore amortized over
-  these multiple executions.
-- Resource Release: Users are advised to use stateful objects from within a context
-  using the `with statement
-  <https://docs.python.org/3/reference/compound_stmts.html#the-with-statement>`_, which
-  automatically handles the release of internal resources upon exit. If the object is
-  not used as a context manager using ``with``, it is necessary to explicitly call the
-  ``free`` method to ensure all resources are properly released.
+**Stateless function-form APIs**, such as :func:`nvmath.fft.fft` and
+:func:`nvmath.linalg.advanced.matmul`, are designed for end-to-end results
+with a single function call. These APIs are ideal for one-off computations without the
+need for intermediate steps, customization of algorithm selection, or cost amortization of
+preparatory steps.
 
 .. note::
 
-    By design, nvmath-python does NOT cache plans with stateless function-form APIs. This is
-    to enable library developers and others to use their own caching mechanisms with
+    By design, nvmath-python does NOT cache plans with stateless function-form APIs. This
+    is to enable library developers and others to use their own caching mechanisms with
     nvmath-python. Therefore users should use the stateful object APIs for repeated use as
-    well as benchmarking to avoid incurring repeated preparatory costs, or use a cached API
-    (see `caching.py
+    well as benchmarking to avoid incurring repeated preparatory costs, or use a cached
+    API (see `caching.py
     <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/caching.py>`_ for an
     example implementation).
 
-.. note::
 
-    The decision to require explicit ``free`` calls for resource release is driven by the
-    fact that Python's garbage collector may delay freeing object resources when the object
-    goes out of scope or its reference count drops to zero. For details, refer to the
-    `__del__ method Python documentation
-    <https://docs.python.org/3/reference/datamodel.html#object.__del__>`_.
+**Stateful class-form APIs**, like :class:`nvmath.fft.FFT` and
+:class:`nvmath.linalg.advanced.Matmul`, offer a more flexible approach.
+These APIs follow a multi-phase design pattern: problem specification,
+preparation (planning), execution, and resource release.
+The planning phase can potentially be expensive, but once completed, it can be reused
+across multiple executions by resetting operands as needed.
+As such, they not only encompass the functionality found in their
+function-form counterparts but also allow for amortization of one-time costs,
+making them ideal for repeated operations and performance-critical code.
+
+For detailed information on the design principles, lifecycle phases, and best practices
+for using stateful APIs, please refer to :doc:`Stateful APIs Design Principles
+<stateful_apis_guide>`.
 
 
 .. _generic specialized:
@@ -271,11 +252,12 @@ example04_logging_user.py>`_.
 Call Blocking Behavior
 ----------------------
 
-By default, calls to all Pythonic host APIs that require GPU execution are *not* blocking if
-the input operands reside on the device. This means that functions like
-:func:`nvmath.linalg.advanced.matmul`, :meth:`nvmath.fft.FFT.execute`, and
-:meth:`nvmath.linalg.advanced.Matmul.execute` will return immediately after the operation is
-launched on the GPU without waiting for it to complete. Users are therefore responsible for
+By default, calls to all Pythonic host APIs that require GPU execution are *non-blocking* if
+the input operands reside on the device. This means that free functions like
+:func:`nvmath.linalg.advanced.matmul` or stateful class
+methods like  :meth:`nvmath.fft.FFT.execute`, :meth:`nvmath.linalg.advanced.Matmul.execute`
+will return immediately after the operation is launched on the GPU without waiting
+for it to complete. Users are therefore responsible for
 properly synchronizing the stream when needed. The default behavior can be modified by
 setting the ``blocking`` attribute (default ``'auto'``) of the relevant ``Options`` object
 to ``True``. For example, users may set :attr:`nvmath.fft.FFTOptions.blocking` to ``True``
@@ -290,25 +272,19 @@ operand that will also reside on the host. Meanwhile, APIs that execute on the h
 Stream Semantics
 ----------------
 
-The stream semantics depend on whether the behavior of the execution APIs is chosen to be
-blocking or non-blocking (see :ref:`high-level call blocking`).
+Stream semantics depend on two aspects: whether execution is blocking or non-blocking
+(see :ref:`high-level call blocking`) and whether the API is a free function or a
+stateful class. When execution is blocking, stream ordering is automatically handled
+by nvmath-python for operations performed within the package. When execution is
+non-blocking, it is the user's responsibility to ensure correct stream ordering. In
+both cases, if all operations use the default stream (or a single user-provided
+stream), no explicit stream ordering is needed.
 
-For blocking behavior, stream ordering is automatically handled by the nvmath-python
-high-level APIs for *operations that are performed within the package*. A stream can be
-provided for two reasons:
-
-1. When the computation that prepares the input operands is not already complete by the time
-   the execution APIs are called. This is a correctness requirement for user-provided data.
-2. To enable parallel computations across multiple streams if the device has sufficient
-   resources and the current stream (which is the default) has concomitant operations. This
-   can be done for performance reasons.
-
-For non-blocking behavior, it is the user's responsibility to ensure correct stream ordering
-between the execution API calls.
-
-The execution APIs are always launched on the provided stream.
-
-For examples on stream ordering, refer to `FFT with multiple streams
+For a detailed discussion of stream semantics — including the differences between
+free-function and stateful-class APIs, code examples for blocking and non-blocking
+scenarios, and stream-ordered deallocation pitfalls — see the dedicated
+:doc:`Stream Semantics <stream_semantics>` page. For examples on stream ordering, refer to
+`FFT with multiple streams
 <https://github.com/NVIDIA/nvmath-python/tree/main/examples/fft/example09_streams.py>`_.
 
 .. _high-level memory management:
@@ -385,9 +361,10 @@ launches, and in memory-bound operations to avoid the extra roundtrip to global 
 We currently offer support for calling FFT, matrix multiplication, and random number
 generation APIs in kernels written using `Numba`_, with plans to offer more core operations
 and support other compilers in the future. The design of the device APIs closely mimics that
-of the C++ APIs from the corresponding NVIDIA Math Libraries (MathDx libraries `cuFFTDx
-<https://docs.nvidia.com/cuda/cufftdx/1.5.1>`_ and `cuBLASDx
-<https://docs.nvidia.com/cuda/cublasdx/0.4.1>`_ for FFT and matrix multiplication, and
+of the C++ APIs from the corresponding NVIDIA Math Libraries (MathDx libraries
+:cufftdx_doc:`cuFFTDx <index.html>` and
+:cublasdx_doc:`cuBLASDx <index.html>` for
+FFT and matrix multiplication, and
 `cuRAND device APIs <https://docs.nvidia.com/cuda/curand/group__DEVICE.html#group__DEVICE>`_
 for random number generation).
 

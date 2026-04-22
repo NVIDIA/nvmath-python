@@ -6,44 +6,43 @@ import collections
 import logging
 import typing
 
-from hypothesis import given, assume, reproduce_failure  # noqa: F401
+import numpy as np
+from hypothesis import assume, given, reproduce_failure  # noqa: F401
 from hypothesis.extra.numpy import arrays, from_dtype
 from hypothesis.strategies import (
     booleans,
     composite,
     integers,
+    lists,
     none,
     one_of,
     sampled_from,
     tuples,
-    lists,
 )
-import numpy as np
 
 from nvmath._internal.templates import ExecutionCPU, ExecutionCUDA
-from nvmath.internal.tensor_wrapper import maybe_register_package
-from nvmath.memory import _MEMORY_MANAGER
 from nvmath.bindings import cublas
+from nvmath.internal.tensor_wrapper import maybe_register_package
 from nvmath.linalg._internal.typemaps import (
-    NAMES_TO_DEFAULT_COMPUTE_TYPE,
     CUBLAS_COMPUTE_TYPE_TO_NAME,
+    NAMES_TO_DEFAULT_COMPUTE_TYPE,
 )
 from nvmath.linalg.generic import (
     DiagonalMatrixQualifier,
     GeneralMatrixQualifier,
     HermitianMatrixQualifier,
-    matmul,
     MatmulOptions,
     MatrixQualifier,
-    matrix_qualifiers_dtype,
     SymmetricMatrixQualifier,
     TriangularMatrixQualifier,
+    matmul,
+    matrix_qualifiers_dtype,
 )
-
+from nvmath.memory import _MEMORY_MANAGER
 from nvmath_tests.helpers import nvmath_seed
+
 from ...utils import get_absolute_tolerance
 from . import CUBLAS_AVAILABLE, NVPL_AVAILABLE
-
 
 AVAILABLE_TENSOR_LIBRARIES: list[str] = ["numpy"]
 
@@ -135,7 +134,7 @@ options_blocking_values = [True, "auto"]
 options_allocator_values = [
     None,
     _MEMORY_MANAGER["_raw"](0, logging.getLogger()),
-    _MEMORY_MANAGER["cupy"](0, logging.getLogger()),
+    _MEMORY_MANAGER["cupy"](0, logging.getLogger()) if "cupy" in _MEMORY_MANAGER else None,
     _MEMORY_MANAGER["torch"](0, logging.getLogger()) if "torch" in _MEMORY_MANAGER else None,
 ]
 

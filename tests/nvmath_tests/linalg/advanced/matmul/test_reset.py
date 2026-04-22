@@ -6,8 +6,9 @@
 This set of tests checks reset_operands
 """
 
-import nvmath
 import pytest
+
+import nvmath
 
 from ...utils import assert_tensors_equal, random_torch_complex, sample_matrix, skip_if_cublas_before
 
@@ -38,6 +39,7 @@ def skip_test_reset(
     reset_to_none,
     use_cuda,
     inplace,
+    reset_method,
 ):
     # An inplace operation requires `c` to be specified.
     return inplace and not with_c
@@ -79,6 +81,7 @@ def skip_test_reset(
 @pytest.mark.parametrize("reset_to_none", (True, False))
 @pytest.mark.parametrize("use_cuda", (True, False))
 @pytest.mark.parametrize("inplace", (True, False))
+@pytest.mark.parametrize("reset_method", ("checked", "unchecked"))
 def test_reset(
     framework,
     dtype,
@@ -94,6 +97,7 @@ def test_reset(
     reset_to_none,
     use_cuda,
     inplace,
+    reset_method,
 ):
     """
     Tests resetting particular operands
@@ -147,7 +151,7 @@ def test_reset(
             assert result1 is c_copy, "result1 != c for inplace=True"
 
         if reset_to_none:
-            mm.reset_operands(None)
+            mm.release_operands()
 
         new_a = sample_matrix(framework, dtype, (m, k), use_cuda)
         new_b = sample_matrix(framework, dtype, (k, n), use_cuda)
@@ -179,7 +183,10 @@ def test_reset(
             with pytest.raises(ValueError):
                 mm.reset_operands(**reset_kwargs)
         else:
-            mm.reset_operands(**reset_kwargs)
+            if reset_method == "unchecked":
+                mm.reset_operands_unchecked(**reset_kwargs)
+            else:
+                mm.reset_operands(**reset_kwargs)
 
             reference2 = (new_a if reset_a else a) @ (new_b if reset_b else b)
             reference2 *= new_alpha if reset_alpha else alpha if with_alpha else 1

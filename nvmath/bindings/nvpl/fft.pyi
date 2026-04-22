@@ -1,43 +1,43 @@
-# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import _cython_3_1_3
+import _cython_3_2_4
 import enum
 from typing import Any, Callable, ClassVar
 
 __pyx_capi__: dict
 __test__: dict
-cleanup_threads: _cython_3_1_3.cython_function_or_method
-cleanup_threads_double: _cython_3_1_3.cython_function_or_method
-cleanup_threads_float: _cython_3_1_3.cython_function_or_method
-destroy: _cython_3_1_3.cython_function_or_method
-destroy_plan_double: _cython_3_1_3.cython_function_or_method
-destroy_plan_float: _cython_3_1_3.cython_function_or_method
-execute: _cython_3_1_3.cython_function_or_method
-execute_c2c_double: _cython_3_1_3.cython_function_or_method
-execute_c2c_float: _cython_3_1_3.cython_function_or_method
-execute_c2r_double: _cython_3_1_3.cython_function_or_method
-execute_c2r_float: _cython_3_1_3.cython_function_or_method
-execute_r2c_double: _cython_3_1_3.cython_function_or_method
-execute_r2c_float: _cython_3_1_3.cython_function_or_method
-get_version: _cython_3_1_3.cython_function_or_method
-init_threads: _cython_3_1_3.cython_function_or_method
-init_threads_double: _cython_3_1_3.cython_function_or_method
-init_threads_float: _cython_3_1_3.cython_function_or_method
-plan_many: _cython_3_1_3.cython_function_or_method
-plan_many_c2c_double: _cython_3_1_3.cython_function_or_method
-plan_many_c2c_float: _cython_3_1_3.cython_function_or_method
-plan_many_c2r_double: _cython_3_1_3.cython_function_or_method
-plan_many_c2r_float: _cython_3_1_3.cython_function_or_method
-plan_many_r2c_double: _cython_3_1_3.cython_function_or_method
-plan_many_r2c_float: _cython_3_1_3.cython_function_or_method
-plan_with_nthreads: _cython_3_1_3.cython_function_or_method
-plan_with_nthreads_double: _cython_3_1_3.cython_function_or_method
-plan_with_nthreads_float: _cython_3_1_3.cython_function_or_method
-planner_nthreads: _cython_3_1_3.cython_function_or_method
-planner_nthreads_double: _cython_3_1_3.cython_function_or_method
-planner_nthreads_float: _cython_3_1_3.cython_function_or_method
+cleanup_threads: _cython_3_2_4.cython_function_or_method
+cleanup_threads_double: _cython_3_2_4.cython_function_or_method
+cleanup_threads_float: _cython_3_2_4.cython_function_or_method
+destroy: _cython_3_2_4.cython_function_or_method
+destroy_plan_double: _cython_3_2_4.cython_function_or_method
+destroy_plan_float: _cython_3_2_4.cython_function_or_method
+execute: _cython_3_2_4.cython_function_or_method
+execute_c2c_double: _cython_3_2_4.cython_function_or_method
+execute_c2c_float: _cython_3_2_4.cython_function_or_method
+execute_c2r_double: _cython_3_2_4.cython_function_or_method
+execute_c2r_float: _cython_3_2_4.cython_function_or_method
+execute_r2c_double: _cython_3_2_4.cython_function_or_method
+execute_r2c_float: _cython_3_2_4.cython_function_or_method
+get_version: _cython_3_2_4.cython_function_or_method
+init_threads: _cython_3_2_4.cython_function_or_method
+init_threads_double: _cython_3_2_4.cython_function_or_method
+init_threads_float: _cython_3_2_4.cython_function_or_method
+plan_many: _cython_3_2_4.cython_function_or_method
+plan_many_c2c_double: _cython_3_2_4.cython_function_or_method
+plan_many_c2c_float: _cython_3_2_4.cython_function_or_method
+plan_many_c2r_double: _cython_3_2_4.cython_function_or_method
+plan_many_c2r_float: _cython_3_2_4.cython_function_or_method
+plan_many_r2c_double: _cython_3_2_4.cython_function_or_method
+plan_many_r2c_float: _cython_3_2_4.cython_function_or_method
+plan_with_nthreads: _cython_3_2_4.cython_function_or_method
+plan_with_nthreads_double: _cython_3_2_4.cython_function_or_method
+plan_with_nthreads_float: _cython_3_2_4.cython_function_or_method
+planner_nthreads: _cython_3_2_4.cython_function_or_method
+planner_nthreads_double: _cython_3_2_4.cython_function_or_method
+planner_nthreads_float: _cython_3_2_4.cython_function_or_method
 
 class FFTWError(Exception): ...
 

@@ -14,11 +14,13 @@ from collections.abc import Sequence
 from nvmath.internal.tensor_ifc import Tensor, TensorHolder
 from nvmath.internal.tensor_wrapper import (
     infer_tensor_package as base_infer_tensor_package,
+)
+from nvmath.internal.tensor_wrapper import (
     maybe_register_package as base_maybe_register_package,
 )
 
 from .tensor_ifc import DistributedTensor
-from .tensor_ifc_numpy import NumpyDistributedTensor, CudaDistributedTensor
+from .tensor_ifc_numpy import CudaDistributedTensor, NumpyDistributedTensor
 
 _TENSOR_TYPES: dict[str, type[DistributedTensor]] = {"numpy": NumpyDistributedTensor, "cuda": CudaDistributedTensor}
 

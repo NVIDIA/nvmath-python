@@ -13,13 +13,12 @@ The global operation performed in this example is: A.T @ B
 $ mpiexec -n 4 python example05_stateful_torch_cpu.py
 """
 
-import torch
 import numpy as np
+import torch
 from mpi4py import MPI
 
 import nvmath.distributed
-
-from nvmath.distributed.distribution import ProcessGrid, BlockNonCyclic
+from nvmath.distributed.distribution import BlockNonCyclic, ProcessGrid
 from nvmath.distributed.linalg.advanced import matrix_qualifiers_dtype
 
 # Initialize nvmath.distributed.
@@ -27,8 +26,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % torch.cuda.device_count()
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
-nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
+# cuBLASMp requires NCCL communication backend.
+nvmath.distributed.initialize(device_id, comm, backends=["nccl"])
 
 # The global problem size m, n, k
 m, n, k = 256, 512, 256
@@ -42,7 +41,7 @@ col_wise_distribution = BlockNonCyclic(ProcessGrid(shape=(1, nranks)))  # partit
 a = torch.rand(*col_wise_distribution.shape(rank, (m, k)))
 b = torch.rand(*col_wise_distribution.shape(rank, (n, k)))
 
-# Get a transposed view to obtain column-major Fortran memory layout. Note that this
+# Get a transposed view to obtain column-major memory layout. Note that this
 # also changes the distribution of a and b (see example01 for more information).
 a = a.T  # a is now (k, m) with row_wise_distribution
 b = b.T  # b is now (k, n) with row_wise_distribution

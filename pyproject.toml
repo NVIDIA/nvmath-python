@@ -10,21 +10,17 @@ requires = [
     "tomli>=2.0.1; python_version < '3.11'",
     # whatever version works here, see builder/utils.py for detail
     "cuda-toolkit[cudart,nvcc] >=13.1,<14",
-    # needed for internal/bindings
-    "cuda-bindings >=13.1,<14",
-    # needed for internal/bindings (cuda.bindings.cydriver)
-    "nvidia-cuda-profiler-api",
 ]
 build-backend = "setuptools.build_meta"
 
 
 [project]
 name = "nvmath-python"
-version = "0.8.0"
+version = "0.9.0"
 dynamic = [
     "readme",
 ]
-requires-python = '>=3.10,<3.14'
+requires-python = '>=3.10,<3.15'
 description = "NVIDIA Math Python libraries"
 authors = [
     { name = "NVIDIA Corporation" }
@@ -33,8 +29,8 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = [
     "cuda-bindings",
-    "cuda-core >=0.3.2,<1",
-    "cuda-pathfinder>=1.3.2,<2.0",
+    "cuda-core >=0.4.2,<1",
+    "cuda-pathfinder>=1.4.4,<2.0",
     "numpy >=1.25,<3",
     "pywin32; platform_system=='Windows'"
 ]
@@ -53,9 +49,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Environment :: GPU :: NVIDIA CUDA",
     "Environment :: GPU :: NVIDIA CUDA :: 12",
@@ -80,21 +77,24 @@ readme = { file = ["DESCRIPTION.rst"], content-type = "text/x-rst" }
 
 [project.optional-dependencies]
 cpu = [
-    "mkl; platform_machine=='x86_64'",
+    # what on Linux gives platform.machine() == x86_64, on Windows becomes AMD64
+    "mkl; platform_machine=='x86_64' or platform_machine=='AMD64'",
     "nvpl-fft >=0.3,<1; platform_system=='Linux' and platform_machine=='aarch64'",
     "nvpl-blas >=0.3,<1; platform_system=='Linux' and platform_machine=='aarch64'",
 ]
 sysctk12 = [
     "cuda-bindings >=12.9.2,<13",
-    "cutensor-cu12 >=2.3.1",
+    "cutensor-cu12 >=2.5.0, <3",
 ]
 sysctk13 = [
     "cuda-bindings >=13.0.1,<14",
-    "cutensor-cu13 >=2.3.1",
+    "cutensor-cu13 >=2.5.0, <3",
 ]
 cu12 = [
     "nvmath-python[sysctk12]",
     "cuda-core[cu12]",
+    # We cannot use the cuda-toolkit metapackage for CUDA 12 because
+    # some pytorch builds mix components from different CTK releases
     "nvidia-cublas-cu12",
     "nvidia-cuda-nvrtc-cu12",
     "nvidia-cuda-runtime-cu12",
@@ -103,28 +103,28 @@ cu12 = [
     "nvidia-curand-cu12",
     "nvidia-cusolver-cu12",
     "nvidia-cusparse-cu12",
-    "cutensor-cu12 >=2.3.1",
+    "cutensor-cu12 >=2.5.0, <3",
 ]
 cu13 = [
     "nvmath-python[sysctk13]",
     "cuda-core[cu13]",
     "cuda-toolkit[cublas,nvrtc,cudart,cufft,curand,cusolver,cusparse]==13.*",
     "nvidia-cudss-cu13 == 0.7.*",
-    "cutensor-cu13 >=2.3.1",
+    "cutensor-cu13 >=2.5.0, <3",
 ]
-dx = [
+numba = [
     # numba-cuda defines version restriction
     "numba",
-    "numba-cuda >= 0.24.0",
+    "numba-cuda >=0.28.1",
 ]
 sysctk12-dx = [
     "nvmath-python[sysctk12]",
-    "nvmath-python[dx]",
+    "nvmath-python[numba]",
 ]
 cu12-dx = [
     "nvmath-python[cu12]",
-    "nvmath-python[dx]",
-    "nvidia-libmathdx-cu12 >=0.3.1,<0.4.0",
+    "nvmath-python[numba]",
+    "nvidia-libmathdx-cu12 >=0.3.1,<0.4.0,!=0.3.1.8",
     # Extra restrictions:
     # Earlier versions have missing header files
     "nvidia-cuda-cccl-cu12 > 12.4.127",
@@ -134,39 +134,35 @@ cu12-dx = [
 ]
 sysctk12-distributed = [
     "nvmath-python[sysctk12]",
-    "mpi4py",
-    "nvidia-nccl-cu12 >= 2.24.3",
+    "nvidia-nccl-cu12 >= 2.29.2",
+    "nccl4py",
 ]
 cu12-distributed = [
     "nvmath-python[cu12]",
     "nvmath-python[sysctk12-distributed]",
-    "nvidia-cublasmp-cu12 >= 0.6.0",
+    "nvidia-cublasmp-cu12 >= 0.8.1,<1",
     "nvidia-cufftmp-cu12",
     "nvidia-nvshmem-cu12 >= 3.2.5",
 ]
 sysctk13-dx = [
     "nvmath-python[sysctk13]",
-    "nvmath-python[dx]",
+    "nvmath-python[numba]",
 ]
 cu13-dx = [
     "nvmath-python[cu13]",
-    "nvmath-python[dx]",
-    "nvidia-libmathdx-cu13 >=0.3.1,<0.4.0",
+    "nvmath-python[numba]",
+    "nvidia-libmathdx-cu13 >=0.3.1,<0.4.0,!=0.3.1.8",
     "cuda-toolkit[cccl,nvrtc]==13.*",
-]
-cu131-dx = [
-    "nvmath-python[cu13-dx]",
-    "cuda-toolkit[cccl,nvrtc]==13.1.*",
 ]
 sysctk13-distributed = [
     "nvmath-python[sysctk13]",
-    "mpi4py",
-    "nvidia-nccl-cu13 >= 2.24.3",
+    "nvidia-nccl-cu13 >= 2.29.2",
+    "nccl4py",
 ]
 cu13-distributed = [
     "nvmath-python[cu13]",
     "nvmath-python[sysctk13-distributed]",
-    "nvidia-cublasmp-cu13 >= 0.6.0",
+    "nvidia-cublasmp-cu13 >= 0.8.1,<1",
     # TODO: add cufftmp ctk13 when available
     "nvidia-cufftmp-cu13 >= 12.1.3.2",
     "nvidia-nvshmem-cu13 >= 3.2.5",
@@ -177,9 +173,11 @@ cu13-distributed = [
 cupy-oldest-cu12 = [
     "cupy-cuda12x ==12.1.*",
     "numpy ==1.25.*",
+    "cuda-core ==0.4.2",
 ]
 dev = [
     { include-group = 'tests-cu12' },
+    { include-group = 'cupy-cu12' },
     { include-group = 'lint' },
 ]
 lint = [
@@ -196,12 +194,16 @@ docs = [
     "nbconvert <7.5",  # to enable pandoc CLI < 2.14.2
     "nbsphinx",
     "nbsphinx-link",
+    "nccl4py",
     "nvidia-sphinx-theme",
     "pandoc",
-    "sphinx",
+    # TODO: enum-tools <0.13.0 breaks with sphinx >=9
+    "sphinx <9",
     "sphinx-favicon",
     "sphinx-toolbox",
     "sphinxcontrib-programoutput",
+    "sphinx-substitution-extensions",
+    "sphinx-tabs",
 ]
 build-wheel = [
     "auditwheel",
@@ -211,15 +213,17 @@ build-wheel = [
     "wheel",
 ]
 mpich = [
+    "mpi4py",
     "mpich",
 ]
-notebooks-cu126 = [
+notebooks-cu129 = [
     "jupyter",
     "matplotlib",
     "nbconvert",
     "torchvision",
 ]
 openmpi = [
+    "mpi4py",
     "openmpi",
 ]
 cupy-cu12 = [
@@ -228,7 +232,7 @@ cupy-cu12 = [
 cupy-cu13 = [
     "cupy-cuda13x",
 ]
-tests-no-cupy = [
+tests = [
     "cffi",
     "hypothesis",
     "opt_einsum",
@@ -240,12 +244,10 @@ tests-no-cupy = [
     "scipy",
 ]
 tests-cu12 = [
-    { include-group = 'tests-no-cupy' },
-    { include-group = 'cupy-cu12' },
+    { include-group = 'tests' },
 ]
 tests-cu13 = [
-    { include-group = 'tests-no-cupy' },
-    { include-group = 'cupy-cu13' },
+    { include-group = 'tests' },
 ]
 tests-dx = [
     "nvidia-mathdx ~= 25.6.0",
@@ -256,6 +258,9 @@ tests-dx-sysctk12 = [
 ]
 tests-dx-cu12 = [
     { include-group = 'tests-dx-sysctk12' },
+    # TODO: use ctk12 version when pypi package is available
+    # TODO: use cuda-toolkit[nvdisasm] version when all pypi packages are available
+    "nvidia-cuda-nvdisasm >= 13.2",
 ]
 tests-dx-sysctk13 = [
     { include-group = 'tests-cu13' },
@@ -263,64 +268,65 @@ tests-dx-sysctk13 = [
 ]
 tests-dx-cu13 = [
     { include-group = 'tests-dx-sysctk13' },
-]
-tests-dx-dev-cu12 = [
-    { include-group = 'tests-cu12' },
-    { include-group = 'tests-dx' },
-    "nvidia-libmathdx-cu12 >= 0.3.1.dev0",
+    # TODO: use cuda-toolkit[nvdisasm] version when all pypi packages are available
+    "nvidia-cuda-nvdisasm >= 13.2",
 ]
 tests-dx-dev-cu13 = [
-    { include-group = 'tests-cu13' },
-    { include-group = 'tests-dx' },
-    "nvidia-libmathdx-cu13 >= 0.3.1.dev0"
+    { include-group = 'tests-dx-cu13' },
+    "nvidia-libmathdx-cu13 >= 0.3.2.dev0"
 ]
 torch-cu121 = [
-    "torch ==2.1.*"
+    "torch ==2.1.*",
+    "triton; platform_system!='Windows'",
 ]
 torch-cu126 = [
-    # torch 2.6 is missing a dependency on cudnn?
-    "nvidia-cudnn-cu12",
-    "nvidia-cusparselt-cu12",
+    # Some builds of torch don't depend on these wheels, so we have to manually add them here
+    "nvidia-cudnn-cu12==9.10.*",
+    "nvidia-cusparselt-cu12==0.7.*",
+    "nvidia-nccl-cu12>=2.21,<3",
     # torch wheels pin nvjitlink but not related compiler packages.
     # However, if packages do not match then lto_callback tests will fail.
     # torch wheels depend on nvidia wheels; do not add if testing system ctk
-    "nvidia-cuda-cccl-cu12 ==12.6.*",
-    "nvidia-cuda-nvcc-cu12 ==12.6.*",
-    "nvidia-cuda-nvrtc-cu12 ==12.6.*",
-    "nvidia-cuda-runtime-cu12 ==12.6.*",
-    "nvidia-nvjitlink-cu12 ==12.6.*",
-    "torch >=2.9; platform_system!='Windows'"
+    "cuda-toolkit[cccl,nvcc,nvrtc,cudart,cublas,cufft,curand,cufile,cupti,cusolver,cusparse,nvjitlink]==12.6.*",
+    # torch >=2.9 to support python ==3.14.*
+    "torch >=2.9; platform_system!='Windows'",
+    "triton; platform_system!='Windows'",
 ]
 torch-cu128 = [
     # torch wheels pin nvjitlink but not related compiler packages.
     # However, if packages do not match then lto_callback tests will fail.
     # torch wheels depend on nvidia wheels; do not add if testing system ctk
-    "cuda-toolkit[cccl,nvcc,nvrtc,cudart,nvjitlink]==12.8.*",
-    "torch >=2.9; platform_system!='Windows'"
+    "cuda-toolkit[all]==12.8.*",
+    # torch >=2.9 to support python ==3.14.*
+    "torch ==2.9.*; platform_system!='Windows'",
+    "triton >=3.4.0; platform_system!='Windows'",
 ]
 torch-cu129 = [
     # torch wheels pin nvjitlink but not related compiler packages.
     # However, if packages do not match then lto_callback tests will fail.
     # torch wheels depend on nvidia wheels; do not add if testing system ctk
-    "cuda-toolkit[cccl,nvcc,nvrtc,cudart,nvjitlink]==12.9.*",
-    "torch >=2.9; platform_system!='Windows'",
-    "pytorch_triton >=3.4.0; platform_system!='Windows'",
+    "cuda-toolkit[all]==12.9.*",
+    # torch >=2.9 to support python ==3.14.*
+    "torch ==2.9.*; platform_system!='Windows'",
+    "triton >=3.4.0; platform_system!='Windows'",
 ]
 torch-cu130 = [
     # torch wheels pin nvjitlink but not related compiler packages.
     # However, if packages do not match then lto_callback tests will fail.
     # torch wheels depend on nvidia wheels; do not add if testing system ctk
     "cuda-toolkit[cccl,nvcc,nvrtc,cudart,nvjitlink]==13.0.*",
-    "torch >=2.9; platform_system!='Windows'",
+    # torch >=2.9 to support python ==3.14.*
+    "torch ==2.10.*; platform_system!='Windows'",
+    "triton >=3.4.0; platform_system!='Windows'",
 ]
 torch-cu130-nightly = [
     # torch wheels pin nvjitlink but not related compiler packages.
     # However, if packages do not match then lto_callback tests will fail.
     # torch wheels depend on nvidia wheels; do not add if testing system ctk
     "cuda-toolkit[cccl,nvcc,nvrtc,cudart,nvjitlink]==13.0.*",
+    # torch >=2.9 to support python ==3.14.*
     "torch >=2.11.0.dev20260101; platform_system!='Windows'",
-    "pytorch_triton; platform_system!='Windows'",
-    "triton; platform_system!='Windows'",
+    "triton >=3.4.0; platform_system!='Windows'",
 ]
 
 [[tool.setuptools.ext-modules]]
@@ -338,6 +344,7 @@ modules = [
     "nvmath.bindings.cusolver",
     "nvmath.bindings.cusolverDn",
     "nvmath.bindings.cusparse",
+    "nvmath.bindings.cusparseLt",
     "nvmath.bindings.cutensor",
     "nvmath.bindings.mathdx",
     "nvmath.bindings.nvpl.blas",
@@ -346,17 +353,23 @@ modules = [
 linux_modules = [
     "nvmath.bindings.cublasMp",
     "nvmath.bindings.cufftMp",
-    "nvmath.bindings.nccl",
     "nvmath.bindings.nvshmem",
 ]
 internal_modules = [
-    "nvmath.internal.bindings",
+    "nvmath.internal._bindings",
     "nvmath.internal.memory",
     "nvmath.internal.ndbuffer.copy_kernel",
     "nvmath.internal.ndbuffer.data_layout",
     "nvmath.internal.ndbuffer.jit",
     "nvmath.internal.ndbuffer.ndbuffer",
     "nvmath.internal.ndbuffer.package_utils",
+]
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
 ]
 
 [tool.uv.sources]
@@ -368,15 +381,16 @@ torch = [
   { index = "pytorch-cu130", group='torch-cu130' },
   { index = "pytorch-cu130-nightly", group='torch-cu130-nightly' },
 ]
-pytorch_triton = [
-  { index = "pytorch-cu129", group='torch-cu129' },
-  { index = "pytorch-cu130-nightly", group='torch-cu130-nightly' },
-]
 triton = [
+  { index = "pytorch-cu121", group='torch-cu121' },
+  { index = "pytorch-cu126", group='torch-cu126' },
+  { index = "pytorch-cu128", group='torch-cu128' },
+  { index = "pytorch-cu129", group='torch-cu129' },
+  { index = "pytorch-cu130", group='torch-cu130' },
   { index = "pytorch-cu130-nightly", group='torch-cu130-nightly' },
 ]
 torchvision = [
-  { index = "pytorch-cu126", group='notebooks-cu126' },
+  { index = "pytorch-cu129", group='notebooks-cu129' },
 ]
 
 [[tool.uv.index]]
@@ -455,24 +469,16 @@ ignore = [
     # FIXME
     # This list of ignored rules should be reduced. Many will be handled
     # automatically when enabling ruff-format.
-    "B007",
-    "B017",
-    "B023",
+    # Ignore missing stacklevel arg to warnings.warn
     "B028",
-    "B904",
-    "I001",
+    # Ignore swapping try-except-pass for contextlib.suppress
     "SIM105",
+    # Ignore forcing terary expressions
     "SIM108",
-    # Ignore multiple-statements-on-one-line-colon
-    "E701",
-    # Ignore multiple-statements-on-one-line-semicolon
-    "E702",
     # Ignore bare-except
     "E722",
     # Ignore lambda-assignment
     "E731",
-    # Ignore ambiguous-variable-name
-    "E741",
 ]
 fixable = ["ALL"]
 
@@ -528,6 +534,12 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = ["mpi4py.*"]
 ignore_missing_imports = true
+
+[tool.ruff.lint.per-file-ignores]
+# @cuda.jit kernels defined in loops intentionally capture loop variables as
+# compile-time constants; default args cannot be used on GPU kernel functions.
+"examples/device/cublasdx_blockdim_gemm_fp16.py" = ["B023"]
+"examples/device/cufftdx_autotuning.py" = ["B023"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [

@@ -29,13 +29,18 @@ Functions
 
    create
    destroy
-   stream_set
-   stream_get
+   set_stream
+   get_stream
    get_version
+   get_status_string
    set_emulation_strategy
    get_emulation_strategy
    grid_create
    grid_destroy
+   malloc
+   free
+   buffer_register
+   buffer_deregister
    matrix_descriptor_create
    matrix_descriptor_init
    matrix_descriptor_destroy
@@ -43,8 +48,8 @@ Functions
    matmul_descriptor_create
    matmul_descriptor_init
    matmul_descriptor_destroy
-   matmul_descriptor_attribute_set
-   matmul_descriptor_attribute_get
+   matmul_descriptor_set_attribute
+   matmul_descriptor_get_attribute
    matmul_buffer_size
    matmul
    geadd_buffer_size

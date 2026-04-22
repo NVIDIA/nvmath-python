@@ -2,16 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from abc import abstractmethod
 import os
 import tempfile
+from abc import abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
 
 from .common_cuda import MAX_SUPPORTED_CC, MIN_SUPPORTED_CC, CodeType, ComputeCapability, get_current_device_cc
-
 
 __all__ = [
     "make_tensor",
@@ -61,19 +60,22 @@ def delete_binary_tempfiles(filenames: list[str]):
             os.remove(name)
 
 
-def check_in(name, arg, set):
-    if arg not in set:
-        raise ValueError(f"{name} must be in {set} ; got {name} = {arg}")
+def check_in(name, value, coll, format="{name} must be in {coll_str} ; got {name} = {value}"):
+    if value not in coll:
+        coll_str = ", ".join(f'"{t}"' for t in coll)
+        msg = format.format(name=name, value=value, coll_str=coll_str)
+        raise ValueError(msg)
 
 
-def check_not_in(name, arg, set):
-    if arg in set:
-        raise ValueError(f"{name} must not be any of those value {set} ; got {name} = {arg}")
+def check_not_in(name, value, coll, format="{name} must not be any of those value {coll_str} ; got {name} = {value}"):
+    if value in coll:
+        coll_str = ", ".join(f'"{t}"' for t in coll)
+        msg = format.format(name=name, value=value, coll_str=coll_str)
+        raise ValueError(msg)
 
 
 def check_contains(set, key):
-    if key not in set:
-        raise ValueError(f"{key} must be in {set}")
+    check_in("", key, set, "{arg} must be in {set}")
 
 
 def parse_sm(sm: Any) -> ComputeCapability:
@@ -123,7 +125,7 @@ class Layout:
 
     .. note:: Do not create directly, use appropriate method from
         :py:func:`nvmath.device.Matmul`. Refer to
-        https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+        :cublasdx_doc:`api/other_tensors.html#imported-tensor-utilities`
         for guidance on which method to use.
     """
 
@@ -138,7 +140,7 @@ class Layout:
         shape dimensions.
 
         Refer to the cuBLASDx documentation for more details on how to use this attribute:
-        https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+        :cublasdx_doc:`api/other_tensors.html#imported-tensor-utilities`
         """
         pass
 
@@ -150,7 +152,7 @@ class Layout:
         It describes how many elements does the argument layout span.
 
         Refer to the cuBLASDx documentation for more details on how to use this attribute:
-        https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+        :cublasdx_doc:`api/other_tensors.html#imported-tensor-utilities`
         """
         pass
 
@@ -161,7 +163,7 @@ class Layout:
         Returns the required alignment (in bytes) for the tensor data buffer.
 
         Refer to the cuBLASDx documentation for more details on how to use this attribute:
-        https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+        :cublasdx_doc:`api/other_tensors.html#imported-tensor-utilities`
         """
         pass
 
@@ -175,7 +177,7 @@ class OpaqueTensor:
     .. note:: Do not create directly, use :py:func:`nvmath.device.make_tensor`.
 
     Refer to the cuBLASDx documentation for more details on how to use this class:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#tensors
+    :cublasdx_doc:`api/other_tensors.html#tensors`
     """
 
     buffer: np.ndarray
@@ -197,7 +199,7 @@ def make_tensor(array: np.ndarray, layout: Layout) -> OpaqueTensor:
             organized in memory.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#create-tensor-other-label
+    :cublasdx_doc:`api/other_tensors.html#create-tensor-other-label`
     """
     raise RuntimeError("make_tensor should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
@@ -212,7 +214,7 @@ def make_fragment_like(tensor: OpaqueTensor, dtype) -> OpaqueTensor:
         dtype: The data type of the fragment to be created.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+    :cublasdx_doc:`api/other_tensors.html#imported-tensor-utilities`
     """
     raise RuntimeError("make_fragment_like should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
@@ -229,7 +231,7 @@ def axpby(alpha: float, x_tensor: OpaqueTensor, beta: float, y_tensor: OpaqueTen
             with the result.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+    :cublasdx_doc:`api/other_tensors.html#imported-tensor-utilities`
     """
     raise RuntimeError("axpby should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
@@ -244,7 +246,7 @@ def copy(src: OpaqueTensor, dst: OpaqueTensor, alignment=None):
         alignment (int, optional): The alignment (in bytes) for the copy operation.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#cooperative-global-shared-copying
+    :cublasdx_doc:`api/other_tensors.html#cooperative-global-shared-copying`
     """
     raise RuntimeError("copy should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
@@ -260,7 +262,7 @@ def copy_fragment(src: OpaqueTensor, dst: OpaqueTensor, alignment=None):
         alignment (int, optional): The alignment (in bytes) for the copy operation.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#copying-registers-tensors
+    :cublasdx_doc:`api/other_tensors.html#copying-registers-tensors`
     """
     raise RuntimeError("copy_fragment should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
@@ -273,7 +275,7 @@ def clear(arr: OpaqueTensor):
         arr (OpaqueTensor): The tensor to be cleared.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#imported-tensor-utilities
+    :cublasdx_doc:`api/other_tensors.html#imported-tensor-utilities`
     """
     raise RuntimeError("clear should not be called directly outside of a numba.cuda.jit(...) kernel.")
 
@@ -285,6 +287,27 @@ def copy_wait():
     operations are executed.
 
     Refer to the cuBLASDx documentation for more details on how to use this function:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#cooperative-global-shared-copying
+    :cublasdx_doc:`api/other_tensors.html#cooperative-global-shared-copying`
     """
     raise RuntimeError("copy_wait should not be called directly outside of a numba.cuda.jit(...) kernel.")
+
+
+def check_positive_integer_sequence(arg, arg_name, min_len, max_len):
+    if not isinstance(arg, Sequence):
+        raise ValueError(f'Parameter "{arg_name}" must be a sequence. Got: {type(arg).__name__}.')
+
+    for i, x in enumerate(arg):
+        if not isinstance(x, (int, np.integer)):
+            raise ValueError(
+                f'Parameter "{arg_name}" must be a sequence of positive integers. '
+                + f"Element {arg_name}[{i}] is {type(x).__name__}."
+            )
+        if x <= 0:
+            raise ValueError(f'Parameter "{arg_name}" values must be positive integers. Got {arg_name}[{i}] = {x}.')
+
+    if min_len == max_len:
+        if len(arg) != min_len:
+            raise ValueError(f'Parameter "{arg_name}" must be a sequence of length {min_len}. Got length: {len(arg)}.')
+    else:
+        if len(arg) > max_len or len(arg) < min_len:
+            raise ValueError(f'Parameter "{arg_name}" must define {min_len} to {max_len} values. Got {len(arg)} value(s).')

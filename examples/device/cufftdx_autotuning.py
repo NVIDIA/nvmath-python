@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
+
 import numpy as np
-from numba import cuda
-from nvmath.device import current_device_sm, FFT
 from common_numba import time_numba
+from numba import cuda
+
+from nvmath.device import FFT, current_device_sm
 
 
 def main():
