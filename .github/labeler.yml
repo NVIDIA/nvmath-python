@@ -4,21 +4,38 @@
 
 # Configuration for https://github.com/actions/labeler
 # Auto-applies labels based on which files a PR changes.
+# Module labels here must stay in sync with MODULE_LABELS in pr-metadata-check.yml.
 
-cuda.bindings:
+fft:
   - changed-files:
-    - any-glob-to-any-file: 'cuda_bindings/**'
+    - any-glob-to-any-file: 'nvmath/fft/**'
 
-cuda.core:
+linalg:
   - changed-files:
-    - any-glob-to-any-file: 'cuda_core/**'
+    - any-glob-to-any-file: 'nvmath/linalg/**'
 
-cuda.pathfinder:
+sparse:
   - changed-files:
-    - any-glob-to-any-file: 'cuda_pathfinder/**'
+    - any-glob-to-any-file: 'nvmath/sparse/**'
+
+tensor:
+  - changed-files:
+    - any-glob-to-any-file: 'nvmath/tensor/**'
+
+distributed:
+  - changed-files:
+    - any-glob-to-any-file: 'nvmath/distributed/**'
+
+bindings:
+  - changed-files:
+    - any-glob-to-any-file: 'nvmath/bindings/**'
+
+device:
+  - changed-files:
+    - any-glob-to-any-file: 'nvmath/device/**'
 
 CI/CD:
   - changed-files:
     - any-glob-to-any-file:
       - '.github/**'
-      - 'ci/**'
+      - '.ci/**'

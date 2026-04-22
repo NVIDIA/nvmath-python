@@ -57,7 +57,7 @@ jobs:
           # Cross-cutting labels exempt PRs from needing a module label.
           # Read label names line-by-line (jq outputs one per line) so
           # multi-word GitHub labels are not split by shell word-splitting.
-          MODULE_LABELS="cuda.bindings cuda.core cuda.pathfinder"
+          MODULE_LABELS="fft linalg sparse tensor distributed bindings device"
           MODULE_EXEMPT_LABELS="CI/CD"
           HAS_MODULE=false
           while IFS= read -r label; do
@@ -71,7 +71,7 @@ jobs:
           done < <(echo "$LABELS" | jq -r '.[].name')
 
           if [ "$HAS_MODULE" = "false" ]; then
-            ERRORS="${ERRORS}- **Missing module label**: add at least one of: \`cuda.bindings\`, \`cuda.core\`, \`cuda.pathfinder\` (or a cross-cutting label such as \`CI/CD\`).\n"
+            ERRORS="${ERRORS}- **Missing module label**: add at least one of: \`fft\`, \`linalg\`, \`sparse\`, \`tensor\`, \`distributed\`, \`bindings\`, \`device\` (or a cross-cutting label such as \`CI/CD\`).\n"
           fi
 
           # Type labels categorize the kind of change.

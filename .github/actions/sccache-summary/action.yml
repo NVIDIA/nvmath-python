@@ -14,7 +14,7 @@ inputs:
     description: "Path to the sccache stats JSON file (from sccache --show-stats --stats-format=json)"
     required: true
   label:
-    description: "Label for the stats row (e.g. cuda.bindings, cuda.core)"
+    description: "Label for the stats row (e.g. nvmath-python, bindings)"
     required: false
     default: "sccache"
   build-step:

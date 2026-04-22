@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Windows counterpart of test-sdist-linux.yml. Exists so that platform-gated
-# sources (e.g. cuda_bindings/*_windows.pyx selected by build_hooks.py) are
+# sources (e.g. bindings/*_windows.pyx selected by build_hooks.py) are
 # exercised by the sdist completeness test. Keep the shape of this file in
 # sync with test-sdist-linux.yml aside from Windows-specific setup (MSVC,
 # no sccache, no proxy cache).
@@ -12,9 +12,6 @@ on:
   workflow_call:
     inputs:
       host-platform:
-        required: true
-        type: string
-      cuda-version:
         required: true
         type: string
 
@@ -27,7 +24,7 @@ permissions:
 
 jobs:
   test-sdist:
-    name: Test sdist builds
+    name: Test sdist build
     runs-on: windows-2022
     steps:
       - name: Checkout ${{ github.event.repository.name }}
@@ -46,47 +43,20 @@ jobs:
       - name: Install build tools
         run: pip install build
 
-      # Pure Python packages -- no CTK needed.
-      - name: Build cuda.pathfinder sdist and wheel-from-sdist
-        run: |
-          python -m build --sdist cuda_pathfinder/
-          pip wheel --no-deps --wheel-dir cuda_pathfinder/dist cuda_pathfinder/dist/*.tar.gz
-
-      - name: Build cuda-python sdist and wheel-from-sdist
-        run: |
-          python -m build --sdist cuda_python/
-          pip wheel --no-deps --wheel-dir cuda_python/dist cuda_python/dist/*.tar.gz
-
-      # Cython packages need CTK. No sccache on Windows (this is a correctness
-      # smoke test, not a production build; see build-wheel.yml which also
-      # limits sccache to Linux).
+      # nvmath.bindings contains Cython extensions that need CTK headers.
+      # No sccache on Windows (this is a correctness smoke test, not a
+      # production build).
+      # TODO(nvmath-python CI): align this CTK version with the cu13 row of the
+      # matrix spec in ci.yml once build-wheel.yml is implemented.
       - name: Set up mini CTK
         uses: ./.github/actions/fetch_ctk
         continue-on-error: false
         with:
           host-platform: ${{ inputs.host-platform }}
-          cuda-version: ${{ inputs.cuda-version }}
+          cuda-version: "13.0.0"
 
-      # cuda_bindings/setup.py parses CUDA headers at import time, so CUDA_PATH
-      # (set by fetch_ctk) must be available for both sdist and wheel builds.
-      # PIP_FIND_LINKS is passed as a native Windows path via cygpath because
-      # pip on Windows treats space-separated entries as separators and is
-      # picky about mixed path styles (see build-wheel.yml for the same
-      # convention).
-      - name: Build cuda.bindings sdist and wheel-from-sdist
+      - name: Build nvmath-python sdist and wheel-from-sdist
         run: |
           export CUDA_PYTHON_PARALLEL_LEVEL=$(nproc)
-          export PIP_FIND_LINKS="$(cygpath -w "$(pwd)/cuda_pathfinder/dist")"
-          python -m build --sdist cuda_bindings/
-          pip wheel --no-deps --wheel-dir cuda_bindings/dist cuda_bindings/dist/*.tar.gz
-
-      # cuda_core sdist delegates to setuptools (no CTK needed), but
-      # wheel-from-sdist needs CTK and cuda-bindings (dynamic build dep via
-      # get_requires_for_build_wheel in build_hooks.py).
-      - name: Build cuda.core sdist and wheel-from-sdist
-        run: |
-          export CUDA_PYTHON_PARALLEL_LEVEL=$(nproc)
-          export CUDA_CORE_BUILD_MAJOR="$(echo '${{ inputs.cuda-version }}' | cut -d. -f1)"
-          export PIP_FIND_LINKS="$(cygpath -w "$(pwd)/cuda_bindings/dist") $(cygpath -w "$(pwd)/cuda_pathfinder/dist")"
-          python -m build --sdist cuda_core/
-          pip wheel --no-deps --wheel-dir cuda_core/dist cuda_core/dist/*.tar.gz
+          python -m build --sdist .
+          pip wheel --no-deps --wheel-dir dist dist/*.tar.gz

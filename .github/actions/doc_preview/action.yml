@@ -24,8 +24,8 @@ runs:
       if: ${{ github.ref_name != 'main' && !startsWith(github.ref_name, 'release/') }}
       uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f  # v4.8.0
       with:
-        git-config-name: cuda-python-bot
-        git-config-email: cuda-python-bot@users.noreply.github.com
+        git-config-name: nvmath-python-bot
+        git-config-email: nvmath-python-bot@users.noreply.github.com
         folder: ${{ inputs.source-folder }}
         target-folder: docs/pr-preview/pr-${{ inputs.pr-number }}/
         commit-message: "Deploy doc preview for PR ${{ inputs.pr-number }} (${{ github.sha }})"
@@ -40,10 +40,7 @@ runs:
         message: |
           Doc Preview CI
           :---:
-          | <p></p> :rocket: View preview at <br> https://nvidia.github.io/cuda-python/pr-preview/pr-${{ inputs.pr-number }}/ <br>
-          | <br> https://nvidia.github.io/cuda-python/pr-preview/pr-${{ inputs.pr-number }}/cuda-core/ <br>
-          | <br> https://nvidia.github.io/cuda-python/pr-preview/pr-${{ inputs.pr-number }}/cuda-bindings/ <br>
-          | <br> https://nvidia.github.io/cuda-python/pr-preview/pr-${{ inputs.pr-number }}/cuda-pathfinder/ <br><br>
+          | <p></p> :rocket: View preview at <br> https://nvidia.github.io/nvmath-python/pr-preview/pr-${{ inputs.pr-number }}/ <br><br>
           | <h6><br> Preview will be ready when the GitHub Pages deployment is complete. <br><br></h6>
 
     # The steps below are executed only when building on main or release/*.
@@ -51,8 +48,8 @@ runs:
       if: ${{ github.ref_name == 'main' || startsWith(github.ref_name, 'release/') }}
       uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f  # v4.8.0
       with:
-        git-config-name: cuda-python-bot
-        git-config-email: cuda-python-bot@users.noreply.github.com
+        git-config-name: nvmath-python-bot
+        git-config-email: nvmath-python-bot@users.noreply.github.com
         folder: ${{ inputs.source-folder }}
         target-folder: docs/pr-preview/pr-${{ inputs.pr-number }}/
         commit-message: "Clean up doc preview for PR ${{ inputs.pr-number }} (${{ github.sha }})"

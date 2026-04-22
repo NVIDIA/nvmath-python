@@ -48,10 +48,11 @@ jobs:
               --jq '
                 .[]
                 | select(
-                    (.filename | startswith("cuda_bindings/"))
-                    or ((.previous_filename // "") | startswith("cuda_bindings/"))
-                    or (.filename | startswith("cuda_python/"))
-                    or ((.previous_filename // "") | startswith("cuda_python/"))
+                    # Cython-generated outputs under nvmath/bindings/ should
+                    # never be hand-edited. Guard against direct edits unless
+                    # the author has a trusted signal.
+                    (.filename | test("^nvmath/bindings/.*\\.cpp$"))
+                    or ((.previous_filename // "") | test("^nvmath/bindings/.*\\.cpp$"))
                   )
                 | if (.previous_filename // "") != "" then
                     "\(.previous_filename) -> \(.filename)"
@@ -200,7 +201,7 @@ jobs:
             echo "- **Author**: $PR_AUTHOR"
             echo "- **Collaborator permission**: $COLLABORATOR_PERMISSION"
             echo "- **Touches restricted paths**: $TOUCHES_RESTRICTED_PATHS"
-            echo "- **Restricted paths**: \`cuda_bindings/\`, \`cuda_python/\`"
+            echo "- **Restricted paths**: Cython-generated \`nvmath/bindings/**/*.cpp\`"
             echo "- **Trusted signals**: $TRUSTED_SIGNALS"
             echo "- **Label action**: $LABEL_ACTION"
             if [ "$TOUCHES_RESTRICTED_PATHS" = "true" ]; then

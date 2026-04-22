@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# Smoke-tests that `python -m build --sdist .` produces a tarball from which a
+# wheel can be rebuilt. nvmath-python is a single package rooted at the repo
+# root, so this workflow builds one sdist and one wheel-from-sdist.
+
 on:
   workflow_call:
     inputs:
       host-platform:
-        required: true
-        type: string
-      cuda-version:
         required: true
         type: string
 
@@ -21,7 +22,7 @@ permissions:
 
 jobs:
   test-sdist:
-    name: Test sdist builds
+    name: Test sdist build
     runs-on: linux-amd64-cpu8
     steps:
       - name: Checkout ${{ github.event.repository.name }}
@@ -37,20 +38,8 @@ jobs:
       - name: Install build tools
         run: pip install build
 
-      # Pure Python packages -- no CTK needed.
-      - name: Build cuda.pathfinder sdist and wheel-from-sdist
-        run: |
-          python -m build --sdist cuda_pathfinder/
-          pip wheel --no-deps --wheel-dir cuda_pathfinder/dist cuda_pathfinder/dist/*.tar.gz
-
-      - name: Build cuda-python sdist and wheel-from-sdist
-        run: |
-          python -m build --sdist cuda_python/
-          pip wheel --no-deps --wheel-dir cuda_python/dist cuda_python/dist/*.tar.gz
-
-      # Cython packages need CTK + sccache.
-      # The env vars ACTIONS_CACHE_SERVICE_V2, ACTIONS_RESULTS_URL, and ACTIONS_RUNTIME_TOKEN
-      # are exposed by this action.
+      # nvmath.bindings contains Cython extensions that need CTK headers at
+      # wheel-from-sdist time. This uses sccache to speed up repeat builds.
       - name: Enable sccache
         uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad  # 0.0.9
         with:
@@ -70,36 +59,21 @@ jobs:
         with:
           enable-apt: true
 
+      # TODO(nvmath-python CI): align this CTK version with the cu13 row of the
+      # matrix spec in ci.yml once build-wheel.yml is implemented.
       - name: Set up mini CTK
         uses: ./.github/actions/fetch_ctk
         continue-on-error: false
         with:
           host-platform: ${{ inputs.host-platform }}
-          cuda-version: ${{ inputs.cuda-version }}
+          cuda-version: "13.0.0"
 
-      # cuda_bindings/setup.py parses CUDA headers at import time, so CUDA_PATH
-      # (set by fetch_ctk) must be available for both sdist and wheel builds.
-      - name: Build cuda.bindings sdist and wheel-from-sdist
+      - name: Build nvmath-python sdist and wheel-from-sdist
         run: |
-          export CUDA_PYTHON_PARALLEL_LEVEL=$(nproc)
           export CC="sccache cc"
           export CXX="sccache c++"
-          export PIP_FIND_LINKS="$(pwd)/cuda_pathfinder/dist"
-          python -m build --sdist cuda_bindings/
-          pip wheel --no-deps --wheel-dir cuda_bindings/dist cuda_bindings/dist/*.tar.gz
-
-      # cuda_core sdist delegates to setuptools (no CTK needed), but
-      # wheel-from-sdist needs CTK and cuda-bindings (dynamic build dep via
-      # get_requires_for_build_wheel in build_hooks.py).
-      - name: Build cuda.core sdist and wheel-from-sdist
-        run: |
-          export CUDA_PYTHON_PARALLEL_LEVEL=$(nproc)
-          export CUDA_CORE_BUILD_MAJOR="$(echo '${{ inputs.cuda-version }}' | cut -d. -f1)"
-          export CC="sccache cc"
-          export CXX="sccache c++"
-          export PIP_FIND_LINKS="$(pwd)/cuda_bindings/dist $(pwd)/cuda_pathfinder/dist"
-          python -m build --sdist cuda_core/
-          pip wheel --no-deps --wheel-dir cuda_core/dist cuda_core/dist/*.tar.gz
+          python -m build --sdist .
+          pip wheel --no-deps --wheel-dir dist dist/*.tar.gz
 
       - name: Show sccache stats
         if: always()

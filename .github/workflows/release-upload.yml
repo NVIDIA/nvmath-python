@@ -1,6 +1,13 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
+
+# Uploads the git source archive to the GitHub release for a given tag. The
+# wheel upload step from the cuda-python copy has been removed because it
+# relied on `./ci/tools/download-wheels` and `./ci/tools/validate-release-wheels`,
+# which do not exist in nvmath-python. When release.yml is implemented, wire
+# wheel uploads back in with scripts that match nvmath-python's artifact
+# layout (single-package, single-wheel set).
 
 name: "CI: Upload git archive"
 
@@ -8,14 +15,6 @@ on:
   workflow_call:
     inputs:
       git-tag:
-        type: string
-        required: true
-      run-id:
-        description: "The GHA run ID that generated validated artifacts"
-        type: string
-        required: true
-      component:
-        description: "Component to download wheels for"
         type: string
         required: true
 
@@ -71,19 +70,3 @@ jobs:
           --clobber "${{ inputs.git-tag }}"
           --repo "${{ github.repository }}"
           release/*
-
-      - name: Download and Upload Wheels
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Use the shared script to download wheels
-          ./ci/tools/download-wheels "${{ inputs.run-id }}" "${{ inputs.component }}" "${{ github.repository }}" "release/wheels"
-
-          # Validate that release wheels match the expected version from tag.
-          ./ci/tools/validate-release-wheels "${{ inputs.git-tag }}" "${{ inputs.component }}" "release/wheels"
-
-          # Upload wheels to the release
-          if [[ -d "release/wheels" && $(ls -A release/wheels 2>/dev/null | wc -l) -gt 0 ]]; then
-            echo "Uploading wheels to release ${{ inputs.git-tag }}"
-            gh release upload --clobber "${{ inputs.git-tag }}" --repo "${{ github.repository }}" release/wheels/*
-          fi

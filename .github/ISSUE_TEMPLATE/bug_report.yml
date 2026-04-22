@@ -13,7 +13,7 @@ body:
       label: Is this a duplicate?
       description: Check for duplicate issues.
       options:
-        - label: I confirmed there appear to be no [duplicate issues](https://github.com/NVIDIA/cuda-python/issues) for this bug and that I agree to the [Code of Conduct](CODE_OF_CONDUCT.md)
+        - label: I confirmed there appear to be no [duplicate issues](https://github.com/NVIDIA/nvmath-python/issues) for this bug and that I agree to the [Code of Conduct](CODE_OF_CONDUCT.md)
           required: true
 
   - type: dropdown
@@ -35,13 +35,17 @@ body:
     id: component
     attributes:
       label: Component
-      description: Which cuda-python component does this apply to?
+      description: Which nvmath-python component does this apply to?
       multiple: false
       options:
-        - cuda.pathfinder
-        - cuda.bindings
-        - cuda.core
-        - General cuda-python
+        - fft
+        - linalg
+        - sparse
+        - tensor
+        - distributed
+        - bindings
+        - device
+        - General nvmath-python
         - Infrastructure
         - Not sure
     validations:
@@ -52,7 +56,7 @@ body:
     attributes:
       label: Describe the bug
       description: A clear and concise description of what problem you are running into.
-      placeholder: "Attempting to compile a program via `cuda.core.Program.compile` throws a `ValueError`."
+      placeholder: "Calling `nvmath.fft.fft(...)` on a non-contiguous tensor raises an unexpected `ValueError`."
     validations:
       required: true
 
@@ -62,11 +66,11 @@ body:
       label: How to Reproduce
       description: Steps used to reproduce the bug.
       placeholder: |
-        0. Construct a `cuda.core.Program` instance
-        1. Call the `.compile(...)` method of the instance
-        2. The call throws a `ValueError` with the following:
+        0. Construct an input array with `cupy.asarray(...)` (non-contiguous layout).
+        1. Call `nvmath.fft.fft(arr)`.
+        2. The call throws a `ValueError`:
         ```
-        ValueError: Unsupported target_type="..." (supported_target_types=('ptx', 'cubin', 'ltoir'))
+        ValueError: Unsupported layout for input operand.
         ```
     validations:
       required: true
@@ -76,7 +80,7 @@ body:
     attributes:
       label: Expected behavior
       description: A clear and concise description of what you expected to happen.
-      placeholder: "Using `cuda.core.Program.compile(...)` should run successfully and not throw a `ValueError`"
+      placeholder: "`nvmath.fft.fft(...)` should run successfully and not throw a `ValueError`"
     validations:
       required: true
 

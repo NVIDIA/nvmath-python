@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 name: Documentation Request
-description: Suggest an idea to improve cuda-python
+description: Suggest an idea to improve nvmath-python
 title: '[DOC]: '
 labels: ['doc']
 
@@ -14,7 +14,7 @@ body:
       label: Is this a duplicate?
       description: Check for duplicate issues.
       options:
-        - label: I confirmed there appear to be no [duplicate issues](https://github.com/NVIDIA/cuda-python/issues) for this bug and that I agree to the [Code of Conduct](CODE_OF_CONDUCT.md)
+        - label: I confirmed there appear to be no [duplicate issues](https://github.com/NVIDIA/nvmath-python/issues) for this bug and that I agree to the [Code of Conduct](CODE_OF_CONDUCT.md)
           required: true
 
   - type: dropdown
@@ -40,4 +40,4 @@ body:
     attributes:
       label: If this is a correction, please provide a link to the incorrect documentation. If this is a new documentation request, please link to where you have looked.
       placeholder: |
-       https://nvidia.github.io/cuda-python/latest/
+       https://docs.nvidia.com/cuda/nvmath-python/latest/
