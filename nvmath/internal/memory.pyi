@@ -1,53 +1,46 @@
-# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import _cython_3_1_2
-import ccx
-from _typeshed import Incomplete
-from nvmath.internal.package_ifc import StreamHolder as StreamHolder
+import _cython_3_2_4
 from typing import Any, ClassVar
 
 __pyx_capi__: dict
-__reduce_cython__: _cython_3_1_2.cython_function_or_method
-__setstate_cython__: _cython_3_1_2.cython_function_or_method
 __test__: dict
-free_reserved_memory: _cython_3_1_2.cython_function_or_method
-get_device_current_memory_pool: _cython_3_1_2.cython_function_or_method
+allocate_from_mr: _cython_3_2_4.cython_function_or_method
+free_reserved_memory: _cython_3_2_4.cython_function_or_method
+get_device_memory_resource: _cython_3_2_4.cython_function_or_method
 
-class MemAsyncAllocation:
-    handle: Incomplete
-    ptr: Incomplete
-    size: Incomplete
-    @classmethod
-    def __init__(cls, *args, **kwargs) -> None: ...
-    def close(self, stream=...) -> Any: ...
-    def __reduce__(self): ...
+class _MemoryPointer:
+    """
+    Temporary internal NDBuffer allocation adapter class. NDBuffer expects
+    custom allocator to return a cuda.core.Buffer instance. Until all supported
+    cuda.core versions have unified support for wrapping external allocations
+    with Buffer.from_handle, this class servers as an adapter/workaround.
 
-class MemAsyncAllocationFinalizer:
+    WARNING: This is internal tool subject to change/removal without notice.
+
+    Internally, it is used conditionally if any of the following is needed:
+        * wrap external allocations that don't come as cuda.core.Buffer (e.g. from cupy).
+        This is needed because prior to cuda.core 0.5.0, it's not possible to
+        pass reference to externall RAII object as ``owner`` parameter to Buffer.from_handle.
+        * provide debug logging on deallocation. In the future, we can use
+        Buffer.from_handle(owner=...) to inject deallocation callback (cuda.core >= 0.5.0)
+        or weakref.finalize for Buffer (cuda.core >= 0.6.0).
+
+    The only publicly exposed field is the handle - a base pointer to the allocated memory.
+    """
+    from_handle: ClassVar[method] = ...
     __pyx_vtable__: ClassVar[PyCapsule] = ...
-    @classmethod
-    def __init__(cls, *args, **kwargs) -> None: ...
-    def __reduce__(self): ...
-
-class MemAsyncPool:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
-    default_stream: Incomplete
-    default_stream_ptr: Incomplete
-    device_id: Incomplete
-    @classmethod
-    def __init__(cls, *args, **kwargs) -> None: ...
-    def allocate(self, int64_tsize, stream: StreamHolder | ccx.Stream, logger=...) -> Any: ...
-    def free_reserved_memory(self) -> Any: ...
-    def get_limit(self) -> uint64_t: ...
-    def get_reserved_memory_size(self) -> uint64_t: ...
-    def get_used_memory_size(self) -> uint64_t: ...
-    def set_limit(self, uint64_tlimit) -> Any: ...
-    def __reduce__(self): ...
-
-class MemoryPointer:
+    handle: handle
     owner: owner
-    ptr: ptr
     @classmethod
-    def __init__(cls, *args, **kwargs) -> None: ...
-    def __reduce__(self): ...
+    def __init__(cls, *args, **kwargs) -> None:
+        """Create and return a new object.  See help(type) for accurate signature."""
+    def __del__(self, *args, **kwargs) -> None: ...
+    def __reduce__(self):
+        """_MemoryPointer.__reduce_cython__(self)"""
+    def __reduce_cython__(self) -> Any:
+        """_MemoryPointer.__reduce_cython__(self)"""
+    def __setstate_cython__(self, __pyx_state) -> Any:
+        """_MemoryPointer.__setstate_cython__(self, __pyx_state)"""

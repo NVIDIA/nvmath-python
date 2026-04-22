@@ -7,9 +7,10 @@
 #
 
 import numpy as np
-from numba import cuda
-from nvmath.device import FFT
 from common import random_real
+from numba import cuda
+
+from nvmath.device import FFT
 
 
 def main():

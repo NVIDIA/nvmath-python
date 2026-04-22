@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-from numba import cuda
-from nvmath.device import Matmul
 from common import random
+from numba import cuda
+
+from nvmath.device import Matmul
 from nvmath.device.common import axpby, clear, copy, copy_wait, make_tensor
 from nvmath.device.cublasdx_backend import MAX_ALIGNMENT
 

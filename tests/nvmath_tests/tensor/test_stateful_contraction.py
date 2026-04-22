@@ -3,17 +3,29 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
-import pytest
+
 import numpy as np
+import pytest
 
-from nvmath.tensor import BinaryContraction, TernaryContraction, ContractionCacheMode, ContractionAutotuneMode
-from .utils.check_helpers import get_contraction_ref, assert_all_close, get_contraction_tolerance
+from nvmath.tensor import BinaryContraction, ContractionAutotuneMode, ContractionCacheMode, TernaryContraction
+
+from ..helpers import check_freed_after
 from .utils.base_testers import run_coefficients_test_impl
-
-from .utils.common_axes import Framework, JitOption, AlgoOption, KernelRankOption
-from .utils.data import contraction_test_cases, binary_contraction_test_cases, ternary_contraction_test_cases
+from .utils.check_helpers import assert_all_close, get_contraction_ref, get_contraction_tolerance
+from .utils.common_axes import (
+    AlgoOption,
+    AutotuneModeOption,
+    CacheModeOption,
+    DType,
+    Framework,
+    IncrementalCountOption,
+    JitOption,
+    KernelRankOption,
+    MemBackend,
+)
+from .utils.data import binary_contraction_test_cases, contraction_test_cases, ternary_contraction_test_cases
+from .utils.input_fixtures import get_random_input_data
 from .utils.support_matrix import framework_backend_support, framework_type_support
-from .utils.common_axes import MemBackend, DType
 
 try:
     import cupy as cp
@@ -289,67 +301,137 @@ def test_check_einsum_expression():
 
 
 @pytest.mark.skipif(not HAS_CUPY, reason="CuPy is not available")
+def test_reset_operands_with_different_pointer_alignment():
+    a = cp.random.rand(4, 3)
+    b = cp.random.rand(3, 4)
+    c = cp.random.rand(4, 4)
+
+    a_lower = a[:2]  # 256 alignment
+    a_upper = a[2:]  # 16 alignment
+
+    # reset operands to a tensor with incompatible pointer alignment
+    with BinaryContraction("ij,jk->ik", a_lower, b) as bc:
+        bc.plan()
+        out = bc.execute()
+        assert cp.allclose(out, a_lower @ b)
+        with pytest.raises(ValueError):
+            bc.reset_operands(a=a_upper, b=b)
+
+    # reset operands to a tensor with compatible pointer alignment
+    with BinaryContraction("ij,jk->ik", a_upper, b) as bc:
+        bc.plan()
+        out = bc.execute()
+        assert cp.allclose(out, a_upper @ b)
+
+        bc.reset_operands(a=a_lower, b=b)
+        out = bc.execute()
+        assert cp.allclose(out, a_lower @ b)
+
+    # reset operands to a tensor with incompatible pointer alignment
+    with TernaryContraction("ij,jk,kl->il", a_lower, b, c) as tc:
+        tc.plan()
+        out = tc.execute()
+        assert cp.allclose(out, a_lower @ b @ c)
+        with pytest.raises(ValueError):
+            tc.reset_operands(a=a_upper, b=b, c=c)
+
+    # reset operands to a tensor with compatible pointer alignment
+    with TernaryContraction("ij,jk,kl->il", a_upper, b, c) as tc:
+        tc.plan()
+        out = tc.execute()
+        assert cp.allclose(out, a_upper @ b @ c)
+        tc.reset_operands(a=a_lower, b=b, c=c)
+        out = tc.execute()
+        assert cp.allclose(out, a_lower @ b @ c)
+
+
+@pytest.mark.parametrize(
+    ("framework", "mem_backend", "output_provided"),
+    [
+        (
+            framework,
+            mem_backend,
+            output_provided,
+        )
+        for framework in Framework.enabled()
+        for mem_backend in framework_backend_support[framework]
+        for output_provided in [True, False]
+    ],
+)
 class TestReferenceCount:
     """
     Test reference counts consistency before/after contraction context manager.
     Only need a single scenario with CuPy to test scenario when tensors reside on GPU.
     """
 
-    @staticmethod
-    def refcount_msg(name, arr, stage=""):
-        actual = sys.getrefcount(arr) - 1
-        stage_info = f" {stage}" if stage else ""
-        return f"CuPy array '{name}' should have refcount 1{stage_info} (actual: {actual})"
+    def test_binary_contraction(self, framework, mem_backend, output_provided):
+        a = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
+        b = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
+        c = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
 
-    def test_binary_contraction(self):
-        a = cp.random.rand(4, 4, 4, 4)
-        b = cp.random.rand(4, 4, 4, 4)
-        c = cp.random.rand(4, 4, 4, 4)
+        initial_refcount_a = sys.getrefcount(a)
+        initial_refcount_b = sys.getrefcount(b)
+        initial_refcount_c = sys.getrefcount(c)
 
-        # Check initial reference counts should be 1
-        # getrefcount adds 1 for the temp reference in the function call, so expect 2
-        assert sys.getrefcount(a) == 2, self.refcount_msg("a", a, "before contraction")
-        assert sys.getrefcount(b) == 2, self.refcount_msg("b", b, "before contraction")
-        assert sys.getrefcount(c) == 2, self.refcount_msg("c", c, "before contraction")
+        if output_provided:
+            out = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
+            initial_refcount_out = sys.getrefcount(out)
+        else:
+            out = None
 
-        # Create and execute binary contraction
-        contraction = BinaryContraction("ijkl,klmn->ijmn", a, b, c=c)
+        contraction = BinaryContraction("ijkl,klmn->ijmn", a, b, c=c, out=out)
         with contraction:
             contraction.plan()
             result = contraction.execute(beta=2.2)
 
-        # After exiting context manager, reference counts should return to 1
-        # getrefcount adds 1 for the temp reference in the function call, so expect 2
-        assert sys.getrefcount(a) == 2, self.refcount_msg("a", a, "after contraction context exit")
-        assert sys.getrefcount(b) == 2, self.refcount_msg("b", b, "after contraction context exit")
-        assert sys.getrefcount(c) == 2, self.refcount_msg("c", c, "after contraction context exit")
-        assert sys.getrefcount(result) == 2, self.refcount_msg("result", result)
+            if output_provided:
+                assert out is result
 
-    def test_ternary_contraction(self):
-        a = cp.random.rand(4, 4, 4, 4)
-        b = cp.random.rand(4, 4, 4, 4)
-        c = cp.random.rand(4, 4, 4, 4)
-        d = cp.random.rand(4, 4, 4, 4)
+        assert sys.getrefcount(a) == initial_refcount_a, "a refcount changed after context exit"
+        assert sys.getrefcount(b) == initial_refcount_b, "b refcount changed after context exit"
+        assert sys.getrefcount(c) == initial_refcount_c, "c refcount changed after context exit"
+        if output_provided:
+            del result
+            assert sys.getrefcount(out) == initial_refcount_out, "out refcount changed after context exit"
+        else:
+            with check_freed_after(result, "post op: result should have sole ownership"):
+                del result
 
-        # Check initial reference counts should be 1
-        assert sys.getrefcount(a) == 2, self.refcount_msg("a", a, "before contraction")
-        assert sys.getrefcount(b) == 2, self.refcount_msg("b", b, "before contraction")
-        assert sys.getrefcount(c) == 2, self.refcount_msg("c", c, "before contraction")
-        assert sys.getrefcount(d) == 2, self.refcount_msg("d", d, "before contraction")
+    def test_ternary_contraction(self, framework, mem_backend, output_provided):
+        a = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
+        b = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
+        c = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
+        d = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
 
-        # Create and execute ternary contraction
-        contraction = TernaryContraction("ijkl,klmn,mnpq->ijpq", a, b, c, d=d)
+        initial_refcount_a = sys.getrefcount(a)
+        initial_refcount_b = sys.getrefcount(b)
+        initial_refcount_c = sys.getrefcount(c)
+        initial_refcount_d = sys.getrefcount(d)
+
+        if output_provided:
+            out = get_random_input_data(framework, (4, 4, 4, 4), DType.float64, mem_backend)
+            initial_refcount_out = sys.getrefcount(out)
+        else:
+            out = None
+
+        contraction = TernaryContraction("ijkl,klmn,mnpq->ijpq", a, b, c, d=d, out=out)
         with contraction:
             contraction.plan()
             result2 = contraction.execute(beta=2.2)
 
-        # After exiting context manager, reference counts should return to 1
-        # getrefcount adds 1 for the temp reference in the function call, so expect 2
-        assert sys.getrefcount(a) == 2, self.refcount_msg("a", a, "after contraction context exit")
-        assert sys.getrefcount(b) == 2, self.refcount_msg("b", b, "after contraction context exit")
-        assert sys.getrefcount(c) == 2, self.refcount_msg("c", c, "after contraction context exit")
-        assert sys.getrefcount(d) == 2, self.refcount_msg("d", d, "after contraction context exit")
-        assert sys.getrefcount(result2) == 2, self.refcount_msg("result", result2)
+            if output_provided:
+                assert out is result2
+
+        assert sys.getrefcount(a) == initial_refcount_a, "a refcount changed after context exit"
+        assert sys.getrefcount(b) == initial_refcount_b, "b refcount changed after context exit"
+        assert sys.getrefcount(c) == initial_refcount_c, "c refcount changed after context exit"
+        assert sys.getrefcount(d) == initial_refcount_d, "d refcount changed after context exit"
+        if output_provided:
+            del result2
+            assert sys.getrefcount(out) == initial_refcount_out, "out refcount changed after context exit"
+        else:
+            with check_freed_after(result2, "post op: result should have sole ownership"):
+                del result2
 
 
 @pytest.mark.parametrize(
@@ -370,9 +452,6 @@ class TestContractionTrivialContextManager:
     """
 
     def test_binary_contraction_empty_context(self, framework, mem_backend):
-        from .utils.input_fixtures import get_random_input_data
-        from .utils.common_axes import DType
-
         dtype = DType.float64
 
         # choose random shapes for the inputs, since one specific shape is enough
@@ -386,9 +465,6 @@ class TestContractionTrivialContextManager:
         assert not contraction.valid_state
 
     def test_ternary_contraction_empty_context(self, framework, mem_backend):
-        from .utils.input_fixtures import get_random_input_data
-        from .utils.common_axes import DType
-
         dtype = DType.float64
 
         # choose random shapes for the inputs, since one specific shape is enough
@@ -401,3 +477,268 @@ class TestContractionTrivialContextManager:
         # Upon exiting the context manager, the contraction object should be invalid
         # because the free() method should have been called.
         assert not contraction.valid_state
+
+
+class TestContractionPlanPreferenceGetterSetter:
+    def setup_class(self):
+        a = np.random.rand(2, 3)
+        b = np.random.rand(3, 4)
+        c = np.random.rand(4, 5)
+
+        self.contractions = [
+            BinaryContraction("ij,jk->ik", a, b),
+            TernaryContraction("ij,jk,kl->il", a, b, c),
+        ]
+
+    def teardown_class(self):
+        for contraction in self.contractions:
+            contraction.free()
+
+    @pytest.mark.parametrize(
+        "attr",
+        [
+            "autotune_mode",
+            "cache_mode",
+            "incremental_count",
+            "algo",
+            "kernel_rank",
+            "jit",
+        ],
+    )
+    def test_plan_preference_getter_setter(self, attr):
+        value_iterator = {
+            "autotune_mode": AutotuneModeOption,
+            "cache_mode": CacheModeOption,
+            "incremental_count": IncrementalCountOption,
+            "algo": AlgoOption,
+            "kernel_rank": KernelRankOption,
+            "jit": JitOption,
+        }[attr]
+
+        for contraction in self.contractions:
+            for value in value_iterator:
+                plan_preference = contraction.plan_preference
+                setattr(plan_preference, attr, value.value)
+                assert getattr(plan_preference, attr) == value.value
+
+
+@pytest.mark.parametrize(
+    ("framework", "mem_backend"),
+    [
+        (
+            framework,
+            mem_backend,
+        )
+        for framework in Framework.enabled()
+        for mem_backend in framework_backend_support[framework]
+    ],
+)
+class TestContractionOutput:
+    @pytest.mark.parametrize("output_provided", [True, False])
+    def test_binary_contraction_output(self, framework, mem_backend, output_provided):
+        dtype = DType.float64
+        a = get_random_input_data(framework, (4, 6, 8), dtype, mem_backend)
+        b = get_random_input_data(framework, (6, 8, 3), dtype, mem_backend)
+        if output_provided:
+            out = get_random_input_data(framework, (4, 3), dtype, mem_backend)
+        else:
+            out = None
+        with BinaryContraction("ijk,jkl->il", a, b, out=out) as contraction:
+            contraction.plan()
+            out0 = contraction.execute()
+            out1 = contraction.execute()
+            if output_provided:
+                assert out0 is out
+                assert out1 is out
+            else:
+                assert out1 is not out0
+
+    @pytest.mark.parametrize("output_provided", [True, False])
+    def test_ternary_contraction_output(self, framework, mem_backend, output_provided):
+        dtype = DType.float64
+        a = get_random_input_data(framework, (4, 6, 8), dtype, mem_backend)
+        b = get_random_input_data(framework, (6, 8, 3), dtype, mem_backend)
+        c = get_random_input_data(framework, (3, 9), dtype, mem_backend)
+        if output_provided:
+            out = get_random_input_data(framework, (4, 9), dtype, mem_backend)
+        else:
+            out = None
+        with TernaryContraction("ijk,jkl,ln->in", a, b, c, out=out) as contraction:
+            contraction.plan()
+            out0 = contraction.execute()
+            out1 = contraction.execute()
+            if output_provided:
+                assert out0 is out
+                assert out1 is out
+            else:
+                assert out1 is not out0
+
+
+@pytest.mark.parametrize(
+    ("framework", "mem_backend"),
+    [(framework, mem_backend) for framework in Framework.enabled() for mem_backend in framework_backend_support[framework]],
+)
+@pytest.mark.parametrize(
+    "output_mode",
+    ["none", "accumulation", "out"],
+    ids=["no_output", "with_c", "with_out"],
+)
+def test_release_operands_binary(framework, mem_backend, output_mode):
+    """
+    Test that after release_operands(), the refcounts of all user-provided
+    operands return to their initial values.
+    """
+    from .utils.input_fixtures import get_random_input_data
+
+    dtype = DType.float32
+    shape = (32, 32)
+    out_shape = (32, 32)
+
+    a = get_random_input_data(framework, shape, dtype, mem_backend)
+    b = get_random_input_data(framework, shape, dtype, mem_backend)
+    c = get_random_input_data(framework, out_shape, dtype, mem_backend) if output_mode == "accumulation" else None
+    out = get_random_input_data(framework, out_shape, dtype, mem_backend) if output_mode == "out" else None
+
+    # Record initial refcounts for all user-provided operands
+    initial_refcounts = {"a": sys.getrefcount(a), "b": sys.getrefcount(b)}
+    if c is not None:
+        initial_refcounts["c"] = sys.getrefcount(c)
+    if out is not None:
+        initial_refcounts["out"] = sys.getrefcount(out)
+
+    contraction = BinaryContraction("ij,jk->ik", a, b, c=c, out=out)
+    contraction.plan()
+    if output_mode == "accumulation":
+        result = contraction.execute(beta=0.5)
+    else:
+        result = contraction.execute()
+    if output_mode == "out":
+        del result
+    else:
+        with check_freed_after(result, "The caller should hold the only reference to the result buffer"):
+            del result
+
+    contraction.release_operands()
+
+    assert sys.getrefcount(a) == initial_refcounts["a"], f"a refcount: {sys.getrefcount(a)}, expected: {initial_refcounts['a']}"
+    assert sys.getrefcount(b) == initial_refcounts["b"], f"b refcount: {sys.getrefcount(b)}, expected: {initial_refcounts['b']}"
+    if c is not None:
+        assert sys.getrefcount(c) == initial_refcounts["c"], (
+            f"c refcount: {sys.getrefcount(c)}, expected: {initial_refcounts['c']}"
+        )
+    if out is not None:
+        assert sys.getrefcount(out) == initial_refcounts["out"], (
+            f"out refcount: {sys.getrefcount(out)}, expected: {initial_refcounts['out']}"
+        )
+
+    contraction.free()
+
+
+@pytest.mark.parametrize(
+    ("framework", "mem_backend"),
+    [(framework, mem_backend) for framework in Framework.enabled() for mem_backend in framework_backend_support[framework]],
+)
+@pytest.mark.parametrize(
+    "output_mode",
+    ["none", "accumulation", "out"],
+    ids=["no_output", "with_d", "with_out"],
+)
+def test_release_operands_ternary(framework, mem_backend, output_mode):
+    """
+    Test that after release_operands(), the refcounts of all user-provided
+    operands return to their initial values.
+    """
+    from .utils.input_fixtures import get_random_input_data
+
+    dtype = DType.float32
+    shape = (32, 32)
+    out_shape = (32, 32)
+
+    a = get_random_input_data(framework, shape, dtype, mem_backend)
+    b = get_random_input_data(framework, shape, dtype, mem_backend)
+    c = get_random_input_data(framework, shape, dtype, mem_backend)
+    d = get_random_input_data(framework, out_shape, dtype, mem_backend) if output_mode == "accumulation" else None
+    out = get_random_input_data(framework, out_shape, dtype, mem_backend) if output_mode == "out" else None
+
+    # Record initial refcounts for all user-provided operands
+    initial_refcounts = {"a": sys.getrefcount(a), "b": sys.getrefcount(b), "c": sys.getrefcount(c)}
+    if d is not None:
+        initial_refcounts["d"] = sys.getrefcount(d)
+    if out is not None:
+        initial_refcounts["out"] = sys.getrefcount(out)
+
+    contraction = TernaryContraction("ij,jk,kl->il", a, b, c, d=d, out=out)
+    contraction.plan()
+    if output_mode == "accumulation":
+        result = contraction.execute(beta=0.5)
+    else:
+        result = contraction.execute()
+    if output_mode == "out":
+        del result
+    else:
+        with check_freed_after(result, "The caller should hold the only reference to the result buffer"):
+            del result
+
+    contraction.release_operands()
+
+    assert sys.getrefcount(a) == initial_refcounts["a"], f"a refcount: {sys.getrefcount(a)}, expected: {initial_refcounts['a']}"
+    assert sys.getrefcount(b) == initial_refcounts["b"], f"b refcount: {sys.getrefcount(b)}, expected: {initial_refcounts['b']}"
+    assert sys.getrefcount(c) == initial_refcounts["c"], f"c refcount: {sys.getrefcount(c)}, expected: {initial_refcounts['c']}"
+    if d is not None:
+        assert sys.getrefcount(d) == initial_refcounts["d"], (
+            f"d refcount: {sys.getrefcount(d)}, expected: {initial_refcounts['d']}"
+        )
+    if out is not None:
+        assert sys.getrefcount(out) == initial_refcounts["out"], (
+            f"out refcount: {sys.getrefcount(out)}, expected: {initial_refcounts['out']}"
+        )
+
+    contraction.free()
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param("gpu_operand_gpu_exec", id="gpu_operand_gpu_exec"),
+        pytest.param("cpu_operand_gpu_exec", id="cpu_operand_gpu_exec"),
+    ],
+)
+@pytest.mark.parametrize(
+    "contraction_type",
+    ["binary", "ternary"],
+)
+def test_release_then_reset_unchecked(case, contraction_type):
+    """
+    Test that reset_operands_unchecked works after release_operands for
+    both same-space (GPU) and cross-space (CPU) operands.
+    """
+    if case == "gpu_operand_gpu_exec":
+        cp = pytest.importorskip("cupy")
+        make_tensor = lambda: cp.random.rand(32, 32).astype(cp.float32)
+    else:
+        make_tensor = lambda: np.random.rand(32, 32).astype(np.float32)
+
+    a, b, a_new, b_new = make_tensor(), make_tensor(), make_tensor(), make_tensor()
+
+    if contraction_type == "binary":
+        expr = "ij,jk->ik"
+        ref = get_contraction_ref(expr, a_new, b_new)
+        contraction = BinaryContraction(expr, a, b)
+        contraction.plan()
+        contraction.execute()
+        contraction.release_operands()
+        contraction.reset_operands_unchecked(a=a_new, b=b_new)
+    else:
+        c, c_new = make_tensor(), make_tensor()
+        expr = "ij,jk,kl->il"
+        ref = get_contraction_ref(expr, a_new, b_new, c=c_new)
+        contraction = TernaryContraction(expr, a, b, c)
+        contraction.plan()
+        contraction.execute()
+        contraction.release_operands()
+        contraction.reset_operands_unchecked(a=a_new, b=b_new, c=c_new)
+
+    result = contraction.execute()
+    assert_all_close(result, ref, rtol=1e-4, atol=1e-4)
+
+    contraction.free()

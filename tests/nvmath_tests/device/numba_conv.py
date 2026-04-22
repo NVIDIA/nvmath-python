@@ -3,13 +3,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
+import pytest
 from numba import cuda
 
 from nvmath.device import fft
+
 from .helpers import _TOLERANCE, l2error
-import cupy
-import time
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 import functools
+import time
+
 from .helpers_numba import run_and_time
 
 
@@ -121,6 +128,8 @@ class FFTConvNumba:
         (batch, ssize) = input.shape
         assert ssize == self._size
         assert batch % self._ffts_per_block == 0
+        if cupy is None:
+            pytest.skip("cupy is not available")
         input_d = cuda.to_device(input)
         filter_d = cuda.to_device(filter)
         output_numba_d = cuda.to_device(cupy.zeros_like(input))

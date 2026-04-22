@@ -6,11 +6,11 @@
 
 __all__ = ["BaseCUDAMemoryManager", "MemoryPointer"]
 
+import logging
+import weakref
 from abc import abstractmethod
 from collections.abc import Callable
 from typing import Protocol, runtime_checkable
-import logging
-import weakref
 
 try:
     from cuda.core import Stream
@@ -18,8 +18,8 @@ except ImportError:
     from cuda.core.experimental import Stream
 
 from nvmath.internal import utils
+from nvmath.internal.memory import allocate_from_mr, get_device_memory_resource
 from nvmath.internal.package_ifc_cuda import CUDAPackage
-from nvmath.internal.memory import get_device_current_memory_pool as _get_device_current_memory_pool
 
 
 class MemoryPointer:
@@ -167,12 +167,11 @@ class _RawCUDAMemoryManager(BaseCUDAMemoryManagerAsync):
         """
         self.device_id = device_id
         self.logger = logger
-        self.pool = _get_device_current_memory_pool(device_id)
+        self._pool = get_device_memory_resource(device_id)
 
     def memalloc_async(self, size: int, stream: Stream) -> MemoryPointer:
-        with utils.device_ctx(self.device_id):
-            buffer = self.pool.allocate(size=size, stream=stream, logger=self.logger)
-            device_ptr = buffer.ptr
+        buffer = allocate_from_mr(self._pool, size, stream, self.device_id, self.logger)
+        device_ptr = int(buffer.handle)
 
         return _UnmanagedMemoryPointer(device_ptr, size, buffer)  # type: ignore[return-value]
 
@@ -186,6 +185,7 @@ _MEMORY_MANAGER: dict[str, type[BaseCUDAMemoryManager] | type[BaseCUDAMemoryMana
 def lazy_load_cupy():
     global _MEMORY_MANAGER
     import cupy as cp
+
     from nvmath.internal.package_ifc_cupy import CupyPackage
 
     class _CupyCUDAMemoryManager(BaseCUDAMemoryManagerAsync):
@@ -236,6 +236,7 @@ def lazy_load_torch():
     global _MEMORY_MANAGER
 
     from torch.cuda import caching_allocator_alloc, caching_allocator_delete
+
     from nvmath.internal.package_ifc_torch import TorchPackage
 
     class _TorchCUDAMemoryManager(BaseCUDAMemoryManagerAsync):

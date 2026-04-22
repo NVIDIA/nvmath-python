@@ -2,15 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
-import cupy
-from numba import cuda
-from nvmath.device import FFT
-from common import random_complex
 import functools
 
+import cupy
+import numpy as np
+from common import random_complex
 from common_cupy import time_cupy
 from common_numba import time_numba
+from numba import cuda
+
+from nvmath.device import FFT
 
 
 def main():

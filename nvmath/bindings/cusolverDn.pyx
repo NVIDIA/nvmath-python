@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.1, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 from libcpp.vector cimport vector
 
@@ -17,10 +17,13 @@ from enum import IntEnum as _IntEnum
 ###############################################################################
 
 class Function(_IntEnum):
-    """See `cusolverDnFunction_t`."""
+    """
+    See `cusolverDnFunction_t`.
+    """
     GETRF = CUSOLVERDN_GETRF
     POTRF = CUSOLVERDN_POTRF
     SYEVBATCHED = CUSOLVERDN_SYEVBATCHED
+    GEQRF = CUSOLVERDN_GEQRF
 
 
 ###############################################################################
@@ -3087,29 +3090,165 @@ cpdef xgeev(intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n, i
     check_status(__status__)
 
 
-cpdef set_math_mode(intptr_t handle, cusolverMathMode_t mode):
+cpdef set_math_mode(intptr_t handle, int mode):
     """See `cusolverDnSetMathMode`."""
     with nogil:
-        __status__ = cusolverDnSetMathMode(<Handle>handle, mode)
+        __status__ = cusolverDnSetMathMode(<Handle>handle, <cusolverMathMode_t>mode)
     check_status(__status__)
 
 
-cpdef get_math_mode(intptr_t handle, intptr_t mode):
+cpdef int get_math_mode(intptr_t handle) except? -1:
     """See `cusolverDnGetMathMode`."""
+    cdef cusolverMathMode_t mode
     with nogil:
-        __status__ = cusolverDnGetMathMode(<Handle>handle, <cusolverMathMode_t*>mode)
+        __status__ = cusolverDnGetMathMode(<Handle>handle, &mode)
     check_status(__status__)
+    return <int>mode
 
 
-cpdef set_emulation_strategy(intptr_t handle, cudaEmulationStrategy_t strategy):
+cpdef set_emulation_strategy(intptr_t handle, int strategy):
     """See `cusolverDnSetEmulationStrategy`."""
     with nogil:
-        __status__ = cusolverDnSetEmulationStrategy(<Handle>handle, strategy)
+        __status__ = cusolverDnSetEmulationStrategy(<Handle>handle, <cudaEmulationStrategy_t>strategy)
     check_status(__status__)
 
 
-cpdef get_emulation_strategy(intptr_t handle, intptr_t strategy):
+cpdef int get_emulation_strategy(intptr_t handle) except? -1:
     """See `cusolverDnGetEmulationStrategy`."""
+    cdef cudaEmulationStrategy_t strategy
     with nogil:
-        __status__ = cusolverDnGetEmulationStrategy(<Handle>handle, <cudaEmulationStrategy_t*>strategy)
+        __status__ = cusolverDnGetEmulationStrategy(<Handle>handle, &strategy)
+    check_status(__status__)
+    return <int>strategy
+
+
+cpdef set_fixed_point_emulation_mantissa_control(intptr_t handle, int control):
+    """See `cusolverDnSetFixedPointEmulationMantissaControl`."""
+    with nogil:
+        __status__ = cusolverDnSetFixedPointEmulationMantissaControl(<Handle>handle, <cudaEmulationMantissaControl_t>control)
+    check_status(__status__)
+
+
+cpdef int get_fixed_point_emulation_mantissa_control(intptr_t handle) except? -1:
+    """See `cusolverDnGetFixedPointEmulationMantissaControl`."""
+    cdef cudaEmulationMantissaControl_t control
+    with nogil:
+        __status__ = cusolverDnGetFixedPointEmulationMantissaControl(<Handle>handle, &control)
+    check_status(__status__)
+    return <int>control
+
+
+cpdef set_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle, int mantissa_bit_count):
+    """See `cusolverDnSetFixedPointEmulationMaxMantissaBitCount`."""
+    with nogil:
+        __status__ = cusolverDnSetFixedPointEmulationMaxMantissaBitCount(<Handle>handle, mantissa_bit_count)
+    check_status(__status__)
+
+
+cpdef int get_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle) except? -1:
+    """See `cusolverDnGetFixedPointEmulationMaxMantissaBitCount`."""
+    cdef int mantissa_bit_count
+    with nogil:
+        __status__ = cusolverDnGetFixedPointEmulationMaxMantissaBitCount(<Handle>handle, &mantissa_bit_count)
+    check_status(__status__)
+    return mantissa_bit_count
+
+
+cpdef set_fixed_point_emulation_mantissa_bit_offset(intptr_t handle, int mantissa_bit_offset):
+    """See `cusolverDnSetFixedPointEmulationMantissaBitOffset`."""
+    with nogil:
+        __status__ = cusolverDnSetFixedPointEmulationMantissaBitOffset(<Handle>handle, mantissa_bit_offset)
+    check_status(__status__)
+
+
+cpdef int get_fixed_point_emulation_mantissa_bit_offset(intptr_t handle) except? -1:
+    """See `cusolverDnGetFixedPointEmulationMantissaBitOffset`."""
+    cdef int mantissa_bit_offset
+    with nogil:
+        __status__ = cusolverDnGetFixedPointEmulationMantissaBitOffset(<Handle>handle, &mantissa_bit_offset)
+    check_status(__status__)
+    return mantissa_bit_offset
+
+
+cpdef set_emulation_special_values_support(intptr_t handle, int mask):
+    """See `cusolverDnSetEmulationSpecialValuesSupport`."""
+    with nogil:
+        __status__ = cusolverDnSetEmulationSpecialValuesSupport(<Handle>handle, <cudaEmulationSpecialValuesSupport_t>mask)
+    check_status(__status__)
+
+
+cpdef int get_emulation_special_values_support(intptr_t handle) except? -1:
+    """See `cusolverDnGetEmulationSpecialValuesSupport`."""
+    cdef cudaEmulationSpecialValuesSupport_t mask
+    with nogil:
+        __status__ = cusolverDnGetEmulationSpecialValuesSupport(<Handle>handle, &mask)
+    check_status(__status__)
+    return <int>mask
+
+
+cpdef tuple xsygvd_buffer_size(intptr_t handle, intptr_t params, int itype, int jobz, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, int data_type_w, intptr_t d_w, int compute_type):
+    """See `cusolverDnXsygvd_bufferSize`."""
+    cdef size_t workspace_in_bytes_on_device
+    cdef size_t workspace_in_bytes_on_host
+    with nogil:
+        __status__ = cusolverDnXsygvd_bufferSize(<Handle>handle, <Params>params, <cusolverEigType_t>itype, <cusolverEigMode_t>jobz, <cublasFillMode_t>uplo, n, <DataType>data_type_a, <const void*>d_a, lda, <DataType>data_type_b, <const void*>d_b, ldb, <DataType>data_type_w, <const void*>d_w, <DataType>compute_type, &workspace_in_bytes_on_device, &workspace_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_in_bytes_on_device, workspace_in_bytes_on_host)
+
+
+cpdef xsygvd(intptr_t handle, intptr_t params, int itype, int jobz, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, int data_type_w, intptr_t d_w, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_info):
+    """See `cusolverDnXsygvd`."""
+    with nogil:
+        __status__ = cusolverDnXsygvd(<Handle>handle, <Params>params, <cusolverEigType_t>itype, <cusolverEigMode_t>jobz, <cublasFillMode_t>uplo, n, <DataType>data_type_a, <void*>d_a, lda, <DataType>data_type_b, <void*>d_b, ldb, <DataType>data_type_w, <void*>d_w, <DataType>compute_type, <void*>buffer_on_device, workspace_in_bytes_on_device, <void*>buffer_on_host, workspace_in_bytes_on_host, <int*>d_info)
+    check_status(__status__)
+
+
+cpdef tuple xsygvdx_buffer_size(intptr_t handle, intptr_t params, int itype, int jobz, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, intptr_t vl, intptr_t vu, int64_t il, int64_t iu, intptr_t meig, int data_type_w, intptr_t d_w, int compute_type):
+    """See `cusolverDnXsygvdx_bufferSize`."""
+    cdef size_t workspace_in_bytes_on_device
+    cdef size_t workspace_in_bytes_on_host
+    with nogil:
+        __status__ = cusolverDnXsygvdx_bufferSize(<Handle>handle, <Params>params, <cusolverEigType_t>itype, <cusolverEigMode_t>jobz, <cublasFillMode_t>uplo, n, <DataType>data_type_a, <const void*>d_a, lda, <DataType>data_type_b, <const void*>d_b, ldb, <void*>vl, <void*>vu, il, iu, <int64_t*>meig, <DataType>data_type_w, <const void*>d_w, <DataType>compute_type, &workspace_in_bytes_on_device, &workspace_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_in_bytes_on_device, workspace_in_bytes_on_host)
+
+
+cpdef xsygvdx(intptr_t handle, intptr_t params, int itype, int jobz, int range, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, intptr_t vl, intptr_t vu, int64_t il, int64_t iu, intptr_t meig, int data_type_w, intptr_t d_w, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_info):
+    """See `cusolverDnXsygvdx`."""
+    with nogil:
+        __status__ = cusolverDnXsygvdx(<Handle>handle, <Params>params, <cusolverEigType_t>itype, <cusolverEigMode_t>jobz, <cusolverEigRange_t>range, <cublasFillMode_t>uplo, n, <DataType>data_type_a, <void*>d_a, lda, <DataType>data_type_b, <void*>d_b, ldb, <void*>vl, <void*>vu, il, iu, <int64_t*>meig, <DataType>data_type_w, <void*>d_w, <DataType>compute_type, <void*>buffer_on_device, workspace_in_bytes_on_device, <void*>buffer_on_host, workspace_in_bytes_on_host, <int*>d_info)
+    check_status(__status__)
+
+
+cpdef tuple xstedc_buffer_size(intptr_t handle, intptr_t params, int compz, int64_t n, int data_type_de, intptr_t d, intptr_t e, int data_type_z, intptr_t z, int64_t ldz, int compute_type):
+    """See `cusolverDnXstedc_bufferSize`."""
+    cdef size_t workspace_in_bytes_on_device
+    cdef size_t workspace_in_bytes_on_host
+    with nogil:
+        __status__ = cusolverDnXstedc_bufferSize(<Handle>handle, <Params>params, <cusolverEigComp_t>compz, n, <DataType>data_type_de, <const void*>d, <const void*>e, <DataType>data_type_z, <const void*>z, ldz, <DataType>compute_type, &workspace_in_bytes_on_device, &workspace_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_in_bytes_on_device, workspace_in_bytes_on_host)
+
+
+cpdef xstedc(intptr_t handle, intptr_t params, int compz, int64_t n, int data_type_de, intptr_t d, intptr_t e, int data_type_z, intptr_t z, int64_t ldz, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info):
+    """See `cusolverDnXstedc`."""
+    with nogil:
+        __status__ = cusolverDnXstedc(<Handle>handle, <Params>params, <cusolverEigComp_t>compz, n, <DataType>data_type_de, <void*>d, <void*>e, <DataType>data_type_z, <void*>z, ldz, <DataType>compute_type, <void*>buffer_on_device, workspace_in_bytes_on_device, <void*>buffer_on_host, workspace_in_bytes_on_host, <int*>info)
+    check_status(__status__)
+
+
+cpdef tuple xpolar_buffer_size(intptr_t handle, intptr_t params, int uplo, int64_t m, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_h, intptr_t h, int64_t ldh, int compute_type):
+    """See `cusolverDnXpolar_bufferSize`."""
+    cdef size_t workspace_in_bytes_on_device
+    cdef size_t workspace_in_bytes_on_host
+    with nogil:
+        __status__ = cusolverDnXpolar_bufferSize(<Handle>handle, <Params>params, <cublasFillMode_t>uplo, m, n, <DataType>data_type_a, <const void*>a, lda, <DataType>data_type_h, <const void*>h, ldh, <DataType>compute_type, &workspace_in_bytes_on_device, &workspace_in_bytes_on_host)
+    check_status(__status__)
+    return (workspace_in_bytes_on_device, workspace_in_bytes_on_host)
+
+
+cpdef xpolar(intptr_t handle, intptr_t params, int uplo, int64_t m, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_h, intptr_t h, int64_t ldh, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_res_nrm, intptr_t d_a_nrm_f, intptr_t d_rcond, intptr_t d_info):
+    """See `cusolverDnXpolar`."""
+    with nogil:
+        __status__ = cusolverDnXpolar(<Handle>handle, <Params>params, <cublasFillMode_t>uplo, m, n, <DataType>data_type_a, <void*>a, lda, <DataType>data_type_h, <void*>h, ldh, <DataType>compute_type, <void*>buffer_on_device, workspace_in_bytes_on_device, <void*>buffer_on_host, workspace_in_bytes_on_host, <double*>d_res_nrm, <double*>d_a_nrm_f, <double*>d_rcond, <int*>d_info)
     check_status(__status__)

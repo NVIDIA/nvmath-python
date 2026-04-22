@@ -60,7 +60,7 @@ gmem_c_fp64 = mathdx.cublasdx_make_tensor_like(gmem_c, mathdx.CommondxValueType.
 
 tensors_fp64 = [rmem_c_fp64, gmem_c_fp64]
 tensors = gmem_tensors + gemm_tensors + tensors_fp64
-mathdx.cublasdx_finalize_tensors(h, len(tensors), tensors)
+mathdx.cublasdx_finalize_tensors(len(tensors), tensors)
 
 
 for t in tensors:

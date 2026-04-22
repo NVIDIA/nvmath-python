@@ -27,6 +27,9 @@ def create_default_scale_type_map():
     dt = cudaDataType
 
     scale_type_map = {}
+    # FP4 scale types (https://docs.nvidia.com/cuda/cublas/index.html#id105)
+    scale_type_map["float4_e2m1fn_x2", "float4_e2m1fn_x2"] = dt.CUDA_R_32F
+    # FP8 scale types
     scale_type_map["float8_e4m3fn", "float8_e5m2"] = dt.CUDA_R_32F
     scale_type_map["float8_e5m2", "float8_e4m3fn"] = dt.CUDA_R_32F
     scale_type_map["float8_e4m3fn", "float8_e4m3fn"] = dt.CUDA_R_32F
@@ -97,6 +100,9 @@ def create_compute_type_map():
     ct = cublas.ComputeType
 
     compute_type_map = {}
+    # FP4 compute types (https://docs.nvidia.com/cuda/cublas/index.html#id105)
+    compute_type_map["float4_e2m1fn_x2", "float4_e2m1fn_x2"] = ct.COMPUTE_32F
+    # FP8 compute types
     compute_type_map["float8_e4m3fn", "float8_e5m2"] = ct.COMPUTE_32F
     compute_type_map["float8_e5m2", "float8_e4m3fn"] = ct.COMPUTE_32F
     compute_type_map["float8_e4m3fn", "float8_e4m3fn"] = ct.COMPUTE_32F
@@ -125,6 +131,7 @@ COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE = {
 SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE = create_scale_type_to_compute_type_map()
 
 SUPPORTED_TYPES = [
+    "float4_e2m1fn_x2",  # FP4 (supported on SM 10.0+)
     "float8_e4m3fn",
     "float8_e5m2",
     "bfloat16",

@@ -17,8 +17,7 @@ try:
 except ImportError:
     torch = TORCH_TENSOR = None
 
-from .common_axes import Framework, DType
-
+from .common_axes import DType, Framework
 
 numpy_dtype = {
     DType.float16: np.float16,

@@ -6,17 +6,26 @@
 This set of tests checks matmul's behavior for different kinds of inputs.
 """
 
-from nvmath.linalg.advanced import matmul, matrix_qualifiers_dtype
 import numpy as np
 import pytest
+
 from nvmath.bindings import cublasLt as cublaslt
+from nvmath.linalg.advanced import matmul, matrix_qualifiers_dtype
 
 try:
     import cupy as cp
 except ModuleNotFoundError:
     cp = None
 
-from ...utils import compare_tensors, random_torch_complex, sample_matrix, assert_tensors_equal, to_numpy, get_framework
+try:
+    from cuda.core import Device
+except ImportError:
+    from cuda.core.experimental import Device
+
+
+from ...utils import assert_tensors_equal, compare_tensors, get_framework, random_torch_complex, sample_matrix, to_numpy
+
+COMPUTE_CAPABILITY = Device().compute_capability
 
 
 @pytest.mark.parametrize("framework", ("torch", "numpy/cupy"))
@@ -88,7 +97,7 @@ def test_framework_mixing():
     """
     a = sample_matrix("torch", "float32", (7, 7), True)
     b = sample_matrix("cupy", "float32", (7, 7), True)
-    with pytest.raises(TypeError, match="All tensors in the network must be from the same library"):
+    with pytest.raises(TypeError, match="All tensors must be from the same library"):
         matmul(a, b)
 
 
@@ -189,6 +198,21 @@ def test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framewo
     """
     Test shape promotion rules for 1D inputs
     """
+    # We expect these broadcasts to be supported for Blackwell, but they aren't. We have
+    # filed a bug with cuBLAS: bug/5845724
+    # Fix will be included in some release after 130201
+    if (
+        cublaslt.get_version() <= 130201
+        and COMPUTE_CAPABILITY == (12, 0)
+        and c_desc == "M1"
+        and (
+            (not a_t and not b_t and not c_t)
+            or (not a_t and not b_t and c_t)
+            or (a_t and not b_t and not c_t)
+            or (a_t and not b_t and c_t)
+        )
+    ):
+        pytest.skip("Some broadcasts of C are unsupported on Blackwell.")
 
     if "M" not in a_desc:
         M = 1
@@ -209,7 +233,8 @@ def test_shape_promotion(a_desc, b_desc, c_desc, a_t, b_t, c_t, M, N, K, framewo
     a_shape, b_shape, c_shape = unpack_shape(a_desc), unpack_shape(b_desc), unpack_shape(c_desc)
 
     def make_matrix(shape, transposed):
-        if transposed:
+        assert len(shape) <= 2, "Shape must be at most 2D"
+        if transposed and len(shape) >= 2:
             return sample_matrix(framework, "float32", tuple(reversed(shape)), use_cuda=use_cuda).T
         else:
             return sample_matrix(framework, "float32", shape, use_cuda=use_cuda)

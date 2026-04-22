@@ -15,15 +15,14 @@ __all__ = [
 
 import typing
 
-from numba.core import types
-
-from numba.extending import models
-from numba.cuda.extending import overload, register_model, lower_builtin, as_numba_type, type_callable, lower_cast
-from numba.core.typeconv import Conversion
 from llvmlite import ir
+from numba.core import types
+from numba.core.typeconv import Conversion
 from numba.core.typing.templates import AttributeTemplate
 from numba.cuda.cudadecl import registry as cuda_registry
 from numba.cuda.cudaimpl import lower_attr as cuda_lower_attr
+from numba.cuda.extending import as_numba_type, lower_builtin, lower_cast, overload, register_model, type_callable
+from numba.extending import models
 
 
 def make_vector(

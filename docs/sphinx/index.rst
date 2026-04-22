@@ -6,7 +6,7 @@ nvmath-python: Unleashing the Full Capabilities of NVIDIA Math Libraries within 
 
 Welcome to the nvmath-python documentation!
 
-**nvmath-python** is a Python library to enable cutting edge performance, productivity, and
+**nvmath-python** is a Python library to enable cutting-edge performance, productivity, and
 interoperability within the Python computational ecosystem through NVIDIA's high-performance
 math libraries.
 
@@ -31,6 +31,7 @@ Contents
    Getting Started <quickstart.rst>
    Overview <overview.rst>
    Installation <installation.rst>
+   API Design and Usage Patterns <api_design.rst>
 
 .. toctree::
    :caption: Examples and tutorials

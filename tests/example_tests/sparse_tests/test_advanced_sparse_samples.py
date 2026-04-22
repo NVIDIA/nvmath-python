@@ -4,12 +4,13 @@
 
 import glob
 import os
+
 import pytest
 
 from ..test_utils import run_sample
 
 samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "sparse", "advanced", "direct_solver")
-sample_files = glob.glob(samples_path + "**/*.py", recursive=True)
+sample_files = glob.glob(os.path.join(samples_path, "**", "*.py"), recursive=True)
 
 
 @pytest.mark.parametrize("sample", sample_files)

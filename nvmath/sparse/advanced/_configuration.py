@@ -9,6 +9,9 @@ __all__ = [
     "ExecutionCUDA",
     "ExecutionHybrid",
     "HybridMemoryModeOptions",
+    "DirectSolverPlanPreferences",
+    "DirectSolverFactorizationPreferences",
+    "DirectSolverSolutionPreferences",
 ]
 
 
@@ -97,7 +100,6 @@ class ExecutionHybrid:
     num_threads: int | None = None
 
 
-# TODO: docstring
 @dataclass
 class DirectSolverOptions:
     """
@@ -114,7 +116,11 @@ class DirectSolverOptions:
             ``DirectSolverMatrixViewType.FULL``.
 
         multithreading_lib: The location (full path) to the library implementing the
-            threading layer interface. **TODO**: link to docs and default pip path.
+            threading layer interface, which depends on how nvmath-python is
+            :ref:`installed <nvmath installation>`. For example, if you install using
+            ``pip install nvmath-python[cu13]`` on Linux, the multithreading library can
+            be found in ``<install_path>/nvidia/cu13/lib/libcudss_mtlayer_gomp.so.0``,
+            where  ``<install_path>`` is the path shown by ``pip show nvidia-cudss-cu13``.
 
         logger (logging.Logger): Python Logger object. The root logger will be used if a
             logger object is not provided.
@@ -148,3 +154,77 @@ class DirectSolverOptions:
             raise ValueError("The value specified for 'blocking' must be either True or 'auto'.")
         self.sparse_system_type = DirectSolverMatrixType(self.sparse_system_type)
         self.sparse_system_view = DirectSolverMatrixViewType(self.sparse_system_view)
+
+
+@dataclass(slots=True, kw_only=True)
+class DirectSolverPlanPreferences:
+    """
+    A data class for providing plan preferences to the :func:`direct_solver` function.
+
+    Attributes:
+        host_nthreads: The number of host threads to use.
+        reordering_algorithm: The reordering algorithm to use.
+        pivot_type: The pivot type to use.
+        pivot_threshold: The pivot threshold to use.
+        max_nnz: The maximum number of non-zeros in the LU factorization.
+        use_matching: Whether to use matching.
+        matching_algorithm: The matching algorithm to use.
+        nd_min_levels: The number of levels in the nested dissection.
+        use_superpanels: Whether to use superpanels.
+
+    .. seealso::
+        :func:`direct_solver`
+        :class:`DirectSolverPlanConfig`
+        `cuDSS configuration documentation <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+    """
+
+    host_nthreads: int | None = None
+    reordering_algorithm: cudss.AlgType | None = None
+    pivot_type: int | None = None
+    pivot_threshold: float | None = None
+    max_nnz: int | None = None
+    use_matching: bool | None = None
+    matching_algorithm: cudss.AlgType | None = None
+    nd_min_levels: int | None = None
+    use_superpanels: bool | None = None
+
+
+@dataclass(slots=True, kw_only=True)
+class DirectSolverFactorizationPreferences:
+    """
+    A data class for providing factorization preferences to
+    the :func:`direct_solver` function.
+
+    Attributes:
+        factorization_algorithm: The factorization algorithm to use.
+        pivot_eps_algorithm: The pivot epsilon algorithm to use.
+        pivot_eps: The pivot epsilon to use.
+
+    .. seealso::
+       :func:`direct_solver`
+       :class:`DirectSolverFactorizationConfig`
+       `cuDSS configuration documentation <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+    """
+
+    factorization_algorithm: cudss.AlgType | None = None
+    pivot_eps_algorithm: cudss.AlgType | None = None
+    pivot_eps: float | None = None
+
+
+@dataclass(slots=True, kw_only=True)
+class DirectSolverSolutionPreferences:
+    """
+    A data class for providing solution preferences to the :func:`direct_solver` function.
+
+    Attributes:
+        solution_algorithm: The solution algorithm to use.
+        ir_num_steps: The number of steps to use for iterative refinement.
+
+    .. seealso::
+       :func:`direct_solver`
+       :class:`DirectSolverSolutionConfig`
+       `cuDSS configuration documentation <https://docs.nvidia.com/cuda/cudss/types.html#cudssconfigparam-t>`_
+    """
+
+    solution_algorithm: cudss.AlgType | None = None
+    ir_num_steps: int | None = None

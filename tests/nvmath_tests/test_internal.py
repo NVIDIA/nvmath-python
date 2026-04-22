@@ -2,18 +2,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import importlib
 import threading
 import typing
+import weakref
 
 try:
     from cuda.core import system
 except ImportError:
     from cuda.core.experimental import system
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
-from hypothesis import given, strategies as st
 from nvmath.internal import package_wrapper, tensor_wrapper, utils
+from nvmath.internal._device_utils import get_device
+from nvmath.internal.utils import cached_get_or_create_stream
+from nvmath.memory import _MEMORY_MANAGER
 
 try:
     _device_count = system.get_num_devices()
@@ -26,6 +32,11 @@ try:
     from cupy.cuda.runtime import getDevice, setDevice
 
     _cupy_available = True
+except ModuleNotFoundError:
+    pass
+
+try:
+    import torch
 except ModuleNotFoundError:
     pass
 
@@ -104,7 +115,7 @@ class TestDeviceCtx:
         with dev:
             pass
         # CPython raises AttributeError, but we should not care here
-        with pytest.raises(Exception):  # noqa: SIM117
+        with pytest.raises(Exception):  # noqa: B017, SIM117
             with dev:
                 pass
 
@@ -148,7 +159,7 @@ def test_stream_ifc(package_name: str):
     # test pointers are the same for current stream
     stream = package.get_current_stream(device_id=0)
     ptr = package.to_stream_pointer(stream)
-    obj = package.create_stream(stream)
+    obj = package.create_stream(stream, 0)
     core_ptr = core.to_stream_pointer(obj)
     assert core_ptr == ptr, f"cuda.core stream pointer ({core_ptr}) not equal to package stream pointer ({ptr})!"
 
@@ -156,6 +167,48 @@ def test_stream_ifc(package_name: str):
     module = importlib.import_module(package_name)
     stream = module.cuda.Stream()
     ptr = package.to_stream_pointer(stream)
-    obj = package.create_stream(stream)
+    obj = package.create_stream(stream, 0)
     core_ptr = core.to_stream_pointer(obj)
     assert core_ptr == ptr, f"cuda.core stream pointer ({core_ptr}) not equal to package stream pointer ({ptr})!"
+
+
+@given(package_name=st.sampled_from(["cuda", "cupy", "torch"]))
+def test_default_allocator_user_stream_lifetime(package_name: str):
+    # make sure the package is registered
+    try:
+        tensor_wrapper.maybe_register_package(package_name)
+    except ModuleNotFoundError:
+        return
+
+    memory_manager = _MEMORY_MANAGER["cuda"](device_id=0, logger=None)
+
+    if package_name == "cuda":
+        external_stream = get_device(0).create_stream()
+    elif package_name == "cupy":
+        external_stream = cp.cuda.Stream(non_blocking=True)
+    elif package_name == "torch":
+        external_stream = torch.cuda.Stream(device="cuda:0")
+    stream_holder = utils.get_or_create_stream(device_id=0, stream=external_stream, op_package=package_name)
+    alloc = memory_manager.memalloc_async(size=1024, stream=stream_holder.obj)
+
+    external_ref = None if package_name == "cuda" else weakref.ref(external_stream)
+    holder_ref = weakref.ref(stream_holder)
+
+    # Get rid of any references to the original stream object
+    del stream_holder
+    del external_stream
+    # simulate stream_holder being evicted from the cache
+    cached_get_or_create_stream.cache_clear()
+    gc.collect()
+
+    if package_name != "cuda":
+        assert external_ref() is not None
+    assert holder_ref() is None
+
+    # The cuda.core memory resource remembers the allocation stream
+    # to deallocate on it. Here we check if StreamHolder managed to
+    # extend that dependency to the foreign stream object, such that:
+    # alloc -> stream_holder.obj : cuda.core.Stream -> stream : cupy | torch Stream
+    # If not, the following may end up with a dangling pointer.
+
+    alloc.free()

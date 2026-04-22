@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from nvmath_tests.helpers import get_random_input_data as _get_random_input_data, get_custom_stream as _get_custom_stream
+from nvmath_tests.helpers import get_custom_stream as _get_custom_stream
+from nvmath_tests.helpers import get_random_input_data as _get_random_input_data
 
-from .common_axes import MemBackend, Framework, DType
 from .axes_utils import get_framework_dtype
+from .common_axes import DType, Framework, MemBackend
 
 
 def get_random_input_data(

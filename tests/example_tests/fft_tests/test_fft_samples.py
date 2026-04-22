@@ -10,6 +10,7 @@ import pytest
 
 from nvmath import bindings
 from nvmath.fft._exec_utils import _check_init_cufft, _check_init_fftw
+
 from ..test_utils import run_sample
 
 HAS_CUFFT = True

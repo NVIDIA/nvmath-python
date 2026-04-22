@@ -8,10 +8,10 @@ beneficial to speedup phases of the execution that are not amenable to paralleli
 for factorizing and solving small matrices.
 """
 
-import nvmath
-
 import numpy as np
 import scipy.sparse as sp
+
+import nvmath
 
 # The number of equations.
 n = 8

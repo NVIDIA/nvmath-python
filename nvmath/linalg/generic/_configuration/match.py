@@ -16,11 +16,11 @@ import typing
 
 import numpy as np
 
+import nvmath.bindings.cublas as cublas
 from nvmath._internal.templates import ExecutionCPU, ExecutionCUDA
 from nvmath.internal import tensor_wrapper, typemaps, utils
 from nvmath.linalg._internal.batch import BatchTraits
 from nvmath.linalg._internal.layout import BLASMMTraitsView
-import nvmath.bindings.cublas as cublas
 
 from .qualifiers import (
     DiagonalMatrixQualifier,

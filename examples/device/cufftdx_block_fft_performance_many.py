@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-from numba import cuda
+from common import CHECK_CUDART, fft_perf_GFlops
+from common_numba import get_active_blocks_per_multiprocessor, time_numba
 from cuda.bindings import runtime as cudart
+from numba import cuda
+
 from nvmath.device import FFT
-from common import fft_perf_GFlops, CHECK_CUDART
-from common_numba import time_numba, get_active_blocks_per_multiprocessor
 
 
 def run(fft_type, fft_size, direction=None):
@@ -42,7 +43,7 @@ def run(fft_type, fft_size, direction=None):
                 thread_data[i] = data[fft_id, index]
                 index += fft.stride
 
-        for r in range(repeat):
+        for _r in range(repeat):
             fft.execute(thread_data, shared_mem)
 
         index = cuda.threadIdx.x

@@ -51,6 +51,11 @@ print()
 print("= Phase 2: Reuse the optimized algorithm sequence later in another compatible matrix multiplication. =")
 # Load the algorithms saved earlier for use in a compatible matrix multiplication.
 with open(pickle_file, "rb") as f:
+    # WARNING: Using pickle is insecure if you are loading data from untrusted sources.
+    # Pickle can execute arbitrary code during unpickling, which may lead to security
+    # vulnerabilities including code execution or data compromise. Only load pickle files
+    # from trusted, verified sources, and never unpickle data from an untrusted or
+    # unauthenticated origin.
     algorithms = pickle.load(f)
 print(f"Loaded optimized algorithms from '{pickle_file}'.")
 

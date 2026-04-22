@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
+
 from nvmath.bindings import mathdx
 
 m = 256
@@ -75,7 +76,7 @@ tensors = [big_gmem_a, big_gmem_b, big_gmem_c, acc_c]
 pipelines = [device_pipeline, tile_pipeline]
 
 mathdx.cublasdx_finalize_pipelines(len(pipelines), pipelines)
-mathdx.cublasdx_finalize_tensors(h, len(tensors), tensors)
+mathdx.cublasdx_finalize_tensors(len(tensors), tensors)
 
 acc_size = mathdx.cublasdx_get_tensor_trait_int64(acc_c, mathdx.CublasdxTensorTrait.STORAGE_BYTES)
 acc_alignment = mathdx.cublasdx_get_tensor_trait_int64(acc_c, mathdx.CublasdxTensorTrait.ALIGNMENT_BYTES)
@@ -156,7 +157,7 @@ for f in functions:
 # Compile the device function to lto_90
 code = mathdx.commondx_create_code()
 mathdx.commondx_set_code_option_int64s(code, mathdx.CommondxOption.TARGET_SM, len(sm), sm)
-mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, "-gen-opt-lto")
+mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVRTC_ARGS, "-gen-opt-lto")
 mathdx.cublasdx_finalize_device_functions(code, len(functions), functions)
 
 # Extract the LTOIR

@@ -2,25 +2,26 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from . import advanced
 from nvmath.bindings.cublas import ComputeType  # type: ignore
+
+from . import advanced
 from .generic import (
     DiagonalMatrixQualifier,
+    DiagType,
     ExecutionCPU,
     ExecutionCUDA,
+    FillMode,
     GeneralMatrixQualifier,
     HermitianMatrixQualifier,
     InvalidMatmulState,
-    matmul,
     Matmul,
     MatmulOptions,
     MatrixQualifier,
-    matrix_qualifiers_dtype,
+    SideMode,
     SymmetricMatrixQualifier,
     TriangularMatrixQualifier,
-    SideMode,
-    FillMode,
-    DiagType,
+    matmul,
+    matrix_qualifiers_dtype,
 )
 
 __all__ = [

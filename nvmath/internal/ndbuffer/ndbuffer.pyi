@@ -1,19 +1,19 @@
-# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import _cython_3_1_2
+import _cython_3_2_4
 from _typeshed import Incomplete
 from typing import Any
 
 CPU_DEVICE_ID: int
 __pyx_capi__: dict
 __test__: dict
-copy_into: _cython_3_1_2.cython_function_or_method
-empty: _cython_3_1_2.cython_function_or_method
-empty_like: _cython_3_1_2.cython_function_or_method
-reshaped_view: _cython_3_1_2.cython_function_or_method
-wrap_external: _cython_3_1_2.cython_function_or_method
+copy_into: _cython_3_2_4.cython_function_or_method
+empty: _cython_3_2_4.cython_function_or_method
+empty_like: _cython_3_2_4.cython_function_or_method
+reshaped_view: _cython_3_2_4.cython_function_or_method
+wrap_external: _cython_3_2_4.cython_function_or_method
 
 class NDBuffer:
     data: Incomplete
@@ -29,7 +29,13 @@ class NDBuffer:
     strides: Incomplete
     strides_in_bytes: Incomplete
     @classmethod
-    def __init__(cls, *args, **kwargs) -> None: ...
-    def __reduce__(self): ...
-    def __reduce_cython__(self) -> Any: ...
-    def __setstate_cython__(self, __pyx_state) -> Any: ...
+    def __init__(cls, *args, **kwargs) -> None:
+        """Create and return a new object.  See help(type) for accurate signature."""
+    def cf_order(self) -> Any:
+        """NDBuffer.cf_order(self)"""
+    def __reduce__(self):
+        """NDBuffer.__reduce_cython__(self)"""
+    def __reduce_cython__(self) -> Any:
+        """NDBuffer.__reduce_cython__(self)"""
+    def __setstate_cython__(self, __pyx_state) -> Any:
+        """NDBuffer.__setstate_cython__(self, __pyx_state)"""

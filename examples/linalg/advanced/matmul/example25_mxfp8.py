@@ -39,7 +39,7 @@ b = torch.ones((256, 256), device="cuda", dtype=torch.float8_e4m3fn).T  # B is f
 # While MXFP8 allows different scales for different blocks in A and B,
 # this helper creates uniform scaling across all blocks.
 # For more advanced scale configurations, see the cuBLAS documentation and
-# the `get_mxfp8_scale_offset` helper.
+# the `to_block_scale` and `get_block_scale_offset` helpers.
 scales = {
     "a": nvmath.linalg.advanced.helpers.matmul.create_mxfp8_scale(a, -1),  # 2^-1 = 0.5
     "b": nvmath.linalg.advanced.helpers.matmul.create_mxfp8_scale(b, 3),  # 2^3 = 8
@@ -49,8 +49,7 @@ scales = {
 # request FP16 output. For FP8 output scaling, see the mxfp8_d_out_scale example.
 options = {"block_scaling": True, "result_type": nvmath.CudaDataType.CUDA_R_16F}
 
-# Perform the multiplication. The result is a tuple (result, aux), where aux
-# contains the "d_out_scale" key with the scale used for the result.
+# Perform the multiplication.
 result = nvmath.linalg.advanced.matmul(a, b, quantization_scales=scales, options=options)
 
 # Compute reference result without scaling

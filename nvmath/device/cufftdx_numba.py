@@ -3,23 +3,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from numba import cuda
-from numba.core import typing, cgutils
-from numba.extending import types, utils
-from numba.cuda.extending import typeof_impl, overload_method, overload
-from numba.cuda.cudaimpl import lower_constant, registry as cuda_registry
+from numba.core import cgutils, typing
+from numba.cuda.cudaimpl import lower_constant
+from numba.cuda.cudaimpl import registry as cuda_registry
+from numba.cuda.extending import overload, overload_method, typeof_impl
 from numba.cuda.models import register_model
-
+from numba.extending import types, utils
 
 from nvmath.device.common_cuda import get_default_code_type
 from nvmath.device.cufftdx import FFT, compile_fft_execute
+
 from .common_numba import (
     NUMBA_FE_TYPES_TO_NUMBA_IR,
+    EmptyStructModel,
     declare_cabi_device,
     get_array_ptr,
     overload_type_attribute,
-    EmptyStructModel,
 )
-
 
 _FFT_DEFINITION_ARGS = [
     "size",

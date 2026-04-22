@@ -8,13 +8,13 @@ import copy
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import cast, TypeAlias
-
-
-from nvmath.bindings import cufftMp  # type: ignore
-from nvmath.bindings import cublasMp  # type: ignore
+from typing import TypeAlias, cast
 
 import nvmath.distributed as dist
+from nvmath.bindings import (
+    cublasMp,  # type: ignore
+    cufftMp,  # type: ignore
+)
 
 __all__ = ["ProcessGrid", "Distribution", "Slab", "Box", "BlockCyclic", "BlockNonCyclic"]
 
@@ -53,7 +53,7 @@ class ProcessGrid:
 
             process_array: optional ndarray specifying custom arrangement of processes.
         """
-        self._nranks = _get_communicator().Get_size()
+        self._nranks = _get_process_group().nranks
 
         if process_array is None:
             if shape is None:
@@ -330,8 +330,7 @@ class Slab(Distribution):
         return self._ndim
 
     def shape(self, rank: int, global_shape: Sequence[int] | None = None) -> tuple[int, ...]:
-        comm = _get_communicator()
-        n = comm.Get_size()
+        n = _get_process_group().nranks
         self._local_shape_checks(rank, n, global_shape)
         if global_shape is None:
             global_shape = self._data_global_shape
@@ -358,8 +357,7 @@ class Slab(Distribution):
         if self._partition_dim >= len(global_shape):
             raise ValueError("partition_dim must be < ndim")
 
-        comm = _get_communicator()
-        rank = comm.Get_rank()
+        rank = _get_process_group().rank
         slab_shape = self.shape(rank, global_shape)
 
         if shape is not None and tuple(shape) != slab_shape:
@@ -375,7 +373,7 @@ class Slab(Distribution):
 
     def to(self, cls, /, *, ndim=None, copy=False):
         super()._to_checks(cls, ndim)
-        nranks = _get_communicator().Get_size()
+        nranks = _get_process_group().nranks
 
         if ndim is None:
             ndim = self._ndim
@@ -448,10 +446,10 @@ class Box(Distribution):
         return len(self._lower)
 
     def shape(self, rank: int, global_shape: Sequence[int] | None = None) -> tuple[int, ...]:
-        comm = _get_communicator()
-        if rank != comm.Get_rank():
+        process_group = _get_process_group()
+        if rank != process_group.rank:
             raise RuntimeError("Can't calculate local shape of peer process with Box distribution")
-        nranks = comm.Get_size()
+        nranks = process_group.nranks
         self._local_shape_checks(rank, nranks, global_shape)
         return tuple(self._upper[i] - self._lower[i] for i in range(self.ndim))
 
@@ -608,7 +606,7 @@ class BlockCyclic(Distribution):
                 f"of this distribution ({self.ndim})"
             )
 
-        rank = _get_communicator().Get_rank()
+        rank = _get_process_group().rank
         nrows, ncols = self._calc_local_shape(rank, self._block_sizes, global_shape)
         if shape is not None and tuple(shape) != (nrows, ncols):
             raise BindDistributionError(
@@ -624,7 +622,7 @@ class BlockCyclic(Distribution):
 
     def to(self, cls, /, *, ndim=None, copy=False):
         super()._to_checks(cls, ndim)
-        nranks = _get_communicator().Get_size()
+        nranks = _get_process_group().nranks
         if issubclass(cls, BlockCyclic):
             return self.copy() if copy else self
         elif cls is Slab:
@@ -737,7 +735,7 @@ class BlockNonCyclic(BlockCyclic):
 
     def to(self, cls, /, *, ndim=None, copy=False):
         super()._to_checks(cls, ndim)
-        nranks = _get_communicator().Get_size()
+        nranks = _get_process_group().nranks
         if issubclass(cls, BlockCyclic):
             return self.copy() if copy else self
         elif cls is Slab:
@@ -761,7 +759,7 @@ class BlockNonCyclic(BlockCyclic):
             raise NotImplementedError
 
 
-def _get_communicator():
+def _get_process_group():
     distributed_ctx = dist.get_context()
     if distributed_ctx is None:
         raise RuntimeError(
@@ -769,4 +767,4 @@ def _get_communicator():
             "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/runtime.html"
             " for more information."
         )
-    return distributed_ctx.communicator
+    return distributed_ctx.process_group

@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 import opt_einsum as oe
 
-from .common_axes import Framework, DType, MemBackend
+from .common_axes import DType, Framework, MemBackend
 from .input_fixtures import get_random_input_data
 
 
@@ -35,7 +35,7 @@ class ContractionTestCase:
 
     def gen_input_operands(self, framework: Framework, dtype: DType, mem_backend: MemBackend):
         operands = []
-        for i, shape in enumerate(self.shapes):
+        for shape in self.shapes:
             operands.append(get_random_input_data(framework, shape, dtype, mem_backend))
         return operands
 

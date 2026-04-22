@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-import logging
-import random
-import math
 import functools
-from ast import literal_eval
+import logging
+import math
+import os
+import random
 import sys
+from ast import literal_eval
 
 import pytest
 
@@ -21,67 +21,71 @@ try:
 except ImportError:
     torch = None
 
-import nvmath
-from nvmath.memory import _MEMORY_MANAGER
-from nvmath.fft import ExecutionCPU, ExecutionCUDA
+import numpy as np
 
-from .utils.common_axes import (
-    ExecBackend,
-    MemBackend,
-    Framework,
-    DType,
-    OptFftLayout,
-    ShapeKind,
-    OptFftBlocking,
-    OptFftType,
-    Direction,
-)
+import nvmath
+from nvmath.fft import ExecutionCPU, ExecutionCUDA
+from nvmath.fft.fft import axis_order_in_memory, calculate_strides, get_fft_plan_traits
+from nvmath.memory import _MEMORY_MANAGER
+
+from ..helpers import check_freed_after
 from .utils.axes_utils import (
+    get_fft_dtype,
+    get_ifft_dtype,
     is_complex,
     is_half,
-    get_fft_dtype,
     size_of,
-    get_ifft_dtype,
 )
-from .utils.support_matrix import (
-    framework_exec_type_support,
-    supported_backends,
-    type_shape_support,
-    multi_gpu_only,
-    opt_fft_type_input_type_support,
-    opt_fft_type_direction_support,
+from .utils.check_helpers import (
+    add_in_place,
+    assert_array_equal,
+    assert_array_type,
+    assert_eq,
+    assert_norm_close,
+    copy_array,
+    get_array_device_id,
+    get_array_element_strides,
+    get_array_strides,
+    get_device_ctx,
+    get_fft_ref,
+    get_ifft_ref,
+    get_raw_ptr,
+    get_scaled,
+    intercept_default_allocations,
+    is_decreasing,
+    is_pow_2,
+    record_event,
+    should_skip_3d_unsupported,
+    use_stream,
+    wait_event,
+)
+from .utils.common_axes import (
+    Direction,
+    DType,
+    ExecBackend,
+    Framework,
+    MemBackend,
+    OptFftBlocking,
+    OptFftLayout,
+    OptFftType,
+    ShapeKind,
 )
 from .utils.input_fixtures import (
     align_up,
-    get_random_input_data,
+    free_framework_pools,
     get_custom_stream,
     get_overaligned_view,
+    get_random_input_data,
     init_assert_exec_backend_specified,
-    free_framework_pools,
 )
-from .utils.check_helpers import (
-    get_fft_ref,
-    get_ifft_ref,
-    get_scaled,
-    get_raw_ptr,
-    record_event,
-    wait_event,
-    use_stream,
-    assert_norm_close,
-    assert_array_type,
-    assert_array_equal,
-    assert_eq,
-    get_array_device_id,
-    get_array_strides,
-    is_decreasing,
-    is_pow_2,
-    intercept_default_allocations,
-    add_in_place,
-    should_skip_3d_unsupported,
-    copy_array,
-    get_device_ctx,
+from .utils.support_matrix import (
+    framework_exec_type_support,
+    multi_gpu_only,
+    opt_fft_type_direction_support,
+    opt_fft_type_input_type_support,
+    supported_backends,
+    type_shape_support,
 )
-
 
 rng = random.Random(42)
 
@@ -90,6 +94,14 @@ rng = random.Random(42)
 # specifying execution option to the FFT calls in tests
 # defined in this file
 assert_exec_backend_specified = init_assert_exec_backend_specified()
+
+
+def get_default_num_threads():
+    if os.name == "posix":
+        num_threads = len(os.sched_getaffinity(0))
+    else:
+        num_threads = os.cpu_count() or 1
+    return max(1, num_threads // 2)
 
 
 @pytest.mark.parametrize(
@@ -965,7 +977,7 @@ def test_execution_options(seeder, framework, exec_backend, mem_backend, dtype, 
         if exec_backend == ExecBackend.cufft:
             expected_options["device_id"] = 0
         else:
-            expected_options["num_threads"] = len(os.sched_getaffinity(0))
+            expected_options["num_threads"] = get_default_num_threads()
         options = cls()
     else:
         assert case == "implicit_dict"
@@ -1005,7 +1017,7 @@ def test_execution_options(seeder, framework, exec_backend, mem_backend, dtype, 
     ],
 )
 def test_num_threads_option(seeder, framework, exec_backend, mem_backend, dtype):
-    if len(os.sched_getaffinity(0)) < 16:
+    if get_default_num_threads() < 8:
         pytest.skip("Not enough cores to run the test")
 
     shape = (127, 256, 128)
@@ -1015,15 +1027,15 @@ def test_num_threads_option(seeder, framework, exec_backend, mem_backend, dtype)
 
     with nvmath.fft.FFT(signal, axes=axes, execution={"name": "cpu", "num_threads": 16}) as fft:
         fft.plan()
-        fft_out_16 = fft.execute()
+        fft_out_mt = fft.execute()
 
     with nvmath.fft.FFT(signal, axes=axes, execution={"name": "cpu", "num_threads": 1}) as fft:
         fft.plan()
         fft_out_1 = fft.execute()
 
-    assert_array_type(fft_out_16, framework, mem_backend, get_fft_dtype(dtype))
+    assert_array_type(fft_out_mt, framework, mem_backend, get_fft_dtype(dtype))
     assert_array_type(fft_out_1, framework, mem_backend, get_fft_dtype(dtype))
-    assert_norm_close(fft_out_16, ref, exec_backend=exec_backend)
+    assert_norm_close(fft_out_mt, ref, exec_backend=exec_backend)
     assert_norm_close(fft_out_1, ref, exec_backend=exec_backend)
 
 
@@ -1063,7 +1075,7 @@ def test_num_threads_option(seeder, framework, exec_backend, mem_backend, dtype)
     ],
 )
 def test_cpu_gpu_copy_sync(seeder, framework, exec_backend, mem_backend, dtype, inplace, shape, axes):
-    if len(os.sched_getaffinity(0)) < 16:
+    if get_default_num_threads() < 8:
         pytest.skip("Not enough cores to run the test")
     free_framework_pools(framework)
 
@@ -1076,6 +1088,10 @@ def test_cpu_gpu_copy_sync(seeder, framework, exec_backend, mem_backend, dtype, 
         signal = get_random_input_data(framework, shape, dtype, mem_backend)
         noise = get_random_input_data(framework, shape, dtype, mem_backend)
         ref = get_fft_ref(get_scaled(signal, 4), axes)
+        # There is a bug in cupy's fft cache - the same plan
+        # will be used for different streams, without any synchronization.
+        # https://github.com/cupy/cupy/issues/8079
+        s_1.synchronize()
         add_in_place(signal, signal)
 
     with use_stream(s_2):
@@ -1085,7 +1101,7 @@ def test_cpu_gpu_copy_sync(seeder, framework, exec_backend, mem_backend, dtype, 
     with nvmath.fft.FFT(
         signal,
         axes=axes,
-        execution={"name": "cpu", "num_threads": 16},
+        execution={"name": "cpu", "num_threads": 8},
         options={"inplace": inplace},
         stream=s_1,
     ) as fft:
@@ -1440,16 +1456,12 @@ def test_reference_count(use_plan_execute):
     """
     Test reference counts consistency before/after context manager.
     Only need a single scenario with CuPy to test scenario when tensors reside on GPU.
-
-    Note: sys.getrefcount() adds 1 for the temp reference in getrefcount,
-    so we need to subtract 1 to have the actual value.
     """
     shape = 512, 512, 512
     axes = 0, 1
     a = cp.ones(shape, dtype=cp.complex64)
 
-    # Check initial reference count
-    assert sys.getrefcount(a) - 1 == 1, f"pre op: {sys.getrefcount(a) - 1}"
+    initial_refcount_a = sys.getrefcount(a)
 
     # Create and optionally execute
     f = nvmath.fft.FFT(a, axes=axes, execution="cuda")
@@ -1461,6 +1473,640 @@ def test_reference_count(use_plan_execute):
         else:
             pass
 
-    assert sys.getrefcount(a) - 1 == 1, f"post op: {sys.getrefcount(a) - 1}"
+    assert sys.getrefcount(a) == initial_refcount_a, "post op: a refcount changed"
     if use_plan_execute:
-        assert sys.getrefcount(result) - 1 == 1, f"post op: {sys.getrefcount(result) - 1}"
+        with check_freed_after(result, "post op: result should have sole ownership"):
+            del result
+
+
+@pytest.mark.parametrize(
+    (
+        "framework",
+        "exec_backend",
+        "mem_backend",
+        "shape",
+        "ndim",
+        "axes",
+    ),
+    [
+        (
+            framework,
+            exec_backend,
+            mem_backend,
+            shape,
+            ndim,
+            axes,
+        )
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        for mem_backend in supported_backends.framework_mem[framework]
+        for shape, ndim, axes in [
+            ((128,), 1, (0,)),
+            ((128,), 1, (-1,)),
+            ((64, 128), 2, (1,)),
+            ((64, 128), 2, (0, 1)),
+            ((64, 128), 2, (-1,)),
+        ]
+    ],
+)
+def test_key_from_init_matches_create_key(
+    seeder,
+    framework,
+    exec_backend,
+    mem_backend,
+    shape,
+    ndim,
+    axes,
+):
+    """
+    This test verifies that using the same data to create an FFT object and
+    calling get_key() on the object produces the same key as calling
+    the static create_key() method.
+    """
+
+    dtype = DType.complex64
+
+    # Generate random operand
+    signal = get_random_input_data(framework, shape, dtype, mem_backend)
+
+    # Create FFT object and get key from instance method
+    with nvmath.fft.FFT(signal, axes=axes, execution=exec_backend.nvname) as f:
+        f.plan()
+        key_from_instance = f.get_key()
+
+    # Get key from static method
+    key_from_static = nvmath.fft.FFT.create_key(signal, axes=axes, execution=exec_backend.nvname)
+
+    # Verify they match
+    assert key_from_instance == key_from_static, (
+        f"Keys do not match for ndim={ndim}, axes={axes}\nInstance key: {key_from_instance}\nStatic key: {key_from_static}"
+    )
+
+
+@pytest.mark.parametrize("exec_backend", supported_backends.exec)
+def test_key_cross_device_strided_operand(exec_backend):
+    """
+    create_key() and get_key() should return the same key for cross-device execution
+    with a strided (non-contiguous) NumPy array as user-provided operand.
+    """
+
+    base_shape = 10, 30, 40
+    a = np.arange(np.prod(base_shape), dtype=np.float32).reshape(base_shape)
+    # Create a strided (non-contiguous) array via slicing
+    a = a[4:, 3:, 1:]
+
+    axes = (-2, -1)
+    options = {"fft_type": "R2C"}
+
+    # Get key from static method (computes from user's original operand)
+    key_from_static = nvmath.fft.FFT.create_key(a, axes=axes, options=options, execution=exec_backend.nvname)
+
+    # Create FFT object and get key from instance method
+    with nvmath.fft.FFT(a, axes=axes, options=options, execution=exec_backend.nvname) as fft:
+        fft.plan()
+        key_from_instance = fft.get_key()
+
+    # Verify they match
+    assert key_from_instance == key_from_static, (
+        f"Keys do not match for cross-device strided operand.\nInstance key: {key_from_instance}\nStatic key: {key_from_static}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("framework", "exec_backend"),
+    [
+        (framework, exec_backend)
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        if exec_backend.mem in supported_backends.framework_mem[framework]
+    ],
+)
+def test_c2r_same_space_no_operand_ref(framework, exec_backend):
+    """
+    For C2R when execution and memory spaces are the same, after __init__
+    completes, the FFT object does not hold a reference to the user-provided
+    operand because it's copied into an internal buffer.
+    The user operand's refcount should be the same as before __init__.
+    This test verifies this assumption.
+    """
+    shape = (15, 16)
+    dtype = DType.complex64
+    mem_backend = exec_backend.mem
+
+    a = get_random_input_data(framework, shape, dtype, mem_backend)
+    initial_refcount = sys.getrefcount(a)
+
+    fft = nvmath.fft.FFT(a, options={"fft_type": "C2R"}, execution=exec_backend.nvname)
+
+    assert sys.getrefcount(a) == initial_refcount, (
+        f"C2R same-space: FFT.__init__ should not hold a reference to the user operand. "
+        f"Refcount after init: {sys.getrefcount(a)}, expected: {initial_refcount}"
+    )
+
+    fft.free()
+
+
+@pytest.mark.parametrize(
+    ("framework", "exec_backend", "mem_backend", "fft_type", "use_plan"),
+    [
+        (framework, exec_backend, mem_backend, fft_type, use_plan)
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        for mem_backend in supported_backends.framework_mem[framework]
+        for fft_type in ["C2C", "C2R", "R2C"]
+        for use_plan in [False, True]
+    ],
+)
+def test_release_operand(framework, exec_backend, mem_backend, fft_type, use_plan):
+    """
+    Test that after release_operand(), the refcount of the user-provided
+    operand returns to its initial value, both with and without planning/executing.
+    """
+    shape = (15, 16)
+    dtype = DType.float32 if fft_type == "R2C" else DType.complex64
+    a = get_random_input_data(framework, shape, dtype, mem_backend)
+    initial_refcount = sys.getrefcount(a)
+
+    fft = nvmath.fft.FFT(a, options={"fft_type": fft_type}, execution=exec_backend.nvname)
+    if use_plan:
+        fft.plan()
+        result = fft.execute()
+        with check_freed_after(result, "The caller should hold the only reference to the result buffer"):
+            del result
+
+    fft.release_operand()
+
+    assert sys.getrefcount(a) == initial_refcount, (
+        f"release_operand did not restore refcount for fft_type={fft_type}, use_plan={use_plan}. "
+        f"Refcount after release: {sys.getrefcount(a)}, expected: {initial_refcount}"
+    )
+
+    fft.free()
+
+
+@pytest.mark.parametrize(
+    ("framework", "mem_backend", "fft_type"),
+    [
+        (framework, mem_backend, fft_type)
+        for framework in Framework.enabled()
+        for mem_backend in [MemBackend.cpu, MemBackend.cuda]
+        if mem_backend in supported_backends.framework_mem[framework]
+        for fft_type in ["C2C", "C2R", "R2C"]
+    ],
+)
+def test_execute_after_release_operand_raises(framework, mem_backend, fft_type):
+    """
+    Test that calling execute() after release_operand() raises a RuntimeError.
+    """
+    if ExecBackend.cufft not in supported_backends.exec:
+        pytest.skip("cufft not available")
+
+    shape = (15, 16)
+    dtype = DType.float32 if fft_type == "R2C" else DType.complex64
+    a = get_random_input_data(framework, shape, dtype, mem_backend)
+
+    fft = nvmath.fft.FFT(a, options={"fft_type": fft_type}, execution="cuda")
+    fft.plan()
+    fft.execute()
+
+    fft.release_operand()
+    with pytest.raises(RuntimeError, match="cannot be performed after the operand has been released"):
+        fft.execute()
+
+    # Verify the plan is still usable after release_operand.
+    a_new = get_random_input_data(framework, shape, dtype, mem_backend)
+    fft.reset_operand(a_new)
+    result = fft.execute()
+    if fft_type == "C2R":
+        # last axis is even, so we need to use the even parity
+        ref = get_ifft_ref(a_new, axes=list(range(len(shape))), is_c2c=False, last_axis_parity="even")
+    else:
+        ref = get_fft_ref(a_new)
+    assert_norm_close(result, ref)
+
+    fft.free()
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param("gpu_operand_gpu_exec", id="gpu_operand_gpu_exec"),
+        pytest.param("gpu_operand_gpu_exec_c2r", id="gpu_operand_gpu_exec_c2r"),
+        pytest.param("cpu_operand_gpu_exec", id="cpu_operand_gpu_exec"),
+        pytest.param("gpu_operand_cpu_exec", id="gpu_operand_cpu_exec"),
+    ],
+)
+def test_release_then_reset_unchecked(case):
+    """
+    Test that reset_operand_unchecked works after release_operand for all three cases.
+    """
+    cp = pytest.importorskip("cupy")
+    shape = (64,)
+
+    if case == "gpu_operand_gpu_exec":
+        a = cp.random.rand(*shape).astype(cp.complex64)
+        a_new = cp.random.rand(*shape).astype(cp.complex64)
+        fft_type = "C2C"
+        execution = "cuda"
+    elif case == "gpu_operand_gpu_exec_c2r":
+        c2r_shape = (shape[0] // 2 + 1,)
+        a = cp.random.rand(*c2r_shape).astype(cp.complex64)
+        a_new = cp.random.rand(*c2r_shape).astype(cp.complex64)
+        fft_type = "C2R"
+        execution = "cuda"
+    elif case == "cpu_operand_gpu_exec":
+        a = np.random.rand(*shape).astype(np.complex64)
+        a_new = np.random.rand(*shape).astype(np.complex64)
+        fft_type = "C2C"
+        execution = "cuda"
+    else:
+        a = cp.random.rand(*shape).astype(cp.complex64)
+        a_new = cp.random.rand(*shape).astype(cp.complex64)
+        fft_type = "C2C"
+        execution = "cpu"
+
+    if fft_type == "C2R":
+        ref = get_ifft_ref(a_new, axes=list(range(len(shape))), is_c2c=False, last_axis_parity="even")
+    else:
+        ref = get_fft_ref(a_new)
+
+    try:
+        fft = nvmath.fft.FFT(a, options={"fft_type": fft_type}, execution=execution)
+    except RuntimeError as e:
+        if "CPU execution is not available" in str(e):
+            pytest.skip("FFTW not available")
+        raise
+
+    fft.plan()
+    fft.execute()
+    fft.release_operand()
+    fft.reset_operand_unchecked(a_new)
+    result = fft.execute()
+    assert_norm_close(result, ref)
+
+    fft.free()
+
+
+@pytest.mark.parametrize(
+    ("framework", "exec_backend"),
+    [
+        (framework, exec_backend)
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        if exec_backend.mem in supported_backends.framework_mem[framework]
+    ],
+)
+def test_c2r_stale_operand_raises_on_second_execute(framework, exec_backend):
+    """
+    For C2R, calling execute() a second time without reset_operand() must raise
+    a RuntimeError because cuFFT/FFTW destroys the internal operand copy during
+    the first execute.
+    """
+    shape = (15, 16)
+    dtype = DType.complex64
+    mem_backend = exec_backend.mem
+
+    a = get_random_input_data(framework, shape, dtype, mem_backend)
+
+    with nvmath.fft.FFT(a, options={"fft_type": "C2R"}, execution=exec_backend.nvname) as f:
+        f.plan()
+        f.execute()
+
+        with pytest.raises(RuntimeError, match="C2R FFTs.*execute.*cannot be called"):
+            f.execute()
+
+
+@pytest.mark.parametrize(
+    ("framework", "exec_backend"),
+    [
+        (framework, exec_backend)
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        if exec_backend.mem in supported_backends.framework_mem[framework]
+    ],
+)
+def test_c2r_reset_operand_between_executes(framework, exec_backend):
+    """
+    For C2R, calling reset_operand() or reset_operand_unchecked() between
+    execute() calls must produce correct results each time.
+    """
+    shape = (64, 128)
+    dtype = DType.complex64
+    mem_backend = exec_backend.mem
+
+    a = get_random_input_data(framework, shape, dtype, mem_backend)
+    ref = get_ifft_ref(a, axes=[0, 1], is_c2c=False, last_axis_parity="even")
+
+    with nvmath.fft.FFT(a, options={"fft_type": "C2R"}, execution=exec_backend.nvname) as f:
+        f.plan()
+
+        r1 = f.execute()
+        assert_norm_close(r1, ref)
+
+        f.reset_operand(a)
+        r2 = f.execute()
+        assert_norm_close(r2, ref)
+
+        f.reset_operand_unchecked(a)
+        r3 = f.execute()
+        assert_norm_close(r3, ref)
+
+
+@pytest.mark.parametrize(
+    ("framework", "exec_backend", "mem_backend", "shape1", "shape2", "axes"),
+    [
+        (framework, exec_backend, mem_backend, shape1, shape2, axes)
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        for mem_backend in supported_backends.framework_mem[framework]
+        for shape1, shape2, axes in [
+            # 1D FFT with rearranged batch dims
+            ((2, 3, 64), (3, 2, 64), (2,)),
+            ((4, 2, 32), (2, 4, 32), (2,)),
+            # 2D FFT with rearranged batch dims
+            ((2, 3, 16, 32), (3, 2, 16, 32), (2, 3)),
+            ((5, 2, 8, 16), (2, 5, 8, 16), (2, 3)),
+        ]
+    ],
+)
+def test_rearranged_batch_dims_produce_same_key(framework, exec_backend, mem_backend, shape1, shape2, axes):
+    """
+    Verify that rearranging batch dimensions produces the same FFT key
+    for both 1D and 2D FFTs.
+    This is the premise for test_reset_operand_with_rearranged_batch_dims.
+
+    For the 1D case with shape1=(2,3,64), shape2=(3,2,64), axes=(2,):
+
+                            Operand 1           Operand 2
+                            ---------           ---------
+    shape                   (2, 3, 64)          (3, 2, 64)          <- different
+    strides                 (192, 64, 1)        (128, 64, 1)        <- different
+
+    FFT axis (2):
+      stride                1                   1                   <- same
+      size                  64                  64                  <- same
+
+    Batch axes (0, 1):
+      batch_size            2 x 3 = 6           3 x 2 = 6           <- same
+      sorted batch strides  (64, 192)           (64, 128)           <- different
+
+    cuFFT plan parameters, the full key includes all of these:
+      istride               1                   1                   <- same
+      idistance             64 (min batch str)  64 (min batch str)  <- same
+      ostride               1                   1                   <- same
+      odistance             64                  64                  <- same
+      fft_batch_size        6                   6                   <- same
+      embedding_shape       (64,)               (64,)               <- same
+      fft_in/out_shape      (64,)               (64,)               <- same
+      data types            all identical                           <- same
+
+    cuFFT treats batches as a flat sequence with a single distance
+    parameter; it does not see the multi-dimensional batch layout.
+    Since all key components match, the key is the same.
+    """
+    dtype = DType.complex64
+    operand1 = get_random_input_data(framework, shape1, dtype, mem_backend)
+    operand2 = get_random_input_data(framework, shape2, dtype, mem_backend)
+
+    key1 = nvmath.fft.FFT.create_key(operand1, axes=axes, execution=exec_backend.nvname)
+    key2 = nvmath.fft.FFT.create_key(operand2, axes=axes, execution=exec_backend.nvname)
+    assert key1 == key2, (
+        f"Expected matching keys for rearranged batch dims.\n"
+        f"  shape1={shape1}, shape2={shape2}, axes={axes}\n"
+        f"  key1={key1}\n  key2={key2}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("shape", "transpose_axes", "fft_axes"),
+    [
+        # 1D FFT: transpose batch dims of a (3,2,64) source to get (2,3,64)
+        # with non-contiguous strides
+        ((3, 2, 64), (1, 0, 2), (2,)),
+        # 2D FFT: transpose batch dims
+        ((3, 2, 16, 32), (1, 0, 2, 3), (2, 3)),
+    ],
+)
+def test_transposed_strides_produce_same_key(shape, transpose_axes, fft_axes):
+    """
+    Verify that a contiguous operand and a transposed view with the same
+    shape but different strides produce the same FFT key.
+    This is the premise for test_reset_operand_with_transposed_strides.
+
+    For the 1D case with shape=(3,2,64), transpose_axes=(1,0,2),
+    fft_axes=(2,):
+
+                            Operand 1           Operand 2
+                            ---------           ---------
+    shape                   (2, 3, 64)          (2, 3, 64)          <- same
+    strides                 (192, 64, 1)        (64, 128, 1)        <- different
+
+    FFT axis (2):
+      stride                1                   1                   <- same
+      size                  64                  64                  <- same
+
+    Batch axes (0, 1):
+      batch_size            2 x 3 = 6           2 x 3 = 6           <- same
+      sorted batch strides  (64, 192)           (64, 128)           <- different
+
+    cuFFT plan parameters, the full key includes all of these:
+      istride               1                   1                   <- same
+      idistance             64 (min batch str)  64 (min batch str)  <- same
+      ostride               1                   1                   <- same
+      odistance             64 (min result      64 (min result      <- same
+                              batch stride)       batch stride)
+      fft_batch_size        6                   6                   <- same
+      embedding_shape       (64,)               (64,)               <- same
+      fft_in/out_shape      (64,)               (64,)               <- same
+      data types            all identical                           <- same
+
+    cuFFT treats batches as a flat sequence with a single distance
+    parameter; it does not see the multi-dimensional batch layout.
+    Since all key components match, the key should be the same.
+    """
+    operand1_shape = tuple(shape[a] for a in transpose_axes)
+
+    dtype = np.complex64
+    operand1 = np.random.rand(*operand1_shape).astype(dtype)
+    operand2 = np.random.rand(*shape).astype(dtype).transpose(transpose_axes)
+
+    assert operand1.shape == operand2.shape
+    assert operand1.strides != operand2.strides
+
+    key1 = nvmath.fft.FFT.create_key(operand1, axes=fft_axes, execution="cuda")
+    key2 = nvmath.fft.FFT.create_key(operand2, axes=fft_axes, execution="cuda")
+    assert key1 == key2, (
+        f"Expected matching keys for same shape with different strides.\n"
+        f"  shape={operand1.shape}\n"
+        f"  operand1 strides={operand1.strides}, operand2 strides={operand2.strides}\n"
+        f"  key1={key1}\n  key2={key2}"
+    )
+
+
+def _reset_operand_different_shape_strides_impl(
+    operand1, operand2, axes, exec_backend, reset_fn, result_layout="optimized", expect_optimized_layout=None
+):
+    """Shared logic for reset-operand tests: plan with operand1, execute,
+    reset to operand2, verify class invariants and execution correctness.
+    """
+    ref1 = get_fft_ref(operand1, axes=list(axes))
+    ref2 = get_fft_ref(operand2, axes=list(axes))
+
+    options = nvmath.fft.FFTOptions(result_layout=result_layout)
+
+    fft = nvmath.fft.FFT(operand1, axes=axes, execution=exec_backend.nvname, options=options)
+    with fft:
+        fft.plan()
+
+        in_shape, in_strides = fft.get_input_layout()
+        assert_eq(in_shape, operand1.shape)
+        assert_eq(in_strides, get_array_element_strides(operand1))
+
+        result1 = fft.execute()
+        assert_norm_close(result1, ref1, exec_backend=exec_backend)
+
+        if reset_fn == "checked":
+            fft.reset_operand(operand2)
+        else:
+            fft.reset_operand_unchecked(operand2)
+
+        # Class invariant: internal_operand_layout reflects the internal buffer.
+        assert_eq(fft.internal_operand_layout.shape, tuple(fft.operand.shape))
+        assert_eq(tuple(fft.internal_operand_layout.strides), tuple(fft.operand.strides))
+
+        # get_input_layout() must be consistent with internal_operand_layout.
+        in_shape2, in_strides2 = fft.get_input_layout()
+        assert_eq(in_shape2, fft.internal_operand_layout.shape)
+        assert_eq(in_strides2, fft.internal_operand_layout.strides)
+
+        # After reset, plan_traits.result_shape/strides must match what a
+        # fresh get_fft_plan_traits would produce for the internal buffer.
+        fresh_traits = get_fft_plan_traits(
+            fft.operand.shape,
+            fft.operand.strides,
+            fft.operand.dtype,
+            fft.axes,
+            fft.execution_options,
+            fft_abstract_type=fft.fft_abstract_type,
+            last_axis_parity=fft.options.last_axis_parity,
+            result_layout=fft.options.result_layout,
+        )
+        assert_eq(tuple(fft.plan_traits.result_shape), tuple(fresh_traits.result_shape))
+        assert_eq(tuple(fft.plan_traits.result_strides), tuple(fresh_traits.result_strides))
+
+        # Verify the optimized branch was actually exercised:
+        # for interleaved cases, the post-reset result_strides must differ from
+        # what the natural formula (axis_order_in_memory) would produce.
+        if expect_optimized_layout:
+            natural_order = axis_order_in_memory(fft.operand.shape, fft.operand.strides)
+            natural_strides = tuple(calculate_strides(list(fft.plan_traits.result_shape), natural_order))
+            assert tuple(fft.plan_traits.result_strides) != natural_strides, (
+                f"Expected optimized result_strides to differ from natural, but both are {natural_strides}"
+            )
+
+        result2 = fft.execute()
+        assert_norm_close(result2, ref2, exec_backend=exec_backend)
+
+
+@pytest.mark.parametrize(
+    ("framework", "exec_backend", "mem_backend", "shape1", "shape2", "axes", "result_layout", "expect_optimized", "reset_fn"),
+    [
+        (framework, exec_backend, mem_backend, *case, reset_fn)
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        for mem_backend in supported_backends.framework_mem[framework]
+        for case in [
+            # Same shape — basic contract test (non-interleaved)
+            ((64, 64), (64, 64), (0, 1), "optimized", False),
+            # 1D FFT with rearranged batch dims (non-interleaved)
+            ((2, 3, 64), (3, 2, 64), (2,), "optimized", False),
+            ((4, 2, 32), (2, 4, 32), (2,), "optimized", False),
+            # 2D FFT with rearranged batch dims (non-interleaved)
+            ((2, 3, 16, 32), (3, 2, 16, 32), (2, 3), "optimized", False),
+            # Interleaved samples (FFT on leading axis, batch on trailing axes).
+            # These trigger optimized_result_layout=True with result_layout="optimized"
+            # and natural layout with result_layout="natural".
+            ((64, 2, 3), (64, 3, 2), (0,), "optimized", True),
+            ((64, 2, 3), (64, 3, 2), (0,), "natural", False),
+            ((16, 32, 2, 3), (16, 32, 3, 2), (0, 1), "optimized", True),
+            ((16, 32, 2, 3), (16, 32, 3, 2), (0, 1), "natural", False),
+        ]
+        for reset_fn in ["checked", "unchecked"]
+    ],
+)
+def test_reset_operand_with_rearranged_batch_dims(
+    framework, exec_backend, mem_backend, shape1, shape2, axes, result_layout, expect_optimized, reset_fn
+):
+    """
+    Reset the operand to one with rearranged batch dimensions but the
+    same FFT key and verify that layout queries and execution
+    produce correct results.
+    """
+    dtype = DType.complex64
+    operand1 = get_random_input_data(framework, shape1, dtype, mem_backend)
+    operand2 = get_random_input_data(framework, shape2, dtype, mem_backend)
+    _reset_operand_different_shape_strides_impl(
+        operand1, operand2, axes, exec_backend, reset_fn, result_layout, expect_optimized
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "framework",
+        "exec_backend",
+        "mem_backend",
+        "source_shape",
+        "transpose_axes",
+        "fft_axes",
+        "result_layout",
+        "expect_optimized",
+        "reset_fn",
+    ),
+    [
+        (framework, exec_backend, mem_backend, *case, reset_fn)
+        for framework in Framework.enabled()
+        for exec_backend in supported_backends.exec
+        for mem_backend in supported_backends.framework_mem[framework]
+        for case in [
+            # 1D FFT: transpose batch dims (non-interleaved)
+            ((3, 2, 64), (1, 0, 2), (2,), "optimized", False),
+            # 2D FFT: transpose batch dims (non-interleaved)
+            ((3, 2, 16, 32), (1, 0, 2, 3), (2, 3), "optimized", False),
+            # Interleaved samples: FFT on leading axis, transpose trailing
+            # batch dims. Exercises optimized_result_layout branch.
+            ((64, 3, 2), (0, 2, 1), (0,), "optimized", True),
+            ((64, 3, 2), (0, 2, 1), (0,), "natural", False),
+        ]
+        for reset_fn in ["checked", "unchecked"]
+    ],
+)
+def test_reset_operand_with_transposed_strides(
+    framework,
+    exec_backend,
+    mem_backend,
+    source_shape,
+    transpose_axes,
+    fft_axes,
+    result_layout,
+    expect_optimized,
+    reset_fn,
+):
+    """
+    Reset the operand to one with the same shape but different strides
+    (transposed batch dimensions) but the same FFT key and verify that
+    layout queries and execution produce correct results.
+    See test_transposed_strides_produce_same_key for why the keys match.
+    """
+    dtype = DType.complex64
+    target_shape = tuple(source_shape[a] for a in transpose_axes)
+
+    operand1 = get_random_input_data(framework, target_shape, dtype, mem_backend)
+    source = get_random_input_data(framework, source_shape, dtype, mem_backend)
+    operand2 = source.permute(transpose_axes) if framework == Framework.torch else source.transpose(transpose_axes)
+
+    assert operand1.shape == operand2.shape
+    assert get_array_element_strides(operand1) != get_array_element_strides(operand2)
+
+    _reset_operand_different_shape_strides_impl(
+        operand1, operand2, fft_axes, exec_backend, reset_fn, result_layout, expect_optimized
+    )

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 0.6.0 to 0.7.0. Do not modify it directly.
+# This code was automatically generated with version 0.8.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -62,19 +62,23 @@ cdef bint __py_cublasMp_init = False
 
 cdef void* __cublasMpCreate = NULL
 cdef void* __cublasMpDestroy = NULL
-cdef void* __cublasMpStreamSet = NULL
-cdef void* __cublasMpStreamGet = NULL
+cdef void* __cublasMpSetStream = NULL
+cdef void* __cublasMpGetStream = NULL
+cdef void* __cublasMpSetEmulationStrategy = NULL
+cdef void* __cublasMpGetEmulationStrategy = NULL
 cdef void* __cublasMpGetVersion = NULL
 cdef void* __cublasMpGridCreate = NULL
 cdef void* __cublasMpGridDestroy = NULL
+cdef void* __cublasMpBufferRegister = NULL
+cdef void* __cublasMpBufferDeregister = NULL
 cdef void* __cublasMpMatrixDescriptorCreate = NULL
 cdef void* __cublasMpMatrixDescriptorDestroy = NULL
 cdef void* __cublasMpMatrixDescriptorInit = NULL
 cdef void* __cublasMpMatmulDescriptorCreate = NULL
 cdef void* __cublasMpMatmulDescriptorDestroy = NULL
 cdef void* __cublasMpMatmulDescriptorInit = NULL
-cdef void* __cublasMpMatmulDescriptorAttributeSet = NULL
-cdef void* __cublasMpMatmulDescriptorAttributeGet = NULL
+cdef void* __cublasMpMatmulDescriptorSetAttribute = NULL
+cdef void* __cublasMpMatmulDescriptorGetAttribute = NULL
 cdef void* __cublasMpTrsm_bufferSize = NULL
 cdef void* __cublasMpTrsm = NULL
 cdef void* __cublasMpGemm_bufferSize = NULL
@@ -84,6 +88,7 @@ cdef void* __cublasMpMatmul = NULL
 cdef void* __cublasMpSyrk_bufferSize = NULL
 cdef void* __cublasMpSyrk = NULL
 cdef void* __cublasMpNumroc = NULL
+cdef void* __cublasMpGetStatusString = NULL
 cdef void* __cublasMpGemr2D_bufferSize = NULL
 cdef void* __cublasMpGemr2D = NULL
 cdef void* __cublasMpTrmr2D_bufferSize = NULL
@@ -92,8 +97,8 @@ cdef void* __cublasMpGeadd_bufferSize = NULL
 cdef void* __cublasMpGeadd = NULL
 cdef void* __cublasMpTradd_bufferSize = NULL
 cdef void* __cublasMpTradd = NULL
-cdef void* __cublasMpSetEmulationStrategy = NULL
-cdef void* __cublasMpGetEmulationStrategy = NULL
+cdef void* __cublasMpMalloc = NULL
+cdef void* __cublasMpFree = NULL
 
 
 cdef void* load_library() except* with gil:
@@ -128,19 +133,33 @@ cdef int _check_or_init_cublasMp() except -1 nogil:
                 handle = load_library()
             __cublasMpDestroy = dlsym(handle, 'cublasMpDestroy')
 
-        global __cublasMpStreamSet
-        __cublasMpStreamSet = dlsym(RTLD_DEFAULT, 'cublasMpStreamSet')
-        if __cublasMpStreamSet == NULL:
+        global __cublasMpSetStream
+        __cublasMpSetStream = dlsym(RTLD_DEFAULT, 'cublasMpSetStream')
+        if __cublasMpSetStream == NULL:
             if handle == NULL:
                 handle = load_library()
-            __cublasMpStreamSet = dlsym(handle, 'cublasMpStreamSet')
+            __cublasMpSetStream = dlsym(handle, 'cublasMpSetStream')
 
-        global __cublasMpStreamGet
-        __cublasMpStreamGet = dlsym(RTLD_DEFAULT, 'cublasMpStreamGet')
-        if __cublasMpStreamGet == NULL:
+        global __cublasMpGetStream
+        __cublasMpGetStream = dlsym(RTLD_DEFAULT, 'cublasMpGetStream')
+        if __cublasMpGetStream == NULL:
             if handle == NULL:
                 handle = load_library()
-            __cublasMpStreamGet = dlsym(handle, 'cublasMpStreamGet')
+            __cublasMpGetStream = dlsym(handle, 'cublasMpGetStream')
+
+        global __cublasMpSetEmulationStrategy
+        __cublasMpSetEmulationStrategy = dlsym(RTLD_DEFAULT, 'cublasMpSetEmulationStrategy')
+        if __cublasMpSetEmulationStrategy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cublasMpSetEmulationStrategy = dlsym(handle, 'cublasMpSetEmulationStrategy')
+
+        global __cublasMpGetEmulationStrategy
+        __cublasMpGetEmulationStrategy = dlsym(RTLD_DEFAULT, 'cublasMpGetEmulationStrategy')
+        if __cublasMpGetEmulationStrategy == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cublasMpGetEmulationStrategy = dlsym(handle, 'cublasMpGetEmulationStrategy')
 
         global __cublasMpGetVersion
         __cublasMpGetVersion = dlsym(RTLD_DEFAULT, 'cublasMpGetVersion')
@@ -162,6 +181,20 @@ cdef int _check_or_init_cublasMp() except -1 nogil:
             if handle == NULL:
                 handle = load_library()
             __cublasMpGridDestroy = dlsym(handle, 'cublasMpGridDestroy')
+
+        global __cublasMpBufferRegister
+        __cublasMpBufferRegister = dlsym(RTLD_DEFAULT, 'cublasMpBufferRegister')
+        if __cublasMpBufferRegister == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cublasMpBufferRegister = dlsym(handle, 'cublasMpBufferRegister')
+
+        global __cublasMpBufferDeregister
+        __cublasMpBufferDeregister = dlsym(RTLD_DEFAULT, 'cublasMpBufferDeregister')
+        if __cublasMpBufferDeregister == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cublasMpBufferDeregister = dlsym(handle, 'cublasMpBufferDeregister')
 
         global __cublasMpMatrixDescriptorCreate
         __cublasMpMatrixDescriptorCreate = dlsym(RTLD_DEFAULT, 'cublasMpMatrixDescriptorCreate')
@@ -205,19 +238,19 @@ cdef int _check_or_init_cublasMp() except -1 nogil:
                 handle = load_library()
             __cublasMpMatmulDescriptorInit = dlsym(handle, 'cublasMpMatmulDescriptorInit')
 
-        global __cublasMpMatmulDescriptorAttributeSet
-        __cublasMpMatmulDescriptorAttributeSet = dlsym(RTLD_DEFAULT, 'cublasMpMatmulDescriptorAttributeSet')
-        if __cublasMpMatmulDescriptorAttributeSet == NULL:
+        global __cublasMpMatmulDescriptorSetAttribute
+        __cublasMpMatmulDescriptorSetAttribute = dlsym(RTLD_DEFAULT, 'cublasMpMatmulDescriptorSetAttribute')
+        if __cublasMpMatmulDescriptorSetAttribute == NULL:
             if handle == NULL:
                 handle = load_library()
-            __cublasMpMatmulDescriptorAttributeSet = dlsym(handle, 'cublasMpMatmulDescriptorAttributeSet')
+            __cublasMpMatmulDescriptorSetAttribute = dlsym(handle, 'cublasMpMatmulDescriptorSetAttribute')
 
-        global __cublasMpMatmulDescriptorAttributeGet
-        __cublasMpMatmulDescriptorAttributeGet = dlsym(RTLD_DEFAULT, 'cublasMpMatmulDescriptorAttributeGet')
-        if __cublasMpMatmulDescriptorAttributeGet == NULL:
+        global __cublasMpMatmulDescriptorGetAttribute
+        __cublasMpMatmulDescriptorGetAttribute = dlsym(RTLD_DEFAULT, 'cublasMpMatmulDescriptorGetAttribute')
+        if __cublasMpMatmulDescriptorGetAttribute == NULL:
             if handle == NULL:
                 handle = load_library()
-            __cublasMpMatmulDescriptorAttributeGet = dlsym(handle, 'cublasMpMatmulDescriptorAttributeGet')
+            __cublasMpMatmulDescriptorGetAttribute = dlsym(handle, 'cublasMpMatmulDescriptorGetAttribute')
 
         global __cublasMpTrsm_bufferSize
         __cublasMpTrsm_bufferSize = dlsym(RTLD_DEFAULT, 'cublasMpTrsm_bufferSize')
@@ -282,6 +315,13 @@ cdef int _check_or_init_cublasMp() except -1 nogil:
                 handle = load_library()
             __cublasMpNumroc = dlsym(handle, 'cublasMpNumroc')
 
+        global __cublasMpGetStatusString
+        __cublasMpGetStatusString = dlsym(RTLD_DEFAULT, 'cublasMpGetStatusString')
+        if __cublasMpGetStatusString == NULL:
+            if handle == NULL:
+                handle = load_library()
+            __cublasMpGetStatusString = dlsym(handle, 'cublasMpGetStatusString')
+
         global __cublasMpGemr2D_bufferSize
         __cublasMpGemr2D_bufferSize = dlsym(RTLD_DEFAULT, 'cublasMpGemr2D_bufferSize')
         if __cublasMpGemr2D_bufferSize == NULL:
@@ -338,19 +378,19 @@ cdef int _check_or_init_cublasMp() except -1 nogil:
                 handle = load_library()
             __cublasMpTradd = dlsym(handle, 'cublasMpTradd')
 
-        global __cublasMpSetEmulationStrategy
-        __cublasMpSetEmulationStrategy = dlsym(RTLD_DEFAULT, 'cublasMpSetEmulationStrategy')
-        if __cublasMpSetEmulationStrategy == NULL:
+        global __cublasMpMalloc
+        __cublasMpMalloc = dlsym(RTLD_DEFAULT, 'cublasMpMalloc')
+        if __cublasMpMalloc == NULL:
             if handle == NULL:
                 handle = load_library()
-            __cublasMpSetEmulationStrategy = dlsym(handle, 'cublasMpSetEmulationStrategy')
+            __cublasMpMalloc = dlsym(handle, 'cublasMpMalloc')
 
-        global __cublasMpGetEmulationStrategy
-        __cublasMpGetEmulationStrategy = dlsym(RTLD_DEFAULT, 'cublasMpGetEmulationStrategy')
-        if __cublasMpGetEmulationStrategy == NULL:
+        global __cublasMpFree
+        __cublasMpFree = dlsym(RTLD_DEFAULT, 'cublasMpFree')
+        if __cublasMpFree == NULL:
             if handle == NULL:
                 handle = load_library()
-            __cublasMpGetEmulationStrategy = dlsym(handle, 'cublasMpGetEmulationStrategy')
+            __cublasMpFree = dlsym(handle, 'cublasMpFree')
         __py_cublasMp_init = True
         return 0
 
@@ -372,11 +412,17 @@ cpdef dict _inspect_function_pointers():
     global __cublasMpDestroy
     data["__cublasMpDestroy"] = <intptr_t>__cublasMpDestroy
 
-    global __cublasMpStreamSet
-    data["__cublasMpStreamSet"] = <intptr_t>__cublasMpStreamSet
+    global __cublasMpSetStream
+    data["__cublasMpSetStream"] = <intptr_t>__cublasMpSetStream
 
-    global __cublasMpStreamGet
-    data["__cublasMpStreamGet"] = <intptr_t>__cublasMpStreamGet
+    global __cublasMpGetStream
+    data["__cublasMpGetStream"] = <intptr_t>__cublasMpGetStream
+
+    global __cublasMpSetEmulationStrategy
+    data["__cublasMpSetEmulationStrategy"] = <intptr_t>__cublasMpSetEmulationStrategy
+
+    global __cublasMpGetEmulationStrategy
+    data["__cublasMpGetEmulationStrategy"] = <intptr_t>__cublasMpGetEmulationStrategy
 
     global __cublasMpGetVersion
     data["__cublasMpGetVersion"] = <intptr_t>__cublasMpGetVersion
@@ -386,6 +432,12 @@ cpdef dict _inspect_function_pointers():
 
     global __cublasMpGridDestroy
     data["__cublasMpGridDestroy"] = <intptr_t>__cublasMpGridDestroy
+
+    global __cublasMpBufferRegister
+    data["__cublasMpBufferRegister"] = <intptr_t>__cublasMpBufferRegister
+
+    global __cublasMpBufferDeregister
+    data["__cublasMpBufferDeregister"] = <intptr_t>__cublasMpBufferDeregister
 
     global __cublasMpMatrixDescriptorCreate
     data["__cublasMpMatrixDescriptorCreate"] = <intptr_t>__cublasMpMatrixDescriptorCreate
@@ -405,11 +457,11 @@ cpdef dict _inspect_function_pointers():
     global __cublasMpMatmulDescriptorInit
     data["__cublasMpMatmulDescriptorInit"] = <intptr_t>__cublasMpMatmulDescriptorInit
 
-    global __cublasMpMatmulDescriptorAttributeSet
-    data["__cublasMpMatmulDescriptorAttributeSet"] = <intptr_t>__cublasMpMatmulDescriptorAttributeSet
+    global __cublasMpMatmulDescriptorSetAttribute
+    data["__cublasMpMatmulDescriptorSetAttribute"] = <intptr_t>__cublasMpMatmulDescriptorSetAttribute
 
-    global __cublasMpMatmulDescriptorAttributeGet
-    data["__cublasMpMatmulDescriptorAttributeGet"] = <intptr_t>__cublasMpMatmulDescriptorAttributeGet
+    global __cublasMpMatmulDescriptorGetAttribute
+    data["__cublasMpMatmulDescriptorGetAttribute"] = <intptr_t>__cublasMpMatmulDescriptorGetAttribute
 
     global __cublasMpTrsm_bufferSize
     data["__cublasMpTrsm_bufferSize"] = <intptr_t>__cublasMpTrsm_bufferSize
@@ -438,6 +490,9 @@ cpdef dict _inspect_function_pointers():
     global __cublasMpNumroc
     data["__cublasMpNumroc"] = <intptr_t>__cublasMpNumroc
 
+    global __cublasMpGetStatusString
+    data["__cublasMpGetStatusString"] = <intptr_t>__cublasMpGetStatusString
+
     global __cublasMpGemr2D_bufferSize
     data["__cublasMpGemr2D_bufferSize"] = <intptr_t>__cublasMpGemr2D_bufferSize
 
@@ -462,11 +517,11 @@ cpdef dict _inspect_function_pointers():
     global __cublasMpTradd
     data["__cublasMpTradd"] = <intptr_t>__cublasMpTradd
 
-    global __cublasMpSetEmulationStrategy
-    data["__cublasMpSetEmulationStrategy"] = <intptr_t>__cublasMpSetEmulationStrategy
+    global __cublasMpMalloc
+    data["__cublasMpMalloc"] = <intptr_t>__cublasMpMalloc
 
-    global __cublasMpGetEmulationStrategy
-    data["__cublasMpGetEmulationStrategy"] = <intptr_t>__cublasMpGetEmulationStrategy
+    global __cublasMpFree
+    data["__cublasMpFree"] = <intptr_t>__cublasMpFree
 
     func_ptrs = data
     return data
@@ -503,24 +558,44 @@ cdef cublasMpStatus_t _cublasMpDestroy(cublasMpHandle_t handle) except?_CUBLASMP
         handle)
 
 
-cdef cublasMpStatus_t _cublasMpStreamSet(cublasMpHandle_t handle, cudaStream_t stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cublasMpStreamSet
+cdef cublasMpStatus_t _cublasMpSetStream(cublasMpHandle_t handle, cudaStream_t stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpSetStream
     _check_or_init_cublasMp()
-    if __cublasMpStreamSet == NULL:
+    if __cublasMpSetStream == NULL:
         with gil:
-            raise FunctionNotFoundError("function cublasMpStreamSet is not found")
-    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cudaStream_t) noexcept nogil>__cublasMpStreamSet)(
+            raise FunctionNotFoundError("function cublasMpSetStream is not found")
+    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cudaStream_t) noexcept nogil>__cublasMpSetStream)(
         handle, stream)
 
 
-cdef cublasMpStatus_t _cublasMpStreamGet(cublasMpHandle_t handle, cudaStream_t* stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cublasMpStreamGet
+cdef cublasMpStatus_t _cublasMpGetStream(cublasMpHandle_t handle, cudaStream_t* stream) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpGetStream
     _check_or_init_cublasMp()
-    if __cublasMpStreamGet == NULL:
+    if __cublasMpGetStream == NULL:
         with gil:
-            raise FunctionNotFoundError("function cublasMpStreamGet is not found")
-    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cudaStream_t*) noexcept nogil>__cublasMpStreamGet)(
+            raise FunctionNotFoundError("function cublasMpGetStream is not found")
+    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cudaStream_t*) noexcept nogil>__cublasMpGetStream)(
         handle, stream)
+
+
+cdef cublasMpStatus_t _cublasMpSetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpSetEmulationStrategy
+    _check_or_init_cublasMp()
+    if __cublasMpSetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasMpSetEmulationStrategy is not found")
+    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cublasMpEmulationStrategy_t) noexcept nogil>__cublasMpSetEmulationStrategy)(
+        handle, emulationStrategy)
+
+
+cdef cublasMpStatus_t _cublasMpGetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t* emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpGetEmulationStrategy
+    _check_or_init_cublasMp()
+    if __cublasMpGetEmulationStrategy == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasMpGetEmulationStrategy is not found")
+    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cublasMpEmulationStrategy_t*) noexcept nogil>__cublasMpGetEmulationStrategy)(
+        handle, emulationStrategy)
 
 
 cdef cublasMpStatus_t _cublasMpGetVersion(int* version) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -551,6 +626,26 @@ cdef cublasMpStatus_t _cublasMpGridDestroy(cublasMpGrid_t grid) except?_CUBLASMP
             raise FunctionNotFoundError("function cublasMpGridDestroy is not found")
     return (<cublasMpStatus_t (*)(cublasMpGrid_t) noexcept nogil>__cublasMpGridDestroy)(
         grid)
+
+
+cdef cublasMpStatus_t _cublasMpBufferRegister(cublasMpGrid_t grid, void* ptr, size_t size) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpBufferRegister
+    _check_or_init_cublasMp()
+    if __cublasMpBufferRegister == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasMpBufferRegister is not found")
+    return (<cublasMpStatus_t (*)(cublasMpGrid_t, void*, size_t) noexcept nogil>__cublasMpBufferRegister)(
+        grid, ptr, size)
+
+
+cdef cublasMpStatus_t _cublasMpBufferDeregister(cublasMpGrid_t grid, void* ptr) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpBufferDeregister
+    _check_or_init_cublasMp()
+    if __cublasMpBufferDeregister == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasMpBufferDeregister is not found")
+    return (<cublasMpStatus_t (*)(cublasMpGrid_t, void*) noexcept nogil>__cublasMpBufferDeregister)(
+        grid, ptr)
 
 
 cdef cublasMpStatus_t _cublasMpMatrixDescriptorCreate(int64_t m, int64_t n, int64_t mb, int64_t nb, int64_t rsrc, int64_t csrc, int64_t lld, cudaDataType_t type, cublasMpGrid_t grid, cublasMpMatrixDescriptor_t* desc) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
@@ -613,23 +708,23 @@ cdef cublasMpStatus_t _cublasMpMatmulDescriptorInit(cublasMpMatmulDescriptor_t m
         matmulDesc, computeType)
 
 
-cdef cublasMpStatus_t _cublasMpMatmulDescriptorAttributeSet(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cublasMpMatmulDescriptorAttributeSet
+cdef cublasMpStatus_t _cublasMpMatmulDescriptorSetAttribute(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, const void* buf, size_t sizeInBytes) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpMatmulDescriptorSetAttribute
     _check_or_init_cublasMp()
-    if __cublasMpMatmulDescriptorAttributeSet == NULL:
+    if __cublasMpMatmulDescriptorSetAttribute == NULL:
         with gil:
-            raise FunctionNotFoundError("function cublasMpMatmulDescriptorAttributeSet is not found")
-    return (<cublasMpStatus_t (*)(cublasMpMatmulDescriptor_t, cublasMpMatmulDescriptorAttribute_t, const void*, size_t) noexcept nogil>__cublasMpMatmulDescriptorAttributeSet)(
+            raise FunctionNotFoundError("function cublasMpMatmulDescriptorSetAttribute is not found")
+    return (<cublasMpStatus_t (*)(cublasMpMatmulDescriptor_t, cublasMpMatmulDescriptorAttribute_t, const void*, size_t) noexcept nogil>__cublasMpMatmulDescriptorSetAttribute)(
         matmulDesc, attr, buf, sizeInBytes)
 
 
-cdef cublasMpStatus_t _cublasMpMatmulDescriptorAttributeGet(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cublasMpMatmulDescriptorAttributeGet
+cdef cublasMpStatus_t _cublasMpMatmulDescriptorGetAttribute(cublasMpMatmulDescriptor_t matmulDesc, cublasMpMatmulDescriptorAttribute_t attr, void* buf, size_t sizeInBytes, size_t* sizeWritten) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpMatmulDescriptorGetAttribute
     _check_or_init_cublasMp()
-    if __cublasMpMatmulDescriptorAttributeGet == NULL:
+    if __cublasMpMatmulDescriptorGetAttribute == NULL:
         with gil:
-            raise FunctionNotFoundError("function cublasMpMatmulDescriptorAttributeGet is not found")
-    return (<cublasMpStatus_t (*)(cublasMpMatmulDescriptor_t, cublasMpMatmulDescriptorAttribute_t, void*, size_t, size_t*) noexcept nogil>__cublasMpMatmulDescriptorAttributeGet)(
+            raise FunctionNotFoundError("function cublasMpMatmulDescriptorGetAttribute is not found")
+    return (<cublasMpStatus_t (*)(cublasMpMatmulDescriptor_t, cublasMpMatmulDescriptorAttribute_t, void*, size_t, size_t*) noexcept nogil>__cublasMpMatmulDescriptorGetAttribute)(
         matmulDesc, attr, buf, sizeInBytes, sizeWritten)
 
 
@@ -723,6 +818,16 @@ cdef int64_t _cublasMpNumroc(int64_t n, int64_t nb, uint32_t iproc, uint32_t isr
         n, nb, iproc, isrcproc, nprocs)
 
 
+cdef const char* _cublasMpGetStatusString(cublasMpStatus_t status) except?NULL nogil:
+    global __cublasMpGetStatusString
+    _check_or_init_cublasMp()
+    if __cublasMpGetStatusString == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cublasMpGetStatusString is not found")
+    return (<const char* (*)(cublasMpStatus_t) noexcept nogil>__cublasMpGetStatusString)(
+        status)
+
+
 cdef cublasMpStatus_t _cublasMpGemr2D_bufferSize(cublasMpHandle_t handle, int64_t m, int64_t n, const void* a, int64_t ia, int64_t ja, cublasMpMatrixDescriptor_t descA, void* b, int64_t ib, int64_t jb, cublasMpMatrixDescriptor_t descB, size_t* workspaceSizeInBytesOnDevice, size_t* workspaceSizeInBytesOnHost, ncclComm_t global_comm) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
     global __cublasMpGemr2D_bufferSize
     _check_or_init_cublasMp()
@@ -803,21 +908,21 @@ cdef cublasMpStatus_t _cublasMpTradd(cublasMpHandle_t handle, cublasFillMode_t u
         handle, uplo, trans, m, n, alpha, a, ia, ja, descA, beta, c, ic, jc, descC, d_work, workspaceSizeInBytesOnDevice, h_work, workspaceSizeInBytesOnHost)
 
 
-cdef cublasMpStatus_t _cublasMpSetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cublasMpSetEmulationStrategy
+cdef cublasMpStatus_t _cublasMpMalloc(cublasMpGrid_t grid, void** ptr, size_t size) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpMalloc
     _check_or_init_cublasMp()
-    if __cublasMpSetEmulationStrategy == NULL:
+    if __cublasMpMalloc == NULL:
         with gil:
-            raise FunctionNotFoundError("function cublasMpSetEmulationStrategy is not found")
-    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cublasMpEmulationStrategy_t) noexcept nogil>__cublasMpSetEmulationStrategy)(
-        handle, emulationStrategy)
+            raise FunctionNotFoundError("function cublasMpMalloc is not found")
+    return (<cublasMpStatus_t (*)(cublasMpGrid_t, void**, size_t) noexcept nogil>__cublasMpMalloc)(
+        grid, ptr, size)
 
 
-cdef cublasMpStatus_t _cublasMpGetEmulationStrategy(cublasMpHandle_t handle, cublasMpEmulationStrategy_t* emulationStrategy) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
-    global __cublasMpGetEmulationStrategy
+cdef cublasMpStatus_t _cublasMpFree(cublasMpGrid_t grid, void* ptr) except?_CUBLASMPSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cublasMpFree
     _check_or_init_cublasMp()
-    if __cublasMpGetEmulationStrategy == NULL:
+    if __cublasMpFree == NULL:
         with gil:
-            raise FunctionNotFoundError("function cublasMpGetEmulationStrategy is not found")
-    return (<cublasMpStatus_t (*)(cublasMpHandle_t, cublasMpEmulationStrategy_t*) noexcept nogil>__cublasMpGetEmulationStrategy)(
-        handle, emulationStrategy)
+            raise FunctionNotFoundError("function cublasMpFree is not found")
+    return (<cublasMpStatus_t (*)(cublasMpGrid_t, void*) noexcept nogil>__cublasMpFree)(
+        grid, ptr)

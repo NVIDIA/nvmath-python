@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.0, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 from ._internal cimport cusparse as _cusparse
 
@@ -1033,3 +1033,31 @@ cdef cusparseStatus_t cusparseSpMV_preprocess(cusparseHandle_t handle, cusparseO
 
 cdef cusparseStatus_t cusparseSpSM_updateMatrix(cusparseHandle_t handle, cusparseSpSMDescr_t spsmDescr, void* newValues, cusparseSpSMUpdate_t updatePart) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
     return _cusparse._cusparseSpSM_updateMatrix(handle, spsmDescr, newValues, updatePart)
+
+
+cdef cusparseStatus_t cusparseSpMVOp_createDescr(cusparseHandle_t handle, cusparseSpMVOpDescr_t* desc, cusparseOperation_t opA, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ, cudaDataType computeType, void* buffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cusparse._cusparseSpMVOp_createDescr(handle, desc, opA, matA, vecX, vecY, vecZ, computeType, buffer)
+
+
+cdef cusparseStatus_t cusparseSpMVOp_destroyDescr(cusparseSpMVOpDescr_t desc) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cusparse._cusparseSpMVOp_destroyDescr(desc)
+
+
+cdef cusparseStatus_t cusparseSpMVOp_createPlan(cusparseHandle_t handle, cusparseSpMVOpDescr_t desc, cusparseSpMVOpPlan_t* plan, const void* code, size_t codeSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cusparse._cusparseSpMVOp_createPlan(handle, desc, plan, code, codeSize)
+
+
+cdef cusparseStatus_t cusparseSpMVOp_destroyPlan(cusparseSpMVOpPlan_t plan) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cusparse._cusparseSpMVOp_destroyPlan(plan)
+
+
+cdef cusparseStatus_t cusparseSpMVOp_setGlobalUserData(cusparseHandle_t handle, cusparseSpMVOpPlan_t plan, const char* global_data_name, void* input_data, size_t data_size) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cusparse._cusparseSpMVOp_setGlobalUserData(handle, plan, global_data_name, input_data, data_size)
+
+
+cdef cusparseStatus_t cusparseSpMVOp(cusparseHandle_t handle, cusparseSpMVOpPlan_t plan, const void* alpha, const void* beta, cusparseConstDnVecDescr_t vecX, cusparseConstDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cusparse._cusparseSpMVOp(handle, plan, alpha, beta, vecX, vecY, vecZ)
+
+
+cdef cusparseStatus_t cusparseSpMVOp_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ, cudaDataType computeType, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    return _cusparse._cusparseSpMVOp_bufferSize(handle, opA, matA, vecX, vecY, vecZ, computeType, bufferSize)

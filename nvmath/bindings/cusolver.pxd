@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.1, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 cimport cython
 
@@ -38,6 +38,7 @@ ctypedef cusolverStorevMode_t _StorevMode
 ctypedef cusolverDirectMode_t _DirectMode
 ctypedef cusolverDeterministicMode_t _DeterministicMode
 ctypedef cusolverMathMode_t _MathMode
+ctypedef cusolverEigComp_t _EigComp
 
 
 ###############################################################################

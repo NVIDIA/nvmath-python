@@ -18,16 +18,14 @@ Key Concepts
 Matrix and Tensor Qualifiers
 ----------------------------
 
-Recall that nvmath-python is not an array library but it
-:ref:`interoperates <host api interop>` with array and tensor libraries
-including NumPy, CuPy, and PyTorch. Therefore we need a way to provide
-additional information about the operands that are not contained in the
-ndarray or tensor type to an operation (lazy conjugation or triangular matrix
-structure are examples). This is done via the notion of qualifiers
-on the tensor operands, which is provided as an NumPy ndarray of the same
-length as the number of operands with the appropriate qualifiers dtype.
-Each qualifier in the qualifiers array provides auxiliary information about
-the corresponding operand.
+nvmath-python :ref:`interoperates <host api interop>` with operands from
+NumPy, CuPy, and PyTorch, whose array types do not inherently encode all
+the metadata an operation may require (e.g., triangular structure or lazy
+conjugation). We therefore provide such auxiliary information via the notion
+of qualifiers on the tensor operands, which is supplied as a NumPy ndarray
+of the same length as the number of operands with the appropriate qualifiers
+dtype. Each qualifier in the array provides auxiliary information about the
+corresponding operand.
 
 The following example shows a matrix multiplication between two matrices,
 :math:`a` and :math:`b`, where :math:`a` should be treated as a regular

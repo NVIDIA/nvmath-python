@@ -1,3 +1,43 @@
+/*
+ * sphinx-tabs ships tabs.css for themes that set body[data-theme=...] (e.g. Furo).
+ * PyData / NVIDIA Sphinx theme uses html[data-bs-theme=light|dark|auto] instead, so
+ * those dark rules never match and tab panels / the active tab stay white in dark mode.
+ * tabs.css may override generic rules, so we use .sphinx-tabs ... selectors for
+ * higher specificity and Bootstrap surface tokens that track the color mode switcher.
+ */
+/* Tab row divider: keep separation line aligned with theme border color. */
+.sphinx-tabs [role="tablist"] {
+  border-bottom: 1px solid var(--pst-color-border, #a0b3bf);
+}
+
+/* Inactive tab labels: use theme link color and transparent background. */
+.sphinx-tabs .sphinx-tabs-tab {
+  color: var(--pst-color-link, #1d5c87);
+  background-color: transparent;
+}
+
+/* Active tab: connect visually to panel and inherit theme surface/text colors. */
+.sphinx-tabs .sphinx-tabs-tab[aria-selected="true"] {
+  font-weight: 700;
+  border: 1px solid var(--pst-color-border, #a0b3bf);
+  /* Match panel background to hide the seam between tab and panel. */
+  border-bottom: 1px solid var(--pst-color-surface, #fff);
+  /* Preserve sphinx-tabs geometry so the active tab overlaps panel border cleanly. */
+  margin: -1px;
+  background-color: var(--pst-color-surface, #fff);
+  color: var(--pst-color-text-base, #212529);
+}
+
+/* Tab panel container: theme-aware border/surface/text with original rounded geometry. */
+.sphinx-tabs .sphinx-tabs-panel {
+  border: 1px solid var(--pst-color-border, #a0b3bf);
+  margin: 0 -1px -1px -1px;
+  border-radius: 0 0 5px 5px;
+  border-top: 0;
+  background-color: var(--pst-color-surface, #fff);
+  color: var(--pst-color-text-base, #212529);
+}
+
 /* Make sidebar wider to accommodate our long module names. */
 .bd-sidebar-primary {
     flex-basis: 25%;  /* default is 20% */

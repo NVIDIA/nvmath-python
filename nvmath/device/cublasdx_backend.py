@@ -2,16 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-__all__ = ["LeadingDimension", "TransposeMode", "Arrangement"]
+__all__ = ["LeadingDimension", "TransposeMode", "Arrangement", "Alignment", "Precision"]
 
+import weakref
 from collections import namedtuple
+from collections.abc import Sequence
 from functools import lru_cache
 from typing import NamedTuple, Protocol
-from collections.abc import Sequence
-import weakref
 
 import numpy as np
 
+from nvmath.bindings import mathdx
 
 from .common import check_in, check_sm
 from .common_backend import (
@@ -19,6 +20,7 @@ from .common_backend import (
     NP_TYPES_TO_MATHDX_PRECISION,
     NP_TYPES_TO_MATHDX_TYPES,
     NVARG_GEN_OPT_LTO,
+    DescriptorWrapper,
     build_get_int_traits,
     build_get_str_trait,
     get_isa_version,
@@ -26,29 +28,26 @@ from .common_backend import (
     get_mathdx_sm,
     set_code_target_sm,
 )
-from .common_cuda import Code, CodeType, Dim3, ComputeCapability, ISAVersion
-from .common_backend import DescriptorWrapper
-from .types import REAL_NP_TYPES, INT_NP_TYPES
-
-from nvmath.bindings import mathdx
+from .common_cuda import Code, CodeType, ComputeCapability, Dim3, ISAVersion
+from .types import INT_NP_TYPES, REAL_NP_TYPES
 
 try:
     from cuda.core import (
-        ObjectCode,
-        ProgramOptions,
-        LinkerOptions,
-        Program,
-        Linker,
         Kernel,
+        Linker,
+        LinkerOptions,
+        ObjectCode,
+        Program,
+        ProgramOptions,
     )
 except ImportError:
     from cuda.core.experimental import (
-        ObjectCode,
-        ProgramOptions,
-        LinkerOptions,
-        Program,
-        Linker,
         Kernel,
+        Linker,
+        LinkerOptions,
+        ObjectCode,
+        Program,
+        ProgramOptions,
     )
 
 
@@ -475,7 +474,7 @@ def generate_device_pipeline(
     pipelines = [device_pipeline]
 
     mathdx.cublasdx_finalize_pipelines(len(pipelines), pipelines)
-    mathdx.cublasdx_finalize_tensors(handle, len(tensors), tensors)
+    mathdx.cublasdx_finalize_tensors(len(tensors), tensors)
 
     return DescriptorWrapper(device_pipeline, mathdx.cublasdx_destroy_pipeline)
 
@@ -503,7 +502,7 @@ def generate_code(handle, version: ComputeCapability, device_functions: tuple | 
     code = mathdx.commondx_create_code()
 
     set_code_target_sm(code, version)
-    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
+    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVRTC_ARGS, NVARG_GEN_OPT_LTO)
     if device_functions:
         mathdx.cublasdx_finalize_device_functions(code, len(device_functions), list(device_functions))
     else:
@@ -526,7 +525,7 @@ def generate_tensor(h: int, tensor_type: str, gmem_alignment: int | None = None)
         except Exception:
             print(f"[WARN] Failed to set {tensor_type} tensor alignment {gmem_alignment}")
 
-    mathdx.cublasdx_finalize_tensors(h, 1, [tensor])
+    mathdx.cublasdx_finalize_tensors(1, [tensor])
 
     return DescriptorWrapper(tensor, mathdx.cublasdx_destroy_tensor)
 
@@ -535,7 +534,7 @@ def generate_tensor(h: int, tensor_type: str, gmem_alignment: int | None = None)
 def generate_tensor_like(h: int, src_tensor: int, dtype: np.number) -> DescriptorWrapper:
     dx_type = NP_TYPES_TO_MATHDX_TYPES[dtype]
     dst_tensor = mathdx.cublasdx_make_tensor_like(src_tensor, dx_type)
-    mathdx.cublasdx_finalize_tensors(h, 1, [dst_tensor])
+    mathdx.cublasdx_finalize_tensors(1, [dst_tensor])
 
     return DescriptorWrapper(dst_tensor, mathdx.cublasdx_destroy_tensor)
 
@@ -612,7 +611,7 @@ def generate_tensors(h, tensor_types):
         type_mem_c,
     ]
 
-    mathdx.cublasdx_finalize_tensors(h, len(tensors), tensors)
+    mathdx.cublasdx_finalize_tensors(len(tensors), tensors)
 
     target_tensors = CublasdxTensors(type_mem_a, type_mem_b, type_mem_c)
     resp = CublasdxTensorsResponse(target_tensors)
@@ -656,7 +655,7 @@ def generate_device_function_lto(compute_capability: ComputeCapability, function
     # Compile the device function to lto
     code = mathdx.commondx_create_code()
     set_code_target_sm(code, compute_capability)
-    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVTRC_ARGS, NVARG_GEN_OPT_LTO)
+    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVRTC_ARGS, NVARG_GEN_OPT_LTO)
     mathdx.cublasdx_finalize_device_functions(code, 1, [function])
 
     # Extract the LTOIR

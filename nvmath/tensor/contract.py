@@ -4,18 +4,18 @@
 
 import logging
 from typing import Any
+
 import numpy as np
+
 from .. import memory
-from ..bindings import cutensor
-from ..internal import formatters
-from ..internal import utils
-from ..internal import tensor_wrapper
 from .._utils import CudaDataType
-from ._internal import einsum_parser
-from ..internal.typemaps import NAME_TO_DATA_TYPE, DATA_TYPE_TO_NAME
-from ._internal.typemaps import get_default_compute_type_from_dtype_name, get_supported_compute_types
-from ._internal.cutensor_config_ifc import ContractionPlanPreference
+from ..bindings import cutensor
+from ..internal import formatters, tensor_wrapper, utils
+from ..internal.typemaps import DATA_TYPE_TO_NAME, NAME_TO_DATA_TYPE
 from ._configuration import ContractionOptions, ExecutionCUDA
+from ._internal import cutensor_utils, einsum_parser
+from ._internal.cutensor_config_ifc import ContractionPlanPreference
+from ._internal.typemaps import get_compute_type_name, get_default_compute_type_from_dtype_name, get_supported_compute_types
 
 __all__ = [
     "BinaryContraction",
@@ -35,22 +35,8 @@ ComputeDesc = cutensor.ComputeDesc
 
 tensor_qualifiers_dtype = np.int32
 
-# As of cuTensor 2.3.1, only the following operators are supported in the contraction APIs
+# As of cuTensor 2.5.0, only the following operators are supported in the contraction APIs
 OPERATORS_SUPPORTED = {Operator.OP_IDENTITY, Operator.OP_CONJ}
-
-
-def _compute_pointer_alignment(ptr: int) -> int:
-    """
-    Compute the pointer alignment for the given pointer.
-
-    Args:
-        ptr: Pointer address as integer
-
-    Returns:
-        The alignment value (256, 128, 64, 32, 16, 8, 4, 2, or 1)
-    """
-    return 256 if ptr == 0 else min(ptr & -ptr, 256)
-
 
 SHARED_CONTRACTION_DOCUMENTATION = utils.COMMON_SHARED_DOC_MAP.copy()
 SHARED_CONTRACTION_DOCUMENTATION.update(
@@ -117,6 +103,29 @@ If not specified, the result will be returned on the same device as the input op
         "result": """\
 The result of the specified contraction, which remains on the same device and belong to the
 same package as the input operands. """.replace("\n", " "),
+        #
+        "reset_operands_semantics": """\
+Semantics:
+            - This method validates each new operand against its corresponding one
+              set during the object's initialization.
+              An operand is compatible if all of the following requirements are met:
+
+              - The shapes, strides, and datatypes match those of the old one.
+              - The package (e.g., cupy, torch, numpy) matches that of the old one.
+              - The memory space (CPU or GPU) matches that of the old one.
+              - The device matches that of the old one, if the operand is on GPU.
+              - The pointer alignment must be the same or a multiple of the old one.
+
+            - If the execution space matches the memory space of the operand:
+              operand's reference is updated with no data copying.
+
+            - If the execution space does not match the memory space of the operand:
+              data is copied between different memory spaces.
+""",
+        #
+        "reset_operands_unchecked": utils._reset_operand_unchecked_docstring(
+            True, version_added="0.9.0", validation_examples="package match, data type match, pointer alignment match"
+        ),
     }
 )
 
@@ -144,14 +153,6 @@ def _validate_contraction_preconditions(expr, a, b, c, d, qualifiers, options):
     Returns:
         tuple: (num_inputs, inputs, output) from parsed expression
     """
-    # Check cuTensor version
-    version = cutensor.get_version()
-    if version < 20301:
-        raise RuntimeError(
-            f"cuTensor version {version} is detected, which is lower than the minimum required "
-            f"version 2.3.1 for nvmath.tensor module. Please upgrade cuTensor to a compatible version."
-        )
-
     # Parse expression to determine number of inputs (validates expression format)
     inputs, output = einsum_parser.parse_einsum_str(expr)
     num_inputs = len(inputs)
@@ -252,6 +253,9 @@ class _ElementaryContraction:
         # the object is already valid.
         self.valid_state = True
 
+        # Track whether the user has called release_operands().
+        self._operands_released = False
+
         # ========================================================================
         # Validate preconditions right away, if it fails, no state changes will be made
         # ========================================================================
@@ -263,12 +267,14 @@ class _ElementaryContraction:
         # ========================================================================
         self.options: Any = utils.check_or_create_options(ContractionOptions, options, "elementary contraction options")
         self.logger = self.options.logger if self.options.logger is not None else logging.getLogger()
+        log_info = self.logger.isEnabledFor(logging.INFO)
+        log_debug = self.logger.isEnabledFor(logging.DEBUG)
 
         # ========================================================================
         # Wrap and validate operands (a, b, and c, d if needed)
         # ========================================================================
         self.a, self.b = tensor_wrapper.wrap_operands([a, b])
-        input_operand_class = self.a.__class__
+        self.input_operand_class = self.a.__class__
         self.input_package = utils.get_operands_package([self.a, self.b])
 
         # Determine internal package (numpy -> cuda conversion)
@@ -280,6 +286,8 @@ class _ElementaryContraction:
 
         # Wrap optional operands c, d and validate package consistency
         wrapped_operands = [self.a, self.b]
+        self.c_provided = c is not None
+        self.d_provided = d is not None
         for op_name, op in zip(["c", "d"], [c, d], strict=False):
             if op is not None:
                 op = tensor_wrapper.wrap_operand(op)
@@ -307,6 +315,12 @@ class _ElementaryContraction:
         # ========================================================================
         self.input_device_id = utils.get_operands_device_id(wrapped_operands)
         self.blocking = self.options.blocking is True or self.input_device_id == "cpu"
+        if self.blocking:
+            self.call_prologue = "This call is blocking and will return only after the operation is complete."
+        else:
+            self.call_prologue = (
+                "This call is non-blocking and will return immediately after the operation is launched on the device."
+            )
 
         if execution is None:
             self.execution = ExecutionCUDA()
@@ -315,6 +329,12 @@ class _ElementaryContraction:
                 (ExecutionCUDA,),
                 execution,
                 "execution options",
+            )
+
+        if log_info:
+            self.logger.info(
+                f"The input tensor's memory space is {self.input_device_id}, and the execution space "
+                f"is device {self.execution.device_id}."
             )
 
         # Determine execution device and create stream
@@ -328,6 +348,8 @@ class _ElementaryContraction:
                 self.c = self.c.to(self.execution_device_id, stream_holder)
             if self.d is not None:
                 self.d = self.d.to(self.execution_device_id, stream_holder)
+            if log_debug:
+                self.logger.debug(f"The input tensors have been copied to the execution device: {self.execution_device_id}.")
         else:
             self.execution_device_id = self.input_device_id
             stream_holder = utils.get_or_create_stream(self.execution_device_id, stream, self.internal_package)
@@ -348,7 +370,26 @@ class _ElementaryContraction:
             if self.options.compute_type not in get_supported_compute_types(self.data_type):
                 raise ValueError(f"Invalid compute type: {self.options.compute_type} for data type: {self.data_type}")
             self.compute_type = self.options.compute_type
+            if self.compute_type == ComputeDesc.COMPUTE_8XINT8():
+                # TODO: remove the check once cutensor requirement is bumped to 2.6.0
+                version = cutensor.get_version()
+                if version == 20500:
+                    raise RuntimeError(
+                        "The 8XINT8 compute type is not supported in cuTensor 2.5.0 due to a known bug. "
+                        "Please upgrade cuTensor to a later version."
+                    )
 
+        if log_info:
+            self.logger.info(f"The compute type is: {get_compute_type_name(self.compute_type)}.")
+            qualifiers_message = (
+                f"The contraction qualifiers are: "
+                f"A = {cutensor.Operator(self.qualifiers[0]).name}, "
+                f"B = {cutensor.Operator(self.qualifiers[1]).name}, "
+                f"C = {cutensor.Operator(self.qualifiers[2]).name}"
+            )
+            if self.num_inputs == 3:
+                qualifiers_message += f", D = {cutensor.Operator(self.qualifiers[3]).name}"
+            self.logger.info(qualifiers_message)
         # ========================================================================
         # Parse einsum modes and setup output tensor
         # ========================================================================
@@ -356,7 +397,7 @@ class _ElementaryContraction:
             inputs, output, self.a, self.b, self.c
         )[:4]
 
-        output_shape = [size_dict[mode] for mode in self.output_modes]
+        self.output_shape = [size_dict[mode] for mode in self.output_modes]
 
         # self.out is the output tensor that will be used for the execution
         # self.out_return is the output tensor that will be returned by the execute method
@@ -372,17 +413,10 @@ class _ElementaryContraction:
                 self.out = out
             else:
                 self.out = out.to(self.execution_device_id, stream_holder)
+                if log_debug:
+                    self.logger.debug(f"The output tensor is copied to the execution device: {self.execution_device_id}.")
         else:
-            self.out = utils.create_empty_tensor(
-                self.a.__class__, output_shape, self.data_type, self.execution_device_id, stream_holder, False
-            )
-            if self.input_device_id == self.execution_device_id:
-                self.out_return = self.out
-            else:
-                tmp_stream_holder = None if self.input_device_id == "cpu" else stream_holder
-                self.out_return = utils.create_empty_tensor(
-                    input_operand_class, output_shape, self.data_type, self.input_device_id, tmp_stream_holder, False
-                )
+            self.out = self.out_return = None
 
         # ========================================================================
         # Setup memory management
@@ -408,21 +442,33 @@ class _ElementaryContraction:
                 self.handle = cutensor.create()
                 self.logger.info(f"The library handle has been created: {self.handle}.")
 
-        # Parse tensor descriptors
-        self.operands_info = {}
-        self.pointer_alignment = {}
-        for op_name in ["a", "b", "c", "d", "out"]:
+        if self.num_inputs == 2:
+            addend_name = "c"
+            operands_names = ("a", "b", "out") if c is None else ("a", "b", "c", "out")
+        else:
+            addend_name = "d"
+            operands_names = ("a", "b", "c", "out") if d is None else ("a", "b", "c", "d", "out")
+
+        # Create tensor descriptors for all relevant operands
+        for op_name in operands_names:
             op = getattr(self, op_name)
-            if op is not None:
-                self.pointer_alignment[op_name] = _compute_pointer_alignment(op.data_ptr)
-                self.tensor_descs[op_name] = cutensor.create_tensor_descriptor(
-                    self.handle, len(op.shape), op.shape, op.strides, self.cuda_data_type, self.pointer_alignment[op_name]
+            if op is None:
+                assert op_name == "out", "Internal Error: out should be None if not provided."
+                self.tensor_descs[op_name] = cutensor_utils.TensorDescriptor.from_shape_and_dtype(
+                    self.handle, self.output_shape, self.data_type
                 )
-                self.operands_info[op_name] = {
-                    "dtype": op.dtype,
-                    "shape": op.shape,
-                    "strides": op.strides,
-                }
+            else:
+                self.tensor_descs[op_name] = cutensor_utils.TensorDescriptor.from_tensor_holder(self.handle, op)
+            if log_debug:
+                self.logger.debug(
+                    f"The tensor descriptor for operand {op_name} with shape {self.tensor_descs[op_name].shape}, "
+                    f"strides {self.tensor_descs[op_name].strides}, dtype {self.tensor_descs[op_name].dtype}, "
+                    f"and pointer alignment {self.tensor_descs[op_name].alignment} has been created."
+                )
+
+        if addend_name not in operands_names:
+            # If addend is not specified, we can reuse the output descriptor for the addend
+            self.tensor_descs[addend_name] = self.tensor_descs["out"]
 
         # ========================================================================
         # Create contraction descriptor
@@ -430,39 +476,35 @@ class _ElementaryContraction:
         if self.num_inputs == 2:
             self.contraction_desc = cutensor.create_contraction(
                 self.handle,
-                self.tensor_descs["a"],
+                self.tensor_descs["a"].ptr,
                 self.input_modes[0],
                 self.qualifiers[0],
-                self.tensor_descs["b"],
+                self.tensor_descs["b"].ptr,
                 self.input_modes[1],
                 self.qualifiers[1],
-                self.tensor_descs["out"]
-                if c is None
-                else self.tensor_descs["c"],  # if c is set to None, then C descriptor is the same as the out descriptor
+                self.tensor_descs["c"].ptr,
                 self.output_modes,  # NOTE: currently assuming c has the same output modes as the out
                 self.qualifiers[2],  # only identity operator is supported for c
-                self.tensor_descs["out"],
+                self.tensor_descs["out"].ptr,
                 self.output_modes,
                 self.compute_type,
             )
         else:
             self.contraction_desc = cutensor.create_contraction_trinary(
                 self.handle,
-                self.tensor_descs["a"],
+                self.tensor_descs["a"].ptr,
                 self.input_modes[0],
                 self.qualifiers[0],
-                self.tensor_descs["b"],
+                self.tensor_descs["b"].ptr,
                 self.input_modes[1],
                 self.qualifiers[1],
-                self.tensor_descs["c"],
+                self.tensor_descs["c"].ptr,
                 self.input_modes[2],
                 self.qualifiers[2],
-                self.tensor_descs["out"]
-                if d is None
-                else self.tensor_descs["d"],  # if d is set to None, then D descriptor is the same as the out descriptor
+                self.tensor_descs["d"].ptr,
                 self.output_modes,
                 self.qualifiers[3],  # only identity operator is supported for d
-                self.tensor_descs["out"],
+                self.tensor_descs["out"].ptr,
                 self.output_modes,
                 self.compute_type,
             )
@@ -498,9 +540,8 @@ class _ElementaryContraction:
         self.last_compute_event = None
         self.plan_ptr = None
 
-        # A bug to be fixed in cuTensor, currently kernel_rank is -1 by default,
-        # which may hurt performance for certain contractions.
-        self.plan_preference.kernel_rank = 0
+        if log_info:
+            self.logger.info(f"The {self.__class__.__name__} object has been created.")
 
     def _check_valid_contraction(self, *args, **kwargs):
         """
@@ -514,25 +555,10 @@ class _ElementaryContraction:
         Check if the operands are available for the operation.
         """
         what = kwargs["what"]
-        if self.num_inputs == 2:
-            if self.a is None or self.b is None:
-                raise RuntimeError(
-                    f"{what} cannot be performed if a or b have been set to None "
-                    f"for pairwise contraction. Use reset_operands() to set the "
-                    f"desired input before using performing the {what.lower()}."
-                )
-        else:
-            if self.a is None or self.b is None or self.c is None:
-                raise RuntimeError(
-                    f"{what} cannot be performed if a, b, or c have been set to None "
-                    f"for ternary contraction. Use reset_operands() to set the "
-                    f"desired input before using performing the {what.lower()}."
-                )
-
-        if self.output_provided and self.out is None:
+        if self._operands_released:
             raise RuntimeError(
-                f"{what} cannot be performed if out has been set to None. Use reset_operands() to set the "
-                f"desired input before using performing the {what.lower()}."
+                f"{what} cannot be performed after the operands have been released. "
+                f"Use reset_operands() to provide new operands before performing the {what.lower()}."
             )
 
     def _free_plan_resources(self, exception: Exception | None = None) -> bool:
@@ -610,14 +636,15 @@ class _ElementaryContraction:
         """
         Allocate workspace memory using the specified allocator.
         """
-
+        log_debug = self.logger.isEnabledFor(logging.DEBUG)
         assert self.workspace_size is not None, "Internal Error."
         assert self.workspace_allocated_here is False, "Internal Error."
 
         if self.workspace_size == 0:  # For performance, bypass allocator for workspace size == 0.
             self.workspace_ptr = memory.MemoryPointer(0, 0, finalizer=None)
         else:
-            self.logger.debug("Allocating workspace for performing the tensor contraction...")
+            if log_debug:
+                self.logger.debug("Allocating workspace for performing the tensor contraction...")
             with utils.device_ctx(self.execution_device_id), stream_holder.ctx:
                 try:
                     if isinstance(self.allocator, memory.BaseCUDAMemoryManagerAsync):
@@ -634,10 +661,11 @@ class _ElementaryContraction:
 
         self.workspace_allocated_size = self.workspace_size
         self.workspace_stream = stream_holder.obj
-        self.logger.debug(
-            f"Finished allocating device workspace of size {formatters.MemoryStr(self.workspace_size)} in the context "
-            f"of stream {self.workspace_stream}."
-        )
+        if log_debug:
+            self.logger.debug(
+                f"Finished allocating device workspace of size {formatters.MemoryStr(self.workspace_size)} in the context "
+                f"of stream {self.workspace_stream}."
+            )
 
     def _allocate_workspace_memory_perhaps(self, stream_holder: utils.StreamHolder):
         """
@@ -666,27 +694,30 @@ class _ElementaryContraction:
         return self._plan_preference
 
     @utils.precondition(_check_valid_contraction)
-    def reset_operands(self, a=None, b=None, *, c=None, d=None, out=None, stream=None):
+    def reset_operands(self, *, a=None, b=None, c=None, d=None, out=None, stream=None):
         if self.num_inputs == 2 and d is not None:
             raise RuntimeError("Internal Error: For pairwise contractions, d can not be set.")
 
+        # if the operands have been released, all operands must be provided
+        if self._operands_released:
+            all_provided = (
+                a is not None
+                and b is not None
+                and (c is not None or not self.c_provided)
+                and (d is not None or not self.d_provided)
+                and (out is not None or not self.output_provided)
+            )
+            if not all_provided:
+                raise ValueError("After release_operands(), all operands must be provided.")
+
         stream_holder = None  # lazy initialization
         for op_name, op in zip(["a", "b", "c", "d", "out"], [a, b, c, d, out], strict=False):
+            # if op is None, we keep the original value of the operand,
+            # so skip the rest of the logic for this operand
             if op is None:
-                if op_name == "out":
-                    if self.output_provided:
-                        self.out_return = None
-                        self.out = None
-                    else:
-                        # if out is not provided during initialization,
-                        # we don't do anything with it
-                        continue
-                else:
-                    setattr(self, op_name, None)
-                self.logger.info(f"operand {op_name} has been reset to None.")
                 continue
-            tensor_info = self.operands_info.get(op_name)
-            if tensor_info is None:
+
+            if (op_name == "c" and not self.c_provided) or (op_name == "d" and not self.d_provided):
                 raise ValueError(
                     f"operand {op_name} was not specified during the initialization "
                     f"of the ElementaryContraction object and therefore can not be reset "
@@ -702,13 +733,22 @@ class _ElementaryContraction:
                     f"ElementaryContraction object."
                 )
 
-            for attr, value in tensor_info.items():
-                if getattr(op, attr) != value:
-                    raise ValueError(
-                        f"The operand {op_name} must have the same {attr} "
-                        f"as the one specified during the initialization of the "
-                        f"ElementaryContraction object."
-                    )
+            tensor_desc = self.tensor_descs[op_name]
+
+            error_pattern = (
+                f"The operand {op_name} must have the same {{attr}} "
+                f"as the one specified during the initialization of the "
+                f"ElementaryContraction object."
+            )
+
+            if tensor_desc.shape != op.shape:
+                raise ValueError(error_pattern.format(attr="shape"))
+
+            if tensor_desc.dtype != op.dtype:
+                raise ValueError(error_pattern.format(attr="dtype"))
+
+            if tensor_desc.strides != op.strides:
+                raise ValueError(error_pattern.format(attr="strides"))
 
             if op_name == "out":
                 self.out_return = op
@@ -722,17 +762,107 @@ class _ElementaryContraction:
                     op = self.out
                 else:
                     op = op.to(self.execution_device_id, stream_holder)
-
-            if _compute_pointer_alignment(op.data_ptr) != self.pointer_alignment[op_name]:
+            elif cutensor_utils.compute_pointer_alignment(op.data_ptr) % self.tensor_descs[op_name].alignment:
+                # If the operand is in the same memory space as the
+                # execution space (copy not needed), we need to check if the pointer
+                # alignment is the same or a multiple of the original pointer alignments.
+                # If the operand is in host memory, this check can be skipped as we
+                # internally copy the operand to the execution space and
+                # device ptr alignment should be guaranteed to be the same.
                 raise ValueError(
-                    f"The operand {op_name} must have the same pointer alignment "
-                    f"as the one specified during the initialization of the "
-                    f"ElementaryContraction object."
+                    f"The pointer alignment of the operand {op_name} must be the same or a multiple of the corresponding "
+                    f"pointer alignment specified during the initialization of the {self.__class__.__name__} object."
                 )
 
             setattr(self, op_name, op)
             self.logger.info(f"operand {op_name} has been reset to the new operand provided.")
+        self._operands_released = False
         return
+
+    @utils.precondition(_check_valid_contraction)
+    def _release_operands(self):
+        # We release the internal tensor references held by the wrappers
+        # for the user-provided operands and/or their GPU mirrors.
+        # The TensorHolder wrappers themselves are kept alive so that
+        # reset_operands_unchecked can reuse them without re-wrapping.
+        self.a.tensor = None
+        self.b.tensor = None
+        if self.c_provided:
+            self.c.tensor = None
+        if self.d_provided:
+            self.d.tensor = None
+        if self.output_provided:
+            # self.out_return always holds the user's tensor.
+            # self.out holds the user's tensor when operand memory space
+            # matches execution (same device; same object as self.out_return),
+            # or an internal device mirror when they differ (inputs on CPU).
+            # In both cases, release the inner tensor references.
+            self.out_return.tensor = None
+            self.out.tensor = None
+        self._operands_released = True
+        self.logger.info("User-provided operands have been released.")
+
+    def _reset_operands_unchecked(
+        self, *, a=None, b=None, c=None, d=None, out=None, stream: utils.AnyStream | int | None = None
+    ):
+        # Since we have the caller's compatibility guarantee for the inputs, we can leverage
+        # the metadata stored during initialization to know if the inputs were on the GPU.
+        # If the memory space of the inputs matches the execution space, namely the inputs
+        # during initialization resided on the GPU, then we know/expect the newly provided
+        # inputs must also reside on the GPU. The TensorHolder wrappers are always alive
+        # (release_operands only clears .tensor), so we can unconditionally swap the inner
+        # tensor — no wrap_operand() needed.
+        if self.input_device_id != "cpu":
+            if a is not None:
+                self.a.tensor = a
+            if b is not None:
+                self.b.tensor = b
+            if c is not None:
+                self.c.tensor = c
+            if d is not None:
+                self.d.tensor = d
+            if out is not None:
+                self.out.tensor = out
+                self.out_return.tensor = out
+
+            self._operands_released = False
+            return
+
+        # if we are here, it means the inputs were on the CPU
+        # so we need to distinguish between the case where the operands
+        # were released and the case where they were not released.
+        if self._operands_released:
+            # CPU inputs after release: device mirrors were freed, need re-allocation.
+            stream_holder = utils.get_or_create_stream(self.execution_device_id, stream, self.internal_package)
+            if a is not None:
+                self.a = tensor_wrapper.wrap_operand(a).to(self.execution_device_id, stream_holder)
+            if b is not None:
+                self.b = tensor_wrapper.wrap_operand(b).to(self.execution_device_id, stream_holder)
+            if c is not None:
+                self.c = tensor_wrapper.wrap_operand(c).to(self.execution_device_id, stream_holder)
+            if d is not None:
+                self.d = tensor_wrapper.wrap_operand(d).to(self.execution_device_id, stream_holder)
+            if out is not None:
+                out_wrapped = tensor_wrapper.wrap_operand(out)
+                self.out = out_wrapped.to(self.execution_device_id, stream_holder)
+                self.out_return = out_wrapped
+        else:
+            # CPU inputs, not released: device mirrors are valid, copy into them.
+            stream_holder = utils.get_or_create_stream(self.execution_device_id, stream, self.internal_package)
+            if a is not None:
+                self.a.copy_(tensor_wrapper.wrap_operand(a), stream_holder=stream_holder)
+            if b is not None:
+                self.b.copy_(tensor_wrapper.wrap_operand(b), stream_holder=stream_holder)
+            if c is not None:
+                self.c.copy_(tensor_wrapper.wrap_operand(c), stream_holder=stream_holder)
+            if d is not None:
+                self.d.copy_(tensor_wrapper.wrap_operand(d), stream_holder=stream_holder)
+            if out is not None:
+                out_wrapped = tensor_wrapper.wrap_operand(out)
+                self.out.copy_(out_wrapped, stream_holder=stream_holder)
+                self.out_return = out_wrapped
+
+        self._operands_released = False
 
     @utils.precondition(_check_valid_contraction)
     @utils.atomic(_free_plan_resources, method=True)
@@ -753,11 +883,14 @@ class _ElementaryContraction:
             required to apply the changes.
         """
         log_info = self.logger.isEnabledFor(logging.INFO)
+        log_debug = self.logger.isEnabledFor(logging.DEBUG)
 
         # A new plan needs to be created at each plan() call
         if self.plan_ptr is not None:
             cutensor.destroy_plan(self.plan_ptr)
             self.plan_ptr = None
+            if log_debug:
+                self.logger.debug("The previous plan has been destroyed.")
 
         if log_info:
             self.logger.info("= PLANNING PHASE =")
@@ -785,6 +918,8 @@ class _ElementaryContraction:
             self.logger.info(f"The planning phase took {elapsed.data:.3f} ms to complete.")
 
         self.workspace_size = required_workspace_size_buffer.item()
+        if log_info:
+            self.logger.info(f"The required workspace size for the contraction operation is {self.workspace_size}.")
         self.contraction_planned = True
 
     @utils.precondition(_check_valid_contraction)
@@ -820,14 +955,33 @@ class _ElementaryContraction:
                 raise ValueError("For ternary contraction, beta can only be set if d is specified")
 
         log_info = self.logger.isEnabledFor(logging.INFO)
+        log_debug = self.logger.isEnabledFor(logging.DEBUG)
 
         self.alpha[0] = alpha
         self.beta[0] = beta
 
+        stream_holder = utils.get_or_create_stream(self.execution_device_id, stream, self.internal_package)
+
+        # The buffer to be used for cutensor execution
+        # If out was provided during initialization, this would have been created
+        # regardless of where it resided (CPU or GPU).
+        # If out was not provided during initialization, we need to create a new buffer
+        if self.out is None:
+            assert not self.output_provided, (
+                "Internal Error: out cannot be None if the output was provided during initialization."
+            )
+            self.out = utils.create_empty_tensor(
+                self.a.__class__, self.output_shape, self.data_type, self.execution_device_id, stream_holder, False
+            )
+            if log_debug:
+                self.logger.debug(
+                    f"The output tensor of type {type(self.out.tensor)} with shape {self.out.shape} has been created."
+                )
+
         if log_info:
             self.logger.info("= EXECUTION PHASE =")
-        stream_holder = utils.get_or_create_stream(self.execution_device_id, stream, self.internal_package)
-        if log_info:
+            self.logger.info("Starting tensor contraction calculation...")
+            self.logger.info(f"{self.call_prologue}")
             self.logger.info(f"The specified stream for execute() is {stream_holder.obj}.")
 
         # Allocate workspace if needed.
@@ -878,9 +1032,18 @@ class _ElementaryContraction:
 
         self._reset_workspace_allocation_tracking()
 
-        if self.out.device_id != self.out_return.device_id:
-            self.out_return.copy_(self.out, stream_holder)
-        return self.out_return.tensor
+        if self.output_provided:
+            if self.execution_device_id != self.input_device_id:
+                self.out_return.copy_(self.out, stream_holder)
+            return self.out_return.tensor
+        else:
+            if self.execution_device_id != self.input_device_id:
+                return self.out.to(self.input_device_id, stream_holder).tensor
+            else:
+                out = self.out
+                # release the output tensor as the ownership is transferred to the caller
+                self.out = None
+                return out.tensor
 
     @utils.precondition(_check_valid_contraction)
     def free(self):
@@ -914,20 +1077,13 @@ class _ElementaryContraction:
                 cutensor.destroy_operation_descriptor(self.contraction_desc)
                 self.contraction_desc = None
 
-            while self.tensor_descs:
-                tensor_desc = self.tensor_descs.popitem()[1]
-                cutensor.destroy_tensor_descriptor(tensor_desc)
+            self.tensor_descs = None
 
-            # Ensures the contraction object doesn't hold unnecessary references
-            # to objects after cleanup, otherwise reference counts are not correct.
-            self.a = None
-            self.b = None
-            self.c = None
-            self.d = None
-            self.out = None
-            self.out_return = None
-
-            self._plan_preference = None
+            # Set all attributes to None except for logger and valid_state
+            _keep = {"logger", "valid_state"}
+            for attr in list(vars(self)):
+                if attr not in _keep:
+                    setattr(self, attr, None)
 
         except Exception as e:
             self.logger.critical(f"Internal error: only part of the {class_name} object's resources have been released.")
@@ -1003,7 +1159,8 @@ class BinaryContraction(_ElementaryContraction):
         execution: {execution}
 
     .. seealso::
-        :attr:`plan_preference`, :meth:`plan`, :meth:`reset_operands`, :meth:`execute`
+        :attr:`plan_preference`, :meth:`plan`, :meth:`reset_operands`,
+        :meth:`release_operands`, :meth:`execute`
 
     Examples:
 
@@ -1086,26 +1243,14 @@ class BinaryContraction(_ElementaryContraction):
 
         super().__init__(expr, a, b, c=c, out=out, qualifiers=qualifiers, stream=stream, options=options, execution=execution)
 
-    def reset_operands(self, a=None, b=None, *, c=None, out=None, stream=None):
+    def reset_operands(self, *, a=None, b=None, c=None, out=None, stream=None):
         """
-        Reset the operands held by this :class:`BinaryContraction` instance.
+        Reset one or more operands held by this :class:`BinaryContraction` instance.
+        Only the operands explicitly passed are updated; omitted operands retain
+        their current values.
 
-        This method has two use cases:
-            (1) it can be used to provide new operands for execution when the original
-                operands are on the CPU
-            (2) it can be used to release the internal reference to the previous operands
-                and make their memory available for other use by passing ``None`` for *all*
-                arguments. In this case, this method must be called again to provide the
-                desired operands before another call to execution APIs like :meth:`execute`.
-
-        This method is not needed when the operands reside on the GPU and in-place
-        operations are used to update the operand values.
-
-        This method will perform various checks on the new operands to make sure:
-
-            - The shapes, strides, datatypes match those of the old ones.
-            - The packages that the operands belong to match those of the old ones.
-            - If input tensors are on GPU, the device must match.
+        .. versionchanged:: 0.9
+            All parameters are now keyword-only.
 
         Args:
             a: {a}
@@ -1117,6 +1262,8 @@ class BinaryContraction(_ElementaryContraction):
             out: {out}
 
             stream: {stream}
+
+        {reset_operands_semantics}
 
         Examples:
 
@@ -1146,15 +1293,12 @@ class BinaryContraction(_ElementaryContraction):
             ...     # Execute to get the new result corresponding to the updated operands.
             ...     r2 = contraction.execute()
 
-            Note that if only a subset of operands are reset, the operands that are not
-            reset hold their original values.
-
             With :meth:`reset_operands`, minimal overhead is achieved as problem
             specification and planning are only performed once.
 
             For the particular example above, explicitly calling :meth:`reset_operands` is
             equivalent to updating the operands in-place, i.e, replacing
-            ``contraction.reset_operand(a=a1, b=b1)`` with ``a[:]=a1`` and ``b[:]=b1``.
+            ``contraction.reset_operands(a=a1, b=b1)`` with ``a[:]=a1`` and ``b[:]=b1``.
             Note that updating the operand in-place should be adopted with caution as it can
             only yield the expected result under the additional constraint below:
 
@@ -1163,8 +1307,23 @@ class BinaryContraction(_ElementaryContraction):
 
             For more details, please refer to `inplace update example
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/tensor/contraction/example06_stateful_inplace.py>`_.
+
+        .. seealso::
+            :meth:`reset_operands_unchecked`, :meth:`release_operands`
         """
         super().reset_operands(a=a, b=b, c=c, out=out, stream=stream)
+
+    def reset_operands_unchecked(self, *, a=None, b=None, c=None, out=None, stream: utils.AnyStream | int | None = None):
+        """
+        {reset_operands_unchecked}
+        """
+        super()._reset_operands_unchecked(a=a, b=b, c=c, out=out, stream=stream)
+
+    def release_operands(self):
+        """
+        {release_operands}
+        """
+        self._release_operands()
 
 
 @utils.docstring_decorator(SHARED_CONTRACTION_DOCUMENTATION, skip_missing=False)
@@ -1227,7 +1386,8 @@ class TernaryContraction(_ElementaryContraction):
         execution: {execution}
 
     .. seealso::
-        :attr:`plan_preference`, :meth:`plan`, :meth:`reset_operands`, :meth:`execute`
+        :attr:`plan_preference`, :meth:`plan`, :meth:`reset_operands`,
+        :meth:`release_operands`, :meth:`execute`
 
     Examples:
 
@@ -1317,26 +1477,14 @@ class TernaryContraction(_ElementaryContraction):
             expr, a, b, c=c, d=d, out=out, qualifiers=qualifiers, stream=stream, options=options, execution=execution
         )
 
-    def reset_operands(self, a=None, b=None, c=None, *, d=None, out=None, stream=None):
+    def reset_operands(self, *, a=None, b=None, c=None, d=None, out=None, stream=None):
         """
-        Reset the operands held by this :class:`TernaryContraction` instance.
+        Reset one or more operands held by this :class:`TernaryContraction` instance.
+        Only the operands explicitly passed are updated; omitted operands retain
+        their current values.
 
-        This method has two use cases:
-            (1) it can be used to provide new operands for execution when the original
-                operands are on the CPU
-            (2) it can be used to release the internal reference to the previous operands
-                and make their memory available for other use by passing ``None`` for *all*
-                arguments. In this case, this method must be called again to provide the
-                desired operands before another call to execution APIs like :meth:`execute`.
-
-        This method is not needed when the operands reside on the GPU and in-place
-        operations are used to update the operand values.
-
-        This method will perform various checks on the new operands to make sure:
-
-            - The shapes, strides, datatypes match those of the old ones.
-            - The packages that the operands belong to match those of the old ones.
-            - If input tensors are on GPU, the device must match.
+        .. versionchanged:: 0.9
+            All parameters are now keyword-only.
 
         Args:
             a: {a}
@@ -1350,6 +1498,8 @@ class TernaryContraction(_ElementaryContraction):
             out: {out}
 
             stream: {stream}
+
+        {reset_operands_semantics}
 
         Examples:
 
@@ -1382,15 +1532,12 @@ class TernaryContraction(_ElementaryContraction):
             ...     # Execute to get the new result corresponding to the updated operands.
             ...     r2 = contraction.execute()
 
-            Note that if only a subset of operands are reset, the operands that are not
-            reset hold their original values.
-
             With :meth:`reset_operands`, minimal overhead is achieved as problem
             specification and planning are only performed once.
 
             For the particular example above, explicitly calling :meth:`reset_operands`
             is equivalent to updating the operands in-place, i.e, replacing
-            ``contraction.reset_operand(a=a1, b=b1, c=c1)`` with ``a[:]=a1``
+            ``contraction.reset_operands(a=a1, b=b1, c=c1)`` with ``a[:]=a1``
             and ``b[:]=b1`` and ``c[:]=c1``. Note that updating the operand in-place
             should be adopted with caution as it can only yield the expected result
             under the additional constraint below:
@@ -1400,8 +1547,25 @@ class TernaryContraction(_ElementaryContraction):
 
             For more details, please refer to `inplace update example
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/tensor/contraction/example06_stateful_inplace.py>`_.
+
+        .. seealso::
+            :meth:`reset_operands_unchecked`, :meth:`release_operands`
         """
         super().reset_operands(a=a, b=b, c=c, d=d, out=out, stream=stream)
+
+    def reset_operands_unchecked(
+        self, *, a=None, b=None, c=None, d=None, out=None, stream: utils.AnyStream | int | None = None
+    ):
+        """
+        {reset_operands_unchecked}
+        """
+        super()._reset_operands_unchecked(a=a, b=b, c=c, d=d, out=out, stream=stream)
+
+    def release_operands(self):
+        """
+        {release_operands}
+        """
+        self._release_operands()
 
 
 @utils.docstring_decorator(SHARED_CONTRACTION_DOCUMENTATION, skip_missing=False)
@@ -1464,7 +1628,7 @@ def binary_contraction(
     .. seealso::
         :class:`BinaryContraction`, :func:`ternary_contraction`,
         :class:`TernaryContraction`, :class:`ContractionOptions`,
-        :class:`ContractionPlanPreferences`
+        :class:`ContractionPlanPreference`
 
         For tensor network contraction with arbitrary number of operands including
         contraction path finding, see cuQuantum:
@@ -1610,7 +1774,7 @@ def ternary_contraction(
     .. seealso::
         :class:`TernaryContraction`, :func:`binary_contraction`,
         :class:`BinaryContraction`, :class:`ContractionOptions`,
-        :class:`ContractionPlanPreferences`
+        :class:`ContractionPlanPreference`
 
         For tensor network contraction with arbitrary number of operands including
         contraction path finding, see cuQuantum:

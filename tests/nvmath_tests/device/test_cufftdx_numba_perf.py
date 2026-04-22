@@ -3,14 +3,21 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
+import pytest
 
 from nvmath.device import FFT
-from .helpers import smallest_multiple, time_check_cupy, set_device, random_complex
+
 from ..helpers import fft_conv_perf_GFlops, print_aligned_table
-import cupy
+from .helpers import random_complex, set_device, smallest_multiple, time_check_cupy
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
+import argparse
+
 from .cpp_conv import FFTConvCpp
 from .numba_conv import FFTConvNumba
-import argparse
 
 TEST_CASES = [
     (4, np.float32),
@@ -85,6 +92,8 @@ def run_conv_perf(test_cases):
         #
         # cupy
         #
+        if cupy is None:
+            pytest.skip("cupy is not available")
         input = random_complex((batch, size), precision, module=cupy)
         filter = random_complex((batch, size), precision, module=cupy)
         fun = lambda input, filter: cupy.fft.ifft(cupy.fft.fft(input, axis=-1) * filter, norm="forward", axis=-1)

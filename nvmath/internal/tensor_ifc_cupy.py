@@ -13,10 +13,12 @@ from collections.abc import Sequence
 import cupy
 import numpy as np
 
+from nvmath.internal.memory import _MemoryPointer
+
 from . import utils
-from .tensor_ifc import TensorHolder
-from .package_ifc import StreamHolder
 from .ndbuffer import ndbuffer, package_utils
+from .package_ifc import StreamHolder
+from .tensor_ifc import TensorHolder
 from .tensor_ifc_ndbuffer import NDBufferTensor
 
 
@@ -51,13 +53,15 @@ class HostTensor(NDBufferTensor):
 
 
 class _CupyAllocatorAdapter:
-    def allocate(self, size, stream, logger=None):
-        # we accept the stream and logger, because the ndbuffer.empty_like
-        # passes them to the allocator, but we don't use them:
-        # 1. cupy.cuda.alloc does not accept the stream, we make sure to set
+    def allocate(self, size, stream):
+        # we accept the stream, because the ndbuffer.empty_like
+        # passes it to the allocator, but we don't use it:
+        # cupy.cuda.alloc does not accept the stream, we make sure to set
         # the correct current stream when calling ndbuffer.empty_like
-        # 2. we don't log cupy tensor allocations.
-        return cupy.cuda.alloc(size)
+        alloc = cupy.cuda.alloc(size)
+        # Once we require cuda.core >= 0.5.0,
+        # use Buffer.from_handle(alloc.ptr, owner=alloc)
+        return _MemoryPointer.from_handle(alloc.ptr, alloc)
 
 
 _cupy_allocator = _CupyAllocatorAdapter()
@@ -164,7 +168,7 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
                 device_memory_pool=_cupy_allocator,
             )
             ndbuffer.copy_into(dst_nd, src_nd, stream_holder)
-            dst = cupy.ndarray(dst_nd.shape, dtype=dst_nd.dtype_name, strides=dst_nd.strides_in_bytes, memptr=dst_nd.data)
+            dst = cupy.ndarray(dst_nd.shape, dtype=dst_nd.dtype_name, strides=dst_nd.strides_in_bytes, memptr=dst_nd.data.owner)
             return cls(dst)
 
     def asndbuffer(self):
@@ -200,11 +204,34 @@ class CupyTensor(TensorHolder[cupy.ndarray]):
             try:
                 reshaped_tensor = self.tensor.view()
                 reshaped_tensor.shape = shape
-            except AttributeError:
-                raise ValueError(f"Could not reshape cupy array without copy: current shape={self.shape}, new shape={shape}")
+            except AttributeError as e:
+                raise ValueError(
+                    f"Could not reshape cupy array without copy: current shape={self.shape}, new shape={shape}"
+                ) from e
         else:
             reshaped_tensor = self.tensor.reshape(shape)
         return self.__class__(reshaped_tensor)
+
+    def memory_buffer(self):
+        """Creates a view of the memory buffer as a 1D tensor."""
+        m = cupy.cuda.UnownedMemory(self.data_ptr, self.size * self.itemsize, owner=self.tensor, device_id=self.device_id)
+        p = cupy.cuda.MemoryPointer(m, 0)
+        # TODO: ensure tensor is dense for now, and later support linear
+        # memory with constant stride.
+        t = cupy.ndarray(shape=(self.size,), dtype=self.dtype, memptr=p)
+        return CupyTensor(t)
+
+    def memory_buffer_to_tensor(self, shape, strides):
+        """
+        Creates a N-D tensor view of the memory buffer according to the specified
+        shape and strides.
+        """
+        assert len(self.shape) == 1, "Internal error."
+        m = cupy.cuda.UnownedMemory(self.data_ptr, self.size * self.itemsize, owner=self.tensor)
+        p = cupy.cuda.MemoryPointer(m, 0)
+        strides = [s * self.itemsize for s in strides]
+        t = cupy.ndarray(shape=shape, dtype=self.dtype, memptr=p, strides=strides)
+        return CupyTensor(t)
 
     def _broadcast_to(self, shape):
         reshaped_tensor = cupy.broadcast_to(self.tensor, shape)

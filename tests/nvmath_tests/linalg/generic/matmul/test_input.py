@@ -6,26 +6,26 @@
 This set of tests checks matmul's behavior for different kinds of inputs.
 """
 
-from nvmath.linalg.generic import (
-    matmul,
-    matrix_qualifiers_dtype,
-    GeneralMatrixQualifier,
-    TriangularMatrixQualifier,
-    SymmetricMatrixQualifier,
-    HermitianMatrixQualifier,
-)
 import numpy as np
 import pytest
-from nvmath.bindings import cublasLt as cublaslt
+
 from nvmath.bindings import cublas
+from nvmath.bindings import cublasLt as cublaslt
+from nvmath.linalg.generic import (
+    GeneralMatrixQualifier,
+    HermitianMatrixQualifier,
+    SymmetricMatrixQualifier,
+    TriangularMatrixQualifier,
+    matmul,
+    matrix_qualifiers_dtype,
+)
 
 try:
     import cupy as cp
 except ModuleNotFoundError:
     cp = None
 
-from ...utils import compare_tensors, random_torch_complex, sample_matrix, assert_tensors_equal, to_numpy, get_framework
-
+from ...utils import assert_tensors_equal, compare_tensors, get_framework, random_torch_complex, sample_matrix, to_numpy
 from . import CUBLAS_AVAILABLE, NVPL_AVAILABLE
 
 use_cuda_options = (
@@ -101,7 +101,7 @@ def test_framework_mixing():
     """
     a = sample_matrix("torch", "float32", (7, 7), True)
     b = sample_matrix("cupy", "float32", (7, 7), True)
-    with pytest.raises(TypeError, match="All tensors in the network must be from the same library"):
+    with pytest.raises(TypeError, match="All tensors must be from the same library"):
         matmul(a, b)
 
 

@@ -8,19 +8,21 @@
 
 import cupy
 import numpy as np
-from numba import cuda
+from common import device_shared_memory, random
 from common_cupy import time_cupy
 from common_numba import time_numba
+from numba import cuda
+
+from nvmath.bindings import mathdx
 from nvmath.device import Matmul
-from nvmath.device.cublasdx import MAX_ALIGNMENT, DevicePipeline
-from nvmath.linalg.advanced import Matmul as CublasltMatmul
-from common import device_shared_memory, random
 from nvmath.device.common import (
     axpby,
     make_tensor,
 )
 from nvmath.device.common_cuda import Dim3, get_current_device_cc
+from nvmath.device.cublasdx import MAX_ALIGNMENT, DevicePipeline
 from nvmath.device.cublasdx_numba import pipeline_extensions
+from nvmath.linalg.advanced import Matmul as CublasltMatmul
 
 
 def main():
@@ -50,7 +52,7 @@ def main():
         enable_input_streaming=True,
         static_block_dim=True,
         # WAR for the TMA descriptor issue on SM 12.0
-        sm=89 if get_current_device_cc().major >= 12 else None,
+        sm=89 if get_current_device_cc().major >= 12 and mathdx.get_version_ex() < (0, 3, 2) else None,
     )
 
     @cuda.jit(extensions=pipeline_extensions, launch_bounds=[MM.block_size, 1])

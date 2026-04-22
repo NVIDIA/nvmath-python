@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 import itertools
 import logging
+
+import pytest
 
 try:
     from cuda.core import system
@@ -27,22 +28,23 @@ from contextlib import nullcontext
 from nvmath.bindings import cutensor
 from nvmath.internal import tensor_wrapper
 from nvmath.memory import _MEMORY_MANAGER
-from nvmath.tensor import binary_contraction, ExecutionCUDA, Operator, tensor_qualifiers_dtype
+from nvmath.tensor import ExecutionCUDA, Operator, binary_contraction, tensor_qualifiers_dtype
+from nvmath_tests.helpers import order_streams, use_stream
 
-from nvmath_tests.helpers import use_stream, order_streams
-from .utils.common_axes import Framework, ComputeType, BlockingOption, MemBackend
-from .utils.check_helpers import get_contraction_tolerance, assert_all_close
-from .utils.data import contraction_test_cases
-from .utils.support_matrix import framework_backend_support, framework_type_support
-from .utils.base_testers import run_stateless_impl, parse_operands, run_coefficients_test_impl
-from .utils.support_matrix import compute_type_support
 from .utils.axes_utils import is_complex
+from .utils.base_testers import parse_operands, run_coefficients_test_impl, run_stateless_impl
+from .utils.check_helpers import assert_all_close, get_contraction_tolerance
+from .utils.common_axes import BlockingOption, ComputeType, Framework, MemBackend
+from .utils.data import contraction_test_cases
 from .utils.input_fixtures import get_custom_stream
+from .utils.support_matrix import compute_type_support, framework_backend_support, framework_type_support
 
 try:
     num_devices = system.get_num_devices()
 except AttributeError:
     num_devices = system.num_devices
+
+cutensor_version = cutensor.get_version()
 
 
 @pytest.mark.parametrize(
@@ -132,6 +134,10 @@ class TestStatelessContraction:
 
     @pytest.mark.parametrize("compute_type", ComputeType)
     def test_compute_type(self, seeder, compute_type, test_case, framework, mem_backend, dtype):
+        if compute_type == ComputeType.eight_xint8 and cutensor_version == 20500:
+            # cuTensor 2.5.0 has a bug on 8xint8 compute type
+            pytest.skip("8xint8 skipped for cuTensor 2.5.0")
+
         if compute_type in compute_type_support[dtype]:
             context = nullcontext()
         else:
@@ -185,7 +191,12 @@ class TestMiscellaneous:
             else:
                 a = torch.rand(10, 10, device="cpu")
         result = binary_contraction("ij,jk->ik", a, a, execution=execution, options=options)
-        reference = a @ a
+        if framework == Framework.cupy:
+            with cp.cuda.Device(device_id):  # Workaround for multi-GPU system + cupy-cuda12x 13.6.0:
+                # reference will be on device 0 even if A is on device >= 1
+                reference = a @ a
+        else:
+            reference = a @ a
         tolerance = get_contraction_tolerance("float32", None)
         assert_all_close(result, reference, **tolerance)
 

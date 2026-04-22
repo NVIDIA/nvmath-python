@@ -4,24 +4,29 @@
 
 __all__ = ["matmul", "TransposeMode", "Matmul", "SharedStorageCalc", "Accumulator", "DevicePipeline", "TilePipeline"]
 
-from abc import abstractmethod
-from functools import cached_property
 import itertools
-from collections.abc import Sequence
 import re
+import weakref
+from abc import abstractmethod
+from collections.abc import Sequence
+from functools import cached_property
 from typing import Any, overload
 from warnings import warn
-import weakref
+
+import numpy
 
 from nvmath._utils import get_nvrtc_version
+from nvmath.bindings import mathdx
 from nvmath.device.common_opaque_tensor import _LIBMATHDX_RUNTIME, OpaqueLayout
+from nvmath.internal.utils import docstring_decorator
 
+from ._deprecated import deprecated
 from .common import (
+    SHARED_DEVICE_DOCSTRINGS,
     Layout,
     OpaqueTensor,
     check_code_type,
     check_in,
-    SHARED_DEVICE_DOCSTRINGS,
     pad_or_truncate,
     parse_sm,
 )
@@ -36,48 +41,43 @@ from .common_cuda import (
     get_default_code_type,
 )
 from .cublasdx_backend import (
+    MAX_ALIGNMENT,  # noqa: F401
     Alignment,
     Arrangement,
+    LeadingDimension,
     Precision,
+    TransposeMode,
     _compile_blas_device_pipeline_destroy_kernel,
     _compile_blas_device_pipeline_init_kernel,
-    generate_MM,
     generate_code,
     generate_device_pipeline,
-    generate_tensor_like,
-    generate_tile_pipeline,
     generate_function_code,
     generate_function_with_pipelines_code,
+    generate_MM,
     generate_tensor,
+    generate_tensor_like,
     generate_tensors,
+    generate_tile_pipeline,
     get_function_code,
-    get_str_trait,
     get_int_traits,
+    get_str_trait,
     get_tensor_traits,
     validate,
-    LeadingDimension,
-    TransposeMode,
     validate_execute_api,
     validate_tensor_types,
-    MAX_ALIGNMENT,  # noqa: F401
 )
-from ._deprecated import deprecated
-from nvmath.internal.utils import docstring_decorator
-
-from nvmath.bindings import mathdx
-import numpy
 
 try:
     from cuda.core import (
-        Device,
         Buffer,
+        Device,
         LaunchConfig,
         launch,
     )
 except ImportError:
     from cuda.core.experimental import (
-        Device,
         Buffer,
+        Device,
         LaunchConfig,
         launch,
     )
@@ -147,8 +147,8 @@ class SharedStorageCalc:
     """
     Helper class to calculate shared storage size.
 
-    For further details, please refer to `cuBLASDx documentation
-    <https://docs.nvidia.com/cuda/cublasdx/>`_.
+    For further details, please refer to :cublasdx_doc:`cuBLASDx documentation
+    <index.html>`.
     """
 
     _memory: int = 0
@@ -194,7 +194,7 @@ class Partitioner:
         :py:func:`nvmath.device.Matmul.suggest_partitioner`.
 
     Refer to the cuBLASDx documentation for more details on how to use this class:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#partitioner-register-tensor-other-label
+    :cublasdx_doc:`api/other_tensors.html#partitioner-register-tensor-other-label`
     """
 
     def __init__(self, *args):
@@ -258,7 +258,7 @@ class Accumulator(Partitioner):
     copying data, and mapping register indices to matrix coordinates.
 
     Refer to the cuBLASDx documentation for more details on how to use this class:
-    https://docs.nvidia.com/cuda/cublasdx/api/other_tensors.html#accumulator-and-register-fragment-tensors
+    :cublasdx_doc:`api/other_tensors.html#accumulator-and-register-fragment-tensors`
     """
 
     def get_results(self, out=None) -> OpaqueTensor:
@@ -283,7 +283,7 @@ class DevicePipeline:
     :class:`TilePipeline` object within a kernel.
 
     Refer to the cuBLASDx documentation for more details on how to use this class:
-    https://docs.nvidia.com/cuda/cublasdx/using_pipelines.html
+    :cublasdx_doc:`using_pipelines.html`
     """
 
     def __init__(self, mm: "Matmul", pipeline_depth: int, a: numpy.ndarray, b: numpy.ndarray):
@@ -414,7 +414,7 @@ class TilePipeline:
     with partial tile results accumulated into an acuumulator.
 
     Refer to the cuBLASDx documentation for more details on how to use this class:
-    https://docs.nvidia.com/cuda/cublasdx/using_pipelines.html
+    :cublasdx_doc:`using_pipelines.html`
     """
 
     def __init__(self, device_pipeline: DevicePipeline):
@@ -500,8 +500,8 @@ class Matmul:
 
     .. seealso::
         The attributes of this class provide a 1:1 mapping with the CUDA C++ cuBLASDx APIs.
-        For further details, please refer to `cuBLASDx documentation
-        <https://docs.nvidia.com/cuda/cublasdx/>`_.
+        For further details, please refer to :cublasdx_doc:`cuBLASDx documentation
+        <index.html>`.
     """
 
     def __init__(
@@ -642,49 +642,60 @@ class Matmul:
 
     @property
     def precision(self) -> Precision:
+        """{precision}"""
         return self._precision
 
     @property
     def data_type(self) -> str:
+        """{data_type}"""
         return self._data_type
 
     @property
     def size(self) -> tuple[int, int, int]:
+        """{size}"""
         return self._size
 
     @property
     def execution(self) -> str:
+        """{execution}"""
         return self._execution
 
     @property
     @deprecated("transpose_mode trait is deprecated and may be removed in future versions. Use arrangement instead")
     def transpose_mode(self) -> TransposeMode:
+        """{transpose_mode}"""
         return self._transpose_mode
 
     @property
     def arrangement(self) -> Arrangement:
+        """{arrangement}"""
         return self._arrangement
 
     @property
     def alignment(self) -> Alignment:
+        """{alignment}"""
         if self._alignment is None:
             return self._traits.alignment
         return self._alignment
 
     @property
     def sm(self):
+        """{sm}"""
         return self._sm
 
     @property
     def function(self) -> str:
+        """{function}"""
         return self._function
 
     @property
     def block_size(self) -> int:
+        """{block_size}"""
         return self.block_dim[0] * self.block_dim[1] * self.block_dim[2]
 
     @property
     def block_dim(self) -> Dim3:
+        """{block_dim}"""
         if self._block_dim is None:
             return self._traits.block_dim
         return self._block_dim
@@ -695,6 +706,7 @@ class Matmul:
 
     @property
     def leading_dimension(self) -> LeadingDimension:
+        """{leading_dimension}"""
         if self._leading_dimension is None:
             return self._traits.leading_dimension
         return self._leading_dimension
@@ -787,6 +799,8 @@ class Matmul:
             static_block_dim=self._static_block_dim,
             leading_dimension=None,
             execution=self.execution,
+            with_pipeline=self._with_pipeline,
+            enable_input_streaming=self._enable_input_streaming,
         )
 
         return LeadingDimension(*get_int_traits(descriptor.descriptor, mathdx.CublasdxTraitType.SUGGESTED_LEADING_DIMENSION, 3))
@@ -807,6 +821,8 @@ class Matmul:
             static_block_dim=self._static_block_dim,
             leading_dimension=None,
             execution=self.execution,
+            with_pipeline=self._with_pipeline,
+            enable_input_streaming=self._enable_input_streaming,
         )
 
         return Dim3(*get_int_traits(descriptor.descriptor, mathdx.CublasdxTraitType.SUGGESTED_BLOCK_DIM, 3))
@@ -1251,8 +1267,8 @@ def matmul(*, compiler=None, code_type=None, execute_api=None, tensor_types=None
 
     .. seealso::
         The attributes of :class:`Matmul` provide a 1:1 mapping with the CUDA C++
-        cuBLASDx APIs. For further details, please refer to `cuBLASDx documentation
-        <https://docs.nvidia.com/cuda/cublasdx/>`_.
+        cuBLASDx APIs. For further details, please refer to
+        :cublasdx_doc:`cuBLASDx documentation <index.html>`.
 
     Examples:
 

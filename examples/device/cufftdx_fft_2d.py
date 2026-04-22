@@ -6,11 +6,13 @@
 # Mirrors https://github.com/NVIDIA/CUDALibrarySamples/blob/master/MathDx/cuFFTDx/fft_2d/fft_2d.cu
 #
 
-import numpy as np
-from numba import cuda
-from nvmath.device import FFT, Dim3
-from common import random_complex
 import functools
+
+import numpy as np
+from common import random_complex
+from numba import cuda
+
+from nvmath.device import FFT, Dim3
 
 
 def main():

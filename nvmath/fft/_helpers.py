@@ -8,7 +8,6 @@ import functools
 
 from nvmath.bindings import cufft as _cufft  # type: ignore
 
-
 # Currently supported element data types for FFT callback functions.
 VALID_DTYPES = {"float32": "Real", "float64": "DoubleReal", "complex64": "Complex", "complex128": "DoubleComplex"}
 
@@ -26,55 +25,6 @@ def _check_numba_available():
         import numba  # noqa: F401
     except ModuleNotFoundError as e:
         raise RuntimeError("Numba is required to compile FFT prolog and epilog functions.") from e
-
-
-def _get_compiler():
-    import numba
-    import numba.cuda
-
-    @numba.core.compiler_lock.global_compiler_lock
-    def compile_to(function, sig, name, *, compute_capability=None, representation="ltoir"):
-        if compute_capability is None:
-            compute_capability = numba.cuda.get_current_device().compute_capability
-        else:
-            if not isinstance(compute_capability, str):
-                raise ValueError(
-                    f"The compute capability must be specified as a string ('80', '89', ...). "
-                    f"The provided value {compute_capability} is invalid."
-                )
-            cc_number = int(compute_capability)
-            compute_capability = (cc_number // 10, cc_number % 10)
-
-        if hasattr(numba.cuda.cudadrv.nvrtc, "get_arch_option"):
-            # numba-cuda >=0.16.0
-            get_arch_option = numba.cuda.cudadrv.nvrtc.get_arch_option
-        elif hasattr(numba.cuda.cudadrv.nvvm, "get_arch_option"):
-            get_arch_option = numba.cuda.cudadrv.nvvm.get_arch_option
-        nvvm_options = {"opt": 3, "arch": get_arch_option(*compute_capability)}
-
-        if representation == "ltoir":
-            nvvm_options["gen-lto"] = None
-
-        debug = False
-        lineinfo = False
-
-        args, return_type = numba.core.sigutils.normalize_signature(sig)
-
-        cres = numba.cuda.compiler.compile_cuda(
-            function,
-            return_type,
-            args,
-            debug=debug,
-            lineinfo=lineinfo,
-            nvvm_options=nvvm_options,
-            cc=compute_capability,
-        )
-
-        lib = numba.cuda.compiler.cabi_wrap_function(cres.target_context, cres.library, cres.fndesc, name, nvvm_options)
-
-        return numba.cuda.cudadrv.nvvm.compile_ir(lib.llvm_strs, **nvvm_options)
-
-    return compile_to
 
 
 def _compile(
@@ -127,8 +77,32 @@ def _compile(
         offset_dtype = "m" if _cufft.get_version() < 11300 else "y"
         name = f"_Z{length}cufftJITCallback{phase}{snippet}Pv{offset_dtype}{insert}S_S_"
 
-    compile_to = _get_compiler()
-    return compile_to(function, signature, name, representation=representation, compute_capability=compute_capability)
+    if compute_capability is None:
+        compute_capability = numba.cuda.get_current_device().compute_capability
+    else:
+        if not isinstance(compute_capability, str):
+            raise ValueError(
+                f"The compute capability must be specified as a string ('80', '89', ...). "
+                f"The provided value {compute_capability} is invalid."
+            )
+        cc_number = int(compute_capability)
+        compute_capability = (cc_number // 10, cc_number % 10)
+
+    return numba.cuda.compile(
+        function,
+        signature,
+        debug=None,
+        lineinfo=False,
+        device=True,
+        fastmath=False,
+        cc=compute_capability,
+        opt=True,
+        abi="c",
+        abi_info={"abi_name": name},
+        output=representation,
+        forceinline=False,
+        launch_bounds=None,
+    )[0]
 
 
 compile_prolog = functools.wraps(_compile)(functools.partial(_compile, phase="Load"))
@@ -152,7 +126,10 @@ SHARED_FFT_HELPER_DOCUMENTATION = {
 
             """,
     "compute_capability": """The target compute capability, specified as a string (``'80'``, ``'89'``, ...). The
-            default is the compute capability of the current device.""",
+            default is the compute capability of the current device. For cuFFT in CUDA Toolkit 12.8, 12.9
+            on Blackwell devices (compute capability 12.0), the default
+            compute capability of the current device may fail to compile. As a workaround, ``'50'``
+            can be specified.""",
 }
 
 compile_prolog.__doc__ = """
@@ -177,7 +154,7 @@ compile_prolog.__doc__ = """
 
     .. seealso::
         :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`,
-        :meth:`~nvmath.fft.compile_epilog`.
+        :func:`~nvmath.fft.compile_epilog`.
 
     Notes:
         - The user must ensure that the specified argument types meet the requirements
@@ -207,7 +184,7 @@ compile_epilog.__doc__ = """
 
     .. seealso::
         :func:`~nvmath.fft.fft`, :meth:`~nvmath.fft.FFT.plan`,
-        :meth:`~nvmath.fft.compile_prolog`.
+        :func:`~nvmath.fft.compile_prolog`.
 
     Examples:
 

@@ -7,14 +7,13 @@ import numpy as np
 import pytest
 
 import nvmath.bindings.cublas as cublas
-
 from nvmath.linalg.generic import (
     DiagonalMatrixQualifier,
     GeneralMatrixQualifier,
     HermitianMatrixQualifier,
-    matrix_qualifiers_dtype,
     SymmetricMatrixQualifier,
     TriangularMatrixQualifier,
+    matrix_qualifiers_dtype,
 )
 
 

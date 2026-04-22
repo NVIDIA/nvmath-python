@@ -2,11 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from numba.cuda.extending import models, register_model, types
+from llvmlite import ir
 from numba.core.datamodel.manager import DataModelManager
 from numba.core.datamodel.models import PrimitiveModel
-
-from llvmlite import ir
+from numba.cuda.extending import models, register_model, types
 
 
 class LLVMArray(types.Array):

@@ -17,8 +17,8 @@ __all__ = [
     "EpilogOutputHandler",
 ]
 
-from abc import abstractmethod
 import math
+from abc import abstractmethod
 from typing import Protocol, runtime_checkable
 
 from nvmath.bindings import cublasLt as cublaslt
@@ -70,12 +70,28 @@ class EpilogInputHandler(Protocol):
     @abstractmethod
     def update(self, mm_desc_ifc, epilog_input):
         """
-        Update the provided epilog input.
+        Update the matmul descriptor attributes for this epilog from the given input.
 
         Args:
-            mm_desc_ifc: The MM descriptor to update, provided as a MatmulDescInterface
-                object. epilog_input: The epilog input to validate.
+            mm_desc_ifc: The MM descriptor to update, provided as
+                a MatmulDescInterface object.
+            epilog_input: The epilog input.
+        """
+        raise NotImplementedError
 
+    @abstractmethod
+    def update_pointer(self, mm_desc_ifc, data_ptr) -> None:
+        """
+        Update the matmul descriptor data pointer for this epilog.
+
+        Unlike ``update``, this only sets the pointer, assuming all other
+        descriptor attributes (batch stride, leading dimension, data type)
+        are already valid.
+
+        Args:
+            mm_desc_ifc: The MM descriptor to update, provided
+                as a MatmulDescInterface object.
+            data_ptr: The device pointer value to set.
         """
         raise NotImplementedError
 
@@ -239,6 +255,9 @@ class BiasHandler(EpilogInputHandler):
 
         self.batch_offset = min(bias_batch_strides) if bias_batch_strides else 0  # bias broadcast
 
+    def update_pointer(self, mm_desc_ifc, data_ptr):
+        mm_desc_ifc.bias_pointer = data_ptr
+
     def update(self, mm_desc_ifc, bias_tensor):
         # Set the bias pointer.
         mm_desc_ifc.bias_pointer = bias_tensor.data_ptr
@@ -316,7 +335,8 @@ class ReluAuxHandler(EpilogOutputHandler):
         mm_desc_ifc.epilogue_aux_ld = self.aux_ld
         # Set the aux batch offset.
         mm_desc_ifc.epilogue_aux_batch_stride = self.aux_batch_offset
-        # The aux data type is bitmask, don't set.
+        # Set the pointer to 0x1 to bypass the cuBLAS check.
+        mm_desc_ifc.epilogue_aux_pointer = 0x1
 
     def update_ptr(self, mm_desc_ifc, ptr):
         # Set the aux pointer.
@@ -397,7 +417,7 @@ class BgradHandler(EpilogOutputHandler):
         self._name = enumerator.name.lower()
 
         if aux_dtype_name is not None:
-            raise ValueError("Custom type for auxiliary outputs is not supported for RELU epilogs.")
+            raise ValueError("Custom type for auxiliary outputs is not supported for BGRAD epilogs.")
 
         m = mm_traits.N if enumerator == Epilog.BGRADB else mm_traits.M
         batch_len = len(mm_traits.batch_axis_order)
@@ -534,7 +554,10 @@ class DReluAuxHandler(EpilogInputHandler):
         self.batch_offset = min(relu_aux_batch_strides) * 8 if relu_aux_batch_strides else 0  # relu_aux broadcast
 
         if self.batch_offset > 0:
-            assert self.batch_offset > 0 and self.batch_offset >= self.mm_m * 8 * self.mm_n, "Tensor data must not overlap."
+            assert self.batch_offset >= self.mm_m * 8 * self.mm_n, "Tensor data must not overlap."
+
+    def update_pointer(self, mm_desc_ifc, data_ptr):
+        mm_desc_ifc.epilogue_aux_pointer = data_ptr
 
     def update(self, mm_desc_ifc, relu_aux_tensor):
         # Set the epilog aux pointer.
@@ -564,6 +587,8 @@ class DGeluAuxHandler(EpilogInputHandler):
         self.mm_m, self.mm_n = gelu_aux_mm_shape(mm_traits.M, mm_traits.N)
 
         self.aux_ld = self.mm_m  # should be consistent with order (currently COL).
+
+        self.version = cublaslt.get_version()
 
         # K=1 is not supported by cuBLAS
         if mm_traits.K == 1:
@@ -636,7 +661,10 @@ class DGeluAuxHandler(EpilogInputHandler):
         self.batch_offset = min(gelu_aux_batch_strides) if gelu_aux_batch_strides else 0  # gelu_aux broadcast
 
         if self.batch_offset > 0:
-            assert self.batch_offset > 0 and self.batch_offset >= self.mm_m * self.mm_n, "Tensor data must not overlap."
+            assert self.batch_offset >= self.mm_m * self.mm_n, "Tensor data must not overlap."
+
+    def update_pointer(self, mm_desc_ifc, data_ptr):
+        mm_desc_ifc.epilogue_aux_pointer = data_ptr
 
     def update(self, mm_desc_ifc, gelu_aux_tensor):
         # Set the epilog aux pointer.

@@ -28,3 +28,17 @@ Pipfile*
 .pipenv-cache
 
 .mypy_cache
+
+# Cursor Local Agent Settings
+.cursor/local/*
+!.cursor/local/settings.template.md
+.cursor/sandbox.json
+.cursor/plans/
+.cursor/rules/
+!.cursor/rules/global-*
+
+# GPU Bridge temporary files
+internal/cursor/run/
+
+# graphify
+graphify-out/

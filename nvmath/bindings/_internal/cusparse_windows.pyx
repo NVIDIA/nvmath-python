@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.0, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -335,6 +335,13 @@ cdef void* __cusparseCreateConstSlicedEll = NULL
 cdef void* __cusparseSpSV_updateMatrix = NULL
 cdef void* __cusparseSpMV_preprocess = NULL
 cdef void* __cusparseSpSM_updateMatrix = NULL
+cdef void* __cusparseSpMVOp_createDescr = NULL
+cdef void* __cusparseSpMVOp_destroyDescr = NULL
+cdef void* __cusparseSpMVOp_createPlan = NULL
+cdef void* __cusparseSpMVOp_destroyPlan = NULL
+cdef void* __cusparseSpMVOp_setGlobalUserData = NULL
+cdef void* __cusparseSpMVOp = NULL
+cdef void* __cusparseSpMVOp_bufferSize = NULL
 
 
 cdef inline list get_site_packages():
@@ -1130,6 +1137,27 @@ cdef int _check_or_init_cusparse() except -1 nogil:
         global __cusparseSpSM_updateMatrix
         __cusparseSpSM_updateMatrix = GetProcAddress(handle, 'cusparseSpSM_updateMatrix')
 
+        global __cusparseSpMVOp_createDescr
+        __cusparseSpMVOp_createDescr = GetProcAddress(handle, 'cusparseSpMVOp_createDescr')
+
+        global __cusparseSpMVOp_destroyDescr
+        __cusparseSpMVOp_destroyDescr = GetProcAddress(handle, 'cusparseSpMVOp_destroyDescr')
+
+        global __cusparseSpMVOp_createPlan
+        __cusparseSpMVOp_createPlan = GetProcAddress(handle, 'cusparseSpMVOp_createPlan')
+
+        global __cusparseSpMVOp_destroyPlan
+        __cusparseSpMVOp_destroyPlan = GetProcAddress(handle, 'cusparseSpMVOp_destroyPlan')
+
+        global __cusparseSpMVOp_setGlobalUserData
+        __cusparseSpMVOp_setGlobalUserData = GetProcAddress(handle, 'cusparseSpMVOp_setGlobalUserData')
+
+        global __cusparseSpMVOp
+        __cusparseSpMVOp = GetProcAddress(handle, 'cusparseSpMVOp')
+
+        global __cusparseSpMVOp_bufferSize
+        __cusparseSpMVOp_bufferSize = GetProcAddress(handle, 'cusparseSpMVOp_bufferSize')
+
         __py_cusparse_init = True
         return 0
 
@@ -1912,6 +1940,27 @@ cpdef dict _inspect_function_pointers():
 
     global __cusparseSpSM_updateMatrix
     data["__cusparseSpSM_updateMatrix"] = <intptr_t>__cusparseSpSM_updateMatrix
+
+    global __cusparseSpMVOp_createDescr
+    data["__cusparseSpMVOp_createDescr"] = <intptr_t>__cusparseSpMVOp_createDescr
+
+    global __cusparseSpMVOp_destroyDescr
+    data["__cusparseSpMVOp_destroyDescr"] = <intptr_t>__cusparseSpMVOp_destroyDescr
+
+    global __cusparseSpMVOp_createPlan
+    data["__cusparseSpMVOp_createPlan"] = <intptr_t>__cusparseSpMVOp_createPlan
+
+    global __cusparseSpMVOp_destroyPlan
+    data["__cusparseSpMVOp_destroyPlan"] = <intptr_t>__cusparseSpMVOp_destroyPlan
+
+    global __cusparseSpMVOp_setGlobalUserData
+    data["__cusparseSpMVOp_setGlobalUserData"] = <intptr_t>__cusparseSpMVOp_setGlobalUserData
+
+    global __cusparseSpMVOp
+    data["__cusparseSpMVOp"] = <intptr_t>__cusparseSpMVOp
+
+    global __cusparseSpMVOp_bufferSize
+    data["__cusparseSpMVOp_bufferSize"] = <intptr_t>__cusparseSpMVOp_bufferSize
 
     func_ptrs = data
     return data
@@ -4486,3 +4535,73 @@ cdef cusparseStatus_t _cusparseSpSM_updateMatrix(cusparseHandle_t handle, cuspar
             raise FunctionNotFoundError("function cusparseSpSM_updateMatrix is not found")
     return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpSMDescr_t, void*, cusparseSpSMUpdate_t) noexcept nogil>__cusparseSpSM_updateMatrix)(
         handle, spsmDescr, newValues, updatePart)
+
+
+cdef cusparseStatus_t _cusparseSpMVOp_createDescr(cusparseHandle_t handle, cusparseSpMVOpDescr_t* desc, cusparseOperation_t opA, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ, cudaDataType computeType, void* buffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMVOp_createDescr
+    _check_or_init_cusparse()
+    if __cusparseSpMVOp_createDescr == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMVOp_createDescr is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpMVOpDescr_t*, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, void*) noexcept nogil>__cusparseSpMVOp_createDescr)(
+        handle, desc, opA, matA, vecX, vecY, vecZ, computeType, buffer)
+
+
+cdef cusparseStatus_t _cusparseSpMVOp_destroyDescr(cusparseSpMVOpDescr_t desc) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMVOp_destroyDescr
+    _check_or_init_cusparse()
+    if __cusparseSpMVOp_destroyDescr == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMVOp_destroyDescr is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMVOpDescr_t) noexcept nogil>__cusparseSpMVOp_destroyDescr)(
+        desc)
+
+
+cdef cusparseStatus_t _cusparseSpMVOp_createPlan(cusparseHandle_t handle, cusparseSpMVOpDescr_t desc, cusparseSpMVOpPlan_t* plan, const void* code, size_t codeSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMVOp_createPlan
+    _check_or_init_cusparse()
+    if __cusparseSpMVOp_createPlan == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMVOp_createPlan is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpMVOpDescr_t, cusparseSpMVOpPlan_t*, const void*, size_t) noexcept nogil>__cusparseSpMVOp_createPlan)(
+        handle, desc, plan, code, codeSize)
+
+
+cdef cusparseStatus_t _cusparseSpMVOp_destroyPlan(cusparseSpMVOpPlan_t plan) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMVOp_destroyPlan
+    _check_or_init_cusparse()
+    if __cusparseSpMVOp_destroyPlan == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMVOp_destroyPlan is not found")
+    return (<cusparseStatus_t (*)(cusparseSpMVOpPlan_t) noexcept nogil>__cusparseSpMVOp_destroyPlan)(
+        plan)
+
+
+cdef cusparseStatus_t _cusparseSpMVOp_setGlobalUserData(cusparseHandle_t handle, cusparseSpMVOpPlan_t plan, const char* global_data_name, void* input_data, size_t data_size) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMVOp_setGlobalUserData
+    _check_or_init_cusparse()
+    if __cusparseSpMVOp_setGlobalUserData == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMVOp_setGlobalUserData is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpMVOpPlan_t, const char*, void*, size_t) noexcept nogil>__cusparseSpMVOp_setGlobalUserData)(
+        handle, plan, global_data_name, input_data, data_size)
+
+
+cdef cusparseStatus_t _cusparseSpMVOp(cusparseHandle_t handle, cusparseSpMVOpPlan_t plan, const void* alpha, const void* beta, cusparseConstDnVecDescr_t vecX, cusparseConstDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMVOp
+    _check_or_init_cusparse()
+    if __cusparseSpMVOp == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMVOp is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseSpMVOpPlan_t, const void*, const void*, cusparseConstDnVecDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t) noexcept nogil>__cusparseSpMVOp)(
+        handle, plan, alpha, beta, vecX, vecY, vecZ)
+
+
+cdef cusparseStatus_t _cusparseSpMVOp_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ, cudaDataType computeType, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusparseSpMVOp_bufferSize
+    _check_or_init_cusparse()
+    if __cusparseSpMVOp_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusparseSpMVOp_bufferSize is not found")
+    return (<cusparseStatus_t (*)(cusparseHandle_t, cusparseOperation_t, cusparseConstSpMatDescr_t, cusparseConstDnVecDescr_t, cusparseDnVecDescr_t, cusparseDnVecDescr_t, cudaDataType, size_t*) noexcept nogil>__cusparseSpMVOp_bufferSize)(
+        handle, opA, matA, vecX, vecY, vecZ, computeType, bufferSize)

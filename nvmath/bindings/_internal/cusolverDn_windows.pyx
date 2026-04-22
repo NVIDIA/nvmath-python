@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.1, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -460,6 +460,22 @@ cdef void* __cusolverDnSetMathMode = NULL
 cdef void* __cusolverDnGetMathMode = NULL
 cdef void* __cusolverDnSetEmulationStrategy = NULL
 cdef void* __cusolverDnGetEmulationStrategy = NULL
+cdef void* __cusolverDnSetFixedPointEmulationMantissaControl = NULL
+cdef void* __cusolverDnGetFixedPointEmulationMantissaControl = NULL
+cdef void* __cusolverDnSetFixedPointEmulationMaxMantissaBitCount = NULL
+cdef void* __cusolverDnGetFixedPointEmulationMaxMantissaBitCount = NULL
+cdef void* __cusolverDnSetFixedPointEmulationMantissaBitOffset = NULL
+cdef void* __cusolverDnGetFixedPointEmulationMantissaBitOffset = NULL
+cdef void* __cusolverDnSetEmulationSpecialValuesSupport = NULL
+cdef void* __cusolverDnGetEmulationSpecialValuesSupport = NULL
+cdef void* __cusolverDnXsygvd_bufferSize = NULL
+cdef void* __cusolverDnXsygvd = NULL
+cdef void* __cusolverDnXsygvdx_bufferSize = NULL
+cdef void* __cusolverDnXsygvdx = NULL
+cdef void* __cusolverDnXstedc_bufferSize = NULL
+cdef void* __cusolverDnXstedc = NULL
+cdef void* __cusolverDnXpolar_bufferSize = NULL
+cdef void* __cusolverDnXpolar = NULL
 
 
 cdef inline list get_site_packages():
@@ -1617,6 +1633,54 @@ cdef int _check_or_init_cusolverDn() except -1 nogil:
         global __cusolverDnGetEmulationStrategy
         __cusolverDnGetEmulationStrategy = GetProcAddress(handle, 'cusolverDnGetEmulationStrategy')
 
+        global __cusolverDnSetFixedPointEmulationMantissaControl
+        __cusolverDnSetFixedPointEmulationMantissaControl = GetProcAddress(handle, 'cusolverDnSetFixedPointEmulationMantissaControl')
+
+        global __cusolverDnGetFixedPointEmulationMantissaControl
+        __cusolverDnGetFixedPointEmulationMantissaControl = GetProcAddress(handle, 'cusolverDnGetFixedPointEmulationMantissaControl')
+
+        global __cusolverDnSetFixedPointEmulationMaxMantissaBitCount
+        __cusolverDnSetFixedPointEmulationMaxMantissaBitCount = GetProcAddress(handle, 'cusolverDnSetFixedPointEmulationMaxMantissaBitCount')
+
+        global __cusolverDnGetFixedPointEmulationMaxMantissaBitCount
+        __cusolverDnGetFixedPointEmulationMaxMantissaBitCount = GetProcAddress(handle, 'cusolverDnGetFixedPointEmulationMaxMantissaBitCount')
+
+        global __cusolverDnSetFixedPointEmulationMantissaBitOffset
+        __cusolverDnSetFixedPointEmulationMantissaBitOffset = GetProcAddress(handle, 'cusolverDnSetFixedPointEmulationMantissaBitOffset')
+
+        global __cusolverDnGetFixedPointEmulationMantissaBitOffset
+        __cusolverDnGetFixedPointEmulationMantissaBitOffset = GetProcAddress(handle, 'cusolverDnGetFixedPointEmulationMantissaBitOffset')
+
+        global __cusolverDnSetEmulationSpecialValuesSupport
+        __cusolverDnSetEmulationSpecialValuesSupport = GetProcAddress(handle, 'cusolverDnSetEmulationSpecialValuesSupport')
+
+        global __cusolverDnGetEmulationSpecialValuesSupport
+        __cusolverDnGetEmulationSpecialValuesSupport = GetProcAddress(handle, 'cusolverDnGetEmulationSpecialValuesSupport')
+
+        global __cusolverDnXsygvd_bufferSize
+        __cusolverDnXsygvd_bufferSize = GetProcAddress(handle, 'cusolverDnXsygvd_bufferSize')
+
+        global __cusolverDnXsygvd
+        __cusolverDnXsygvd = GetProcAddress(handle, 'cusolverDnXsygvd')
+
+        global __cusolverDnXsygvdx_bufferSize
+        __cusolverDnXsygvdx_bufferSize = GetProcAddress(handle, 'cusolverDnXsygvdx_bufferSize')
+
+        global __cusolverDnXsygvdx
+        __cusolverDnXsygvdx = GetProcAddress(handle, 'cusolverDnXsygvdx')
+
+        global __cusolverDnXstedc_bufferSize
+        __cusolverDnXstedc_bufferSize = GetProcAddress(handle, 'cusolverDnXstedc_bufferSize')
+
+        global __cusolverDnXstedc
+        __cusolverDnXstedc = GetProcAddress(handle, 'cusolverDnXstedc')
+
+        global __cusolverDnXpolar_bufferSize
+        __cusolverDnXpolar_bufferSize = GetProcAddress(handle, 'cusolverDnXpolar_bufferSize')
+
+        global __cusolverDnXpolar
+        __cusolverDnXpolar = GetProcAddress(handle, 'cusolverDnXpolar')
+
         __py_cusolverDn_init = True
         return 0
 
@@ -2762,6 +2826,54 @@ cpdef dict _inspect_function_pointers():
 
     global __cusolverDnGetEmulationStrategy
     data["__cusolverDnGetEmulationStrategy"] = <intptr_t>__cusolverDnGetEmulationStrategy
+
+    global __cusolverDnSetFixedPointEmulationMantissaControl
+    data["__cusolverDnSetFixedPointEmulationMantissaControl"] = <intptr_t>__cusolverDnSetFixedPointEmulationMantissaControl
+
+    global __cusolverDnGetFixedPointEmulationMantissaControl
+    data["__cusolverDnGetFixedPointEmulationMantissaControl"] = <intptr_t>__cusolverDnGetFixedPointEmulationMantissaControl
+
+    global __cusolverDnSetFixedPointEmulationMaxMantissaBitCount
+    data["__cusolverDnSetFixedPointEmulationMaxMantissaBitCount"] = <intptr_t>__cusolverDnSetFixedPointEmulationMaxMantissaBitCount
+
+    global __cusolverDnGetFixedPointEmulationMaxMantissaBitCount
+    data["__cusolverDnGetFixedPointEmulationMaxMantissaBitCount"] = <intptr_t>__cusolverDnGetFixedPointEmulationMaxMantissaBitCount
+
+    global __cusolverDnSetFixedPointEmulationMantissaBitOffset
+    data["__cusolverDnSetFixedPointEmulationMantissaBitOffset"] = <intptr_t>__cusolverDnSetFixedPointEmulationMantissaBitOffset
+
+    global __cusolverDnGetFixedPointEmulationMantissaBitOffset
+    data["__cusolverDnGetFixedPointEmulationMantissaBitOffset"] = <intptr_t>__cusolverDnGetFixedPointEmulationMantissaBitOffset
+
+    global __cusolverDnSetEmulationSpecialValuesSupport
+    data["__cusolverDnSetEmulationSpecialValuesSupport"] = <intptr_t>__cusolverDnSetEmulationSpecialValuesSupport
+
+    global __cusolverDnGetEmulationSpecialValuesSupport
+    data["__cusolverDnGetEmulationSpecialValuesSupport"] = <intptr_t>__cusolverDnGetEmulationSpecialValuesSupport
+
+    global __cusolverDnXsygvd_bufferSize
+    data["__cusolverDnXsygvd_bufferSize"] = <intptr_t>__cusolverDnXsygvd_bufferSize
+
+    global __cusolverDnXsygvd
+    data["__cusolverDnXsygvd"] = <intptr_t>__cusolverDnXsygvd
+
+    global __cusolverDnXsygvdx_bufferSize
+    data["__cusolverDnXsygvdx_bufferSize"] = <intptr_t>__cusolverDnXsygvdx_bufferSize
+
+    global __cusolverDnXsygvdx
+    data["__cusolverDnXsygvdx"] = <intptr_t>__cusolverDnXsygvdx
+
+    global __cusolverDnXstedc_bufferSize
+    data["__cusolverDnXstedc_bufferSize"] = <intptr_t>__cusolverDnXstedc_bufferSize
+
+    global __cusolverDnXstedc
+    data["__cusolverDnXstedc"] = <intptr_t>__cusolverDnXstedc
+
+    global __cusolverDnXpolar_bufferSize
+    data["__cusolverDnXpolar_bufferSize"] = <intptr_t>__cusolverDnXpolar_bufferSize
+
+    global __cusolverDnXpolar
+    data["__cusolverDnXpolar"] = <intptr_t>__cusolverDnXpolar
 
     func_ptrs = data
     return data
@@ -6546,3 +6658,163 @@ cdef cusolverStatus_t _cusolverDnGetEmulationStrategy(cusolverDnHandle_t handle,
             raise FunctionNotFoundError("function cusolverDnGetEmulationStrategy is not found")
     return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaEmulationStrategy_t*) noexcept nogil>__cusolverDnGetEmulationStrategy)(
         handle, strategy)
+
+
+cdef cusolverStatus_t _cusolverDnSetFixedPointEmulationMantissaControl(cusolverDnHandle_t handle, cudaEmulationMantissaControl_t control) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnSetFixedPointEmulationMantissaControl
+    _check_or_init_cusolverDn()
+    if __cusolverDnSetFixedPointEmulationMantissaControl == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnSetFixedPointEmulationMantissaControl is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaEmulationMantissaControl_t) noexcept nogil>__cusolverDnSetFixedPointEmulationMantissaControl)(
+        handle, control)
+
+
+cdef cusolverStatus_t _cusolverDnGetFixedPointEmulationMantissaControl(cusolverDnHandle_t handle, cudaEmulationMantissaControl_t* control) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnGetFixedPointEmulationMantissaControl
+    _check_or_init_cusolverDn()
+    if __cusolverDnGetFixedPointEmulationMantissaControl == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnGetFixedPointEmulationMantissaControl is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaEmulationMantissaControl_t*) noexcept nogil>__cusolverDnGetFixedPointEmulationMantissaControl)(
+        handle, control)
+
+
+cdef cusolverStatus_t _cusolverDnSetFixedPointEmulationMaxMantissaBitCount(cusolverDnHandle_t handle, int mantissaBitCount) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnSetFixedPointEmulationMaxMantissaBitCount
+    _check_or_init_cusolverDn()
+    if __cusolverDnSetFixedPointEmulationMaxMantissaBitCount == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnSetFixedPointEmulationMaxMantissaBitCount is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int) noexcept nogil>__cusolverDnSetFixedPointEmulationMaxMantissaBitCount)(
+        handle, mantissaBitCount)
+
+
+cdef cusolverStatus_t _cusolverDnGetFixedPointEmulationMaxMantissaBitCount(cusolverDnHandle_t handle, int* mantissaBitCount) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnGetFixedPointEmulationMaxMantissaBitCount
+    _check_or_init_cusolverDn()
+    if __cusolverDnGetFixedPointEmulationMaxMantissaBitCount == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnGetFixedPointEmulationMaxMantissaBitCount is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int*) noexcept nogil>__cusolverDnGetFixedPointEmulationMaxMantissaBitCount)(
+        handle, mantissaBitCount)
+
+
+cdef cusolverStatus_t _cusolverDnSetFixedPointEmulationMantissaBitOffset(cusolverDnHandle_t handle, int mantissaBitOffset) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnSetFixedPointEmulationMantissaBitOffset
+    _check_or_init_cusolverDn()
+    if __cusolverDnSetFixedPointEmulationMantissaBitOffset == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnSetFixedPointEmulationMantissaBitOffset is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int) noexcept nogil>__cusolverDnSetFixedPointEmulationMantissaBitOffset)(
+        handle, mantissaBitOffset)
+
+
+cdef cusolverStatus_t _cusolverDnGetFixedPointEmulationMantissaBitOffset(cusolverDnHandle_t handle, int* mantissaBitOffset) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnGetFixedPointEmulationMantissaBitOffset
+    _check_or_init_cusolverDn()
+    if __cusolverDnGetFixedPointEmulationMantissaBitOffset == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnGetFixedPointEmulationMantissaBitOffset is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, int*) noexcept nogil>__cusolverDnGetFixedPointEmulationMantissaBitOffset)(
+        handle, mantissaBitOffset)
+
+
+cdef cusolverStatus_t _cusolverDnSetEmulationSpecialValuesSupport(cusolverDnHandle_t handle, cudaEmulationSpecialValuesSupport_t mask) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnSetEmulationSpecialValuesSupport
+    _check_or_init_cusolverDn()
+    if __cusolverDnSetEmulationSpecialValuesSupport == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnSetEmulationSpecialValuesSupport is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaEmulationSpecialValuesSupport_t) noexcept nogil>__cusolverDnSetEmulationSpecialValuesSupport)(
+        handle, mask)
+
+
+cdef cusolverStatus_t _cusolverDnGetEmulationSpecialValuesSupport(cusolverDnHandle_t handle, cudaEmulationSpecialValuesSupport_t* mask) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnGetEmulationSpecialValuesSupport
+    _check_or_init_cusolverDn()
+    if __cusolverDnGetEmulationSpecialValuesSupport == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnGetEmulationSpecialValuesSupport is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cudaEmulationSpecialValuesSupport_t*) noexcept nogil>__cusolverDnGetEmulationSpecialValuesSupport)(
+        handle, mask)
+
+
+cdef cusolverStatus_t _cusolverDnXsygvd_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* d_A, int64_t lda, cudaDataType dataTypeB, const void* d_B, int64_t ldb, cudaDataType dataTypeW, const void* d_W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXsygvd_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsygvd_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsygvd_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXsygvd_bufferSize)(
+        handle, params, itype, jobz, uplo, n, dataTypeA, d_A, lda, dataTypeB, d_B, ldb, dataTypeW, d_W, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXsygvd(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* d_A, int64_t lda, cudaDataType dataTypeB, void* d_B, int64_t ldb, cudaDataType dataTypeW, void* d_W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXsygvd
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsygvd == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsygvd is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXsygvd)(
+        handle, params, itype, jobz, uplo, n, dataTypeA, d_A, lda, dataTypeB, d_B, ldb, dataTypeW, d_W, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, d_info)
+
+
+cdef cusolverStatus_t _cusolverDnXsygvdx_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigType_t itype, cusolverEigMode_t jobz, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, const void* d_A, int64_t lda, cudaDataType dataTypeB, const void* d_B, int64_t ldb, void* vl, void* vu, int64_t il, int64_t iu, int64_t* meig, cudaDataType dataTypeW, const void* d_W, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXsygvdx_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsygvdx_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsygvdx_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigType_t, cusolverEigMode_t, cublasFillMode_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, void*, void*, int64_t, int64_t, int64_t*, cudaDataType, const void*, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXsygvdx_bufferSize)(
+        handle, params, itype, jobz, uplo, n, dataTypeA, d_A, lda, dataTypeB, d_B, ldb, vl, vu, il, iu, meig, dataTypeW, d_W, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXsygvdx(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigType_t itype, cusolverEigMode_t jobz, cusolverEigRange_t range, cublasFillMode_t uplo, int64_t n, cudaDataType dataTypeA, void* d_A, int64_t lda, cudaDataType dataTypeB, void* d_B, int64_t ldb, void* vl, void* vu, int64_t il, int64_t iu, int64_t* meig, cudaDataType dataTypeW, void* d_W, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXsygvdx
+    _check_or_init_cusolverDn()
+    if __cusolverDnXsygvdx == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXsygvdx is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigType_t, cusolverEigMode_t, cusolverEigRange_t, cublasFillMode_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, void*, void*, int64_t, int64_t, int64_t*, cudaDataType, void*, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXsygvdx)(
+        handle, params, itype, jobz, range, uplo, n, dataTypeA, d_A, lda, dataTypeB, d_B, ldb, vl, vu, il, iu, meig, dataTypeW, d_W, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, d_info)
+
+
+cdef cusolverStatus_t _cusolverDnXstedc_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigComp_t compz, int64_t n, cudaDataType dataTypeDE, const void* D, const void* E, cudaDataType dataTypeZ, const void* Z, int64_t ldz, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXstedc_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXstedc_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXstedc_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigComp_t, int64_t, cudaDataType, const void*, const void*, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXstedc_bufferSize)(
+        handle, params, compz, n, dataTypeDE, D, E, dataTypeZ, Z, ldz, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXstedc(cusolverDnHandle_t handle, cusolverDnParams_t params, cusolverEigComp_t compz, int64_t n, cudaDataType dataTypeDE, void* D, void* E, cudaDataType dataTypeZ, void* Z, int64_t ldz, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, int* info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXstedc
+    _check_or_init_cusolverDn()
+    if __cusolverDnXstedc == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXstedc is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cusolverEigComp_t, int64_t, cudaDataType, void*, void*, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, int*) noexcept nogil>__cusolverDnXstedc)(
+        handle, params, compz, n, dataTypeDE, D, E, dataTypeZ, Z, ldz, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, info)
+
+
+cdef cusolverStatus_t _cusolverDnXpolar_bufferSize(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t M, int64_t N, cudaDataType dataTypeA, const void* A, int64_t lda, cudaDataType dataTypeH, const void* H, int64_t ldh, cudaDataType computeType, size_t* workspaceInBytesOnDevice, size_t* workspaceInBytesOnHost) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXpolar_bufferSize
+    _check_or_init_cusolverDn()
+    if __cusolverDnXpolar_bufferSize == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXpolar_bufferSize is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, const void*, int64_t, cudaDataType, const void*, int64_t, cudaDataType, size_t*, size_t*) noexcept nogil>__cusolverDnXpolar_bufferSize)(
+        handle, params, uplo, M, N, dataTypeA, A, lda, dataTypeH, H, ldh, computeType, workspaceInBytesOnDevice, workspaceInBytesOnHost)
+
+
+cdef cusolverStatus_t _cusolverDnXpolar(cusolverDnHandle_t handle, cusolverDnParams_t params, cublasFillMode_t uplo, int64_t M, int64_t N, cudaDataType dataTypeA, void* A, int64_t lda, cudaDataType dataTypeH, void* H, int64_t ldh, cudaDataType computeType, void* bufferOnDevice, size_t workspaceInBytesOnDevice, void* bufferOnHost, size_t workspaceInBytesOnHost, double* d_res_nrm, double* d_A_nrmF, double* d_rcond, int* d_info) except?_CUSOLVERSTATUS_T_INTERNAL_LOADING_ERROR nogil:
+    global __cusolverDnXpolar
+    _check_or_init_cusolverDn()
+    if __cusolverDnXpolar == NULL:
+        with gil:
+            raise FunctionNotFoundError("function cusolverDnXpolar is not found")
+    return (<cusolverStatus_t (*)(cusolverDnHandle_t, cusolverDnParams_t, cublasFillMode_t, int64_t, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, int64_t, cudaDataType, void*, size_t, void*, size_t, double*, double*, double*, int*) noexcept nogil>__cusolverDnXpolar)(
+        handle, params, uplo, M, N, dataTypeA, A, lda, dataTypeH, H, ldh, computeType, bufferOnDevice, workspaceInBytesOnDevice, bufferOnHost, workspaceInBytesOnHost, d_res_nrm, d_A_nrmF, d_rcond, d_info)

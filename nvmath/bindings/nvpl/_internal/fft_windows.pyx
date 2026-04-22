@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.4.2. Do not modify it directly.
+# This code was automatically generated with version 25.5, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 cimport cython
 from libc.stdint cimport intptr_t
@@ -10,7 +10,6 @@ from libc.stdint cimport intptr_t
 import os
 import site
 import threading
-import win32api
 
 from ..._internal.utils import FunctionNotFoundError, NotSupportedError
 
@@ -64,10 +63,10 @@ cdef int get_cuda_version():
         raise NotSupportedError('CUDA driver is not found')
     cuDriverGetVersion = GetProcAddress(handle, 'cuDriverGetVersion')
     if cuDriverGetVersion == NULL:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError('Did not find cuDriverGetVersion symbol in nvcuda.dll')
     err = (<int (*)(int*) noexcept nogil>cuDriverGetVersion)(&driver_ver)
     if err != 0:
-        raise RuntimeError('something went wrong')
+        raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
 
     return driver_ver
 
@@ -80,6 +79,7 @@ cdef object __symbol_lock = threading.Lock()
 cdef bint __py_nvpl_fft_init = False
 cdef str __current_dll_name = ""
 cdef tuple __lib_dll_names = ("mkl_rt.2.dll", )
+cdef str __env_dll_override_name = "NVMATH_FFT_CPU_LIBRARY"
 
 cdef void* __nvpl_fft_get_version = NULL
 cdef void* __fftw_plan_many_dft = NULL
@@ -112,70 +112,55 @@ cdef inline list get_site_packages():
 
 cdef void* load_library() except* with gil:
     handle = 0
-    cdef str all_err_msg = ""
-    cdef str env_lib_dll_name = os.getenv("NVMATH_FFT_CPU_LIBRARY", "")
+    cdef str env_lib_dll_name = os.getenv(__env_dll_override_name, "")
 
     if env_lib_dll_name != "":
-        try:
-            handle = win32api.GetModuleHandle(env_lib_dll_name)
-        except Exception as e:
+        handle = LoadLibraryExW(env_lib_dll_name, NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
+        if handle == 0:
             raise RuntimeError(
-                f"Failed to dlopen NVMATH_FFT_CPU_LIBRARY={env_lib_dll_name}. "
-                f"Please check that NVMATH_FFT_CPU_LIBRARY is the name of a DLL on the PATH. {e}"
+                f"Failed to dlopen {__env_dll_override_name}={env_lib_dll_name}. "
+                f"Please check that {__env_dll_override_name} is the name of a DLL on the PATH."
             )
-        global __current_dll_name
-        __current_dll_name = env_lib_dll_name
-        assert handle != 0
-        return <void*><intptr_t>handle
+        else:
+            global __current_dll_name
+            __current_dll_name = env_lib_dll_name
+            return <void*><intptr_t>handle
 
     if len(__lib_dll_names) == 0:
-        raise RuntimeError("Cannot load a FFT-compatible library. No DLL names were specified.")
+        raise RuntimeError("Cannot load a FFTW-compatible library. No DLL names were specified.")
+
     for dll_name in __lib_dll_names:
 
-        # First check if the DLL has been loaded by 3rd parties
-        try:
-            handle = win32api.GetModuleHandle(dll_name)
-        except Exception as e:
-            all_err_msg += f"\n{e}"
-            pass
-        else:
-            break  # stop at first successful open
+        # First, try default search
+        handle = LoadLibraryExW(dll_name, NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
+        if handle != 0:
+            global __current_dll_name
+            __current_dll_name = dll_name
+            return <void*><intptr_t>handle
 
         # Next, check if DLLs are installed via pip
         for sp in get_site_packages():
             mod_path = os.path.join(sp, "..", "..", "Library", "bin")
             if not os.path.isdir(mod_path):
                 continue
-            os.add_dll_directory(mod_path)
-        try:
-            handle = win32api.LoadLibraryEx(
-                # Note: LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR needs an abs path...
+            handle = LoadLibraryExW(
+                # NOTE: LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR needs an abs path.
                 os.path.join(mod_path, dll_name),
-                0, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
-        except Exception as e:
-            all_err_msg += f"\n{e}"
-            pass
-        else:
-            break  # stop at first successful open
-
-        # Finally, try default search
-        try:
-            handle = win32api.LoadLibrary(dll_name)
-        except Exception as e:
-            all_err_msg += f"\n{e}"
-            pass
-        else:
-            break  # stop at first successful open
+                NULL,
+                # NOTE: Combine default and dll_load so that dependencies of the named DLL
+                # may be found on the default path
+                LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
+            if handle != 0:
+                global __current_dll_name
+                __current_dll_name = dll_name
+                return <void*><intptr_t>handle
     else:
         all_libs = ", ".join(__lib_dll_names)
         raise RuntimeError(
             f"Failed to dlopen all of the following libraries: {all_libs}. "
             "Install/add one of these libraries to the PATH or "
-            f"use environment variable NVMATH_FFT_CPU_LIBRARY to name a DLL on the PATH. {all_err_msg}"
+            f"use environment variable {__env_dll_override_name} to name a DLL on the PATH."
         )
-
-    global __current_dll_name
-    __current_dll_name = dll_name
 
     assert handle != 0
     return <void*><intptr_t>handle
@@ -187,6 +172,10 @@ cdef int _check_or_init_nvpl_fft() except -1 nogil:
         return 0
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_nvpl_fft_init:
+            return 0
+
         # Load library
         handle = <intptr_t>load_library()
 

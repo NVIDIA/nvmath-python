@@ -2,57 +2,40 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from functools import cached_property
-from collections.abc import Callable
 import numbers
 import operator
-from numba import cuda
-import numba
-from numba.core import typing, cgutils
-from numba.core.extending import models
-from numba.core.errors import TypingError
-from numba.extending import types, utils
-from numba.cuda.extending import overload_method, overload, intrinsic, typeof_impl
-from numba.cuda.cudaimpl import lower_constant, registry as cuda_registry
-from numba.cuda.models import register_model, StructModel
+from collections.abc import Callable
+from functools import cached_property
 
-from numba.np import numpy_support
+import llvmlite.ir as llvmir
+import numba
 import numpy
+from numba import cuda
+from numba.core import cgutils, typing
+from numba.core.base import BaseContext
+from numba.core.errors import TypingError
+from numba.core.extending import models
+from numba.cuda.cudaimpl import lower_constant
+from numba.cuda.cudaimpl import registry as cuda_registry
+from numba.cuda.extending import intrinsic, overload, overload_method, typeof_impl
+from numba.cuda.models import StructModel, register_model
+from numba.extending import types, utils
+from numba.np import numpy_support
 
 from nvmath.device.common_cuda import get_default_code_type
 from nvmath.device.cublasdx_backend import generate_copy_wait_lto
 
-from .common import axpby, copy, copy_fragment, clear, copy_wait, make_tensor, make_fragment_like, OpaqueTensor
+from .common import OpaqueTensor, axpby, clear, copy, copy_fragment, copy_wait, make_fragment_like, make_tensor
 from .common_numba import (
     NUMBA_FE_TYPES_TO_NUMBA_IR,
-    OpaquePointerType,
+    EmptyStructModel,
+    MathdxOpaqueTensorType,
+    MathdxPipelineType,
+    cast_to_void_pointer,
     declare_cabi_device,
     get_array_ptr,
-    get_opaque_pointer,
     get_value_ptr,
     overload_type_attribute,
-    EmptyStructModel,
-)
-from .cublasdx import (
-    _BlasMatmulLikeLayout,
-    DevicePipeline,
-    TilePipeline,
-    Matmul,
-    _BlasMatmulLayout,
-    Partitioner,
-    compile_blas_accumulator_init,
-    compile_blas_axpby,
-    compile_blas_clear,
-    compile_blas_copy,
-    compile_blas_execute,
-    compile_blas_is_index_in_bounds,
-    compile_blas_is_predicated,
-    compile_blas_is_thread_active,
-    compile_blas_map_idx2crd_partitioner,
-    compile_blas_tile_pipeline_execute,
-    compile_blas_tile_pipeline_init,
-    compile_blas_device_pipeline_reset_tile,
-    compile_blas_tile_pipeline_destroy,
 )
 from .common_opaque_tensor import (
     LayoutModel,
@@ -60,9 +43,27 @@ from .common_opaque_tensor import (
     OpaqueTensorModel,
     OpaqueTensorType,
 )
-
-import llvmlite.ir as llvmir
-from numba.core.base import BaseContext
+from .cublasdx import (
+    DevicePipeline,
+    Matmul,
+    Partitioner,
+    TilePipeline,
+    _BlasMatmulLayout,
+    _BlasMatmulLikeLayout,
+    compile_blas_accumulator_init,
+    compile_blas_axpby,
+    compile_blas_clear,
+    compile_blas_copy,
+    compile_blas_device_pipeline_reset_tile,
+    compile_blas_execute,
+    compile_blas_is_index_in_bounds,
+    compile_blas_is_predicated,
+    compile_blas_is_thread_active,
+    compile_blas_map_idx2crd_partitioner,
+    compile_blas_tile_pipeline_destroy,
+    compile_blas_tile_pipeline_execute,
+    compile_blas_tile_pipeline_init,
+)
 
 _BLAS_DEFINITION_ARGS = [
     "size",
@@ -77,6 +78,9 @@ _BLAS_DEFINITION_ARGS = [
     "function",
     "execution",
     "alignment",
+    "with_pipeline",
+    "enable_input_streaming",
+    "static_block_dim",
 ]
 
 _BLAS_COMPILED_ARGS = [
@@ -228,6 +232,49 @@ def typeof_tile_pipeline_numba(val: TilePipeline, c: typing.Context) -> TilePipe
     return TilePipelineType(val)
 
 
+@intrinsic
+def get_mathdx_tensor(typingctx: typing.Context, value):
+    """Cast value to MathdxOpaqueTensorType."""
+    if not isinstance(value, (OpaqueTensorType, BlasAccumulatorType)):
+        raise TypingError("get_mathdx_tensor expects an OpaqueTensorType or BlasAccumulatorType")
+
+    dynamic_strides_size = getattr(value.layout.layout, "dynamic_strides_size", 0)
+    dynamic_shape_size = getattr(value.layout.layout, "dynamic_shape_size", 0)
+
+    op_ty = MathdxOpaqueTensorType(dynamic_strides_size=dynamic_strides_size, dynamic_shape_size=dynamic_shape_size)
+    sig = typing.signature(op_ty, value)
+
+    def codegen(context: BaseContext, builder, sig, args):
+        input = cgutils.create_struct_proxy(sig.args[0])(context, builder, args[0])
+        output = cgutils.create_struct_proxy(sig.return_type)(context, builder)
+        output.ptr = input.ptr
+        if dynamic_strides_size > 0:
+            output.strides = input.strides
+        if dynamic_shape_size > 0:
+            output.shape = input.shape
+        return output._getvalue()
+
+    return sig, codegen
+
+
+@intrinsic
+def get_mathdx_pipeline(typingctx: typing.Context, value):
+    """Cast value to MathdxPipelineType."""
+    if not isinstance(value, (DevicePipelineType, TilePipelineType)):
+        raise TypingError("get_mathdx_pipeline expects a DevicePipelineType or TilePipelineType")
+
+    op_ty = MathdxPipelineType()
+    sig = typing.signature(op_ty, value)
+
+    def codegen(context: BaseContext, builder, sig, args):
+        input = cgutils.create_struct_proxy(sig.args[0])(context, builder, args[0])
+        output = cgutils.create_struct_proxy(sig.return_type)(context, builder)
+        output.ptr = input.ptr
+        return output._getvalue()
+
+    return sig, codegen
+
+
 for attribute in _TILE_PIPELINE_DEFINITION_ARGS + _TILE_PIPELINE_COMPILED_ARGS:
     overload_type_attribute(TilePipelineType, "pipeline", attribute)
 
@@ -342,7 +389,10 @@ def ol_blas_type___call___tensors_rmem(
     assert_suggested_tensors((a, b, c))
 
     return_type = types.void
-    sig = typing.signature(return_type, a, b, c)
+    mathdx_a = MathdxOpaqueTensorType(a_layout.dynamic_strides_size, a_layout.dynamic_shape_size)
+    mathdx_b = MathdxOpaqueTensorType(b_layout.dynamic_strides_size, b_layout.dynamic_shape_size)
+    mathdx_c = MathdxOpaqueTensorType(c_layout.dynamic_strides_size, c_layout.dynamic_shape_size)
+    sig = typing.signature(return_type, mathdx_a, mathdx_b, mathdx_c)
 
     code, symbol = compile_blas_execute(
         MM,
@@ -355,7 +405,7 @@ def ol_blas_type___call___tensors_rmem(
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(_, a, b, c):
-        blas_device_func(a, b, c)
+        blas_device_func(get_mathdx_tensor(a), get_mathdx_tensor(b), get_mathdx_tensor(c))
 
     return impl
 
@@ -384,8 +434,11 @@ def ol_blas_type___call___tensors_smem(
         return
 
     return_type = types.void
+    mathdx_a = MathdxOpaqueTensorType(a_layout.dynamic_strides_size, a_layout.dynamic_shape_size)
+    mathdx_b = MathdxOpaqueTensorType(b_layout.dynamic_strides_size, b_layout.dynamic_shape_size)
+    mathdx_c = MathdxOpaqueTensorType(c_layout.dynamic_strides_size, c_layout.dynamic_shape_size)
     c_ptr = types.CPointer(c.dtype)
-    sig = typing.signature(return_type, c_ptr, a, b, c_ptr, c)
+    sig = typing.signature(return_type, c_ptr, mathdx_a, mathdx_b, c_ptr, mathdx_c)
 
     code, symbol = compile_blas_execute(
         MM,
@@ -403,7 +456,7 @@ def ol_blas_type___call___tensors_smem(
         alpha_ptr = get_value_ptr(dtype(alpha))
         beta_ptr = get_value_ptr(dtype(beta))
 
-        blas_device_func(alpha_ptr, a, b, beta_ptr, c)
+        blas_device_func(alpha_ptr, get_mathdx_tensor(a), get_mathdx_tensor(b), beta_ptr, get_mathdx_tensor(c))
 
     return impl
 
@@ -577,13 +630,15 @@ def ol_blas_copy_generic(src: OpaqueTensorType, dst: OpaqueTensorType, alignment
     )
 
     return_type = types.void
-    sig = typing.signature(return_type, src, dst)
+    mathdx_src = MathdxOpaqueTensorType(src_layout_ty.layout.dynamic_strides_size, src_layout_ty.layout.dynamic_shape_size)
+    mathdx_dst = MathdxOpaqueTensorType(dst_layout_ty.layout.dynamic_strides_size, dst_layout_ty.layout.dynamic_shape_size)
+    sig = typing.signature(return_type, mathdx_src, mathdx_dst)
 
     lto = cuda.LTOIR(code.data)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(src, dst, alignment=None):
-        return blas_device_func(src, dst)
+        return blas_device_func(get_mathdx_tensor(src), get_mathdx_tensor(dst))
 
     return impl
 
@@ -601,11 +656,12 @@ def ol_blas_clear(arr: OpaqueTensorType):
     lto = cuda.LTOIR(code.data)
 
     return_type = types.void
-    sig = typing.signature(return_type, arr)
+    mathdx_arr = MathdxOpaqueTensorType(arr.layout.layout.dynamic_strides_size, arr.layout.layout.dynamic_shape_size)
+    sig = typing.signature(return_type, mathdx_arr)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(arr):
-        return blas_device_func(arr)
+        return blas_device_func(get_mathdx_tensor(arr))
 
     return impl
 
@@ -831,16 +887,19 @@ def ol_axpby(a, x, b, y):
     lto = cuda.LTOIR(code.data)
 
     return_type = types.void
-    sig = typing.signature(return_type, types.CPointer(x.dtype), x, types.CPointer(y.dtype), y)
+    alpha_beta_ptr = types.CPointer(types.uint8)
+    mathdx_x = MathdxOpaqueTensorType(x.layout.layout.dynamic_strides_size, x.layout.layout.dynamic_shape_size)
+    mathdx_y = MathdxOpaqueTensorType(y.layout.layout.dynamic_strides_size, y.layout.layout.dynamic_shape_size)
+    sig = typing.signature(return_type, alpha_beta_ptr, mathdx_x, alpha_beta_ptr, mathdx_y)
     blas_device_func = declare_cabi_device(symbol, sig, link=lto)
 
     x_dtype = x.dtype
     y_dtype = y.dtype
 
     def impl(a, x, b, y):
-        a_ptr = get_value_ptr(x_dtype(a))
-        b_ptr = get_value_ptr(y_dtype(b))
-        return blas_device_func(a_ptr, x, b_ptr, y)
+        a_ptr = cast_to_void_pointer(get_value_ptr(x_dtype(a)))
+        b_ptr = cast_to_void_pointer(get_value_ptr(y_dtype(b)))
+        return blas_device_func(a_ptr, get_mathdx_tensor(x), b_ptr, get_mathdx_tensor(y))
 
     return impl
 
@@ -1215,12 +1274,13 @@ def ol_opaque_tensor_init(
     lto = cuda.LTOIR(code.data)
 
     return_type = types.void
-    sig = typing.signature(return_type, accumulator)
+    mathdx_accumulator = MathdxOpaqueTensorType(layout.layout.dynamic_strides_size, layout.layout.dynamic_shape_size)
+    sig = typing.signature(return_type, mathdx_accumulator)
 
     cublasdx_init_accumulator = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(accumulator):
-        cublasdx_init_accumulator(accumulator)
+        cublasdx_init_accumulator(get_mathdx_tensor(accumulator))
 
     return impl
 
@@ -1327,8 +1387,8 @@ def ol_tile_pipeline_reset_tile(
     return_type = types.void
     sig = typing.signature(
         return_type,
-        OpaquePointerType(),
-        OpaquePointerType(),
+        MathdxPipelineType(),
+        MathdxPipelineType(),
         types.CPointer(types.int32),
         types.CPointer(types.int32),
     )
@@ -1340,7 +1400,7 @@ def ol_tile_pipeline_reset_tile(
         def impl(device_pipeline, tile_pipeline, idx, idy):
             idx = get_value_ptr(types.int32(idx))
             idy = get_value_ptr(types.int32(idy))
-            cublasdx_reset_tile(get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), idx, idy)
+            cublasdx_reset_tile(get_mathdx_pipeline(device_pipeline), get_mathdx_pipeline(tile_pipeline), idx, idy)
 
         return impl
     else:
@@ -1352,7 +1412,7 @@ def ol_tile_pipeline_reset_tile(
             idy_arr[0], idy_arr[1] = idy
             idx_ptr = get_array_ptr(idx_arr)
             idy_ptr = get_array_ptr(idy_arr)
-            cublasdx_reset_tile(get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), idx_ptr, idy_ptr)
+            cublasdx_reset_tile(get_mathdx_pipeline(device_pipeline), get_mathdx_pipeline(tile_pipeline), idx_ptr, idy_ptr)
 
         return impl
 
@@ -1384,8 +1444,8 @@ def ol_tile_pipeline_init(
     return_type = types.void
     sig = typing.signature(
         return_type,
-        OpaquePointerType(),
-        OpaquePointerType(),
+        MathdxPipelineType(),
+        MathdxPipelineType(),
         types.CPointer(smem.dtype),
         types.CPointer(types.int32),
         types.CPointer(types.int32),
@@ -1400,7 +1460,7 @@ def ol_tile_pipeline_init(
             idx = get_value_ptr(types.int32(idx))
             idy = get_value_ptr(types.int32(idy))
 
-            cublasdx_init_pipeline(get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), smem_ptr, idx, idy)
+            cublasdx_init_pipeline(get_mathdx_pipeline(device_pipeline), get_mathdx_pipeline(tile_pipeline), smem_ptr, idx, idy)
 
         return impl
     else:
@@ -1414,7 +1474,7 @@ def ol_tile_pipeline_init(
             idx_ptr = get_array_ptr(idx_arr)
             idy_ptr = get_array_ptr(idy_arr)
             cublasdx_init_pipeline(
-                get_opaque_pointer(device_pipeline), get_opaque_pointer(tile_pipeline), smem_ptr, idx_ptr, idy_ptr
+                get_mathdx_pipeline(device_pipeline), get_mathdx_pipeline(tile_pipeline), smem_ptr, idx_ptr, idy_ptr
             )
 
         return impl
@@ -1452,12 +1512,16 @@ def ol_tile_pipeline_execute(
     lto = cuda.LTOIR(code.data)
 
     return_type = types.void
-    sig = typing.signature(return_type, OpaquePointerType(), accumulator)
+    acc_ty = MathdxOpaqueTensorType(
+        dynamic_strides_size=getattr(getattr(acc_layout, "layout", None), "dynamic_strides_size", 0),
+        dynamic_shape_size=getattr(getattr(acc_layout, "layout", None), "dynamic_shape_size", 0),
+    )
+    sig = typing.signature(return_type, MathdxPipelineType(), acc_ty)
 
     cublasdx_tile_pipeline_execute = declare_cabi_device(symbol, sig, link=lto)
 
     def impl(tile_pipeline, accumulator):
-        cublasdx_tile_pipeline_execute(get_opaque_pointer(tile_pipeline), accumulator)
+        cublasdx_tile_pipeline_execute(get_mathdx_pipeline(tile_pipeline), get_mathdx_tensor(accumulator))
 
     return impl
 

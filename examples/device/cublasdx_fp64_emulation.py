@@ -19,16 +19,14 @@
 # 3. Accumulate split products in high precision to recover full-precision accuracy.
 #
 
-from numba import cuda
 import numpy as np
-from numba import int32, int8, int16, float64, int64, types
-from numba.types import Tuple
-from cuda import coop
-
 from common import mm_perf_GFlops, random_real
 from common_numba import time_numba
+from cuda import coop
+from numba import cuda, float64, int8, int16, int32, int64, types
+from numba.types import Tuple
+
 from nvmath.device import Matmul
-from nvmath.device.cublasdx import MAX_ALIGNMENT, SharedStorageCalc
 from nvmath.device.common import (
     clear,
     copy,
@@ -37,6 +35,7 @@ from nvmath.device.common import (
     make_tensor,
 )
 from nvmath.device.common_cuda import Dim3
+from nvmath.device.cublasdx import MAX_ALIGNMENT, SharedStorageCalc
 
 MANTISSA_FRACTION_BITS = 52
 MANTISSA_FRACTION_MASK = (1 << MANTISSA_FRACTION_BITS) - 1
@@ -411,11 +410,11 @@ def build_compose_kernel(tile_size, threads, exp_shift, device=False):
 
         for r in range(repeats_per_line):
             i = i0 + r * threads
-            for l in range(lines):
+            for line_idx in range(lines):
                 exp_shift_a = exp_shift + exponent_a[start_m + i]
 
                 for j_it in range(0, tile_n, lines):
-                    j = j_it + l
+                    j = j_it + line_idx
                     if j >= tile_n:
                         continue
 

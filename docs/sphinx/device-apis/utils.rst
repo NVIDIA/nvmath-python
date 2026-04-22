@@ -20,6 +20,7 @@ API Reference
    :toctree: generated/
 
    current_device_lto
+   current_device_sm
    Complex
    Vector
    complex32
@@ -38,7 +39,9 @@ API Reference
    float32x2_type
    float64x2_type
 
-   :template: namedtuple.rst
+.. autosummary::
+   :toctree: generated/
+   :template: namedtuple
 
    ISAVersion
    Code

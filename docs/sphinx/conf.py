@@ -10,28 +10,27 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-from datetime import datetime
-from enum import Enum
 import importlib
 import inspect
+import json
 import os
 import re
 import sys
-import tomllib
 import tempfile
-import json
+from datetime import datetime
+from enum import Enum
+
+import tomllib
 
 sys.path.insert(0, os.path.abspath("."))
 import warnings
 
-from sphinx.writers.html import HTMLTranslator
-from docutils.transforms import Transform
-from docutils.parsers.rst import Directive
 import docutils.nodes as nodes
-
 import numpy as np
-
+from docutils.parsers.rst import Directive
+from docutils.transforms import Transform
 from enum_tools.autoenum import EnumDocumenter
+from sphinx.writers.html import HTMLTranslator
 
 try:
     import nvmath
@@ -67,6 +66,27 @@ version = nvmath_py_ver
 # The full version, including alpha/beta/rc tags.
 release = nvmath_py_ver
 
+# Component versions from NVIDIA MathDx Package
+# Source of truth: https://docs.nvidia.com/cuda/mathdx/index.html#components
+mathdx_versions = {
+    "cublasdx": "0.5.1",
+    "cufftdx": "1.6.1",
+    "cusolverdx": "0.3.0",
+    "curanddx": "0.2.2",
+    "nvcompdx": "0.1.2",
+    "mathdx": "25.12.1",
+}
+
+rst_replacements = {
+    "nvmath-python_version": nvmath_py_ver,
+}
+
+rst_replacements.update({f"{k}_version": v for k, v in mathdx_versions.items()})
+
+# Common replacements
+# To use a replacement in a code block, add :substitutions: at the top of the block.
+rst_prolog = "\n".join(f".. |{k}| replace:: {v}" for k, v in rst_replacements.items()) + "\n"
+
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -92,13 +112,31 @@ extensions = [
     "sphinx_favicon",
     "nbsphinx",
     "nbsphinx_link",
+    "sphinx_substitution_extensions",  # for using rst substitutions in code blocks
+    "sphinx_tabs.tabs",
 ]
 
 extlinks = {
     "cufftmp_hw": (
         "https://docs.nvidia.com/cuda/cufftmp/usage/requirements.html#hardware-%s",
         "p2p or GPUDirect RDMA over IB %s",
-    )
+    ),
+    "cublasdx_doc": (
+        f"https://docs.nvidia.com/cuda/cublasdx/{mathdx_versions['cublasdx']}/%s",
+        "%s",
+    ),
+    "cufftdx_doc": (
+        f"https://docs.nvidia.com/cuda/cufftdx/{mathdx_versions['cufftdx']}/%s",
+        "%s",
+    ),
+    "cusolverdx_doc": (
+        f"https://docs.nvidia.com/cuda/cusolverdx/{mathdx_versions['cusolverdx']}/%s",
+        "%s",
+    ),
+    "cuda_doc": (
+        "https://docs.nvidia.com/cuda/cuda-programming-guide/%s",
+        "%s",
+    ),
 }
 
 imgmath_latex_preamble = r"\usepackage{braket}"
@@ -187,7 +225,10 @@ htmlhelp_basename = "nvmath-python-doc"
 # Example of URL ignore pattern:
 # "https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/fft/.*"
 # NOTE: remove ignore patterns once examples are published.
-linkcheck_ignore = []
+linkcheck_ignore = [
+    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/generic/matmul/.*",
+    "https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/ust/.*",
+]
 
 
 def autodoc_process_docstring(app, what, name, obj, options, lines):
@@ -198,8 +239,8 @@ def autodoc_process_docstring(app, what, name, obj, options, lines):
     # need to do post-processing here
     if isinstance(obj, np.dtype):
         docs = {}
+        from nvmath.linalg.generic._configuration.qualifiers import MM_QUALIFIERS_DOCUMENTATION, matrix_qualifiers_dtype
         from nvmath.sparse._internal.cudss_data_ifc import memory_estimates_dtype
-        from nvmath.linalg.generic._configuration.qualifiers import matrix_qualifiers_dtype, MM_QUALIFIERS_DOCUMENTATION
 
         # TODO: find better way to declare docs in the source code.
         if obj == memory_estimates_dtype:
@@ -451,6 +492,7 @@ autosummary_filename_map = {
     "nvmath.device.Matmul": "nvmath.device.Matmul-class",
     "nvmath.linalg.advanced.Matmul": "nvmath.linalg.advanced.Matmul-class",
     "nvmath.linalg.Matmul": "nvmath.linalg.Matmul-class",
+    "nvmath.sparse.Matmul": "nvmath.sparse.Matmul-class",
     "nvmath.distributed.linalg.advanced.Matmul": "nvmath.distributed.linalg.advanced.Matmul-class",
     "nvmath.distributed.fft.FFT": "nvmath.distributed.fft.FFT-class",
     "nvmath.distributed.reshape.Reshape": "nvmath.distributed.reshape.Reshape-class",
@@ -623,14 +665,16 @@ def linkcode_resolve(domain, info):
         linenum = None
     else:
         # Get the source line number
-        _, linenum = inspect.getsourcelines(obj)
-        assert isinstance(linenum, int)
+        try:
+            _, linenum = inspect.getsourcelines(obj)
+        except Exception:
+            linenum = None
     assert filename is not None
 
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)
 
     fragment = "" if linenum is None else f"#L{linenum}"
-    branch = "main"  # always use the main branch for now
 
-    return f"https://github.com/NVIDIA/nvmath-python/tree/{branch}/{relpath}{fragment}"
+    # link to the exact version of the code
+    return f"https://github.com/NVIDIA/nvmath-python/blob/v{nvmath_py_ver}/{relpath}{fragment}"

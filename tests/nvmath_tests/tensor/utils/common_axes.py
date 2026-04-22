@@ -19,7 +19,13 @@ try:
 except ImportError:
     from cuda.core.experimental import Device
 
-from nvmath.tensor import ComputeDesc, ContractionJitMode, ContractionAlgo
+from nvmath.tensor import (
+    ComputeDesc,
+    ContractionAlgo,
+    ContractionAutotuneMode,
+    ContractionCacheMode,
+    ContractionJitMode,
+)
 
 
 class Framework(Enum):
@@ -60,11 +66,29 @@ class ComputeType(Enum):
 
     tf32 = ComputeDesc.COMPUTE_TF32()
     three_xtf32 = ComputeDesc.COMPUTE_3XTF32()
+    eight_xint8 = ComputeDesc.COMPUTE_8XINT8()
+    nine_x16bf = ComputeDesc.COMPUTE_9X16BF()
+    four_x16f = ComputeDesc.COMPUTE_4X16F()
 
 
 class BlockingOption(Enum):
     true = True
     auto = "auto"
+
+
+class AutotuneModeOption(Enum):
+    none = ContractionAutotuneMode.NONE
+    incremental = ContractionAutotuneMode.INCREMENTAL
+
+
+class CacheModeOption(Enum):
+    none = ContractionCacheMode.NONE
+    pedantic = ContractionCacheMode.PEDANTIC
+
+
+class IncrementalCountOption(Enum):
+    two = 2
+    five = 5
 
 
 class JitOption(Enum):

@@ -15,11 +15,10 @@ __all__ = ["NDBufferTensor"]
 
 from collections.abc import Sequence
 
+from . import typemaps, utils
 from .ndbuffer import ndbuffer
-from . import typemaps
-from . import utils
-from .tensor_ifc import TensorHolder
 from .package_ifc import StreamHolder
+from .tensor_ifc import TensorHolder
 
 
 class NDBufferTensor(TensorHolder[ndbuffer.NDBuffer]):
@@ -134,6 +133,17 @@ class NDBufferTensor(TensorHolder[ndbuffer.NDBuffer]):
         if copy:
             raise NotImplementedError("Reshape with copy is not supported for ndbuffer")
         return self.__class__(ndbuffer.reshaped_view(self.tensor, shape))
+
+    def memory_buffer(self):
+        """Creates a view of the memory buffer as a 1D tensor."""
+        raise NotImplementedError
+
+    def memory_buffer_to_tensor(self, shape, strides):
+        """
+        Creates a N-D tensor view of the memory buffer according to the specified
+        shape and strides.
+        """
+        raise NotImplementedError
 
     def _broadcast_to(self, shape):
         if self.tensor.shape == shape:

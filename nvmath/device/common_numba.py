@@ -2,21 +2,25 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any
 from collections.abc import Callable
+from typing import Any
+
+import llvmlite.ir as llvmir
+import numpy as np
 from llvmlite import ir
 from numba import types
 from numba.core import cgutils, typing
 from numba.core.base import BaseContext
-from numba.extending import models, typeof_impl
-from numba.cuda.extending import overload, overload_attribute, intrinsic, register_model
 from numba.core.errors import TypingError
+from numba.cuda.cudaimpl import lower_constant
+from numba.cuda.extending import intrinsic, overload, overload_attribute, register_model
+from numba.extending import models, typeof_impl
+
 from nvmath.bindings import mathdx
-import numpy as np
 
-
+from .llvm_array import LLVMArray
+from .types import Complex, Vector, complex32, complex64, complex128, half2, half4, np_float16x2, np_float16x4
 from .vector_types_numba import float16x2_type, float16x4_type, float32x2_type, float64x2_type
-from .types import np_float16x2, np_float16x4, complex32, complex64, complex128, half2, half4, Complex, Vector
 
 NP_TYPES_TO_NUMBA_FE_TYPES = {
     np.float16: np.float16,
@@ -132,45 +136,96 @@ def get_array_ptr(typingctx: typing.Context, arr):
     return sig, codegen
 
 
-@intrinsic
-def get_value_ptr(typingctx: typing.Context, value):
-    """Get raw pointer to the value."""
-    if value not in [float16x2_type, float16x4_type, float32x2_type, float64x2_type] and not isinstance(  # noqa: UP038
-        value, (types.Float, types.Complex, types.Integer)
-    ):
-        raise TypingError(f"get_value_ptr does not support type {value}")
+def build_get_value_ptr(target_type=None):
+    @intrinsic
+    def get_value_ptr_impl(typingctx: typing.Context, value):
+        """Get raw pointer to the value."""
+        if value not in [float16x2_type, float16x4_type, float32x2_type, float64x2_type] and not isinstance(  # noqa: UP038
+            value, (types.Float, types.Complex, types.Integer)
+        ):
+            raise TypingError(f"get_value_ptr does not support type {value}")
 
-    sig = typing.signature(types.CPointer(value), value)
+        return_type = target_type if target_type is not None else value
+        sig = typing.signature(types.CPointer(return_type), value)
 
-    def codegen(context: BaseContext, builder, sig, args):
-        return cgutils.alloca_once_value(builder, args[0])
+        def codegen(context: BaseContext, builder, sig, args):
+            if target_type is not None and sig.args[0] != target_type:
+                value = context.cast(builder, args[0], sig.args[0], target_type)
+            else:
+                value = args[0]
+            return cgutils.alloca_once_value(builder, value)
 
-    return sig, codegen
+        return sig, codegen
+
+    return get_value_ptr_impl
 
 
-class OpaquePointerType(types.Type):
+get_value_ptr = build_get_value_ptr()
+get_uint32_value_ptr = build_get_value_ptr(target_type=types.uint32)
+
+
+class MathdxOpaqueTensorType(types.Type):
+    def __init__(self, dynamic_strides_size=0, dynamic_shape_size=0):
+        self.dynamic_strides_size = dynamic_strides_size
+        self.dynamic_shape_size = dynamic_shape_size
+        super().__init__(f"MathdxOpaqueTensor({dynamic_strides_size}, {dynamic_shape_size})")
+
+
+@register_model(MathdxOpaqueTensorType)
+class MathdxOpaqueTensorModel(models.StructModel):
+    def __init__(self, dmm, fe_type: MathdxOpaqueTensorType):
+        members = [("ptr", types.voidptr)]
+
+        if fe_type.dynamic_strides_size > 0:
+            array_type = LLVMArray(types.int64, fe_type.dynamic_strides_size)
+            members += [("strides", array_type)]
+
+        if fe_type.dynamic_shape_size > 0:
+            array_type = LLVMArray(types.int64, fe_type.dynamic_shape_size)
+            members += [("shape", array_type)]
+
+        models.StructModel.__init__(self, dmm, fe_type, members)
+
+    def get_value_type(self):
+        if self._value_type is None:
+            name = f"struct.libmathdx_tensor_{self._fe_type.dynamic_strides_size}s_{self._fe_type.dynamic_shape_size}s"
+            t = llvmir.global_context.get_identified_type(name)
+            if t.is_opaque:
+                t.set_body(*[m.get_value_type() for m in self._models])
+            self._value_type = t
+        return self._value_type
+
+
+class MathdxPipelineType(types.Type):
     def __init__(self):
-        super().__init__("OpaquePointer()")
+        super().__init__("MathdxPipeline()")
 
 
-@register_model(OpaquePointerType)
-class OpaquePointerModel(models.StructModel):
-    def __init__(self, dmm, fe_type: OpaquePointerType):
+@register_model(MathdxPipelineType)
+class MathdxPipelineModel(models.StructModel):
+    def __init__(self, dmm, fe_type: MathdxPipelineType):
         members = [("ptr", types.voidptr)]
         models.StructModel.__init__(self, dmm, fe_type, members)
 
+    def get_value_type(self):
+        if self._value_type is None:
+            name = "struct.libmathdx_pipeline"
+            t = llvmir.global_context.get_identified_type(name)
+            if t.is_opaque:
+                t.set_body(*[m.get_value_type() for m in self._models])
+            self._value_type = t
+        return self._value_type
+
 
 @intrinsic
-def get_opaque_pointer(typingctx: typing.Context, value):
-    """Get opaque pointer to the value."""
-    op_ty = OpaquePointerType()
-    sig = typing.signature(op_ty, value)
+def cast_to_void_pointer(typingctx: typing.Context, ptr_ty):
+    if not isinstance(ptr_ty, types.CPointer):
+        raise TypingError("cast_to_void_pointer expects a CPointer type")
+    i8_ptr_ty = types.CPointer(types.uint8)
+    sig = i8_ptr_ty(ptr_ty)
 
     def codegen(context: BaseContext, builder, sig, args):
-        input = cgutils.create_struct_proxy(sig.args[0])(context, builder, args[0])
-        output = cgutils.create_struct_proxy(sig.return_type)(context, builder)
-        output.ptr = input.ptr
-        return output._getvalue()
+        return builder.bitcast(args[0], context.get_value_type(i8_ptr_ty))
 
     return sig, codegen
 
@@ -207,7 +262,11 @@ def _declare_cabi_device(symbol: str, sig: typing.Signature, link=None):
 
             assert len(args) == len(argTypes)
 
-            retTy = context.get_value_type(sig.return_type)
+            # CUDA target maps types.void to i8*, but we need void for abi correctness.
+            if sig.return_type == types.void:
+                retTy = ir.VoidType()
+            else:
+                retTy = context.get_value_type(sig.return_type)
             fnTy = ir.FunctionType(retTy, [context.get_value_type(argTy) for argTy in argTypes])
             fn = cgutils.get_or_insert_function(builder.module, fnTy, symbol)
             builder.call(fn, args)
@@ -230,3 +289,22 @@ def _declare_cabi_device(symbol: str, sig: typing.Signature, link=None):
         return lambda *args: call_device(tuple(args))
 
     return device_func
+
+
+def register_dummy_numba_type(numba_type, base_type, name, attributes):
+    """Register and lower a dummy Numba type that does not take space in memory.
+    Intended for types that are present only at typing stage and not represented in memory,
+    but are allowed to be accessed inside kernel."""
+    for attribute in attributes:
+        overload_type_attribute(numba_type, name, attribute)
+
+    @typeof_impl.register(base_type)
+    def typeof_numba(val, context):
+        return numba_type(val)
+
+    register_model(numba_type)(EmptyStructModel)
+
+    @lower_constant(numba_type)
+    def constant_dummy(context, builder, typ, pyval):
+        struct_ptr = cgutils.create_struct_proxy(typ)(context, builder)
+        return struct_ptr._getvalue()

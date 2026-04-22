@@ -7,12 +7,11 @@ A collection of functions for parsing Einsum expressions.
 """
 
 from collections import Counter
-from itertools import chain
 from functools import lru_cache
+from itertools import chain
 
 from ...internal import formatters, tensor_wrapper
 from .data import WHITESPACE_UNICODE
-
 
 DISALLOWED_LABELS = {".", "-", ">"}
 native_to_str = lambda native: "'" + "".join(s if s is not Ellipsis else "..." for s in native) + "'"

@@ -5,8 +5,9 @@
 from collections.abc import Callable
 
 import numpy as np
-import nvmath.device.random as R
 import scipy.stats as stats
+
+import nvmath.device.random as R
 
 from . import generators
 
@@ -190,14 +191,14 @@ class Poisson(DiscreteDistribution):
     Poisson distribution.
     """
 
-    def __init__(self, l):
-        self.l = l
+    def __init__(self, mu):
+        self.mu = mu
 
     def cdf(self, x):
-        return stats.poisson.cdf(x, self.l)
+        return stats.poisson.cdf(x, self.mu)
 
     def ppf(self, x):
-        return stats.poisson.ppf(x, self.l)
+        return stats.poisson.ppf(x, self.mu)
 
     def curand_variants(self):
         return {
@@ -212,7 +213,7 @@ class Poisson(DiscreteDistribution):
         }
 
     def curand(self, dtype_name, group_size):
-        return self._get_curand_function(dtype_name, group_size), (self.l,)
+        return self._get_curand_function(dtype_name, group_size), (self.mu,)
 
     def pretty(self):
-        return f"poisson({self.l})"
+        return f"poisson({self.mu})"

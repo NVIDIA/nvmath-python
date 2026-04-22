@@ -2,28 +2,37 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
 from collections.abc import Sequence
+
 import numpy as np
+import pytest
 from numba import cuda
 
-from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_tensor
+from nvmath.device import Dim3, Matmul, TransposeMode, float16x2_type, float32x2_type, float64x2_type, matmul
+from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_fragment_like, make_tensor
 from nvmath.device.common_cuda import ComputeCapability
-from nvmath.device.cublasdx_backend import Arrangement, Precision
+from nvmath.device.cublasdx import DevicePipeline
+from nvmath.device.cublasdx_backend import MAX_ALIGNMENT, Arrangement, Precision
+from nvmath.device.cublasdx_numba import pipeline_extensions
+
 from .helpers import (
     _TOLERANCE,
     SM80,
-    random_real,
     random_complex,
     random_int,
-    show_MM_traits,
+    random_real,
+    requires_pipeline,
     set_device,
+    show_MM_traits,
     skip_nvbug_5218000,
     time_this,
 )
-import time
-from nvmath.device import matmul, float16x2_type, float32x2_type, float64x2_type, Dim3
-from nvmath.device import TransposeMode, Matmul
-import pytest
 
 
 def flip_if(shape, trans):
@@ -731,3 +740,231 @@ def test_lto_symbol_duplicate():
     c_d = cuda.to_device(c)
 
     f[1, MM.block_size](a_d, b_d, c_d)
+
+
+# TODO: fix when numba-cuda starts using cuda-pathfinder for nvdisasm
+# (once https://github.com/NVIDIA/cuda-python/pull/1846 released)
+def _ensure_nvdisasm_on_path() -> None:
+    if shutil.which("nvdisasm"):
+        return
+    name = "nvdisasm.exe" if sys.platform == "win32" else "nvdisasm"
+    for root in sys.path:
+        if not root or not os.path.isdir(root):
+            continue
+        path = os.path.join(root, "nvidia", "cu13", "bin", name)
+        if os.path.isfile(path) and (sys.platform == "win32" or os.access(path, os.X_OK)):
+            bindir = os.path.dirname(path)
+            os.environ["PATH"] = bindir + os.pathsep + os.environ.get("PATH", "")
+            return
+
+
+def _is_nvdisasm_from_ctk13() -> bool:
+    _ensure_nvdisasm_on_path()
+    nvdisasm_path = shutil.which("nvdisasm")
+    if not nvdisasm_path:
+        return False
+    try:
+        output = subprocess.check_output([nvdisasm_path, "--version"], stderr=subprocess.STDOUT, text=True)
+        return "V13." in output or "Release 13." in output
+    except Exception:
+        return False
+
+
+skip_pre_sm75_nvdisasm13 = pytest.mark.skipif(
+    set_device() < ComputeCapability(7, 5) and _is_nvdisasm_from_ctk13(),
+    reason="nvdisasm from ctk13 is unsupported on pre sm7.5",
+)
+
+
+@skip_pre_sm75_nvdisasm13
+def test_ensure_proper_linking():
+    # We validate LLVM declarations for cublasDx device symbols
+    # and require no CALLs in SASS,  because even small
+    # IR prototype/type mismatches (named vs anonymous tensor structs,
+    # void vs i8* return) can block inlining and yield
+    # wrong stack-size metadata. When that happens, generated machine
+    # code may similar, but launch-time stack allocation can be underestimated
+    # failing at runtime and performance degradation may occur.
+
+    MM = Matmul(
+        size=(128, 128, 32),
+        precision=(np.float16, np.float16, np.float32),
+        data_type="real",
+        arrangement=("col_major", "row_major", "row_major"),
+        execution="Block",
+        block_size=256,
+    )
+
+    a_layout = MM.suggest_layout_smem_a()
+    b_layout = MM.suggest_layout_smem_b()
+
+    @cuda.jit
+    def f(a, b, c):
+        smem = cuda.shared.array(shape=(0,), dtype=np.float16, alignment=16)
+
+        smem_a_buffer, smem = smem[: a_layout.cosize], smem[a_layout.cosize :]
+        smem_b_buffer, smem = smem[: b_layout.cosize], smem[b_layout.cosize :]
+
+        gmem_a = make_tensor(a, MM.get_layout_gmem_a())
+        gmem_b = make_tensor(b, MM.get_layout_gmem_b())
+        gmem_c = make_tensor(c, MM.get_layout_gmem_c())
+
+        smem_a = make_tensor(smem_a_buffer, a_layout)
+        smem_b = make_tensor(smem_b_buffer, b_layout)
+
+        accumulator = MM.suggest_accumulator()
+
+        copy(gmem_a, smem_a)
+        copy(gmem_b, smem_b)
+        copy_wait()
+
+        MM.execute(smem_a, smem_b, accumulator)
+
+        rmem_c = accumulator.get_results()
+        rmem_c_fp64 = make_fragment_like(rmem_c, np.float64)
+        for i in range(rmem_c.layout.cosize):
+            rmem_c_fp64[i] = np.float64(rmem_c[i])
+
+        rmem_d_fp64 = accumulator.make_partition_and_copy(gmem_c)
+
+        axpby(2.0, rmem_c_fp64, 3.0, rmem_d_fp64)
+        copy_fragment(rmem_d_fp64, gmem_c)
+
+    a = random_real(MM.a_dim, np.float16, order="F")
+    b = random_real(MM.b_dim, np.float16, order="C")
+    c = random_real(MM.c_dim, np.float64, order="C")
+
+    specialization = f.specialize(a, b, c)
+    llvm_modules = specialization.inspect_llvm()
+    assert len(llvm_modules) == 1
+
+    # 1. Verify proper void return types and argument names
+
+    ir_str = list(llvm_modules.values())[0]
+    assert isinstance(ir_str, str) and ir_str.strip()
+
+    # declare void @"cublasdx_axpby_a4af1ab167eb098"(
+    #                                               i8* %".1",
+    #                                               %"struct.libmathdx_tensor_0s_0s" %".2",
+    #                                               i8* %".3",
+    #                                               %"struct.libmathdx_tensor_0s_0s" %".4",
+    #                                               )
+    m = re.search(r'declare void @"cublasdx_axpby[^"]+"\([^)]*\)', ir_str)
+    assert m and m.group(0).count("i8*") == 2 and m.group(0).count("libmathdx_tensor_0s_0s") == 2
+
+    # declare void @"cublasdx_copy_wait_7326a7c2a36b8197"()
+    assert re.search(r'declare void @"cublasdx_copy_wait[^"]+"\(\)', ir_str)
+
+    # declare void @"cublasdx_execute_34096a650c58ab3a"(
+    #                                               %"struct.libmathdx_tensor_0s_0s" %".1",
+    #                                               %"struct.libmathdx_tensor_0s_0s" %".2",
+    #                                               %"struct.libmathdx_tensor_0s_0s" %".3",
+    #                                                  )
+    m = re.search(r'declare void @"cublasdx_execute[^"]+"\([^)]*\)', ir_str)
+    assert m and m.group(0).count("libmathdx_tensor_0s_0s") == 3
+
+    # declare void @"cublasdx_create_c6f1a3210d6192d"(
+    #                                               %"struct.libmathdx_tensor_0s_0s" %".1",
+    #                                               )
+    m = re.search(r'declare void @"cublasdx_create[^"]+"\([^)]*\)', ir_str)
+    assert m and m.group(0).count("libmathdx_tensor_0s_0s") == 1
+
+    # declare void @"cublasdx_zero_f322503a3b2529e4"(%"struct.libmathdx_tensor_0s_0s" %".1")
+    m = re.search(r'declare void @"cublasdx_zero[^"]+"\([^)]*\)', ir_str)
+    assert m and m.group(0).count("libmathdx_tensor_0s_0s") == 1
+
+    # declare void @"cublasdx_copy_f92c23388277eb6e"(
+    #                                           %"struct.libmathdx_tensor_0s_0s" %".1",
+    #                                           %"struct.libmathdx_tensor_0s_0s" %".2",
+    #                                               )
+    assert re.search(
+        r'declare void @"cublasdx_copy_(?!wait)[^"]+"\(%"struct\.libmathdx_tensor_0s_0s" %"\.1", '
+        r'%"struct\.libmathdx_tensor_0s_0s" %"\.2"\)',
+        ir_str,
+    )
+
+    # 2. Ensure everything was properly inlined:
+    _ensure_nvdisasm_on_path()
+    sass = specialization.inspect_sass()
+    assert len(sass) == 1
+    sass_str = list(sass.values())[0]
+    assert isinstance(sass_str, str) and sass_str.strip()
+    assert not re.search(r"\bCALL\b", sass_str), "SASS contains CALL instruction(s)"
+
+
+@requires_pipeline()
+@skip_pre_sm75_nvdisasm13
+def test_ensure_proper_linking_pipeline():
+    m, n, k = 256, 256, 64
+    tile_m, tile_n, tile_k = 128, 128, 32
+    block_size = 128
+    pipeline_depth = 2
+
+    alpha, beta = 2.0, 3.0
+
+    MM = Matmul(
+        size=(tile_m, tile_n, tile_k),
+        precision=(np.float16, np.float16, np.float32),
+        data_type="real",
+        arrangement=("row_major", "col_major", "row_major"),
+        alignment=MAX_ALIGNMENT,
+        execution="Block",
+        block_size=block_size,
+        with_pipeline=True,
+        enable_input_streaming=True,
+    )
+
+    @cuda.jit(extensions=pipeline_extensions, launch_bounds=[MM.block_size, 1])
+    def matmul_kernel(alpha, beta, c, device_pipeline: DevicePipeline):
+        smem = cuda.shared.array(shape=(0,), dtype=np.byte, alignment=device_pipeline.buffer_alignment)
+
+        blockIdx = cuda.blockIdx
+        c_tile = c[blockIdx.x * tile_m : (blockIdx.x + 1) * tile_m, blockIdx.y * tile_n : (blockIdx.y + 1) * tile_n]
+        gmem_c = make_tensor(c_tile, MM.get_layout_gmem_c(n))
+
+        tile_pipeline = device_pipeline.get_tile(smem, blockIdx.x, blockIdx.y)
+
+        accumulator = MM.suggest_accumulator()
+        tile_pipeline.execute(accumulator)
+
+        if accumulator.is_thread_active():
+            d_frag = accumulator.make_partition_and_copy(gmem_c)
+            axpby(alpha, accumulator.get_results(), beta, d_frag)
+            accumulator.partition_and_copy(d_frag, gmem_c)
+
+        tile_pipeline._del()
+
+    a = random_real((m, k), MM.a_value_type, order="C")
+    b = random_real((k, n), MM.b_value_type, order="F")
+    c = random_real((m, n), MM.c_value_type, order="C")
+
+    a_d = cuda.to_device(a)
+    b_d = cuda.to_device(b)
+    c_d = cuda.to_device(c)
+
+    device_pipeline = MM.suggest_device_pipeline(pipeline_depth, a_d, b_d)
+
+    specialization = matmul_kernel.specialize(alpha, beta, c_d, device_pipeline)
+    llvm_modules = specialization.inspect_llvm()
+    assert len(llvm_modules) == 1
+
+    ir_str = list(llvm_modules.values())[0]
+    assert isinstance(ir_str, str) and ir_str.strip()
+
+    # declare void @"cublasdx_init_pipeline_..."(
+    #                                               %"struct.libmathdx_pipeline" %".1",
+    #                                               %"struct.libmathdx_pipeline" %".2",
+    #                                               i8* %".3",
+    #                                               i32* %".4",
+    #                                               i32* %".5"
+    #                                               )
+    m_init = [m for m in re.findall(r'declare void @"cublasdx_create[^"]+"\([^)]*\)', ir_str) if "libmathdx_pipeline" in m][0]
+    assert m_init and m_init.count("libmathdx_pipeline") == 2
+
+    # declare void @"cublasdx_tile_pipeline_execute_..."(
+    #                                               %"struct.libmathdx_pipeline" %".1",
+    #                                               %"struct.libmathdx_tensor_0s_0s" %".2"
+    #                                               )
+    m_exec = [m for m in re.findall(r'declare void @"cublasdx_execute[^"]+"\([^)]*\)', ir_str) if "libmathdx_pipeline" in m][0]
+    assert m_exec and m_exec.count("libmathdx_pipeline") == 1
+    assert m_exec and m_exec.count("libmathdx_tensor_0s_0s") == 1

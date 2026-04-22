@@ -25,8 +25,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
-nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
+# cuBLASMp requires NCCL communication backend.
+nvmath.distributed.initialize(device_id, comm, backends=["nccl"])
 
 # The global problem size m, n, k
 m, n, k = 128, 512, 1024
@@ -36,8 +36,6 @@ m, n, k = 128, 512, 1024
 
 # Prepare sample input data.
 with cp.cuda.Device(device_id):
-    # See example01_cupy_symmetric_memory.py for an example of allocating on symmetric
-    # memory, which may further improve performance.
     a = cp.random.rand(k // nranks, m).astype(cp.float32)  # partitioned on k
     b = cp.random.rand(n, k // nranks).astype(cp.float32)  # partitioned on k
     c = cp.random.rand(n // nranks, m).astype(cp.float32)  # partitioned on n

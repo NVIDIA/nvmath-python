@@ -6,17 +6,17 @@ import itertools
 import logging
 import math
 
-from nvmath.internal.utils import get_or_create_stream
-from nvmath.internal.tensor_wrapper import maybe_register_package
-
-import nvmath.internal.ndbuffer.package_utils as package_utils
-import nvmath.internal.ndbuffer.ndbuffer as ndb
-from nvmath.internal.ndbuffer.jit import _invalidate_kernel_cache
-from .helpers import arange, zeros, permuted, assert_equal
-
-import pytest
-import numpy as np
 import cuda.bindings.driver as cudadrv
+import numpy as np
+import pytest
+
+import nvmath.internal.ndbuffer.ndbuffer as ndb
+import nvmath.internal.ndbuffer.package_utils as package_utils
+from nvmath.internal.ndbuffer.jit import _invalidate_kernel_cache
+from nvmath.internal.tensor_wrapper import maybe_register_package
+from nvmath.internal.utils import get_or_create_stream
+
+from .helpers import arange, assert_equal, permuted, zeros
 
 try:
     import cupy as cp

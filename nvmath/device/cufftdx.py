@@ -3,37 +3,36 @@
 # SPDX-License-Identifier: Apache-2.0
 
 __all__ = ["fft", "FFT", "compile_fft_execute"]
+import warnings
 from functools import cached_property
 from typing import Any
-import warnings
 
+from nvmath.bindings import mathdx
+from nvmath.internal.utils import docstring_decorator
+
+from ._deprecated import deprecated
 from .common import (
-    parse_code_type,
-    check_code_type,
     SHARED_DEVICE_DOCSTRINGS,
+    check_code_type,
+    parse_code_type,
     parse_sm,
 )
+from .common_backend import MATHDX_TYPES_TO_NP, get_isa_version, get_lto
 from .common_cuda import (
     Code,
     Dim3,
 )
-from .common_backend import MATHDX_TYPES_TO_NP, get_isa_version, get_lto
 from .cufftdx_backend import (
     generate_code,
+    generate_FFT,
+    get_data_type_trait,
     get_int_trait,
+    get_int_traits,
     get_knobs,
     get_str_trait,
-    get_int_traits,
-    get_data_type_trait,
     validate,
-    generate_FFT,
     validate_execute_api,
 )
-from nvmath.internal.utils import docstring_decorator
-
-from nvmath.bindings import mathdx
-
-from ._deprecated import deprecated
 
 CUFFTDX_DATABASE = None
 
@@ -48,7 +47,7 @@ A string specifying the type of FFT operation, can be ``'c2c'``, ``'c2r'`` or ``
         #
         "direction": """\
 A string specifying the direction of FFT, can be ``'forward'`` or ``'inverse'``. If not provided, will be ``'forward'``
-if complex-to-real FFT is specified and ``'inverse'`` if real-to-complex FFT is specified.""".replace("\n", " "),
+if real-to-complex FFT is specified and ``'inverse'`` if complex-to-real FFT is specified.""".replace("\n", " "),
         #
         "ffts_per_block": """\
 The number of FFTs calculated per CUDA block, optional. The default is 1. Alternatively, if provided as ``'suggested'``
@@ -108,8 +107,8 @@ class FFT:
 
     .. seealso::
         The attributes of this class provide a 1:1 mapping with the CUDA C++ cuFFTDx APIs.
-        For further details, please refer to `cuFFTDx documentation
-        <https://docs.nvidia.com/cuda/cufftdx/index.html>`_.
+        For further details, please refer to :cufftdx_doc:`cuFFTDx documentation
+        <index.html>`.
     """
 
     def __init__(
@@ -494,8 +493,8 @@ def fft(*, compiler=None, code_type=None, execute_api=None, **kwargs):
 
     .. seealso::
         The attributes of :class:`FFT` provide a 1:1 mapping with the CUDA C++
-        cuFFTDx APIs. For further details, please refer to `cuFFTDx documentation
-        <https://docs.nvidia.com/cuda/cufftdx/index.html>`_.
+        cuFFTDx APIs. For further details, please refer to
+        :cufftdx_doc:`cuFFTDx documentation <index.html>`.
 
     Examples:
         Examples can be found in the `nvmath/examples/device

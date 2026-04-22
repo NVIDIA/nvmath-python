@@ -12,28 +12,35 @@ __all__ = [
     "DirectSolverPlanConfig",
     "DirectSolverPlanInfo",
     "DirectSolverSolutionConfig",
+    "DirectSolverPlanPreferences",
+    "DirectSolverFactorizationPreferences",
+    "DirectSolverSolutionPreferences",
 ]
 
-from collections.abc import Sequence
 import itertools
-import math
 import logging
+import math
 import operator
 import os
+from collections.abc import Sequence
+from dataclasses import fields
 from typing import Any, TypeAlias
 
 from nvmath.bindings import cudss
-
-from nvmath.internal import formatters, utils
+from nvmath.internal import formatters, tensor_wrapper, utils
 from nvmath.internal.package_wrapper import StreamHolder
-from nvmath.internal import tensor_wrapper
-from nvmath.sparse.advanced._configuration import DirectSolverOptions, ExecutionCUDA, ExecutionHybrid, HybridMemoryModeOptions
+from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
 from nvmath.sparse._internal import common_utils as sp_utils
 from nvmath.sparse._internal import cudss_config_ifc, cudss_data_ifc, cudss_utils
-
-
-from nvmath.internal.typemaps import NAME_TO_DATA_TYPE
-
+from nvmath.sparse.advanced._configuration import (
+    DirectSolverFactorizationPreferences,
+    DirectSolverOptions,
+    DirectSolverPlanPreferences,
+    DirectSolverSolutionPreferences,
+    ExecutionCUDA,
+    ExecutionHybrid,
+    HybridMemoryModeOptions,
+)
 
 VALID_INDEX_TYPES = ("int32", "int64")
 
@@ -82,8 +89,19 @@ def check_dense_tensor_layout(shape: Sequence[int], strides: Sequence[int], *, e
     # For batched matrices, LD has to be equal to the first matrix dimension.
     comparison_op_for_ld = operator.eq if num_dimensions > 2 else operator.ge
 
+    def compare_ld(strides, shape):
+        if shape[-1] == 1:
+            # NOTE: a special case for F-order matrix with shape (..., m, 1)
+            # The stride of the last dimension is moot as we never need
+            # to move along that dimension. Meanwhile array frameworks
+            # may specify the stride of this dummy dimension to be 1 or m,
+            # or possibly some other value depending on how the array is created.
+            # Therefore we here skip the comparison.
+            return True
+        return comparison_op_for_ld(strides[-1], shape[-2])
+
     if num_dimensions > 1:
-        return is_col_major and comparison_op_for_ld(strides[-1], shape[-2])
+        return is_col_major and compare_ld(strides, shape)
 
     return is_col_major
 
@@ -125,6 +143,50 @@ def calculate_strides(shape, axis_order):
         stride *= shape[axis]
 
     return strides
+
+
+def update_config_with_preferences(config, preferences):
+    """
+    Update the configuration with the provided preferences
+    """
+    if isinstance(config, DirectSolverPlanConfig):
+        preferences = utils.check_or_create_options(DirectSolverPlanPreferences, preferences, "plan preferences")
+    elif isinstance(config, DirectSolverFactorizationConfig):
+        preferences = utils.check_or_create_options(
+            DirectSolverFactorizationPreferences, preferences, "factorization preferences"
+        )
+    elif isinstance(config, DirectSolverSolutionConfig):
+        preferences = utils.check_or_create_options(DirectSolverSolutionPreferences, preferences, "solution preferences")
+    else:
+        raise ValueError(f"Invalid config type: {type(config)}")
+    for field in fields(preferences):
+        value = getattr(preferences, field.name)
+        if value is not None:
+            setattr(config, field.name, value)
+    return
+
+
+def wrap_cudss_supported_lhs(lhs):
+    try:
+        lhs = sp_utils.wrap_sparse_operands(lhs)
+    except Exception as e:
+        raise TypeError(
+            "The LHS must be an N-D sparse CSR array/tensor or a sequence of 2D "
+            "sparse CSR array/tensor from one of the supported packages: CuPy, PyTorch, or SciPy."
+        ) from e
+    if isinstance(lhs, Sequence):
+        # the sp_utils enforces all operands to have the same sparse format
+        # (and there's at least one), so we use just the first one to verify the format
+        format_name = lhs[0].format_name
+    else:
+        format_name = lhs.format_name
+    if format_name != "CSR":
+        raise TypeError(
+            f"DirectSolver does not support {format_name} sparse format. "
+            f"The LHS must be an N-D sparse CSR array/tensor or a sequence of 2D sparse CSR "
+            f"array/tensor from one of the supported packages: CuPy, PyTorch, or SciPy."
+        )
+    return lhs
 
 
 SHARED_DSS_DOCUMENTATION = utils.COMMON_SHARED_DOC_MAP.copy()
@@ -200,6 +262,27 @@ has the same shape as the corresponding tensor in ``b``.
            `here <https://docs.nvidia.com/nvpl/latest/sparse/storage_format/sparse_matrix.html#compressed-sparse-row-csr>`_
            for example.
 """.strip(),
+        #
+        "plan_preferences": """\
+Specify plan preferences as a :class:`DirectSolverPlanPreferences` object. Alternatively, a `dict` containing
+the parameters for the ``DirectSolverPlanPreferences`` constructor can also be provided. If not specified,
+the default cuDSS plan configuration will be used.""".replace("\n", " "),
+        #
+        "factorization_preferences": """\
+Specify factorization preferences as a :class:`DirectSolverFactorizationPreferences` object.
+Alternatively, a `dict` containing the parameters for the ``DirectSolverFactorizationPreferences`` constructor can
+also be provided. If not specified, the default cuDSS factorization configuration will be used.""".replace("\n", " "),
+        #
+        "solution_preferences": """\
+Specify solution preferences as a :class:`DirectSolverSolutionPreferences` object.
+Alternatively, a `dict` containing the parameters for the ``DirectSolverSolutionPreferences`` constructor
+can also be provided. If not specified, the default cuDSS solution configuration will be used.""".replace("\n", " "),
+        #
+        "stream": """\
+Provide the CUDA stream to use for executing the operation. Acceptable inputs include
+``cudaStream_t`` (as Python :class:`int`), :class:`cupy.cuda.Stream`, and
+:class:`torch.cuda.Stream`. If a stream is not provided, the current stream for the
+operand device will be queried from the dense RHS operand ``b`` package.""".replace("\n", " "),
     }
 )
 
@@ -271,7 +354,8 @@ class DirectSolver:
         :class:`DirectSolverSolutionConfig`, :class:`DirectSolverPlanInfo`,
         :class:`DirectSolverFactorizationInfo`, :class:`DirectSolverOptions`,
         :class:`ExecutionCUDA`, :class:`ExecutionHybrid`, :meth:`plan`,
-        :meth:`reset_operands`, :meth:`factorize`, :meth:`solve`.
+        :meth:`release_operands`, :meth:`reset_operands`,
+        :meth:`factorize`, :meth:`solve`.
 
     Examples:
 
@@ -444,13 +528,7 @@ class DirectSolver:
         self.logger.info("= SPECIFICATION PHASE =")
 
         # Wrap the LHS.
-        try:
-            self.a = sp_utils.wrap_sparse_operands(a)
-        except Exception as e:
-            raise TypeError(
-                """The LHS must be an N-D sparse CSR array/tensor or a sequence of 2D sparse CSR array/tensor from one
-of the supported packages: CuPy, PyTorch, or SciPy."""
-            ) from e
+        self.a = wrap_cudss_supported_lhs(a)
 
         # The LHS can be implicitly (N-D CSR tensor) or explicitly batched (provided as a
         # sequence of CSR matrices).
@@ -578,14 +656,14 @@ compatible choices: {cudss_utils.COMPATIBLE_LHS_RHS_PACKAGES}."""
             self.device_id = self.a.device_id
             self.value_type = self.a.dtype
             self.index_type = self.a.index_type
-            message = f"The LHS {self.a.tensor} must be a CSR matrix of shape (N, N) or CSR tensor with shape (..., N, N)."
-            if self.a.num_dimensions < 2:
-                raise TypeError(message)
-            n, m = self.a.shape[-2:]
-            if n != m:
-                raise TypeError(message)
+            rows, cols = self.a.shape[-2:]
+            if self.a.num_dimensions < 2 or rows != cols:
+                raise TypeError(
+                    f"The LHS of type {type(self.a.tensor)} with shape {self.a.shape} must be a CSR matrix "
+                    f"of shape (N, N) or CSR tensor with shape (..., N, N)."
+                )
             self.lhs_shape = self.a.shape
-            self._N = n
+            self._N = rows
             self.lhs_nnz = self.a.values.size
 
         # Note that torch by default uses int64 which doesn't seem to give correct results
@@ -631,8 +709,9 @@ with compact col-major layout."
             self.rhs_strides = self.b.strides
             if not check_dense_tensor_layout(self.rhs_shape, self.rhs_strides, explicitly_batched=False):
                 raise TypeError(
-                    f"The RHS {self.b.tensor} must be a matrix or vector with col-major layout, and for implicitly-batched \
-RHS (N-D >= 3), each matrix sample must have col-major layout (the second dimension from the end must have unit stride."
+                    f"The RHS of type {type(self.b.tensor)} with shape {self.b.shape} must be a matrix or vector "
+                    f"with col-major layout, and for implicitly-batched RHS (N-D >= 3), each matrix sample must have "
+                    f"col-major layout (the second dimension from the end must have unit stride."
                 )
             # For single or implicitly-batched RHS, the matrix may not be compact so we use
             # the axis ordering to determine the strides.
@@ -679,7 +758,7 @@ RHS (N-D >= 3), each matrix sample must have col-major layout (the second dimens
         self.logger.info(f"The device_id={self.device_id}, dtype = {self.value_type}, index type = {self.index_type}.")
         self.logger.info(f"The number of equations = {self._N}.")
         self.logger.debug(f"The LHS shape = {self.lhs_shape}.")
-        self.logger.debug(f"The RHS shape = {self.lhs_shape}, strides = {self.rhs_strides}.")
+        self.logger.debug(f"The RHS shape = {self.rhs_shape}, strides = {self.rhs_strides}.")
 
         # Currently the value and index types must match between the LHS and RHS.
         self.cuda_value_type = NAME_TO_DATA_TYPE[self.value_type]
@@ -758,7 +837,12 @@ since the layout cannot be preserved when copying to the GPU (shape = {self.rhs_
             self.b = copy_single_or_sequence(self.b, self.device_id, stream_holder)
 
         # Create (batched or not, CSR or dense) matrix pointers for the LHS and RHS.
-        self.resources_a, self.a_ptr = cudss_utils.create_cudss_csr_wrapper(
+        # The create wrappers return (dims, ptrs, matrix_ptr) where:
+        #   dims: metadata arrays (shape/size) that don't change on update
+        #   ptrs: device pointer arrays whose contents are updated in place
+        #         inside reset_operands() / solve()
+        # For non-batched cases, both dims and ptrs are empty lists.
+        self.resources_a_dims, self.resources_a_ptrs, self.a_ptr = cudss_utils.create_cudss_csr_wrapper(
             self.cuda_index_type,
             self.cuda_value_type,
             self.index_type,
@@ -768,14 +852,21 @@ since the layout cannot be preserved when copying to the GPU (shape = {self.rhs_
             self.a,
             stream_holder,
         )
-        self.resources_b, self.b_ptr = cudss_utils.create_cudss_dense_wrapper(
+        self.resources_b_dims, self.resources_b_ptrs, self.b_ptr = cudss_utils.create_cudss_dense_wrapper(
             self.cuda_index_type, self.cuda_value_type, self.index_type, self.batch_indices, self.b, stream_holder
         )
 
         # Use `b` for creating the (potentially explicitly or implicitly batched) solution
         # matrix or vector. The pointers will be updated later in execute.
-        self.resources_x, self.x_ptr = cudss_utils.create_cudss_dense_wrapper(
+        self.resources_x_dims, self.resources_x_ptrs, self.x_ptr = cudss_utils.create_cudss_dense_wrapper(
             self.cuda_index_type, self.cuda_value_type, self.index_type, self.batch_indices, self.b, stream_holder
+        )
+
+        # Track the allocation stream for pointer arrays so we can ensure proper
+        # ordering before releasing them in free() (dropping references triggers
+        # stream-ordered deallocation).
+        self.resources_ptrs_alloc_stream = (
+            stream_holder.obj if (self.resources_a_ptrs or self.resources_b_ptrs or self.resources_x_ptrs) else None
         )
 
         # Create or set handle, and create config and data pointers.
@@ -825,8 +916,10 @@ be significantly lower than if you provide a multithreading library."
             num_threads = self.execution_options.num_threads
             if num_threads is not None:
                 if num_threads > 1 and threading_lib is None:
-                    raise ValueError(f"""The threading library must be specified if the number of threads is more
-than 1 (num_threads = {num_threads}.""")
+                    raise ValueError(
+                        "The threading library must be specified if the number of threads is more than 1 "
+                        f"(num_threads = {num_threads})."
+                    )
                 self._internal_config.host_nthreads = num_threads
 
         # Set CUDA execution options (including hybrid memory mode).
@@ -844,6 +937,13 @@ than 1 (num_threads = {num_threads}.""")
         self.solver_planned = False
         self.solver_factorized = False
 
+        # Attribute to track the last compute event needed
+        # inside free() for stream ordering.
+        self.last_compute_event = None
+
+        # Track whether the user has called release_operands().
+        self._operands_released = False
+
         # Set blocking or non-blocking behavior.
         self.blocking = self.options.blocking is True or self.memory_space == "cpu"
         if self.blocking:
@@ -859,10 +959,6 @@ than 1 (num_threads = {num_threads}.""")
         # The result shape is a single value or a sequence, depending on whether the RHS
         # is explicitly or implicitly batched as set above.
         self.result_shape = self.rhs_shape
-
-        # Tracking attributes.
-        self.solver_planned = False
-        self.solver_factorized = False
 
         self.valid_state = True
         self.logger.info("The sparse direct solver operation has been created.")
@@ -885,10 +981,10 @@ than 1 (num_threads = {num_threads}.""")
         Check if the operands are available for the operation.
         """
         what = kwargs["what"]
-        if self.a is None or self.b is None:
+        if self._operands_released:
             raise RuntimeError(
-                f"{what} cannot be performed if the operands have been set to None. Use reset_operands() to set the "
-                f"desired input before using performing the {what.lower()}."
+                f"{what} cannot be performed after the operands have been released. "
+                f"Use reset_operands() to provide new operands before performing the {what.lower()}."
             )
 
     def _check_planned(self, *args, **kwargs):
@@ -1020,24 +1116,15 @@ than 1 (num_threads = {num_threads}.""")
     @utils.precondition(_check_valid_solver)
     def reset_operands(
         self,
+        *,
         a=None,
         b=None,
-        *,
         stream: utils.AnyStream | int | None = None,
     ):
         """
-        Reset the operands held by this :class:`DirectSolver` instance.
-
-        This method has two use cases:
-
-        (1) it can be used to provide new operands for execution when the original
-            operands are on the CPU
-
-        (2) it can be used to release the internal reference to the previous operands
-            and make their memory available for other use by passing ``None`` for *all*
-            arguments. In this case, this method must be called again to provide the
-            desired operands before another call to planning and execution APIs like
-            :meth:`plan`, :meth:`factorize`, or :meth:`solve`.
+        Reset one or both operands held by this :class:`DirectSolver` instance.
+        Only the operands explicitly passed are updated; omitted operands retain
+        their current values.
 
         This method will perform various checks on the new operands to make sure:
 
@@ -1046,6 +1133,9 @@ than 1 (num_threads = {num_threads}.""")
         - The packages that the operands belong to match those of the old ones.
 
         - If input tensors are on GPU, the device must match.
+
+        .. versionchanged:: 0.9
+            All parameters are now keyword-only.
 
         Args:
             a: {a}
@@ -1096,9 +1186,12 @@ than 1 (num_threads = {num_threads}.""")
             With :meth:`reset_operands`, minimal overhead is achieved as problem
             specification and planning are only performed once.
 
-            For the particular example above, explicitly calling :meth:`reset_operands` is
-            equivalent to updating the operand `b` in-place, i.e, replacing
-            ``solver.reset_operands(b=c)`` with ``b[:]=c``.
+            For the particular example above, the operands are on the GPU, so
+            calling :meth:`reset_operands` only updates internal references
+            and is efficient. An alternative for that case would be to modify the
+            the operand `b` in-place, i.e, replacing ``solver.reset_operands(b=c)``
+            with ``b[:]=c``, but doing so triggers a copy of the data and
+            has performance implications.
 
             .. danger:: Updating the operand in-place can only yield the expected result
                 under the additional constraints below:
@@ -1109,34 +1202,28 @@ than 1 (num_threads = {num_threads}.""")
                 - The user has called :meth:`factorize` if needed (they are not relying on
                   iterative refinement for example)
 
-                Assuming that the constraint above is satisfied, updating an operand
-                in-place is preferred to avoid the extra checks incurred in
-                :meth:`reset_operands`.
-
             For more details, please refer to `the reset operand example
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/advanced/direct_solver/example05_reset_operands.py>`_.
         """
 
+        # If operands have been released, all required operands must be provided
+        if self._operands_released and (a is None or b is None):
+            raise ValueError("After release_operands(), both 'a' and 'b' must be provided to reset_operands().")
+
         if a is None and b is None:
-            self.a = self.b = None
-            self.logger.info("The operands have been reset to None.")
-            return
+            msg = "Calling reset_operands() with both 'a' and 'b' set to None is not allowed. "
+            msg += "Use release_operands() to release all operands."
+            raise ValueError(msg)
 
         stream_holder = utils.get_or_create_stream(self.device_id, stream, self.rhs_package)
 
         # Update LHS.
         if a is not None:
             if isinstance(a, Sequence) and not self.explicitly_batched_lhs:
-                raise TypeError("The specified type for 'a` is a sequence while the original type is {type.self.a.tensor}.")
+                raise TypeError(f"The specified type for 'a' is a sequence while the original type is {type(self.a.tensor)}.")
 
             # Wrap A.
-            try:
-                a = sp_utils.wrap_sparse_operands(a)
-            except Exception as e:
-                raise TypeError(
-                    """The LHS 'a' must be an N-D sparse CSR array/tensor or a sequence of 2D sparse CSR array/tensor from one
-of the supported packages: CuPy, PyTorch, or SciPy."""
-                ) from e
+            a = wrap_cudss_supported_lhs(a)
 
             explicitly_batched = isinstance(a, Sequence)
             if explicitly_batched:
@@ -1165,21 +1252,21 @@ of the supported packages: CuPy, PyTorch, or SciPy."""
 
             # Check package, device ID, dtype, and index type.
             if lhs_package != self.lhs_package:
-                raise TypeError("The package for 'a' ({lhs_package}) doesn't match the original one ({self.lhs_package}).")
+                raise TypeError(f"The package for 'a' ({lhs_package}) doesn't match the original one ({self.lhs_package}).")
 
             if memory_space != self.memory_space:
                 raise TypeError(
-                    "The memory space for 'a' ({memory_space}) doesn't match the original one ({self.memory_space})."
+                    f"The memory space for 'a' ({memory_space}) doesn't match the original one ({self.memory_space})."
                 )
 
             if device_id != "cpu" and device_id != self.device_id:
-                raise TypeError("The device id for 'a' ({device_id}) doesn't match the original one ({self.device_id}).")
+                raise TypeError(f"The device id for 'a' ({device_id}) doesn't match the original one ({self.device_id}).")
 
             if value_type != self.value_type:
-                raise TypeError("The dtype for 'a' ({value_type}) doesn't match the original one ({self.value_type}).")
+                raise TypeError(f"The dtype for 'a' ({value_type}) doesn't match the original one ({self.value_type}).")
 
             if index_type != self.index_type:
-                raise TypeError("The index type for 'a' ({index_type}) doesn't match the original one ({self.index_type}).")
+                raise TypeError(f"The index type for 'a' ({index_type}) doesn't match the original one ({self.index_type}).")
 
             # Checking that the shape is consistent also checks the batch count for both
             # implicit and explicit batching.
@@ -1221,9 +1308,13 @@ is recommended to update the values in place and refactorize if needed."
                 )
                 self.a = a
 
-            # Update the pointer references, and keep reference to the internal buffers.
-            self.resources_ra = cudss_utils.update_cudss_csr_ptr_wrapper(
-                self.a_ptr, batch_indices=self.batch_indices, new_lhs=self.a, stream_holder=stream_holder
+            # Update the pointer values in the existing device buffers.
+            cudss_utils.update_cudss_csr_ptr_wrapper(
+                existing_ptrs=self.resources_a_ptrs,
+                lhs_ptr=self.a_ptr,
+                batch_indices=self.batch_indices,
+                new_lhs=self.a,
+                stream_holder=stream_holder,
             )
 
             self.logger.warning(
@@ -1284,7 +1375,6 @@ iterative refinement during solve(), but it's the user's responsibility to check
                 raise TypeError(f"The strides of 'b' ({strides}) don't match the original one ({self.rhs_strides}).")
 
             # Copy operand if needed, and replace object reference.
-            # Copy operand if needed, and replace object reference.
             if self.copy_across_memspace:
                 # Copy operand into original buffer if it exists or create new ones.
                 if explicitly_batched:
@@ -1301,10 +1391,34 @@ iterative refinement during solve(), but it's the user's responsibility to check
             else:
                 self.b = b
 
-            # Update the pointer references, and keep reference to the internal buffers.
-            self.resources_rb = cudss_utils.update_cudss_dense_ptr_wrapper(
-                self.b_ptr, batch_indices=self.batch_indices, new_rhs=self.b, stream_holder=stream_holder
+            # Update the pointer values in the existing device buffers.
+            cudss_utils.update_cudss_dense_ptr_wrapper(
+                existing_ptrs=self.resources_b_ptrs,
+                rhs_ptr=self.b_ptr,
+                batch_indices=self.batch_indices,
+                new_rhs=self.b,
+                stream_holder=stream_holder,
             )
+
+        # Clear the operands released flag
+        self._operands_released = False
+
+    @utils.precondition(_check_valid_solver)
+    def release_operands(self):
+        """
+        {release_operands}
+        """
+        # When copy_across_memspace is False
+        # (CUDA execution with GPU operands, or hybrid execution), self.a
+        # and self.b hold direct references to user-provided tensors.
+        # When copy_across_memspace is True (CUDA execution with CPU operands),
+        # self.a and self.b hold internal device mirrors.
+        # In both cases, we release them.
+        self.a = None
+        self.b = None
+
+        self._operands_released = True
+        self.logger.info("User-provided operands have been released.")
 
     @utils.precondition(_check_valid_solver)
     @utils.precondition(_check_valid_operands, "Planning")
@@ -1349,7 +1463,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
             >>> with nvmath.sparse.advanced.DirectSolver(a, b) as solver:
             ...     # Configure the reordering algorithm for the plan.
             ...     plan_config = solver.plan_config
-            ...     plan_config.algorithm = nvmath.sparse.advanced.DirectSolverAlgType.ALG_1
+            ...     plan_config.reordering_algorithm = nvmath.sparse.advanced.DirectSolverAlgType.ALG_1
             ...     # Plan the operation using the specified plan configuration, which
             ...     # returns a DirectSolverPlanInfo object.
             ...     plan_info = solver.plan()
@@ -1359,7 +1473,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
         Further examples can be found in the `nvmath/examples/sparse/advanced/direct_solver
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/sparse/advanced/direct_solver>`_
         directory.
-        """
+        """  # noqa: W505
         r = self._execute(phase=cudss.Phase.ANALYSIS, stream=stream)
         self.solver_planned = True
         return r
@@ -1487,7 +1601,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
         """
         return self._execute(phase=cudss.Phase.SOLVE, stream=stream)
 
-    def _execute(self, *, phase=None, stream=None):
+    def _execute(self, *, phase: cudss.Phase, stream=None):
         """
         For internal use only. Execute the specified operation (reordering, factorization,
         and solve).
@@ -1502,7 +1616,7 @@ iterative refinement during solve(), but it's the user's responsibility to check
             solution in the expected memory space for solve.
         """
 
-        assert phase is not None, "Internal error."
+        assert phase in (cudss.Phase.ANALYSIS, cudss.Phase.FACTORIZATION, cudss.Phase.SOLVE), "Internal error."
 
         log_info = self.logger.isEnabledFor(logging.INFO)
         log_debug = self.logger.isEnabledFor(logging.DEBUG)
@@ -1518,8 +1632,14 @@ iterative refinement during solve(), but it's the user's responsibility to check
             # on whether the RHS is explicitly batched.
             result_allocator = self._allocate_batched_result if self.explicitly_batched_rhs else self._allocate_single_result
             result = result_allocator(stream_holder, log_debug)
-            self.resources_rx = cudss_utils.update_cudss_dense_ptr_wrapper(
-                self.x_ptr, batch_indices=self.batch_indices, new_rhs=result, stream_holder=stream_holder
+
+            # Update the pointer values in the existing device buffers.
+            cudss_utils.update_cudss_dense_ptr_wrapper(
+                existing_ptrs=self.resources_x_ptrs,
+                rhs_ptr=self.x_ptr,
+                batch_indices=self.batch_indices,
+                new_rhs=result,
+                stream_holder=stream_holder,
             )
 
         if log_info:
@@ -1540,6 +1660,8 @@ iterative refinement during solve(), but it's the user's responsibility to check
 
         if phase == cudss.Phase.FACTORIZATION:
             return self.factorization_info
+
+        assert result is not None, "Internal Error."
 
         # Ideally, we should set the x_ptr to 0, but this adds overhead for the batched
         # case.
@@ -1569,11 +1691,20 @@ iterative refinement during solve(), but it's the user's responsibility to check
             return
 
         try:
+            # Ensure ordering with respect to the last computation
+            # to avoid race conditions when releasing internal resources.
+            if self.last_compute_event is not None:
+                if self.resources_ptrs_alloc_stream is not None:
+                    self.resources_ptrs_alloc_stream.wait(self.last_compute_event)
+                self.last_compute_event = None
+
             # Currently, workspace is allocated internally by the library.
 
             # Release internal resource references.
-            self.resources_a = self.resources_b = self.resources_x = None
-            self.resources_ra = self.resources_rb = self.resources_rx = None
+            self.resources_a_dims = self.resources_a_ptrs = None
+            self.resources_b_dims = self.resources_b_ptrs = None
+            self.resources_x_dims = self.resources_x_ptrs = None
+            self.resources_ptrs_alloc_stream = None
             self.a = self.b = None
 
             # Free matrix pointers.
@@ -1592,6 +1723,11 @@ iterative refinement during solve(), but it's the user's responsibility to check
                 cudss.destroy(self.handle)
                 self.handle, self.own_handle = None, False
 
+            # Set all attributes to None except for logger and valid_state.
+            for attr in list(vars(self)):
+                if attr not in {"logger", "valid_state"}:
+                    setattr(self, attr, None)
+
         except Exception as e:
             self.logger.critical("Internal error: only part of the DirectSolver object's resources have been released.")
             self.logger.critical(str(e))
@@ -1609,6 +1745,9 @@ def direct_solver(
     /,
     *,
     options: DirectSolverOptions | None = None,
+    plan_preferences: DirectSolverPlanPreferences | None = None,
+    factorization_preferences: DirectSolverFactorizationPreferences | None = None,
+    solution_preferences: DirectSolverSolutionPreferences | None = None,
     execution: ExecutionCUDA | ExecutionHybrid | None = None,
     stream: utils.AnyStream | int | None = None,
 ):
@@ -1638,6 +1777,12 @@ def direct_solver(
         b: {b}
 
         options: {options}
+
+        plan_preferences: {plan_preferences}
+
+        factorization_preferences: {factorization_preferences}
+
+        solution_preferences: {solution_preferences}
 
         execution: {execution}
 
@@ -1719,6 +1864,14 @@ def direct_solver(
         execution=execution,
         stream=stream,
     ) as solver:
+        # Update the configurations with the provided preferences if any.
+        if plan_preferences is not None:
+            update_config_with_preferences(solver.plan_config, plan_preferences)
+        if factorization_preferences is not None:
+            update_config_with_preferences(solver.factorization_config, factorization_preferences)
+        if solution_preferences is not None:
+            update_config_with_preferences(solver.solution_config, solution_preferences)
+
         # Planning and factorization information cannot be returned without making copies
         # because of scope (the interfaces need the solver object, which is released when
         # the function returns).

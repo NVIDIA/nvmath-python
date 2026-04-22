@@ -6,11 +6,11 @@
 This set of tests checks reset_operands
 """
 
-import nvmath
 import pytest
 
-from ...utils import assert_tensors_equal, random_torch_complex, sample_matrix, skip_if_cublas_before
+import nvmath
 
+from ...utils import assert_tensors_equal, random_torch_complex, sample_matrix, skip_if_cublas_before
 from . import CUBLAS_AVAILABLE, NVPL_AVAILABLE
 
 use_cuda_options = (
@@ -104,7 +104,7 @@ def test_reset(
         assert_tensors_equal(result1, reference1)
 
         if reset_to_none:
-            mm.reset_operands(None)
+            mm.release_operands()
 
         new_a = sample_matrix(framework, dtype, (m, k), use_cuda)
         new_b = sample_matrix(framework, dtype, (k, n), use_cuda)

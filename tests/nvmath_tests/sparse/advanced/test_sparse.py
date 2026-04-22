@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
-import typing
 import sys
+import typing
 
-from nvmath.sparse.advanced import DirectSolverMatrixType, DirectSolverMatrixViewType
-import nvmath
 import pytest
+
+import nvmath
+from nvmath.sparse.advanced import DirectSolverMatrixType, DirectSolverMatrixViewType
 
 try:
     import cupy as cp
@@ -18,70 +19,49 @@ try:
 except ImportError:
     HAS_CUPY_SPARSE = False
 
-from .utils.common_axes import (
-    Framework,
-    ExecutionSpace,
+
+from nvmath_tests.helpers import get_framework_device_ctx
+
+from ...helpers import check_freed_after
+from ..utils.common_axes import (
     DType,
-    framework2operand_placement,
-    framework2tensor_framework,
-    framework2dtype,
-    framework2index_dtype,
-    sparse_supporting_frameworks,
-    RHSVector,
-    RHSMatrix,
-    RHSBatch,
-    framework_from_array,
-    operand_placement_from_array,
-    get_values_dtype_from_array,
-    device_id_from_array,
+    ExecutionSpace,
+    Framework,
     OperandPlacement,
     Param,
+    RHSBatch,
+    RHSMatrix,
+    RHSVector,
+    cp,
+    device_id_from_array,
+    framework2dtype,
+    framework2index_dtype,
+    framework2operand_placement,
+    framework2tensor_framework,
+    framework2value_dtype,
+    framework_from_array,
+    get_values_dtype_from_array,
+    np,
+    operand_placement_from_array,
+    sparse_supporting_frameworks,
+)
+from ..utils.utils import get_custom_stream, idfn, multi_gpu_only, to_dense_numpy, use_stream_or_dummy_ctx
+from .utils.data_helpers import (
+    create_dense_rhs,
+    create_random_sparse_alg_matrix,
+    create_random_sparse_matrix,
+    sparse_matrix_add_const_inplace,
+    unsupported_sparse_formats,
 )
 from .utils.support_matrix import (
     supported_dtypes,
-    supported_sparse_array_types,
     supported_exec_space_dense_rhs,
     supported_index_dtypes,
+    supported_sparse_array_types,
     supported_sparse_type_dtype,
 )
-from .utils.common_axes import np, cp
-from .utils.data_helpers import (
-    create_random_sparse_matrix,
-    create_dense_rhs,
-    unsupported_sparse_formats,
-    sparse_matrix_add_const_inplace,
-    create_random_sparse_alg_matrix,
-)
-from .utils.utils import multi_gpu_only, get_custom_stream, use_stream_or_dummy_ctx
 
 rng = random.Random(101)
-
-
-def to_dense_numpy(a):
-    """
-    Convert whatever is provided to a dense numpy array.
-    """
-    if isinstance(a, list):
-        a = [to_dense_numpy(item) for item in a]
-        assert all(item.shape == a[0].shape for item in a)
-        if len(a) > 1:
-            return np.stack(a)
-        else:
-            return a[0]
-
-    match framework_from_array(a):
-        case Framework.numpy:
-            return np.asarray(a)
-        case Framework.cupy:
-            return cp.asnumpy(a)
-        case Framework.cupyx | Framework.scipy:
-            return to_dense_numpy(a.todense())
-        case Framework.torch:
-            if a.is_sparse_csr:
-                return to_dense_numpy(a.to_dense())
-            return a.cpu().numpy()
-        case _:
-            raise ValueError(f"Unsupported framework: {type(a)}")
 
 
 def check_meta_data(a, b, x, lhs_framework, rhs_framework, operand_placement, device_id, dtype):
@@ -108,7 +88,7 @@ def check_meta_data(a, b, x, lhs_framework, rhs_framework, operand_placement, de
     assert get_values_dtype_from_array(x) == dtype, f"{get_values_dtype_from_array(x)} != {dtype}"
 
 
-def check(a, b, x):
+def _check(a, b, x):
     a = to_dense_numpy(a)
     b = to_dense_numpy(b)
     x = to_dense_numpy(x)
@@ -116,14 +96,13 @@ def check(a, b, x):
     assert np.allclose(ref, b)
 
 
-def idfn(val):
-    """
-    Pytest does not pretty print (repr/str) parameters of custom types.
-    """
-    if hasattr(val, "pretty_name"):
-        return val.pretty_name()
-    # use default pytest pretty printing
-    return None
+def check(a, b, x, device_id=None):
+    if device_id is None or device_id == "cpu":
+        _check(a, b, x)
+    else:
+        assert isinstance(device_id, int)
+        with get_framework_device_ctx(device_id, Framework.cupy):
+            _check(a, b, x)
 
 
 def get_exec_cuda_options(
@@ -361,7 +340,7 @@ def test_matrix_solve_non_default_device_id(
         solver.factorize()
         x = solver.solve()
         check_meta_data(a_0, b, x, framework, tensor_framework, operand_placement, device_id, dtype)
-        check(a_0, b, x)
+        check(a_0, b, x, device_id=device_id)
         del a_0
         a_1 = create_random_sparse_matrix(
             framework,
@@ -380,7 +359,7 @@ def test_matrix_solve_non_default_device_id(
         solver.factorize()
         x = solver.solve()
         check_meta_data(a_1, b, x, framework, tensor_framework, operand_placement, device_id, dtype)
-        check(a_1, b, x)
+        check(a_1, b, x, device_id=device_id)
 
 
 @pytest.mark.parametrize(
@@ -455,7 +434,7 @@ def test_matrix_solve_device_id(
         x_01 = solver_1.solve()
         x_0 = solver_0.solve()
         check_meta_data(a_1, b_01, x_01, framework, tensor_framework, operand_placement, device_id_1, dtype)
-        check(a_1, b_01, x_01)
+        check(a_1, b_01, x_01, device_id=device_id_1)
         del b_01, x_01
         solver_1.reset_operands(b=b_11)
         x_11 = solver_1.solve()
@@ -466,8 +445,8 @@ def test_matrix_solve_device_id(
             solver_1.free()
     check_meta_data(a_1, b_11, x_11, framework, tensor_framework, operand_placement, device_id_1, dtype)
     check_meta_data(a_0, b_0, x_0, framework, tensor_framework, operand_placement, device_id_0, dtype)
-    check(a_1, b_11, x_11)
-    check(a_0, b_0, x_0)
+    check(a_1, b_11, x_11, device_id=device_id_1)
+    check(a_0, b_0, x_0, device_id=device_id_0)
 
 
 @pytest.mark.parametrize(
@@ -897,7 +876,7 @@ def test_matrix_solve_hybrid_multiple_rhs_unsupported(
         for operand_placement in framework2operand_placement[framework]
         for sparse_array_type in supported_sparse_array_types
         for dtype in [DType.complex32, DType.bfloat16, DType.uint8, DType.int32, DType.float16]
-        if dtype in framework2dtype[framework]
+        if dtype in framework2value_dtype[framework]
         for n in [7]
         for rhs_k in [RHSVector(n)]
     ],
@@ -1212,7 +1191,7 @@ def test_reset(
         check_meta_data(a, b, x, framework, tensor_framework, operand_placement, None, dtype)
         check(a, b, x)
         if free:
-            solver.reset_operands(a=None, b=None)
+            solver.release_operands()
         if (reset_lhs, reset_rhs) == (True, False):
             solver.reset_operands(a=a2)
         elif (reset_lhs, reset_rhs) == (False, True):
@@ -1347,6 +1326,61 @@ def test_reset_batched(
             solver.factorize()
         x2 = solver.solve()
         _check_batched_result(a2, b2, x2, batch_size, rhs_batching_mode)
+
+
+@pytest.mark.parametrize("reset_target", ["a", "b"])
+def test_reset_implicit_batch_device_pointers(reset_target):
+    """
+    Verify that reset_operands() with implicit-batch on device actually updates
+    the cuDSS device pointer arrays.  Both a1/b1 are kept alive so CUDA cannot
+    reuse their addresses for a2/b2.  Fails if the copy_() calls in
+    update_cudss_*_implicit_batch_ptr are removed.
+    """
+    torch = pytest.importorskip("torch")
+
+    n, batch_size = 8, 2
+
+    def make_batch_csr(seed):
+        torch.manual_seed(seed)
+        dense = torch.rand(batch_size, n, n, dtype=torch.float64, device="cuda")
+        dense += 3.0 * torch.eye(n, dtype=torch.float64, device="cuda")
+        csr = dense.to_sparse_csr()
+        return torch.sparse_csr_tensor(
+            csr.crow_indices().to(torch.int32),
+            csr.col_indices().to(torch.int32),
+            csr.values(),
+            size=csr.size(),
+            device="cuda",
+        )
+
+    a1 = make_batch_csr(seed=1)
+    a2 = make_batch_csr(seed=2)
+    b1 = torch.ones(batch_size, 1, n, dtype=torch.float64, device="cuda").swapaxes(-2, -1)
+    b2 = torch.full((batch_size, 1, n), 2.0, dtype=torch.float64, device="cuda").swapaxes(-2, -1)
+
+    solver = nvmath.sparse.advanced.DirectSolver(a1, b1)
+    solver.plan()
+    solver.factorize()
+    solver.solve()
+
+    if reset_target == "a":
+        solver.reset_operands(a=a2)
+        solver.plan()
+        solver.factorize()
+        a_check, b_check = a2, b1
+    else:
+        solver.reset_operands(b=b2)
+        a_check, b_check = a1, b2
+
+    x = solver.solve()
+    torch.cuda.current_stream().synchronize()
+
+    for i in range(batch_size):
+        residual = torch.sparse.mm(a_check[i], x[i]) - b_check[i]
+        assert residual.norm().item() < 1e-10, (
+            f"batch {i}: residual {residual.norm().item():.2e} — "
+            f"cuDSS likely used stale pointers after resetting {reset_target}"
+        )
 
 
 @pytest.mark.parametrize(
@@ -1546,7 +1580,7 @@ def test_matrix_solve_always_blocking(framework, exec_space, operand_placement, 
     ) as solver:
         solver.plan(stream=stream)
         solver.factorize(stream=stream)
-        for i in range(32):
+        for _i in range(32):
             x = solver.solve(stream=stream)
         # modify the operands in place in a different stream,
         # relying on the fact that with blocking True the x should already
@@ -1788,9 +1822,8 @@ def test_reference_count(use_plan_solve):
     # Create the RHS, which can be a matrix or vector in column-major layout.
     b = cp.ones((n,))
 
-    # Check initial reference counts
-    assert sys.getrefcount(a) - 1 == 1, f"pre op: {sys.getrefcount(a) - 1}"
-    assert sys.getrefcount(b) - 1 == 1, f"pre op: {sys.getrefcount(b) - 1}"
+    initial_refcount_a = sys.getrefcount(a)
+    initial_refcount_b = sys.getrefcount(b)
 
     # Create and optionally solve
     solver = nvmath.sparse.advanced.DirectSolver(a, b)
@@ -1803,8 +1836,203 @@ def test_reference_count(use_plan_solve):
         else:
             pass
 
-    # After exiting context manager, reference counts should return to 1
-    assert sys.getrefcount(a) - 1 == 1, f"post op: {sys.getrefcount(a) - 1}"
-    assert sys.getrefcount(b) - 1 == 1, f"post op: {sys.getrefcount(b) - 1}"
+    # After exiting context manager, reference counts should return to initial values
+    assert sys.getrefcount(a) == initial_refcount_a, "post op: a refcount changed"
+    assert sys.getrefcount(b) == initial_refcount_b, "post op: b refcount changed"
     if use_plan_solve:
-        assert sys.getrefcount(x) - 1 == 1, f"post op: {sys.getrefcount(x) - 1}"
+        with check_freed_after(x, "post op: x should have sole ownership"):
+            del x
+
+
+@pytest.mark.parametrize("batch", [False, 4])
+@pytest.mark.parametrize("unity_strides", [True, False])
+def test_unity_strides(batch, unity_strides):
+    torch = pytest.importorskip("torch")
+    n = 3
+    a = torch.rand(n, n, device="cuda") + torch.diag(torch.tensor([10] * n, device="cuda"))
+
+    if batch:
+        a = torch.stack([a] * batch, dim=0)
+        if unity_strides:
+            b = torch.ones(batch, n, 1, device="cuda")
+            b = b.mT.contiguous().mT
+        else:
+            b = torch.ones(batch, 1, n, device="cuda").mT
+    else:
+        if unity_strides:
+            b = torch.ones(n, 1, device="cuda")
+            b = b.mT.contiguous().mT
+        else:
+            b = torch.ones(1, n, device="cuda").mT
+
+    if unity_strides:
+        assert tuple(b.stride()[-2:]) == (1, 1)
+    else:
+        assert tuple(b.stride()[-2:]) == (1, n)
+
+    a = a.to_sparse_csr()
+    # Note that torch uses int64 for index buffers, whereas cuDSS currently requires int32.
+    a = torch.sparse_csr_tensor(
+        a.crow_indices().to(dtype=torch.int32), a.col_indices().to(dtype=torch.int32), a.values(), size=a.size(), device="cuda"
+    )
+
+    x = nvmath.sparse.advanced.direct_solver(a, b)
+    if batch:
+        for i in range(batch):
+            assert torch.allclose(a[i] @ x[i], b[i])
+    else:
+        assert torch.allclose(a @ x, b)
+
+
+@pytest.mark.parametrize("use_plan_solve", [False, True], ids=["no_plan", "with_plan"])
+@pytest.mark.parametrize("batching_mode", ["no_batch", "explicit_batch", "implicit_batch"])
+def test_release_operands(use_plan_solve, batching_mode):
+    """
+    Test that after release_operands(), the refcounts of user-provided
+    operands return to their initial values.
+    """
+    torch = pytest.importorskip("torch")
+
+    def _make_sparse_csr(n, device="cuda"):
+        dense = torch.rand(n, n, dtype=torch.float64, device=device)
+        dense += 2.0 * torch.eye(n, dtype=torch.float64, device=device)
+        csr = dense.to_sparse_csr()
+        # cuDSS requires int32 index buffers.
+        return torch.sparse_csr_tensor(
+            csr.crow_indices().to(dtype=torch.int32),
+            csr.col_indices().to(dtype=torch.int32),
+            csr.values(),
+            size=csr.size(),
+            device=device,
+        )
+
+    n = 8
+    # Starting from Python 3.14, sys.getrefcount() behavior changes due to
+    # LOAD_FAST_BORROW, a bytecode optimization that skips the refcount
+    # increment when the compiler's lifetime analysis can prove the local
+    # variable outlives the stack reference.  Whether the optimization
+    # applies can vary between load sites depending on code structure.
+    # Pre-assigning a and b here (rather than only inside the if/elif
+    # branches) ensures consistent behavior across all sys.getrefcount()
+    # calls.
+    # See https://github.com/python/cpython/issues/130704 for example.
+    a = None
+    b = None
+
+    if batching_mode == "no_batch":
+        a = _make_sparse_csr(n)
+        b = torch.ones(n, dtype=torch.float64, device="cuda")
+
+    elif batching_mode == "explicit_batch":
+        batch_size = 3
+        a = [_make_sparse_csr(n) for _ in range(batch_size)]
+        b = [torch.ones(n, dtype=torch.float64, device="cuda") for _ in range(batch_size)]
+
+    elif batching_mode == "implicit_batch":
+        batch_size = 3
+        dense_batch = torch.rand(batch_size, n, n, dtype=torch.float64, device="cuda")
+        for i in range(batch_size):
+            dense_batch[i] += 2.0 * torch.eye(n, dtype=torch.float64, device="cuda")
+        csr_batch = dense_batch.to_sparse_csr()
+        # cuDSS requires int32 index buffers for batched operations.
+        a = torch.sparse_csr_tensor(
+            csr_batch.crow_indices().to(dtype=torch.int32),
+            csr_batch.col_indices().to(dtype=torch.int32),
+            csr_batch.values(),
+            size=csr_batch.size(),
+            device="cuda",
+        )
+        # RHS must be col-major: create as (batch, k, n) then swap to (batch, n, k).
+        b = torch.ones(batch_size, 1, n, dtype=torch.float64, device="cuda").swapaxes(-2, -1)
+
+    if isinstance(a, list):
+        initial_refcounts_a = [sys.getrefcount(ai) for ai in a]
+        initial_refcounts_b = [sys.getrefcount(bi) for bi in b]
+    else:
+        initial_refcounts_a = sys.getrefcount(a)
+        initial_refcounts_b = sys.getrefcount(b)
+
+    solver = nvmath.sparse.advanced.DirectSolver(a, b)
+    if use_plan_solve:
+        solver.plan()
+        solver.factorize()
+        _ = solver.solve()
+        torch.cuda.current_stream().synchronize()
+
+    solver.release_operands()
+
+    # Verify refcounts
+    if isinstance(a, list):
+        final_refcounts_a = [sys.getrefcount(ai) for ai in a]
+        final_refcounts_b = [sys.getrefcount(bi) for bi in b]
+        for i in range(len(a)):
+            assert final_refcounts_a[i] == initial_refcounts_a[i]
+        for i in range(len(b)):
+            assert final_refcounts_b[i] == initial_refcounts_b[i]
+    else:
+        assert sys.getrefcount(a) == initial_refcounts_a
+        assert sys.getrefcount(b) == initial_refcounts_b
+
+    solver.free()
+
+
+@pytest.mark.skipif(HAS_CUPY_SPARSE is False, reason="cupy.sparse is not available")
+def test_execute_after_release_operands_raises():
+    """
+    Test that calling plan/factorize/solve after release_operands() raises a RuntimeError.
+    """
+    n = 8
+    a = sp.random(n, n, density=0.5, format="csr", dtype="float64")
+    a += sp.diags([2.0] * n, format="csr", dtype="float64")
+    b = cp.ones((n,), dtype="float64")
+
+    solver = nvmath.sparse.advanced.DirectSolver(a, b)
+    solver.plan()
+    solver.factorize()
+    solver.release_operands()
+
+    with pytest.raises(RuntimeError, match="cannot be performed after the operands have been released"):
+        solver.plan()
+
+    solver.free()
+
+
+@pytest.mark.skipif(HAS_CUPY_SPARSE is False, reason="cupy.sparse is not available")
+def test_reset_operands_after_release_works():
+    """
+    Test that calling reset_operands() after release_operands() works correctly.
+    """
+    n = 8
+    a = sp.random(n, n, density=0.5, format="csr", dtype="float64")
+    a += sp.diags([2.0] * n, format="csr", dtype="float64")
+    b = cp.ones((n,), dtype="float64")
+
+    solver = nvmath.sparse.advanced.DirectSolver(a, b)
+    solver.plan()
+    solver.factorize()
+    _ = solver.solve()
+
+    solver.release_operands()
+
+    # Create new operands with SAME sparsity structure (same nnz)
+    # by modifying the values of the original matrix
+    a_new = a.copy()
+    a_new.data[:] = cp.random.rand(a_new.data.size)  # Change values only
+    b_new = cp.random.rand(n).astype("float64")
+
+    # Reset with new operands (must provide both after release)
+    solver.reset_operands(a=a_new, b=b_new)
+    # Need to re-plan because reset_operands invalidated the plan
+    solver.plan()
+    # Then refactorize because values changed
+    solver.factorize()
+    x2 = solver.solve()
+
+    # Verify the result is correct for the new operands
+    a_new_dense = cp.asnumpy(a_new.toarray())  # Convert to CPU
+    b_new_cpu = cp.asnumpy(b_new)
+    x2_cpu = cp.asnumpy(x2)
+    expected = np.linalg.solve(a_new_dense, b_new_cpu)
+    np.testing.assert_allclose(x2_cpu, expected, rtol=1e-5)
+
+    solver.free()

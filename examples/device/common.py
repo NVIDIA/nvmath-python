@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from cuda.bindings import runtime as cudart
-import numpy as np
 import math
 
+import numpy as np
+from cuda.bindings import runtime as cudart
+
 from nvmath.device.common_cuda import ComputeCapability
+from nvmath.device.cusolverdx import Solver, _OrthogonalFactorizerProperties, _SolverProperties
 
 
 def random_complex(shape, real_dtype, order="C") -> np.ndarray:
@@ -91,3 +93,97 @@ def device_shared_memory(cc: ComputeCapability) -> int:
             return 96 * 1024
         case _:
             return 48 * 1024
+
+
+def format_solver(solver: Solver | _SolverProperties | _OrthogonalFactorizerProperties) -> str:
+    if isinstance(solver, _OrthogonalFactorizerProperties):
+        return (
+            f"Solver(size=({solver.size}), lda={solver.lda}, "
+            + f"arr_a={solver.a_arrangement}, data_type={solver.data_type}, "
+            + f"value_type={solver.value_type}, precision={solver.precision}, block_dim={solver.block_dim})"
+        )
+
+    return (
+        f"Solver(size=({solver.size}), lda={solver.lda}, ldb={solver.ldb}, "
+        + f"arr_a={solver.a_arrangement}, arr_b={solver.b_arrangement}, data_type={solver.data_type}, "
+        + f"value_type={solver.value_type}, precision={solver.precision}, block_dim={solver.block_dim})"
+    )
+
+
+def verify_relative_error(data_test, data_ref, rel_err: float, abs_error: float, solver: Solver | _SolverProperties) -> bool:
+    diff_norm = np.linalg.norm(data_test - data_ref)
+    ref_norm = np.linalg.norm(data_ref)
+
+    if diff_norm > ref_norm * rel_err + abs_error:
+        solver_msg = format_solver(solver)
+        msg = (
+            "Failed: | data_test - data_ref | > | data_ref | * rel_err + abs_error with: "
+            + f"| data_test - data_ref | = {diff_norm}, | data_ref | = {ref_norm}, "
+            + f"| data_ref | * rel_err + abs_error = {ref_norm * rel_err + abs_error}"
+            + f" with solver: {solver_msg}"
+        )
+        raise RuntimeError(msg)
+
+    return diff_norm / ref_norm if ref_norm != 0.0 else 0.0
+
+
+def verify_triangular_relative_error(
+    data_test, data_ref, rel_err: float, abs_error: float, solver: _SolverProperties, fill_mode: str = "upper"
+) -> bool:
+    assert fill_mode in {"upper", "lower"}
+    assert data_test.shape == data_ref.shape
+    assert data_test.ndim == 2 and data_ref.ndim == 2
+
+    rows, cols = data_test.shape
+    if fill_mode == "upper":
+        mask = np.triu(np.ones((rows, cols), dtype=bool))
+    else:
+        mask = np.tril(np.ones((rows, cols), dtype=bool))
+
+    data_test_tri = np.where(mask, data_test, 0)
+    data_ref_tri = np.where(mask, data_ref, 0)
+
+    return verify_relative_error(
+        data_test_tri,
+        data_ref_tri,
+        rel_err,
+        abs_error,
+        solver,
+    )
+
+
+def prepare_random_matrix(
+    shape: tuple[int, int, int],
+    dtype=np.float64,
+    is_complex=False,
+    is_hermitian=False,
+    is_diag_dom=False,
+    is_positive_definite=False,
+):
+    assert len(shape) == 3
+
+    data = random_complex(shape, dtype, "C") if is_complex else random_real(shape, dtype, "C")
+    if is_positive_definite:
+        is_hermitian = True
+
+    _, m, n = shape
+
+    if is_hermitian:
+        hermitian_size = min(m, n)
+        row_idx, col_idx = np.triu_indices(hermitian_size, k=1)
+        data[:, col_idx, row_idx] = np.conj(data[:, row_idx, col_idx])
+
+        if is_complex:
+            diag_idx = np.arange(hermitian_size)
+            data[:, diag_idx, diag_idx] = data[:, diag_idx, diag_idx].real
+
+    if is_positive_definite:
+        data = data @ np.ascontiguousarray(data.conj().transpose(0, 2, 1))
+
+    if is_diag_dom:
+        diag_size = min(m, n)
+        diag_idx = np.arange(diag_size)
+        row_abs_sum = np.sum(np.abs(data[:, :diag_size, :]), axis=-1)
+        data[:, diag_idx, diag_idx] = 2.0 * row_abs_sum + 5.0
+
+    return data

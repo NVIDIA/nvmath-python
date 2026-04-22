@@ -7,10 +7,11 @@
 #
 
 import numpy as np
+from common import complex64_to_fp16x2, fp16x2_to_complex64, mm_perf_GFlops, random_complex
+from common_numba import load_to_shared_1d_float16x2, store_from_shared_1d_float16x2, time_numba
 from numba import cuda
+
 from nvmath.device import Matmul
-from common import random_complex, mm_perf_GFlops, fp16x2_to_complex64, complex64_to_fp16x2
-from common_numba import time_numba, load_to_shared_1d_float16x2, store_from_shared_1d_float16x2
 
 
 def main():
@@ -47,7 +48,7 @@ def main():
 
         cuda.syncthreads()
 
-        for r in range(repeat):
+        for _r in range(repeat):
             MM.execute(alpha, smem_a, smem_b, beta, smem_c)
 
         cuda.syncthreads()

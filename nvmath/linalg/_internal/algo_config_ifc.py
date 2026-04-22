@@ -3,85 +3,41 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Interface class to encapsulate low-level calls to get algorithm configuration information.
+Interface class to encapsulate low-level calls to get and set algorithm configuration
+attributes.
 """
 
 __all__ = ["AlgoConfigInterface"]
 
-from collections import namedtuple
-
-import numpy as np
-
+from nvmath._internal.attribute_ifc_factory import make_cublas_attribute_interface
 from nvmath.bindings import cublasLt as cublaslt
-from .enum_to_tuples import (
-    CLUSTER_SHAPE_TO_ENUM,
-    ENUM_TO_CLUSTER_SHAPE,
-    MATMUL_STAGE_TO_ENUM,
-    ENUM_TO_MATMUL_STAGE,
-    MATMUL_TILE_TO_ENUM,
-    ENUM_TO_MATMUL_TILE,
+
+# Create a class, AlgoConfigInterface, such that each enum member in
+# MatmulAlgoConfigAttribute is exposed as a lowercase property (getter + setter).
+# For example, if the class instance is stored as ``config_ifc``,
+# then the enum member ``CLUSTER_SHAPE_ID`` becomes the property
+# ``config_ifc.cluster_shape_id``.
+#
+# The C bindings expect a raw pointer to the algo sub-buffer, not the
+# handle dict. _get_attribute and _set_attribute bridge that gap by
+# extracting `handle["algo"].ctypes.data` before forwarding the call.
+_raw_get = cublaslt.matmul_algo_config_get_attribute
+_raw_set = cublaslt.matmul_algo_config_set_attribute
+
+
+def _get_attribute(handle, enum_value, buf_addr, buf_size, size_written_addr):
+    _raw_get(handle["algo"].ctypes.data, enum_value, buf_addr, buf_size, size_written_addr)
+
+
+def _set_attribute(handle, enum_value, buf_addr, buf_size):
+    _raw_set(handle["algo"].ctypes.data, enum_value, buf_addr, buf_size)
+
+
+AlgoConfigInterface = make_cublas_attribute_interface(
+    class_module=__name__,
+    class_name="AlgoConfigInterface",
+    attribute_enum=cublaslt.MatmulAlgoConfigAttribute,
+    get_attribute_dtype_fn=cublaslt.get_matmul_algo_config_attribute_dtype,
+    get_attribute_fn=_get_attribute,
+    set_attribute_fn=_set_attribute,
 )
-
-ConfigEnum = cublaslt.MatmulAlgoConfigAttribute
-
-
-def scalar_attributes():
-    return [e.name for e in ConfigEnum]
-
-
-CAP_ENUM_SCALAR_ATTR = scalar_attributes()
-
-# Special Handling.
-Maps = namedtuple("Maps", ["to_enumerator", "to_value"])
-SPECIAL_ATTR = {
-    "CLUSTER_SHAPE_ID": Maps(CLUSTER_SHAPE_TO_ENUM, ENUM_TO_CLUSTER_SHAPE),
-    "STAGES_ID": Maps(MATMUL_STAGE_TO_ENUM, ENUM_TO_MATMUL_STAGE),
-    "TILE_ID": Maps(MATMUL_TILE_TO_ENUM, ENUM_TO_MATMUL_TILE),
-}
-
-
-class AlgoConfigInterface:
-    def __init__(self, algorithm):
-        """ """
-        assert isinstance(algorithm, cublaslt.MatmulHeuristicResult), "Internal error."
-        self.algorithm = algorithm
-
-    def __getattr__(self, name):
-        _name = name.upper()
-        if _name not in CAP_ENUM_SCALAR_ATTR:
-            return super().__getattr__(name)
-        name = _name
-        get_dtype = cublaslt.get_matmul_algo_config_attribute_dtype
-        attribute_buffer = np.zeros((1,), dtype=get_dtype(ConfigEnum[name]))
-        size_written = np.zeros((1,), dtype=np.uint64)
-        cublaslt.matmul_algo_config_get_attribute(
-            self.algorithm["algo"].ctypes.data,
-            ConfigEnum[name].value,
-            attribute_buffer.ctypes.data,
-            attribute_buffer.itemsize,
-            size_written.ctypes.data,
-        )
-
-        if name not in SPECIAL_ATTR:
-            return attribute_buffer[0]
-
-        return SPECIAL_ATTR[name].to_value[attribute_buffer[0]]
-
-    def __setattr__(self, name, value):
-        _name = name.upper()
-        if _name not in CAP_ENUM_SCALAR_ATTR:
-            return super().__setattr__(name, value)
-        name = _name
-
-        if name in SPECIAL_ATTR:
-            value = SPECIAL_ATTR[name].to_enumerator[value]
-
-        get_dtype = cublaslt.get_matmul_algo_config_attribute_dtype
-        attribute_buffer = np.zeros((1,), dtype=get_dtype(ConfigEnum[name]))
-        attribute_buffer[0] = value
-        cublaslt.matmul_algo_config_set_attribute(
-            self.algorithm["algo"].ctypes.data,
-            ConfigEnum[name].value,
-            attribute_buffer.ctypes.data,
-            attribute_buffer.itemsize,
-        )

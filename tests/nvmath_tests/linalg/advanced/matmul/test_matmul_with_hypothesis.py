@@ -8,19 +8,19 @@ import os
 import re
 import typing
 
-from hypothesis import given, assume
+import pytest
+from hypothesis import assume, given
 from hypothesis.extra.numpy import arrays, from_dtype
 from hypothesis.strategies import (
-    one_of,
-    tuples,
-    none,
+    composite,
+    fixed_dictionaries,
     floats,
     integers,
+    none,
+    one_of,
     sampled_from,
-    fixed_dictionaries,
-    composite,
+    tuples,
 )
-import pytest
 
 from nvmath.internal.tensor_wrapper import maybe_register_package
 from nvmath.memory import _MEMORY_MANAGER
@@ -40,19 +40,18 @@ except ImportError:
 import numpy as np
 
 from nvmath import CudaDataType
-
-from nvmath.bindings.cublasLt import cuBLASLtError, ReductionScheme
+from nvmath.bindings.cublasLt import ReductionScheme, cuBLASLtError
 from nvmath.linalg._internal.typemaps import (
-    NAMES_TO_DEFAULT_COMPUTE_TYPE,
-    CUBLAS_COMPUTE_TYPE_TO_NAME,
-    SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE,
     COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE,
+    CUBLAS_COMPUTE_TYPE_TO_NAME,
+    NAMES_TO_DEFAULT_COMPUTE_TYPE,
+    SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE,
 )
 from nvmath.linalg.advanced import MatmulEpilog, MatmulNumericalImplFlags, MatmulPlanPreferences, matmul
 from nvmath.linalg.advanced.matmulmod import EPILOG_INPUT_HANDLERS_MAP, EPILOG_MINIMUM_VERSIONS_MAP
 from nvmath.memory import BaseCUDAMemoryManager
-
 from nvmath_tests.helpers import nvmath_seed
+
 from ...utils import get_absolute_tolerance
 
 MatmulEpilog_BIAS_list = [

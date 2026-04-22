@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.0, generator version 0.3.1.dev1301+g7215ac36e. Do not modify it directly.
 
 cimport cython  # NOQA
 cimport cpython
@@ -18,7 +18,11 @@ import numpy as _numpy
 ###############################################################################
 
 class Status(_IntEnum):
-    """See `curandStatus`."""
+    """
+    CURAND function call status types
+
+    See `curandStatus`.
+    """
     SUCCESS = CURAND_STATUS_SUCCESS
     VERSION_MISMATCH = CURAND_STATUS_VERSION_MISMATCH
     NOT_INITIALIZED = CURAND_STATUS_NOT_INITIALIZED
@@ -34,7 +38,11 @@ class Status(_IntEnum):
     INTERNAL_ERROR = CURAND_STATUS_INTERNAL_ERROR
 
 class RngType(_IntEnum):
-    """See `curandRngType`."""
+    """
+    CURAND generator types
+
+    See `curandRngType`.
+    """
     TEST = CURAND_RNG_TEST
     PSEUDO_DEFAULT = CURAND_RNG_PSEUDO_DEFAULT
     PSEUDO_XORWOW = CURAND_RNG_PSEUDO_XORWOW
@@ -49,7 +57,11 @@ class RngType(_IntEnum):
     QUASI_SCRAMBLED_SOBOL64 = CURAND_RNG_QUASI_SCRAMBLED_SOBOL64
 
 class Ordering(_IntEnum):
-    """See `curandOrdering`."""
+    """
+    CURAND ordering of results in memory
+
+    See `curandOrdering`.
+    """
     PSEUDO_BEST = CURAND_ORDERING_PSEUDO_BEST
     PSEUDO_DEFAULT = CURAND_ORDERING_PSEUDO_DEFAULT
     PSEUDO_SEEDED = CURAND_ORDERING_PSEUDO_SEEDED
@@ -58,14 +70,20 @@ class Ordering(_IntEnum):
     QUASI_DEFAULT = CURAND_ORDERING_QUASI_DEFAULT
 
 class DirectionVectorSet(_IntEnum):
-    """See `curandDirectionVectorSet`."""
+    """
+    CURAND choice of direction vector set
+
+    See `curandDirectionVectorSet`.
+    """
     DIRECTION_VECTORS_32_JOEKUO6 = CURAND_DIRECTION_VECTORS_32_JOEKUO6
     SCRAMBLED_DIRECTION_VECTORS_32_JOEKUO6 = CURAND_SCRAMBLED_DIRECTION_VECTORS_32_JOEKUO6
     DIRECTION_VECTORS_64_JOEKUO6 = CURAND_DIRECTION_VECTORS_64_JOEKUO6
     SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6 = CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6
 
 class Method(_IntEnum):
-    """See `curandMethod`."""
+    """
+    See `curandMethod`.
+    """
     METHOD_CHOOSE_BEST = CURAND_CHOOSE_BEST
     METHOD_ITR = CURAND_ITR
     METHOD_KNUTH = CURAND_KNUTH

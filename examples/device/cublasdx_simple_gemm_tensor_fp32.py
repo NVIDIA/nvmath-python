@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-from numba import cuda
-from nvmath.device import Matmul
 from common import random_real
-from nvmath.device.common import copy, copy_fragment, clear, copy_wait, make_tensor, axpby
+from numba import cuda
+
+from nvmath.device import Matmul
+from nvmath.device.common import axpby, clear, copy, copy_fragment, copy_wait, make_tensor
 
 
 def main():

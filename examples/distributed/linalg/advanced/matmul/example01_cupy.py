@@ -15,12 +15,11 @@ The global operation performed in this example is: A.T @ B
 $ mpiexec -n 4 python example01_cupy.py
 """
 
-import numpy as np
 import cupy as cp
+import numpy as np
 from mpi4py import MPI
 
 import nvmath.distributed
-
 from nvmath.distributed.distribution import Slab
 from nvmath.distributed.linalg.advanced import matrix_qualifiers_dtype
 
@@ -29,8 +28,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
-nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
+# cuBLASMp requires NCCL communication backend.
+nvmath.distributed.initialize(device_id, comm, backends=["nccl"])
 
 # The global problem size m, n, k
 m, n, k = 128, 512, 1024
@@ -48,8 +47,6 @@ row_wise_distribution = Slab.X  # partitioning on rows
 col_wise_distribution = Slab.Y  # partitioning on columns
 
 with cp.cuda.Device(device_id):
-    # See example01_cupy_symmetric_memory.py for an example of allocating on
-    # symmetric memory, which may further improve performance.
     a = cp.random.rand(k, m // nranks)  # a is transposed and partitioned on m
     b = cp.random.rand(k, n // nranks)  # b is partitioned on n
 

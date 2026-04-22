@@ -2,23 +2,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from .layout import (
+    CACHED_LAYOUT_CHECKERS,
+    mm_layout_checker_getter,
+)
+from .match import (
+    select_blas_mm_function,
+)
 from .qualifiers import (
     DiagonalMatrixQualifier,
     GeneralMatrixQualifier,
     HermitianMatrixQualifier,
     MatmulOptions,
     MatrixQualifier,
-    matrix_qualifiers_dtype,
     SymmetricMatrixQualifier,
     TriangularMatrixQualifier,
+    matrix_qualifiers_dtype,
     vector_to_square,
-)
-from .layout import (
-    mm_layout_checker_getter,
-    CACHED_LAYOUT_CHECKERS,
-)
-from .match import (
-    select_blas_mm_function,
 )
 
 __all__ = [

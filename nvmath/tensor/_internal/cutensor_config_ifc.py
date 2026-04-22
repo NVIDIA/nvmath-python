@@ -48,7 +48,10 @@ class ContractionPlanPreference:
         name      = cutensor PlanPreference enum for the attribute
         attribute = numpy ndarray object into which the value is stored by cutensornet
         """
-        raise AttributeError("cuTensor does not support a getter for plan preference attributes.")
+        assert contraction.plan_preference_ptr is not None, "Internal error"
+        cutensor.plan_preference_get_attribute(
+            contraction.handle, contraction.plan_preference_ptr, name, attribute.ctypes.data, attribute.dtype.itemsize
+        )
 
     @staticmethod
     def _set_scalar_attribute(contraction, name, attribute, value):

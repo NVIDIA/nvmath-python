@@ -14,11 +14,18 @@ def _force_lib_load():
 
 _force_lib_load()
 
-from nvmath import bindings  # noqa: E402
-from nvmath._utils import ComputeType  # noqa: E402
-from nvmath._utils import CudaDataType  # noqa: E402
-from nvmath._utils import LibraryPropertyType  # noqa: E402
-from nvmath import fft, linalg, sparse, tensor  # noqa: E402
+from nvmath import (  # noqa: E402
+    bindings,  # noqa: E402
+    fft,
+    linalg,
+    sparse,
+    tensor,
+)
+from nvmath._utils import (  # noqa: E402
+    ComputeType,
+    CudaDataType,
+    LibraryPropertyType,
+)
 from nvmath.memory import BaseCUDAMemoryManager, BaseCUDAMemoryManagerAsync, MemoryPointer  # noqa: E402
 
 __all__ = [

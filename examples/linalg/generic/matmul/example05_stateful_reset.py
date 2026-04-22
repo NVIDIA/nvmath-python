@@ -36,14 +36,14 @@ with nvmath.linalg.Matmul(a, b, execution="cuda") as mm:
     result = mm.execute()
 
     # Create new operands and bind them.
-    c = np.random.rand(m, k)
-    d = np.random.rand(k, n)
-    mm.reset_operands(c, d)
+    a_new = np.random.rand(m, k)
+    b_new = np.random.rand(k, n)
+    mm.reset_operands(a=a_new, b=b_new)
 
     # Execute the new matrix multiplication.
     result = mm.execute()
 
     # No synchronization is needed for CPU tensors, since the execution always blocks.
 
-    print(f"Input types = {type(c), type(d)}")
+    print(f"Input types = {type(a_new), type(b_new)}")
     print(f"Result type = {type(result)}")

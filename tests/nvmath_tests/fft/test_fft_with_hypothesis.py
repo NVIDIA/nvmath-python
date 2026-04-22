@@ -14,12 +14,12 @@ try:
 except ImportError:
     cp = None
 
-from hypothesis import given, strategies as st
-from hypothesis.extra.numpy import arrays, array_shapes
+from hypothesis import given
+from hypothesis import strategies as st
+from hypothesis.extra.numpy import array_shapes, arrays
 
 import nvmath
-
-from nvmath_tests.helpers import nvmath_seed
+from nvmath_tests.helpers import OutOfMemoryError, consistent_out_of_memory_error, nvmath_seed
 
 # FIMXE: Lower minimum side length to 1 after refactoring of array traits
 shape_st = array_shapes(min_dims=1, max_dims=3, min_side=2, max_side=256)
@@ -96,15 +96,6 @@ axes_strategy = st.sampled_from(
     )
 )
 
-out_of_memory_exceptions = (
-    (nvmath.internal.bindings.CudaOutOfMemoryError,)
-    if cp is None
-    else (
-        nvmath.internal.bindings.CudaOutOfMemoryError,
-        cp.cuda.memory.OutOfMemoryError,
-    )
-)
-
 
 def is_axes_valid(a: np.ndarray, axes: tuple[int] | None, is_r2c: bool) -> bool:
     if axes is None:
@@ -141,8 +132,9 @@ def test_fft(a, axes, options, execution):
     if not is_axes_valid(a, axes, is_r2c=False):
         return
     try:
-        b = nvmath.fft.fft(a, axes=axes, options=options, execution=execution)
-    except out_of_memory_exceptions:
+        with consistent_out_of_memory_error():
+            b = nvmath.fft.fft(a, axes=axes, options=options, execution=execution)
+    except OutOfMemoryError:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return
@@ -169,8 +161,9 @@ def test_ifft(a, axes, options, execution):
     if not is_axes_valid(a, axes, is_r2c=False):
         return
     try:
-        b = nvmath.fft.ifft(a, axes=axes, options=options, execution=execution)
-    except out_of_memory_exceptions:
+        with consistent_out_of_memory_error():
+            b = nvmath.fft.ifft(a, axes=axes, options=options, execution=execution)
+    except OutOfMemoryError:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return
@@ -197,8 +190,9 @@ def test_rfft(a, axes, options, execution):
     if not is_axes_valid(a, axes, is_r2c=True):
         return
     try:
-        b = nvmath.fft.rfft(a, axes=axes, options=options, execution=execution)
-    except out_of_memory_exceptions:
+        with consistent_out_of_memory_error():
+            b = nvmath.fft.rfft(a, axes=axes, options=options, execution=execution)
+    except OutOfMemoryError:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return
@@ -228,9 +222,10 @@ def test_irfft(a, axes, options, execution):
     fft_shape = tuple(a.shape[e] for e in (range(a.ndim) if axes is None else axes))
     options["last_axis_parity"] = "odd" if fft_shape[-1] % 2 else "even"
     try:
-        b = nvmath.fft.rfft(a, axes=axes, options=options, execution=execution)  # C2R needs complex-Hermitian input
-        c = nvmath.fft.irfft(b, axes=axes, options=options, execution=execution)
-    except out_of_memory_exceptions:
+        with consistent_out_of_memory_error():
+            b = nvmath.fft.rfft(a, axes=axes, options=options, execution=execution)  # C2R needs complex-Hermitian input
+            c = nvmath.fft.irfft(b, axes=axes, options=options, execution=execution)
+    except OutOfMemoryError:
         # requiring too much GPU memory (>1GB), do nothing
         assert a.nbytes > 2**30, "suspicious OOM when requesting not too much GPU memory!"
         return

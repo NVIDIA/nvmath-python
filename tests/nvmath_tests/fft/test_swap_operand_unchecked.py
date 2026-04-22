@@ -6,8 +6,9 @@
 Test suite for reset_operand_unchecked() method
 """
 
-import pytest
 import math
+
+import pytest
 
 try:
     import cupy as cp
@@ -21,19 +22,19 @@ except ImportError:
 
 import nvmath
 
+from .utils.check_helpers import (
+    assert_norm_close,
+    copy_array,
+    get_fft_ref,
+)
 from .utils.common_axes import (
-    MemBackend,
-    Framework,
     DType,
+    Framework,
+    MemBackend,
 )
 from .utils.input_fixtures import (
     get_random_input_data,
     init_assert_exec_backend_specified,
-)
-from .utils.check_helpers import (
-    assert_norm_close,
-    get_fft_ref,
-    copy_array,
 )
 from .utils.support_matrix import (
     framework_exec_type_support,

@@ -3,20 +3,21 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+
 import pytest
 
 import nvmath
 
-from .utils.common_axes import Framework, ExecBackend
-from .utils.axes_utils import is_complex, is_half, get_fft_dtype
-from .utils.support_matrix import framework_exec_type_support, supported_backends
-from .utils.input_fixtures import get_random_input_data
+from .utils.axes_utils import get_fft_dtype, is_complex, is_half
 from .utils.check_helpers import (
+    assert_array_type,
+    assert_norm_close,
     get_fft_ref,
     get_scaled,
-    assert_norm_close,
-    assert_array_type,
 )
+from .utils.common_axes import ExecBackend, Framework
+from .utils.input_fixtures import get_random_input_data
+from .utils.support_matrix import framework_exec_type_support, supported_backends
 
 
 @pytest.mark.parametrize(
@@ -41,11 +42,6 @@ from .utils.check_helpers import (
     ],
 )
 def test_default_backend(seeder, monkeypatch, framework, exec_backend, mem_backend, dtype):
-    import sys
-
-    if not sys.platform.startswith("linux"):
-        pytest.skip("The fft bindings are not build for windows")
-
     def fail_fn(fn):
         def wrapper(*args, **kwargs):
             pytest.fail(f"The FFT should not call {fn}")

@@ -17,7 +17,6 @@ import numpy as np
 from nvmath.bindings import cudss
 from nvmath.internal import utils
 
-
 DataParamEnum: TypeAlias = cudss.DataParam
 
 # Future-proofing - cuDSS is currently not thread-safe.
@@ -168,6 +167,10 @@ class PlanInfo:
         """
         if self._batched:
             raise RuntimeError("Matching (column) permutation is not available for batched systems.")
+
+        if not self._solver.plan_config.use_matching:
+            # documented in https://github.com/NVIDIA/CUDALibrarySamples/blob/main/cuDSS/simple_get_set/simple_get_set.cpp#L269-L274  # noqa: E501, W505
+            raise RuntimeError("Matching (column) permutation is not available if matching is not enabled.")
 
         if self._perm_matching is None:
             self._perm_matching = np.empty((self._N,), dtype=self._index_type)
@@ -359,6 +362,9 @@ class FactorizationInfo:
         if self._batched:
             raise RuntimeError("The factorized system's row scale factors is not available for batched systems.")
 
+        if not self._solver.plan_config.use_matching:
+            raise RuntimeError("Row scale factors is only available if matching is enabled.")
+
         if self._scale_row is None:
             vtype = self._value_type
             dtype = complex_to_real_equivalent(vtype) if "complex" in vtype else vtype
@@ -379,6 +385,9 @@ class FactorizationInfo:
         """
         if self._batched:
             raise RuntimeError("The factorized system's column scale factors is not available for batched systems.")
+
+        if not self._solver.plan_config.use_matching:
+            raise RuntimeError("Column scale factors is only available if matching is enabled.")
 
         if self._scale_col is None:
             vtype = self._value_type

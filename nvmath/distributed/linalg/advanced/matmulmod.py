@@ -4,12 +4,12 @@
 
 __all__ = ["MatmulComputeType", "Matmul", "matmul"]
 
-from collections.abc import Sequence
-from dataclasses import dataclass, field
 import logging
 import typing
-
-from typing import cast, Literal
+from collections import namedtuple
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import Literal, cast
 
 try:
     from cuda.core import Device
@@ -18,39 +18,41 @@ except ImportError:
 import numpy as np
 
 import nvmath.distributed
-from nvmath.distributed.distribution import ProcessGrid, Distribution, BlockCyclic, BlockNonCyclic
-
 from nvmath import memory
-
-from nvmath.distributed.linalg.advanced import _configuration, MatmulEpilog
-from ._configuration import MatmulOptions, matrix_qualifiers_dtype
-from nvmath.bindings import cublas
-from nvmath.bindings import cublasMp  # type: ignore
-from nvmath.bindings import nvshmem  # type: ignore
-
-from nvmath.distributed._internal.nvshmem import NvshmemMemoryManager
-
-from nvmath.internal import formatters
+from nvmath._internal.layout import is_contiguous_and_dense
+from nvmath._utils import CudaDataType
+from nvmath.bindings import (
+    cublas,
+    cublasMp,  # type: ignore
+)
 from nvmath.distributed._internal import tensor_wrapper
 from nvmath.distributed._internal.tensor_ifc import DistributedTensor
-from nvmath.internal import typemaps
-from nvmath.internal import utils
-from nvmath._internal.layout import is_contiguous_and_dense
-
+from nvmath.distributed.distribution import BlockCyclic, BlockNonCyclic, Distribution, ProcessGrid
 from nvmath.distributed.linalg._internal import matmul_desc_ifc
+from nvmath.distributed.linalg._internal.epilog_protocol import (
+    EPILOG_INPUT_HANDLERS_MAP,
+    EPILOG_MINIMUM_VERSIONS_MAP,
+    EPILOG_OUTPUT_HANDLERS_MAP,
+    EpilogOutputHandler,
+)
+from nvmath.distributed.linalg.advanced import MatmulEpilog, _configuration
+from nvmath.internal import formatters, typemaps, utils
 from nvmath.linalg._internal.typemaps import (
-    NAMES_TO_DEFAULT_SCALE_TYPE,
-    NAMES_TO_DEFAULT_COMPUTE_TYPE,
     COMPUTE_TYPE_TO_DEFAULT_SCALE_TYPE,
+    NAMES_TO_DEFAULT_COMPUTE_TYPE,
+    NAMES_TO_DEFAULT_SCALE_TYPE,
     SCALE_TYPE_TO_DEFAULT_COMPUTE_TYPE,
     SUPPORTED_TYPES,
 )
 from nvmath.linalg._internal.utils import (
     calculate_strides,
 )
-from nvmath._utils import CudaDataType
+
+from ._configuration import MatmulOptions, matrix_qualifiers_dtype
 
 MatmulComputeType = cublas.ComputeType
+
+EpilogInputTraits = namedtuple("EpilogInputTraits", ["dtype", "extents", "strides"])
 
 
 @dataclass
@@ -76,6 +78,7 @@ class MMTraits:
     a_layout: MatrixLayout  # local
     b_layout: MatrixLayout  # local
     c_layout: MatrixLayout | None  # local
+    d_layout: MatrixLayout | None  # local
     # NOTE: cuBLASMp doesn't support batched matmul so batch size is currently always 0.
     batch_count: int = 0
     batch_shape: Sequence[int] = field(default_factory=list)
@@ -84,9 +87,9 @@ class MMTraits:
 
 @dataclass
 class _ProblemSpec:
-    """This is used in a custom MPI reduction to check that the Matmul problem
-    specification is consistent across processes, and to infer global information
-    (e.g. global shape of distributed matrices)."""
+    """This is used in a custom reduction to check that the Matmul problem specification
+    is consistent across processes, and to infer global information (e.g. global shape
+    of distributed matrices)."""
 
     @dataclass
     class Options:
@@ -98,14 +101,20 @@ class _ProblemSpec:
         """
 
         def __init__(self, options: MatmulOptions):
+            self.inplace = options.inplace
             self.compute_type = options.compute_type
             self.scale_type = options.scale_type
             self.result_type = options.result_type
+            self.result_amax = options.result_amax
+            self.block_scaling = options.block_scaling
             self.blocking = options.blocking
 
+        inplace: bool = False
         compute_type: int | None = None
         scale_type: int | None = None
         result_type: int | None = None
+        result_amax: bool = False
+        block_scaling: bool = False
         blocking: Literal[True, "auto"] = "auto"
 
     shapes: list[list[int]]  # shape of each operand
@@ -137,8 +146,8 @@ def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
         if isinstance(p2, Exception):
             return p2  # propagate exception
 
-        if not (p1.lib_version == p2.lib_version >= 600):
-            return ValueError("cublasMp >= 0.6.0 required")
+        if not (p1.lib_version == p2.lib_version >= 800):
+            return ValueError("cublasMp >= 0.8.0 required")
 
         num_operands = len(p1.operand_dtypes)
         if num_operands != len(p2.operand_dtypes):
@@ -201,7 +210,18 @@ def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
 
                 input_type_width = typemaps.NAME_TO_DATA_WIDTH[p.operand_dtypes[0]]
                 if input_type_width <= 8:
-                    return TypeError("Narrow-precision data types (FP8 and lower) are not currently supported.")
+                    if p.compute_capability < (8, 9):
+                        return RuntimeError(
+                            "FP8 requires a device with compute capability 8.9 or higher "
+                            "(Ada, Hopper, Blackwell or newer architecture). The compute "
+                            f"capability of process {p.rank}'s device is {p.compute_capability}"
+                        )
+                    if p.options.block_scaling and p.compute_capability < (10, 0):
+                        return RuntimeError(
+                            "MXFP8 requires a device with compute capability 10.0 or higher "
+                            "(Blackwell or newer architecture). The compute capability of "
+                            f"process {p.rank}'s device is {p.compute_capability}"
+                        )
 
                 p.qualifiers = p.qualifiers if p.qualifiers is not None else np.zeros((3,), dtype=matrix_qualifiers_dtype)
                 if p.qualifiers.dtype != matrix_qualifiers_dtype:
@@ -232,6 +252,9 @@ def _problem_spec_reducer(p1: _ProblemSpec, p2: _ProblemSpec):
 
         if not np.array_equal(p1.qualifiers, p2.qualifiers):
             return ValueError("The qualifiers don't match across processes")
+
+        if num_operands == 2 and p1.options.inplace:
+            return ValueError("The operation cannot be inplace if operand C is not provided.")
 
         if len(p1.distributions) != 3 or len(p2.distributions) != 3:
             return ValueError("Must provide distributions for A, B and C/D")
@@ -322,6 +345,18 @@ The scale factor for the matrix multiplication term as a real or complex number.
 The scale factor for the matrix addition term as a real or complex number. A value for `beta` must be provided if
 operand `c` is specified.""".replace("\n", " "),
         #
+        "quantization_scales": """\
+Specify scale factors for the matrix multiplication as a :class:`~nvmath.distributed.linalg.advanced.MatmulQuantizationScales`
+object. Alternatively, a `dict` containing the parameters for the
+:class:`~nvmath.distributed.linalg.advanced.MatmulQuantizationScales`
+constructor can also be provided. The scale factors can be provided as scalars or tensors.
+If a scale factor is provided as a tensor, it must be from the same package and on the same
+memory space (CPU or GPU device) as the operands of the matmul.
+If a scale factor is provided as a scalar, and the execution space is GPU,
+a CPU->GPU copy is inevitable. To avoid this copy, provide
+the quantization scale as one-element array on the GPU.
+Allowed and required only for narrow-precision (FP8 and lower) operations.""".replace("\n", " "),
+        #
         "epilog": """\
 Specify an epilog :math:`F` as an object of type :class:`MatmulEpilog` to apply to the result of the matrix
 multiplication: :math:`F(\\alpha A @ B + \\beta C`). The default is no epilog. See `cuBLASMp documentation
@@ -356,13 +391,54 @@ specified, the value will be set to the default-constructed :class:`MatmulPlanPr
         #
         "result": """\
 The result of the specified matrix multiplication (epilog applied), which remains on the same device and belongs to the
-same package as the input operands.""".replace("\n", " "),
+same package as the input operands. If an epilog (like :attr:`nvmath.distributed.linalg.advanced.MatmulEpilog.RELU_AUX`) that
+results in extra output is used, or an extra output is requested (for example by setting
+:attr:`~nvmath.distributed.linalg.advanced.MatmulOptions.result_amax` option in ``options`` argument),
+a tuple is returned with the first element being the matrix multiplication result (epilog applied) and the second element
+being the auxiliary output provided as a `dict`. """.replace("\n", " "),
+        #
+        "narrow_precision": """\
+        Matrix multiplication with narrow-precision operands is supported, in both FP8 and MXFP8 formats.
+
+        .. note::
+
+            **FP8 requires a device with compute capability 8.9 or higher** (Ada, Hopper, Blackwell or newer architecture).
+            **MXFP8 requires a device with compute capability 10.0 or higher** (Blackwell or newer architecture).
+            Please refer to the `compute capability table <https://developer.nvidia.com/cuda-gpus>`_
+            to check the compute capability of your device.
+
+        For FP8 operations:
+
+        * For each operand a scaling factor needs to be specified via ``quantization_scales`` argument.
+        * Maximum absolute value of the result (amax) can be requested via
+          :attr:`~nvmath.distributed.linalg.advanced.MatmulOptions.result_amax` option in ``options`` argument.
+        * Custom result type (both FP8 and non-FP8) can be requested via
+          :attr:`~nvmath.distributed.linalg.advanced.MatmulOptions.result_type` option in ``options`` argument.
+
+        For MXFP8 operations:
+
+        * To enable MXFP8 operations, :attr:`~nvmath.distributed.linalg.advanced.MatmulOptions.block_scaling` option
+          must be set to ``True``.
+        * Block scaling factors need to be specified via ``quantization_scales`` argument.
+        * Utilities in :mod:`nvmath.distributed.linalg.advanced.helpers.matmul` can be used to create and modify
+          block scaling factors.
+        * When MXFP8 is used and the result type is a narrow-precision data type, the auxiliary output
+          ``"d_out_scale"`` will be returned in the auxiliary output tensor. It will contain the scales
+          that were used for the result quantization.
+
+        Please refer to the examples and narrow-precision operations tutorial for more details.
+        cuBLASMp follows cuBLAS specification and usage for FP8 and MXFP8 formats, scaling modes,
+        scaling factor layouts, etc. For more details see the
+        `cublasLtMatmul documentation <https://docs.nvidia.com/cuda/cublas/#cublasltmatmul>`_.
+""".strip(),
         #
         "semantics": """\
         .. _semantics:
 
         The semantics of the matrix multiplication follows :external:py:data:`numpy.matmul` semantics, with some restrictions on
-        broadcasting.
+        broadcasting. In addition, the semantics for the fused matrix addition are described below:
+
+        * For in-place matrix multiplication (where the result is written into `c`) the result has the same shape as `c`.
 """.strip(),
     }
 )
@@ -425,12 +501,17 @@ class Matmul:
 
         qualifiers: {qualifiers}
 
+        quantization_scales: {quantization_scales}
+
         options: {options}
 
         stream: {stream}
 
     Semantics:
         {semantics}
+
+    Narrow-precision support:
+        {narrow_precision}
 
     .. seealso::
         :meth:`plan`, :meth:`reset_operands`, :meth:`execute`
@@ -442,16 +523,16 @@ class Matmul:
         >>> from nvmath.distributed.distribution import Slab
         >>> from nvmath.distributed.linalg.advanced import matrix_qualifiers_dtype
 
-        Get MPI communicator used to initialize nvmath.distributed (for information on
+        Get process group used to initialize nvmath.distributed (for information on
         initializing ``nvmath.distributed``, you can refer to the documentation or to the
         Matmul examples in `nvmath/examples/distributed/linalg/advanced
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/linalg/advanced/matmul>`_):
 
-        >>> comm = nvmath.distributed.get_context().communicator
+        >>> process_group = nvmath.distributed.get_context().process_group
 
         Get my process rank:
 
-        >>> rank = comm.Get_rank()
+        >>> rank = process_group.rank
 
         Create two 2-D float64 ndarrays on the CPU (using Slab distributions to distribute
         the matrices across processes):
@@ -488,7 +569,7 @@ class Matmul:
 
         >>> r1 = mm.execute()
 
-        Finally, free the object's resources. To avoid having to explicitly making this
+        Finally, free the object's resources. To avoid having to explicitly make this
         call, it's recommended to use the Matmul object as a context manager as shown below,
         if possible.
 
@@ -546,6 +627,7 @@ class Matmul:
         alpha=None,
         beta=None,
         qualifiers=None,
+        quantization_scales=None,
         options=None,
         stream: utils.AnyStream | int | None = None,
     ):
@@ -556,13 +638,11 @@ class Matmul:
                 "https://docs.nvidia.com/cuda/nvmath-python/latest/distributed-apis/runtime.html"
                 " for more information."
             )
-        if not distributed_ctx.nvshmem_available:
-            raise RuntimeError("nvmath.distributed wasn't initialized with NVSHMEM backend")
         if distributed_ctx.nccl_comm is None:
             raise RuntimeError("nvmath.distributed wasn't initialized with NCCL backend")
-        self.communicator = communicator = distributed_ctx.communicator
-        self.rank = rank = communicator.Get_rank()
-        self.nranks = nranks = communicator.Get_size()
+        self.process_group = process_group = distributed_ctx.process_group
+        self.rank = rank = process_group.rank
+        self.nranks = nranks = process_group.nranks
 
         self.options = options = cast(
             MatmulOptions, utils.check_or_create_options(MatmulOptions, options, "Distributed matrix multiplication options")
@@ -578,6 +658,8 @@ class Matmul:
 
         operands = [a, b, c] if c is not None else [a, b]
 
+        version = cublasMp.get_version()
+
         problem_spec = _ProblemSpec(
             distributions=list(distributions),
             shapes=[list(o.shape) for o in operands],  # local shapes
@@ -591,13 +673,13 @@ class Matmul:
             beta=beta,
             qualifiers=qualifiers,
             is_F=[sorted(o.strides) == list(o.strides) and is_contiguous_and_dense(o.shape, o.strides) for o in operands],
-            lib_version=cublasMp.get_version(),
+            lib_version=version,
             nranks=nranks,
             rank=rank,
         )
 
         if nranks > 1:
-            problem_spec = communicator.allreduce(problem_spec, op=_problem_spec_reducer)
+            problem_spec = process_group.allreduce_object(problem_spec, op=_problem_spec_reducer)
         else:
             # Ensure we error-check with one rank.
             problem_spec = _problem_spec_reducer(problem_spec, problem_spec)
@@ -609,7 +691,16 @@ class Matmul:
 
         self.distributions = distributions = cast(Sequence[BlockCyclic], problem_spec.distributions)
 
+        if options.inplace and options.result_type is not None:
+            self.logger.warning(
+                f"Matmul: The provided result type {options.result_type.name} in options is ignored since \
+the operation is in-place."
+            )
+        self.inplace = options.inplace
+
         self.logger.info("= SPECIFICATION PHASE =")
+        if self.inplace:
+            self.logger.info("The MM operation will be performed in-place (the result will be written into operand C).")
         self.logger.info("For performance and debugging hints, use CUBLASMP_LOG_LEVEL=5 and CUBLASLT_LOG_LEVEL=5")
         self.logger.info(f"The data type of operand A is '{a.dtype}', and that of operand B is '{b.dtype}'.")
 
@@ -638,7 +729,9 @@ class Matmul:
         assert self.num_operands == 2 or self.num_operands == 3, "Internal Error."
 
         # Infer the library package & device ID the operands belong to.
-        self.operands: None | list[DistributedTensor] = operands
+        # Note that wrappers are kept even after release_operands();
+        # see that method's docstring for details.
+        self.operands: list[DistributedTensor] = operands
 
         self.package = utils.get_operands_package(operands)
         self.memory_space = "cuda"
@@ -658,36 +751,36 @@ class Matmul:
             f"The input operands' memory space is {self.memory_space}, and the execution space is on device {self.device_id}."
         )
 
-        self.nccl_comm = distributed_ctx.nccl_comm
+        nccl_comm = distributed_ctx.nccl_comm
 
         # Allocate device memory (in stream context) if needed.
         stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
         self.logger.info(f"The specified stream for the Matmul ctor is {stream_holder.obj}.")
 
-        # Copy operands to device if needed.
+        # Copy operands to device (and store reference to CPU operand), if needed.
+        self.cpu_c_ref = None
         if self.memory_space == "cpu":
+            if self.inplace:
+                self.cpu_c_ref = self.operands[2]  # Hold reference, needed for inplace operations.
             # Some of the comm overlap algorithms in cuBLASMp will perform better
             # when some of the operands are already on symmetric memory (e.g. AG+GEMM
             # when B is on symmetric memory).
-            self.operands = [o.to(self.device_id, stream_holder, symmetric_memory=True) for o in self.operands]
+            self.operands = [o.to(self.device_id, stream_holder) for o in self.operands]
 
         self._set_result_sheap_flag()
 
         # Set qualifiers.
         self.qualifiers = problem_spec.qualifiers
-        if self.qualifiers[2]["is_transpose"]:
-            raise ValueError("The transpose flag is currently not supported for operand C.")
-        if self.qualifiers[2]["is_conjugate"]:
-            raise ValueError("The conjugate flag is currently not supported for operand C.")
         # Set qualifiers based on torch lazy conjugation flag if not provided.
-        if self.package == "torch" and qualifiers is None:
-            self.qualifiers[0]["is_conjugate"] = self.operands[0].tensor.is_conj()
-            self.qualifiers[1]["is_conjugate"] = self.operands[1].tensor.is_conj()
-            if len(self.operands) > 2 and self.operands[2].tensor.is_conj():
+        self.qualifiers[0]["is_conjugate"] = self.qualifiers[0]["is_conjugate"] ^ self.operands[0].is_conjugate
+        self.qualifiers[1]["is_conjugate"] = self.qualifiers[1]["is_conjugate"] ^ self.operands[1].is_conjugate
+        self.lazy_conjugation = (self.operands[0].is_conjugate, self.operands[1].is_conjugate, False)
+        if self.num_operands == 3:
+            self.qualifiers[2]["is_conjugate"] = self.qualifiers[2]["is_conjugate"] ^ self.operands[2].is_conjugate
+            if self.qualifiers[2]["is_conjugate"]:
                 raise ValueError("The conjugate flag is currently not supported for operand C.")
-            self.lazy_conjugation = True
-        else:
-            self.lazy_conjugation = False
+            if self.qualifiers[2]["is_transpose"]:
+                raise ValueError("The transpose flag is currently not supported for operand C.")
         for i in range(2):
             if self.qualifiers[i]["is_conjugate"] and not self.qualifiers[i]["is_transpose"]:
                 raise ValueError("Conjugate is not supported without transpose")
@@ -703,13 +796,6 @@ class Matmul:
 
         # The result class is that of the first wrapped device operand.
         self.result_class = self.operands[0].__class__
-
-        # Set memory allocator.
-        # Workspace in symmetric heap gives better performance for GEMM+comm overlap
-        # algorithms that rely on NVSHMEM.
-        # NOTE: AG+GEMM and GEMM+RS currently *require* workspace on symmetric heap, else
-        # the library fails with internal error.
-        self.allocator = NvshmemMemoryManager(self.device_id, self.logger)
 
         # Create cuBLASMp handle.
         with utils.device_ctx(self.device_id):
@@ -728,7 +814,7 @@ class Matmul:
                 raise ValueError("The conjugate flag only applies to complex operands")
 
         # Determine the data types for c and d.
-        self.d_dtype = options.result_type
+        self.d_dtype = None if self.inplace else options.result_type
         if self.num_operands == 3:
             self.c_dtype = typemaps.NAME_TO_DATA_TYPE[c.dtype]
             if self.d_dtype is None:
@@ -845,6 +931,18 @@ class Matmul:
         except (ValueError, TypeError) as e:
             raise ValueError(f"The value provided for beta {beta} is not convertible to dtype '{self.beta.dtype}'.") from e
 
+        # Set narrow-precision (FP8 and lower) quantization_scales.
+        if self.input_type_width <= 8:
+            self.quantization_scales = self._validate_operand_scales(quantization_scales, all_required=True)
+        elif quantization_scales is not None:
+            self.logger.warning(
+                "Matmul: The provided scales are ignored, since they are only applicable to narrow-precision (FP8 and lower) "
+                "operations."
+            )
+
+        if self.options.result_amax and self.d_dtype_width > 8:
+            raise ValueError("result_amax=True is allowed only for narrow-precision (FP8 and lower) results")
+
         # Check operands alignment if needed
         if self.input_type_width <= 8:
             for operand, operand_name in zip(self.operands, "ABC", strict=False):
@@ -896,6 +994,7 @@ class Matmul:
             a_layout=a_layout,
             b_layout=b_layout,
             c_layout=c_layout,
+            d_layout=None,  # this is determined in plan
         )
         self.result_layout: None | MatrixLayout = None  # Wait till planning to determine this based on the epilog.
         self.logger.info(
@@ -924,21 +1023,25 @@ class Matmul:
                 grid = d.process_grid
                 assert grid.layout is not None
                 from_alt_cache = alt_cache and i == 2
-                lib_grid = _grid_cache.get_library_process_grid(grid, self.device_id, self.nccl_comm, from_alt=from_alt_cache)
+                lib_grid = _grid_cache.get_library_process_grid(grid, self.device_id, nccl_comm, from_alt=from_alt_cache)
                 self.lib_process_grids.append(lib_grid)
         self.logger.info("Created cuBLASMp process grids")
+
+        # Set memory allocator.
+        # cuBLASMp requires the workspace on NCCL symmetric heap.
+        self.allocator = CublasMpMemoryManager(self.device_id, list(set(self.lib_process_grids)), self.logger)
 
         # Create and set the operation descriptor.
         self.mm_desc = cublasMp.matmul_descriptor_create(self.compute_type)
         self.mm_desc_ifc = matmul_desc_ifc.MatmulDescInterface(self.mm_desc)
-        self.mm_desc_ifc.transA = (
+        self.mm_desc_ifc.transa = (
             cublas.Operation.C
             if (a_layout.is_conjugate and a_layout.is_transpose)
             else cublas.Operation.T
             if a_layout.is_transpose
             else cublas.Operation.N
         )
-        self.mm_desc_ifc.transB = (
+        self.mm_desc_ifc.transb = (
             cublas.Operation.C
             if (b_layout.is_conjugate and b_layout.is_transpose)
             else cublas.Operation.T
@@ -949,6 +1052,15 @@ class Matmul:
             self.mm_desc_ifc.communication_sm_count = self.options.sm_count_communication
         if self.options.algo_type:
             self.mm_desc_ifc.algo_type = self.options.algo_type
+
+        if version == 800 and self.d_dtype_width <= 16 and self.compute_type.name.startswith("COMPUTE_32F"):
+            # This is only needed for cuBLASMp 0.8 (versions >= 0.8.1 do this by default).
+            self.mm_desc_ifc.communication_type = CudaDataType.CUDA_R_32F
+
+        # This ensures cuBLASMp always returns full (reduced) bias gradient
+        # output. This is independent of whether the output is partitioned
+        # or replicated.
+        self.mm_desc_ifc.bias_result_scheme = cublasMp.ResultScheme.FULL
 
         self.problem_spec = problem_spec
 
@@ -971,10 +1083,10 @@ class Matmul:
         self.epilog_inputs_traits: dict[str, typing.Any] = {}
 
         # Keep track of epilog output handlers to allocate output in execute().
-        self.epilog_output_handlers: list[typing.Any] = []
+        self.epilog_output_handlers: list[EpilogOutputHandler] = []
 
         # Non-epilog aux outputs. Currently, only used for quantization outputs (amax etc.)
-        self.aux_outputs: dict[str, typing.Any] = {}
+        self.aux_outputs: dict[str, typing.Any] | None = None
 
         # Plan attributes.
         self.matrix_descriptors: list[int] = []
@@ -991,6 +1103,11 @@ class Matmul:
         # Attributes to establish stream ordering.
         self.workspace_stream = None
         self.last_compute_event = None
+
+        # Track whether the user has called release_operands().
+        self._operands_released = False
+        # Device-side array with the quantization_scales
+        self.quantization_scales_device: dict[str, utils.TensorHolder] = {}
 
         self.valid_state = True
         self.logger.info("The distributed Matmul operation has been created.")
@@ -1013,10 +1130,10 @@ class Matmul:
         Check if the operands are available for the operation.
         """
         what = kwargs["what"]
-        if self.operands is None:
+        if self._operands_released:
             raise RuntimeError(
-                f"{what} cannot be performed if the operands have been set to None. Use reset_operands() to set the "
-                f"desired input before using performing the {what.lower()}."
+                f"{what} cannot be performed after the operands have been released. "
+                f"Use reset_operands() to provide new operands before performing the {what.lower()}."
             )
 
     def _free_plan_resources(self, exception: Exception | None = None) -> bool:
@@ -1047,15 +1164,12 @@ class Matmul:
             return True
 
         with utils.device_ctx(self.device_id):
-            workspace_memory_ptr = utils.get_ptr_from_memory_pointer(self.workspace_device)
-            is_symmetric_memory = nvshmem.ptr(workspace_memory_ptr, nvshmem.my_pe()) != 0
-            if is_symmetric_memory:
-                # Calling nvshmem_free on memory that's still in use is not safe
-                # (nvshmem_free is not stream-ordered), so we need to wait for the
-                # computation to finish.
-                if self.workspace_stream is not None:
-                    self.workspace_stream.sync()
-                self.workspace_device.free()
+            if self.workspace_stream is not None:
+                # The workspace is on NCCL symmetric memory (allocated by cuBLASMp
+                # with ncclMemAlloc).
+                # Wait for the computation to finish before calling ncclMemFree.
+                self.workspace_stream.sync()
+            self.workspace_device.free()
         self.workspace_device = self.workspace_host = None
         self.workspace_allocated_size = 0
         self.logger.debug("[_free_workspace_memory] The workspace has been released.")
@@ -1305,6 +1419,164 @@ class Matmul:
 
         return expected_algo
 
+    def _check_local_gemm_sizes_fp8(self):
+        """Check that the local GEMM size is supported by cuBLASLt"""
+        # The cuBLASMp algorithms considered here currently require uniform partitioning,
+        # so the logic below assumes local GEMM size is the same on every rank.
+
+        # Get m, n, k for local GEMM
+        if self._expected_algo == 3:  # AG+GEMM
+            # For local gemm:
+            # - m is partitioned
+            # - k and n are the global size (B is gathered)
+            assert self.mm_traits.M % self.nranks == 0, "Internal error."
+            m, n, k = self.mm_traits.M // self.nranks, self.mm_traits.N, self.mm_traits.K
+        elif self._expected_algo in (2, 4):  # GEMM+RS, GEMM+AR
+            # A and B are partitioned only on k
+            assert self.mm_traits.K % self.nranks == 0, "Internal error."
+            m, n, k = self.mm_traits.M, self.mm_traits.N, self.mm_traits.K // self.nranks
+        elif self._expected_algo == 5:  # non-distributed GEMM
+            m, n, k = self.mm_traits.M, self.mm_traits.N, self.mm_traits.K
+        else:
+            return
+
+        if self.input_type_width == 8 and self.options.block_scaling and (m % 128 != 0 or n % 128 != 0 or k % 128 != 0):
+            raise ValueError("Matrix sizes for local GEMM must be divisible by 128 when block_scaling=True.")
+
+        if self.input_type_width == 8 and (m % 16 != 0 or n % 16 != 0 or k % 16 != 0):
+            raise ValueError("Matrix sizes for local GEMM must be divisible by 16 for FP8 operations")
+
+    def _validate_scalar_scale(self, operand: str):
+        """
+        Validates a scalar scale.
+        """
+        if self.options.block_scaling:
+            raise ValueError(f"A scalar tensor-wide scale factor is not allowed for {operand.upper()} when block_scaling=True.")
+
+    def _validate_tensor_scale(self, scale, operand: str, operand_size=None):
+        """
+        Validates a tensor scale.
+
+        Args:
+            scale: The tensor scale to validate
+            operand: The operand name (a, b, c, d)
+            operand_size: Size of the operand (needed for block scaling shape validation)
+        """
+        # Package validation: Normalize "numpy" to "cuda" to match the behavior in __init__.
+        # When operands are NumPy on CPU, self.package is set to "cuda" (execution package),
+        # so we must also normalize NumPy scales to "cuda" to allow the same input format.
+        # This handles the NumPy <=> CuPy asymmetry where NumPy on CPU is accepted as input
+        # but internally converted to CuPy for CUDA execution.
+        scale_package = utils.infer_object_package(scale)
+        scale_package = "cuda" if scale_package == "numpy" else scale_package
+        if scale_package != self.package:
+            raise TypeError(
+                f"The quantization scaling tensor for {operand.upper()} must belong to the same package as the operands."
+            )
+
+        # Wrap temporarily since this is needed for validation
+        scale_wrapped = tensor_wrapper.wrap_operand(scale)
+
+        # Device/memory space validation
+        expected_device_id = "cpu" if self.memory_space == "cpu" else self.device_id
+        if expected_device_id != scale_wrapped.device_id:
+            raise ValueError(
+                f'The scale for {operand.upper()} is on device "{scale_wrapped.device_id}", '
+                f'but it should be on device "{expected_device_id}" to match the operands memory space.'
+            )
+
+        # Shape and dtype validation for non-block-scaling
+        if not self.options.block_scaling:
+            if scale_wrapped.shape not in ((1,), ()):
+                raise ValueError(
+                    f"The scale for {operand.upper()} must be of shape (1,) or (). Got {scale_wrapped.shape} instead."
+                )
+            if scale_wrapped.dtype != "float32":
+                raise ValueError(f"The scale for {operand.upper()} must be float32 type. Got {scale_wrapped.dtype} instead.")
+
+        # Shape and dtype validation for block-scaling
+        elif self.input_type_width == 8:
+            # Dtype validation (always possible)
+            if scale_wrapped.dtype != "uint8":
+                raise ValueError(f"Block scales for {operand.upper()} must be uint8 tensor.")
+
+            # Shape validation (only if operand_size is available)
+            if operand_size is not None:
+                expected_shape = (operand_size // 32,)
+                if scale_wrapped.shape != expected_shape:
+                    raise ValueError(
+                        f"Scales for {operand.upper()} should have shape {expected_shape}. Got {scale_wrapped.shape}."
+                    )
+        else:
+            raise ValueError("block_scaling == True is not supported for non-FP8 types.")
+
+    def _validate_operand_scales(self, quantization_scales, all_required):
+        """
+        Validates quantization scales, wrapping them into a MatmulQuantizationScales
+        object if needed.
+
+        Args:
+            quantization_scales: The quantization scales to validate.
+            all_required: Whether all scales are required.
+
+        Returns:
+            A MatmulQuantizationScales object with the validated quantization scales.
+        """
+        if quantization_scales is None:
+            raise ValueError(
+                "Scales are required for narrow-precision (FP8 and lower) operations. "
+                "Please set `quantization_scales` argument."
+            )
+
+        # wrap the quantization scales into a MatmulQuantizationScales object if needed
+        # otherwise, return the quantization scales as is
+        quantization_scales = utils.check_or_create_options(
+            _configuration.MatmulQuantizationScales, quantization_scales, "Scale factors"
+        )
+
+        # Validate which scales are required/allowed
+        expected_scales = "AB"
+        if self.d_dtype_width <= 8 and not self.options.block_scaling:
+            expected_scales += "D"
+        elif quantization_scales.d is not None:
+            if self.options.block_scaling:
+                raise ValueError("Quantization scaling is not supported for D when `block_scaling` option is enabled.")
+            if self.d_dtype_width > 8:
+                raise ValueError(
+                    "Quantization scaling is not supported for D when it is not a narrow-precision (FP8 and lower) type."
+                )
+
+        if self.num_operands == 3 and self.c_dtype_width <= 8:
+            expected_scales += "C"
+        elif quantization_scales.c is not None:
+            raise ValueError(
+                "Quantization scaling is not supported for C when it is not a narrow-precision (FP8 and lower) type."
+            )
+
+        if all_required:
+            for operand in expected_scales:
+                if getattr(quantization_scales, operand.lower()) is None:
+                    raise ValueError(f"Scale for {operand.upper()} is not specified")
+
+        # Validate each scale by delegating to scalar/tensor specific validators
+        for operand in "abcd":
+            scale = getattr(quantization_scales, operand)
+            if scale is None:
+                continue
+
+            if isinstance(scale, int | float):
+                self._validate_scalar_scale(operand)
+            else:
+                # For block scaling, pass operand size for shape validation
+                if self.options.block_scaling and operand in ("a", "b"):
+                    operand_idx = 0 if operand == "a" else 1
+                    operand_size = self.operands[operand_idx].size  # type: ignore[union-attr,index]
+                else:
+                    operand_size = None
+                self._validate_tensor_scale(scale, operand, operand_size)
+
+        return quantization_scales
+
     def _validate_epilog_aux_scale(self, aux_quantization_scale, *, required):
         is_fp8_aux = (
             self.preferences.epilog.aux_type is not None
@@ -1317,9 +1589,81 @@ class Matmul:
             )
         elif aux_quantization_scale is None and is_fp8_aux and required:
             raise ValueError(
-                '"aux_quantization_scale" epilog input is required when `preferences.epilog.aux_type` is not set to a '
+                '"aux_quantization_scale" epilog input is required when `preferences.epilog.aux_type` is set to a '
                 "narrow-precision type."
             )
+
+        # Validate scalar vs tensor scale (same as for operand scales)
+        if aux_quantization_scale is not None:
+            if isinstance(aux_quantization_scale, int | float):
+                self._validate_scalar_scale("epilog_aux")
+            else:
+                # No operand_size for epilog_aux scales
+                self._validate_tensor_scale(aux_quantization_scale, "epilog_aux", operand_size=None)
+
+    def _prepare_validated_scalar_scale(self, scale: int | float, operand: str, stream_holder: utils.StreamHolder):
+        """
+        Converts validated scalar to float32 tensor and copies to GPU.
+        Assumes validation already done in _validate_scalar_scale.
+        """
+        # If it's a scalar, copy to GPU. Float32 is the only type allowed by
+        # cublasLtMatmulScale_t for tensor-wide scaling.
+        self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
+        scale_op = tensor_wrapper.wrap_operand(np.asarray([scale], dtype="float32"))
+        self.quantization_scales_device[operand] = scale_op.to(self.device_id, stream_holder)
+
+    def _prepare_validated_tensor_scale(self, scale, operand: str, stream_holder: utils.StreamHolder):
+        """
+        Wraps validated tensor and copies to GPU.
+        Assumes all validation already done in _validate_tensor_scale (called in __init__).
+        This is pure preparation - no validation here.
+
+        Note: We wrap the tensor a second time here (first wrap was for validation).
+        This is acceptable because wrapping is cheap and we get early error detection.
+        """
+        # Wrap the scale (second time - first was for validation in __init__)
+        self.quantization_scales_device[operand] = tensor_wrapper.wrap_operand(scale)
+
+        # Copy to GPU if on CPU (no validation, just preparation)
+        if self.quantization_scales_device[operand].device in (None, "cpu"):
+            self.logger.debug(f"Scale for {operand.upper()} will be copied to device {self.device_id}.")
+            self.quantization_scales_device[operand] = self.quantization_scales_device[operand].to(
+                self.device_id, stream_holder
+            )
+
+    def _prepare_single_validated_scale(self, scale, operand: str, cublas_operand: str, stream_holder: utils.StreamHolder):
+        """
+        Prepares a single validated scale and sets its pointer/mode in mm_desc_ifc.
+        Used for both operand scales (a,b,c,d) and epilog scales (epilog_aux).
+        Assumes validation already done.
+        """
+        if scale is None:
+            return
+
+        # Delegate to specific preparer (validation already done)
+        if isinstance(scale, int | float):
+            self._prepare_validated_scalar_scale(scale, operand, stream_holder)
+        else:
+            self._prepare_validated_tensor_scale(scale, operand, stream_holder)
+
+        # Set pointer and mode in descriptor
+        setattr(self.mm_desc_ifc, f"{cublas_operand}_scale_pointer", self.quantization_scales_device[operand].data_ptr)
+
+        if self.options.block_scaling:
+            self.logger.debug(f"Using VEC32_UE8M0 scale mode for operand {operand.upper()}.")
+            setattr(self.mm_desc_ifc, f"{cublas_operand}_scale_mode", cublasMp.MatmulMatrixScale.VEC32_UE8M0)
+        else:
+            self.logger.debug(f"Using SCALAR_32F scale mode for operand {operand.upper()}.")
+            setattr(self.mm_desc_ifc, f"{cublas_operand}_scale_mode", cublasMp.MatmulMatrixScale.SCALAR_FP32)
+
+    def _prepare_operand_quantization_scales(self, scales, stream_holder: utils.StreamHolder):
+        """
+        Prepares validated operand scales (a,b,c,d).
+        Assumes scales are validated and wrapped into a MatmulQuantizationScales object.
+        """
+        for operand in "abcd":
+            scale = getattr(scales, operand)
+            self._prepare_single_validated_scale(scale, operand, cublas_operand=operand, stream_holder=stream_holder)
 
     @utils.precondition(_check_valid_matmul)
     @utils.atomic(_free_plan_resources, method=True)
@@ -1337,6 +1681,14 @@ class Matmul:
             epilog_inputs: {epilog_inputs}
 
             stream: {stream}
+
+        Notes:
+            Epilogs that have ``BIAS`` in their name need an epilog input with the key
+            ``'bias'``. Epilogs that have ``DRELU`` need an epilog input with the key
+            ``'relu_aux'``, which is produced in a "forward pass" epilog like ``RELU_AUX``
+            or ``RELU_AUX_BIAS``. Similarly, epilogs with ``DGELU`` in their name require an
+            epilog input with the key ``'gelu_aux'``, produced in the corresponding forward
+            pass operation.
 
         See :class:`Matmul` for an example, and further examples can be found in the
         `nvmath/examples/distributed/linalg/advanced/matmul
@@ -1358,7 +1710,7 @@ class Matmul:
         )
         self.preferences = preferences
 
-        if self.operands is None:
+        if self._operands_released:
             raise RuntimeError("The Matmul has no operands. Please call reset_operands")
 
         mm_traits = self.mm_traits
@@ -1370,13 +1722,6 @@ class Matmul:
             self.logger.warning(
                 f"Matmul: The provided epilog inputs {epilog_inputs.keys()} are ignored since an epilog is not specified."
             )
-
-        self.epilog = epilog
-        if epilog is not None:
-            if epilog != MatmulEpilog.ALLREDUCE:
-                raise ValueError(f"{epilog.name} epilogue is not supported")
-
-            self.mm_desc_ifc.epilogue = epilog
 
         m, n, k = mm_traits.M, mm_traits.N, mm_traits.K
 
@@ -1438,26 +1783,139 @@ class Matmul:
 
         self._expected_algo = self._infer_algo(m, k, n, epilog == MatmulEpilog.ALLREDUCE)
 
-        if any(d.first_process != (0, 0) for d in self.distributions) and self._expected_algo not in (0, 1, 5):
-            raise NotImplementedError(
-                "Use of first_process != (0, 0) is not supported for this distributed matmul configuration"
-            )
-
-        if epilog == MatmulEpilog.RELU and self._expected_algo == 0:
-            raise NotImplementedError("RELU epilogue is currently not supported for this distributed matmul configuration")
-
         # Fill the result traits, now that we know the epilog.
         result_shape = self.distributions[2]._data_shape
         self.result_layout = MatrixLayout(
             shape=result_shape,
-            strides=calculate_strides(result_shape, (0, 1)),
+            strides=calculate_strides(result_shape, (0, 1)) if not self.inplace else self.operands[2].strides,
         )
+        mm_traits.d_layout = self.result_layout
+
+        self.epilog = epilog
+        if epilog is not None:
+            assert epilog in EPILOG_INPUT_HANDLERS_MAP, "Not supported."
+            self.logger.info(f"The specified epilog is {epilog.name}.")
+
+            epilog_minimum_versions = EPILOG_MINIMUM_VERSIONS_MAP[epilog]
+            version = cublasMp.get_version()
+            if version < epilog_minimum_versions["cublasMp"]:
+                message = (
+                    f"The epilog {epilog.name} requires cublasMp >= {epilog_minimum_versions['cublasMp']}; "
+                    f"you have version {version}."
+                )
+                raise ValueError(message)
+
+            # Take a copy of the user-provided inputs.
+            if epilog_inputs is not None:
+                epilog_inputs = epilog_inputs.copy()
+            else:
+                epilog_inputs = {}
+
+            # Get the dtype of auxiliary buffer
+            aux_dtype_name = (
+                typemaps.DATA_TYPE_TO_NAME[self.preferences.epilog.aux_type]  # type: ignore[attr-defined]
+                if self.preferences.epilog.aux_type is not None  # type: ignore[attr-defined]
+                else None
+            )
+
+            # Extract aux quantization scale from the inputs.
+            aux_quantization_scale = (
+                epilog_inputs.pop("aux_quantization_scale") if "aux_quantization_scale" in epilog_inputs else None
+            )
+            self._validate_epilog_aux_scale(aux_quantization_scale, required=True)
+            self._prepare_single_validated_scale(
+                aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux", stream_holder=stream_holder
+            )
+
+            epilog_input_handler_types = EPILOG_INPUT_HANDLERS_MAP[epilog]
+            if epilog_input_handler_types:
+                epilog_input_handlers = [
+                    handler_type(self.logger, mm_traits, epilog, self.c_dtype_name, self.d_dtype_name, aux_dtype_name)
+                    for handler_type in epilog_input_handler_types
+                ]
+
+                required_epilog_input_names = {h.name for h in epilog_input_handlers}
+
+                self.logger.info(f"The epilog requires the following additional inputs: {required_epilog_input_names}.")
+                if required_epilog_input_names != set(epilog_inputs.keys()):
+                    raise ValueError(
+                        f"The epilog {epilog.name} requires the following input tensors: "
+                        f"{required_epilog_input_names}. The provided tensor names are: {epilog_inputs.keys()}"
+                    )
+
+                # Wrap epilog inputs.
+                for name in epilog_inputs:
+                    epilog_inputs[name] = nvmath.internal.tensor_wrapper.wrap_operand(epilog_inputs[name])
+
+                # Check if epilog inputs all belong to the same package, which is the same
+                # as the package of the MM operands.
+                epilog_package = utils.get_operands_package(list(epilog_inputs.values()))
+                epilog_package = "cuda" if epilog_package == "numpy" else epilog_package  # Handle the NumPy <=> CuPy asymmetry.
+                if self.package != epilog_package:
+                    message = f"Library package mismatch for epilog: '{self.package}' => '{epilog_package}'"
+                    raise TypeError(message)
+
+                # Check if all epilog inputs all are on the same device, which is the device
+                # of the operands.
+                device_id = utils.get_operands_device_id(list(epilog_inputs.values()))
+                if device_id != "cpu" and self.device_id != device_id:
+                    raise ValueError(
+                        f"The epilog inputs must be on the same device ({device_id}) as the operands ({self.device_id})."
+                    )
+
+                # Move epilog inputs to the GPU, if needed.
+                if device_id == "cpu":
+                    for e in required_epilog_input_names:
+                        self.logger.debug(f"The epilog input {e} will be copied to device{self.device_id}.")
+                        self.epilog_operands[e] = epilog_inputs[e].to(self.device_id, stream_holder)
+                else:
+                    for e in required_epilog_input_names:
+                        self.epilog_operands[e] = epilog_inputs[e]
+
+                # First validate all epilog inputs. Use the GPU tensors in case metadata has
+                # changed.
+                for handler in epilog_input_handlers:
+                    handler.validate(epilog_inputs[handler.name])
+
+                # Finally, update the MM descriptor. Note that we pass in
+                # self.epilog_operands (which are on the GPU).
+                for handler in epilog_input_handlers:
+                    handler.update(self.mm_desc_ifc, self.epilog_operands[handler.name])
+                    self.epilog_input_name_to_handler[handler.name] = handler
+
+                # Capture the epilog operands traits for consistency checks when resetting
+                # operands.
+                self.epilog_inputs_traits = {
+                    name: EpilogInputTraits(
+                        dtype=self.epilog_operands[name].dtype,
+                        extents=self.epilog_operands[name].shape,
+                        strides=self.epilog_operands[name].strides,
+                    )
+                    for name in self.epilog_operands
+                }
+
+            epilog_output_handler_types = EPILOG_OUTPUT_HANDLERS_MAP[epilog]
+            if epilog_output_handler_types:
+                self.epilog_output_handlers = epilog_output_handlers = [
+                    handler_type(self.logger, mm_traits, epilog, self.c_dtype_name, self.d_dtype_name, aux_dtype_name)
+                    for handler_type in epilog_output_handler_types
+                ]
+
+                # Update the MM descriptor, except for the device pointer.
+                for ohandler in epilog_output_handlers:
+                    ohandler.update(self.mm_desc_ifc)
+
+            # Set the epilog. At this point, we're sure that the epilog inputs, if any, are
+            # valid and have been set.
+            self.mm_desc_ifc.epilogue = epilog
 
         # Create descriptors for matrices A, B, C and D.
         matrix_dtypes = (self.a_dtype, self.b_dtype, self.c_dtype, self.d_dtype)
         for i in range(4):
             distribution = self.distributions[min(i, 2)]  # distribution for C/D is the same
             lld = self.operands[i].strides[1] if i < self.num_operands else distribution._data_shape[0]
+            if i == 3 and self.inplace:
+                lld = self.operands[2].strides[1]
             descriptor = cublasMp.matrix_descriptor_create(
                 distribution._data_global_shape[0],
                 distribution._data_global_shape[1],
@@ -1471,8 +1929,12 @@ class Matmul:
             )
             self.matrix_descriptors.append(descriptor)
 
-        if self.input_type_width == 8 and (mm_traits.M % 16 != 0 or mm_traits.N % 16 != 0 or mm_traits.K % 16 != 0):
-            raise ValueError(f"M={mm_traits.M} N={mm_traits.N} K={mm_traits.K} must be divisible by 16 for FP8 operations")
+        if self.options.block_scaling and self.d_dtype_width == 8:
+            self.mm_desc_ifc.d_out_scale_mode = cublasMp.MatmulMatrixScale.VEC32_UE8M0
+
+        if self.input_type_width <= 8:
+            self._check_local_gemm_sizes_fp8()
+            self._prepare_operand_quantization_scales(self.quantization_scales, stream_holder)
 
         alpha_ptr, beta_ptr = self.alpha.ctypes.data, self.beta.ctypes.data
         self.workspace_size_device, self.workspace_size_host = cublasMp.matmul_buffer_size(
@@ -1543,15 +2005,19 @@ class Matmul:
         package = utils.infer_object_package(operand.tensor)
 
         # Conjugate flag of the provided operands must match the original qualifiers
-        if (
-            operand_index is not None
-            and package == "torch"
-            and self.lazy_conjugation
-            and self.qualifiers[operand_index]["is_conjugate"] != operand.tensor.is_conj()
-        ):
+        if operand_index is not None and self.lazy_conjugation[operand_index] != operand.is_conjugate:
             raise ValueError(f"The provided operand {operand_name} has different conjugate flag than the original operand")
 
         device_id = operand.device_id
+        # When memory_space is "cpu", operands should be on CPU even though
+        # self.device_id is the execution device.
+        expected_device_id = "cpu" if self.memory_space == "cpu" else self.device_id
+        if expected_device_id != device_id:
+            raise ValueError(
+                f'The operand {operand_name} is on device "{device_id}", but it should be on device '
+                f'"{expected_device_id}" to match the original operand.'
+            )
+
         if device_id == "cpu":
             package = "cuda" if package == "numpy" else package  # Handle the NumPy <=> CuPy asymmetry.
             if self.package != package:
@@ -1568,7 +2034,7 @@ class Matmul:
                 # Some of the comm overlap algorithms in cuBLASMp will perform better when
                 # some of the operands are already on symmetric memory (e.g. AG+GEMM when
                 # B is on symmetric memory).
-                o = operand.to(self.device_id, stream_holder, symmetric_memory=True)
+                o = operand.to(self.device_id, stream_holder)
                 if operand_index is not None:
                     self.operands[operand_index] = o
                 else:
@@ -1579,6 +2045,9 @@ class Matmul:
                 # In-place copy to existing device pointer because the new operand is on the
                 # CPU.
                 o.copy_(operand, stream_holder=stream_holder)
+            if self.memory_space == "cpu" and operand_index == 2:
+                # Hold references, needed for inplace operations.
+                self.cpu_c_ref = operand
         else:
             if self.package != package:
                 message = f"Library package mismatch: '{self.package}' => '{package}'"
@@ -1607,34 +2076,29 @@ class Matmul:
     @utils.precondition(_check_valid_matmul)
     def reset_operands(
         self,
+        *,
         a=None,
         b=None,
         c=None,
-        *,
         alpha=None,
         beta=None,
+        quantization_scales=None,
         epilog_inputs=None,
         stream: utils.AnyStream | int | None = None,
     ):
         """
-        Reset the operands held by this :class:`Matmul` instance.
-
-        This method has two use cases:
-            (1) it can be used to provide new operands for execution when the original
-                operands are on the CPU
-            (2) it can be used to release the internal reference to the previous operands
-                and make their memory available for other use by passing ``None`` for *all*
-                arguments. In this case, this method must be called again to provide the
-                desired operands before another call to :meth:`execute`.
-
-        This method is not needed when the operands reside on the GPU and in-place
-        operations are used to update the operand values.
+        Reset one or more operands held by this :class:`Matmul` instance.
+        Only the operands explicitly passed are updated; omitted operands retain
+        their current values.
 
         This method will perform various checks on the new operands to make sure:
 
-            - The distributions, shapes, strides, datatypes match those of the old ones.
-            - The packages that the operands belong to match those of the old ones.
-            - If input tensors are on GPU, the device must match.
+        - The distributions, shapes, strides, datatypes match those of the old ones.
+        - The packages that the operands belong to match those of the old ones.
+        - If input tensors are on GPU, the device must match.
+
+        .. versionchanged:: 0.9
+            All parameters are now keyword-only.
 
         Args:
             a: {a}
@@ -1647,6 +2111,8 @@ class Matmul:
 
             beta: {beta}
 
+            quantization_scales: {quantization_scales}
+
             epilog_inputs: {epilog_inputs}
 
             stream: {stream}
@@ -1657,16 +2123,16 @@ class Matmul:
             >>> import nvmath.distributed
             >>> from nvmath.distributed.distribution import Slab
 
-            Get MPI communicator used to initialize nvmath.distributed (for information on
+            Get process group used to initialize nvmath.distributed (for information on
             initializing ``nvmath.distributed``, you can refer to the documentation or to
             the Matmul examples in `nvmath/examples/distributed/linalg/advanced
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/linalg/advanced/matmul>`_):
 
-            >>> comm = nvmath.distributed.get_context().communicator
+            >>> process_group = nvmath.distributed.get_context().process_group
 
             Get my process rank:
 
-            >>> rank = comm.Get_rank()
+            >>> rank = process_group.rank
 
             Create two 3-D float64 ndarrays on the GPU (using Slab distributions to
             distribute the matrices across processes):
@@ -1691,9 +2157,9 @@ class Matmul:
             ...
             ...     # Reset the operands to new CuPy ndarrays.
             ...     with cp.cuda.Device(device_id):
-            ...         c = cp.asfortranarray(cp.random.rand(*a_shape))
-            ...         d = cp.asfortranarray(cp.random.rand(*b_shape))
-            ...     mm.reset_operands(c, d)
+            ...         a_new = cp.asfortranarray(cp.random.rand(*a_shape))
+            ...         b_new = cp.asfortranarray(cp.random.rand(*b_shape))
+            ...     mm.reset_operands(a=a_new, b=b_new)
             ...
             ...     # Execute to get the new result corresponding to the updated operands.
             ...     r2 = mm.execute()
@@ -1705,16 +2171,17 @@ class Matmul:
             specification and planning are only performed once.
 
             For the particular example above, explicitly calling :meth:`reset_operands` is
-            equivalent to updating the operands in-place, i.e, replacing
-            ``mm.reset_operand(c, d)`` with ``a[:]=c`` and ``b[:]=d``. Note that updating
-            the operand in-place should be adopted with caution as it can only yield the
-            expected result under the additional constraint below:
-
-                - The operand is on the GPU (more precisely, the operand memory space should
-                  be accessible from the execution space).
+            functionally equivalent to updating the operands in-place, i.e, replacing
+            ``mm.reset_operands(a=a_new, b=b_new)`` with ``a[:]=a_new`` and ``b[:]=b_new``.
+            Note that updating the operand in-place should be adopted with caution as
+            it can only yield the expected result when the operand memory space is
+            accessible from the execution space.
 
             For more details, please refer to `inplace update example
             <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/linalg/advanced/matmul/example06_stateful_inplace.py>`_.
+
+        .. seealso::
+            :meth:`release_operands`
         """
 
         if c is not None and self.num_operands == 2:
@@ -1722,43 +2189,43 @@ class Matmul:
                 "The matrix multiplication problem specification does not include operand C, so it cannot be reset."
             )
 
-        if a is None and b is None and c is None and epilog_inputs is None and alpha is None and beta is None:
-            if self.memory_space == "cpu" and self.operands is not None:
-                with utils.device_ctx(self.device_id):
-                    for o in self.operands:
-                        if o.is_symmetric_memory:
-                            o.free_symmetric()
-            self.operands = None
-            self.epilog_operands = {}
-            self.logger.info("The operands have been reset to None.")
-            return
+        # If operands have been released, all required operands must be provided.
+        if self._operands_released:
+            abc_ok = a is not None and b is not None and (self.num_operands != 3 or c is not None)
 
-        # If the operands have been reset to None, then all required operands (a, b, c, and
-        # epilog_inputs need to be provided).
-        if self.operands is None:
-            if a is None or b is None or (c is None and self.num_operands == 3):
-                op_names = "A, B"
-                if c is None and self.num_operands == 3:
-                    op_names += ", C"
-                raise ValueError(f"Operands {op_names} must be provided.")
             epilog_names = self.epilog_inputs_traits.keys()
-            if epilog_inputs is None:
-                if epilog_names:
-                    raise ValueError(f"The epilog inputs {epilog_names} must be provided.")
-            else:
-                # Check that all required epilog inputs names are provided.
-                if epilog_names != epilog_inputs.keys():
+            epilog_ok = True
+            if epilog_names:
+                if epilog_inputs is None:
+                    epilog_ok = False
+                elif epilog_names != epilog_inputs.keys():
                     raise ValueError(
                         f"The epilog inputs {epilog_names} are required. The provided epilog input names are "
                         f"{epilog_inputs.keys()}."
                     )
+
+            scales_ok = True
+            needs_scales = self.input_type_width <= 8
+            if needs_scales and quantization_scales is None:
+                scales_ok = False
+
+            if not abc_ok:
+                raise ValueError(
+                    "After release_operands(), all required operands must be provided to reset_operands(). "
+                    f"Required: a, b{', c' if self.num_operands == 3 else ''}."
+                )
+            if not scales_ok:
+                raise ValueError("After release_operands(), quantization_scales must be provided to reset_operands().")
+            if not epilog_ok:
+                raise ValueError(
+                    "After release_operands(), epilog_inputs must be provided to reset_operands(). "
+                    f"Required epilog inputs: {epilog_names}."
+                )
+
             self.operands = [None] * self.num_operands  # type: ignore
             self.epilog_operands = dict.fromkeys(epilog_names)
-
-        # Future operations on the workspace stream should be ordered after the computation.
-        if self.last_compute_event is not None:
-            self.workspace_stream.wait(self.last_compute_event)
-            self.last_compute_event = None
+            if needs_scales:
+                self.quantization_scales = _configuration.MatmulQuantizationScales()
 
         # Update alpha.
         if alpha is not None:
@@ -1782,6 +2249,27 @@ class Matmul:
                     ) from e
 
         stream_holder = utils.get_or_create_stream(self.device_id, stream, self.package)
+
+        # Update quantization_scales.
+        if quantization_scales is not None:
+            quantization_scales = self._validate_operand_scales(quantization_scales, all_required=False)
+            if quantization_scales.a is not None:
+                self.quantization_scales.a = quantization_scales.a
+            if quantization_scales.b is not None:
+                self.quantization_scales.b = quantization_scales.b
+            if quantization_scales.c is not None:
+                self.quantization_scales.c = quantization_scales.c
+            if quantization_scales.d is not None:
+                self.quantization_scales.d = quantization_scales.d
+            self._prepare_operand_quantization_scales(self.quantization_scales, stream_holder)
+
+        if epilog_inputs is not None and "aux_quantization_scale" in epilog_inputs:
+            epilog_inputs = epilog_inputs.copy()
+            aux_quantization_scale = epilog_inputs.pop("aux_quantization_scale")
+            self._validate_epilog_aux_scale(aux_quantization_scale, required=False)
+            self._prepare_single_validated_scale(
+                aux_quantization_scale, "epilog_aux", cublas_operand="epilogue_aux", stream_holder=stream_holder
+            )
 
         # Reset the provided operands.
         if a is not None:
@@ -1842,6 +2330,50 @@ class Matmul:
                 )
 
         self._set_result_sheap_flag()
+        self._operands_released = False
+
+    @utils.precondition(_check_valid_matmul)
+    def release_operands(self):
+        """
+        {release_operands}
+        """
+        if self._operands_released:
+            self.logger.info("Operands have already been released; nothing to do.")
+            return
+
+        # CUDA memory space:
+        #   self.operands, self.epilog_operands, and
+        #   self.quantization_scales_device hold direct user references;
+        #   self.quantization_scales holds the user-provided scales object.
+        # CPU memory space:
+        #   self.operands, self.epilog_operands, and
+        #   self.quantization_scales_device hold internal device mirrors;
+        #   self.quantization_scales holds the user-provided scales object;
+        #   self.cpu_c_ref holds a direct reference to the user's CPU operand C.
+        # In both cases, release all of them.
+        # Note that if/when possible, we keep the TensorHolder wrappers and
+        # container structures alive and only release the internal tensor reference.
+        # This is useful when reset_operands_unchecked is called subsequently
+        # because it can reuse the existing wrappers, saving overhead.
+        for op in self.operands:
+            op.tensor = None
+        for op in self.epilog_operands.values():
+            op.tensor = None
+        for op in self.quantization_scales_device.values():
+            op.tensor = None
+
+        # The attribute itself might not exist (non-FP8 paths), so check first.
+        if hasattr(self, "quantization_scales"):
+            self.quantization_scales.a = None
+            self.quantization_scales.b = None
+            self.quantization_scales.c = None
+            self.quantization_scales.d = None
+
+        if self.memory_space == "cpu" and self.cpu_c_ref is not None:
+            self.cpu_c_ref.tensor = None
+
+        self._operands_released = True
+        self.logger.info("User-provided operands have been released.")
 
     @utils.precondition(_check_valid_matmul)
     @utils.precondition(_check_planned, "Execution")
@@ -1871,6 +2403,8 @@ class Matmul:
             self.logger.info(f"The specified stream for execute() is {stream_holder.obj}.")
 
         # Allocate workspace if needed.
+        # Note: workspace is allocated with cuBLASMp allocator, which calls ncclMemAlloc
+        # (which is blocking).
         self._allocate_workspace_memory_perhaps(stream_holder)
 
         # Create empty tensors for auxiliary output.
@@ -1889,39 +2423,81 @@ class Matmul:
                 verify_strides=False,
                 strides=strides,
             )
+            if name == "relu_aux" and self._expected_algo == 3:
+                with utils.device_ctx(self.device_id):
+                    aux_tensor.tensor[:] = 0
             if log_debug:
                 self.logger.debug(f"The auxiliary output tensor '{name}' has been created.")
+            if self.preferences.epilog.aux_amax:  # type: ignore[attr-defined]
+                if "float8" not in dtype_name:
+                    raise ValueError("epilog.aux_amax=True is not supported when epilog output type is not FP8.")
+                self.epilog_outputs[f"{name}_amax"] = utils.create_empty_tensor(
+                    self.result_class,
+                    (1,),
+                    "float32",  # This is the only type allowed by cuBLAS for AMAX.
+                    self.device_id,
+                    stream_holder,
+                    verify_strides=False,
+                )
+                self.mm_desc_ifc.epilogue_aux_amax_pointer = self.epilog_outputs[f"{name}_amax"].data_ptr
 
             # Update the data pointer in the MM descriptor.
             handler.update_ptr(self.mm_desc_ifc, aux_tensor.data_ptr)
 
-        # Create empty tensor for the result.
+        # Create empty tensor for the result, if the operation is not in-place.
         # result_layout is based on local properties.
         assert self.result_layout is not None, "Internal Error. self.result_layout should have been set by self.plan()"
-        if log_debug:
-            self.logger.debug("Beginning output (empty) tensor creation...")
-            self.logger.debug(
-                f"The local output tensor shape = {self.result_layout.shape} with strides = "
-                f"{self.result_layout.strides} and data type '{self.d_dtype_name}'."
+        if self.inplace:
+            if log_debug:
+                self.logger.debug("The operation is in-place (operand C will be overwritten).")
+            result = self.operands[2]
+        else:
+            if log_debug:
+                self.logger.debug("Beginning output (empty) tensor creation...")
+                self.logger.debug(
+                    f"The local output tensor shape = {self.result_layout.shape} with strides = "
+                    f"{self.result_layout.strides} and data type '{self.d_dtype_name}'."
+                )
+            result = cast(
+                DistributedTensor,
+                utils.create_empty_tensor(
+                    self.result_class,
+                    self.result_layout.shape,
+                    self.d_dtype_name,
+                    self.device_id,
+                    stream_holder,
+                    verify_strides=False,
+                    strides=self.result_layout.strides,
+                    symmetric_memory=self.result_on_symmetric_memory,
+                    make_symmetric=self.result_on_symmetric_memory,
+                ),
             )
-        result = cast(
-            DistributedTensor,
-            utils.create_empty_tensor(
+            if log_debug:
+                self.logger.debug("The output (empty) tensor has been created.")
+
+        self.aux_outputs = {}
+
+        if self.options.result_amax:
+            self.aux_outputs["result_amax"] = utils.create_empty_tensor(
                 self.result_class,
-                self.result_layout.shape,
-                self.d_dtype_name,
+                (1,),
+                "float32",  # This is the only type allowed by cuBLAS for AMAX.
                 self.device_id,
                 stream_holder,
                 verify_strides=False,
-                strides=self.result_layout.strides,
-                symmetric_memory=self.result_on_symmetric_memory,
-                make_symmetric=self.result_on_symmetric_memory,
-            ),
-        )
-        if log_debug:
-            self.logger.debug("The output (empty) tensor has been created.")
+            )
+            self.mm_desc_ifc.amax_d_pointer = self.aux_outputs["result_amax"].data_ptr
 
-        self.aux_outputs = {}
+        if self.options.block_scaling and self.d_dtype_width == 8:
+            self.aux_outputs["d_out_scale"] = utils.create_empty_tensor(
+                self.result_class,
+                self.mm_traits.d_layout.shape[0] * self.mm_traits.d_layout.shape[1] // 32,  # type: ignore
+                "uint8",
+                self.device_id,
+                stream_holder,
+                verify_strides=False,
+            )
+            self.mm_desc_ifc.d_out_scale_pointer = self.aux_outputs["d_out_scale"].data_ptr
 
         a, b = self.operands[0], self.operands[1]
         raw_workspace_ptr_device = utils.get_ptr_from_memory_pointer(self.workspace_device)
@@ -1932,7 +2508,7 @@ class Matmul:
             self.last_compute_event,
             elapsed,
         ):
-            cublasMp.stream_set(self.handle, stream_holder.ptr)
+            cublasMp.set_stream(self.handle, stream_holder.ptr)
 
             nullptr = 0
             cublasMp.matmul(
@@ -1975,7 +2551,13 @@ class Matmul:
         # Return the result and auxiliary outputs, if present.
         all_outputs = self.epilog_outputs | self.aux_outputs
         if self.memory_space == "cpu":
-            out = result.to("cpu", stream_holder=stream_holder).tensor
+            if self.inplace:
+                # Overwrite operand C.
+                assert self.cpu_c_ref is not None, "Internal error."
+                self.cpu_c_ref.copy_(result, stream_holder=stream_holder)
+                out = self.cpu_c_ref.tensor
+            else:
+                out = result.to("cpu", stream_holder=stream_holder).tensor
             # Copy auxiliary output to CPU.
             aux = {name: all_outputs[name].to("cpu", stream_holder=stream_holder).tensor for name in all_outputs}
         else:
@@ -1983,10 +2565,6 @@ class Matmul:
             # Return the unwrapped epilog output tensor(s).
             aux = {name: all_outputs[name].tensor for name in all_outputs}
 
-        # Release internal reference to the result to permit recycling of memory.
-        if self.memory_space == "cpu" and result.is_symmetric_memory:
-            with utils.device_ctx(self.device_id):
-                result.free_symmetric()
         self.aux_outputs = {}
         self.epilog_outputs = {}
         self._reset_workspace_allocation_tracking()
@@ -2035,13 +2613,10 @@ class Matmul:
                     cublasMp.destroy(self.handle)
                     self.handle = None
 
-                if self.memory_space == "cpu":
-                    # In this case, the operands are internal GPU operands owned by Matmul
-                    for operand in self.operands:
-                        if operand.is_symmetric_memory:
-                            operand.free_symmetric()
-
-            self.operands = None
+            _keep = {"logger", "valid_state"}
+            for attr in list(vars(self)):
+                if attr not in _keep:
+                    setattr(self, attr, None)
 
         except Exception as e:
             self.logger.critical("Internal error: only part of the Matmul object's resources have been released.")
@@ -2066,6 +2641,7 @@ def matmul(
     epilog=None,
     epilog_inputs=None,
     qualifiers=None,
+    quantization_scales=None,
     options=None,
     preferences=None,
     stream: utils.AnyStream | int | None = None,
@@ -2110,6 +2686,8 @@ def matmul(
 
         qualifiers: {qualifiers}
 
+        quantization_scales: {quantization_scales}
+
         options: {options}
 
         preferences: {preferences}
@@ -2122,6 +2700,9 @@ def matmul(
     Semantics:
         {semantics}
 
+    Narrow-precision support:
+        {narrow_precision}
+
     .. seealso::
         :class:`Matmul`, :class:`MatmulOptions`, :class:`MatmulEpilog`,
         :class:`MatmulPlanPreferences`
@@ -2132,16 +2713,16 @@ def matmul(
         >>> import nvmath.distributed
         >>> from nvmath.distributed.distribution import Slab
 
-        Get MPI communicator used to initialize nvmath.distributed (for information on
+        Get process group used to initialize nvmath.distributed (for information on
         initializing ``nvmath.distributed``, you can refer to the documentation or to the
         Matmul examples in `nvmath/examples/distributed/linalg/advanced
         <https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/linalg/advanced/matmul>`_):
 
-        >>> comm = nvmath.distributed.get_context().communicator
+        >>> process_group = nvmath.distributed.get_context().process_group
 
         Get my process rank:
 
-        >>> rank = comm.Get_rank()
+        >>> rank = process_group.rank
 
         Create three float32 ndarrays on the GPU:
 
@@ -2224,12 +2805,64 @@ def matmul(
         qualifiers=qualifiers,
         options=options,
         stream=stream,
+        quantization_scales=quantization_scales,
     ) as mm:
         mm.plan(preferences=preferences, epilog=epilog, epilog_inputs=epilog_inputs, stream=stream)
 
         r = mm.execute(stream=stream)
 
     return r
+
+
+class CublasMpMemoryManager(memory.BaseCUDAMemoryManager):
+    """
+    cuBLASMp memory allocator. Calls cublasMp.malloc()/cublasMp.free()
+    which itself uses ncclMemAlloc/ncclMemFree, and (de)registers the
+    buffers with NCCL subcommunicators associated with the given cuBLASMp
+    process grids.
+    """
+
+    class SymmetricMemoryPointer(memory.MemoryPointer):
+        def __init__(self, grids, ptr, size):
+            super().__init__(ptr, size, finalizer=None)
+            self.grids = grids
+
+        def free(self):
+            """**This is a collective call**"""
+            for grid in self.grids[1:][::-1]:
+                cublasMp.buffer_deregister(grid, self.device_ptr)
+            cublasMp.free(self.grids[0], self.device_ptr)
+
+    def __init__(self, device_id: int, grids: list[int], logger: logging.Logger):
+        """
+        Create CublasMpMemoryManager.
+
+        Args:
+            device_id: The ID (int) of the device on which memory is to be allocated.
+
+            grids: List of pointers to cuBLASMp process grids. Memory allocated
+                with this manager will be registered with the NCCL subcommunicators
+                associated with these grids.
+
+           logger (logging.Logger): Python Logger object.
+        """
+        self.device_id = device_id
+        self.grids = grids
+        self.logger = logger
+
+    def memalloc(self, size):
+        """**This is a collective call**"""
+        assert self.grids, "Internal error"
+        # Note: this is a blocking call (it calls ncclMemAlloc which doesn't take a stream).
+        ptr = cublasMp.malloc(self.grids[0], size)
+        for grid in self.grids[1:]:
+            cublasMp.buffer_register(grid, ptr, size)
+
+        self.logger.debug(
+            f"CublasMpMemoryManager (allocate memory): size = {size}, pointer = {ptr}, device_id = {self.device_id}"
+        )
+
+        return CublasMpMemoryManager.SymmetricMemoryPointer(self.grids, ptr, size)
 
 
 class cuBLASMpProcessGridCache:
@@ -2254,7 +2887,7 @@ class cuBLASMpProcessGridCache:
                     process_grid.shape[0],
                     process_grid.shape[1],
                     process_grid.layout,
-                    nccl_comm,
+                    nccl_comm.ptr,
                 )
                 cache[process_grid] = process_grid_cpp
                 return process_grid_cpp

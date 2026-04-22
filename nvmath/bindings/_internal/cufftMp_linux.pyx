@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 11.2.6 to 11.4.0. Do not modify it directly.
+# This code was automatically generated across versions from 11.2.6 to 11.4.0, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 from libc.stdint cimport intptr_t, uintptr_t
 
@@ -16,6 +16,8 @@ from cuda.pathfinder import load_nvidia_dynamic_lib
 ###############################################################################
 # Extern
 ###############################################################################
+
+# You must 'from .utils import NotSupportedError' before using this template
 
 cdef extern from "<dlfcn.h>" nogil:
     void* dlopen(const char*, int)
@@ -48,6 +50,7 @@ cdef int get_cuda_version():
         raise RuntimeError(f'cuDriverGetVersion returned error code {err}')
 
     return driver_ver
+
 
 
 ###############################################################################
@@ -139,6 +142,10 @@ cdef int _check_or_init_cufftMp() except -1 nogil:
     cdef void* handle = NULL
 
     with gil, __symbol_lock:
+        # Recheck the flag after obtaining the locks
+        if __py_cufftMp_init:
+            return 0
+
         # Load function
         global __cufftPlan1d
         if __cufftPlan1d == NULL:

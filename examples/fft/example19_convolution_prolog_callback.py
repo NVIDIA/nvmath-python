@@ -14,6 +14,7 @@ For further details, please see :ref:`FFT callbacks <fft-callback>`.
 """
 
 import cupy as cp
+from common import is_blackwell, is_ctk12
 
 import nvmath
 
@@ -44,7 +45,12 @@ def convolve(data_in, offset, filter_data, unused):
 # device where the FFT to which the prolog is provided is executed. In this case we use the
 # current device context, where the operands have been created.
 with cp.cuda.Device():
-    prolog = nvmath.fft.compile_prolog(convolve, "complex128", "complex128")
+    # As a workaround for a known issue in cuFFT in CUDA Toolkit 12.8, 12.9
+    # on Blackwell devices,
+    # we explicitly set the compute capability to "50" for LTO-IR callback compilation.
+    prolog = nvmath.fft.compile_prolog(
+        convolve, "complex128", "complex128", compute_capability="50" if is_blackwell() and is_ctk12() else None
+    )
 
 # Perform the forward FFT...
 r = nvmath.fft.fft(a, axes=[-1])

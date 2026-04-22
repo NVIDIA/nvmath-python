@@ -4,16 +4,15 @@
 
 import operator
 
-from nvmath.device import curand_kernel
-
+import numpy as np
+from llvmlite import ir
 from numba import cuda, types
-from numba.extending import models, register_model, typeof_impl
+from numba.core.typing.templates import AbstractTemplate, signature
 from numba.cuda.cudadecl import register_global
 from numba.cuda.cudaimpl import lower
-from numba.core.typing.templates import AbstractTemplate, signature
-import numpy as np
+from numba.extending import models, register_model, typeof_impl
 
-from llvmlite import ir
+from nvmath.device import curand_kernel
 
 xorwow_dtype = np.dtype(
     [

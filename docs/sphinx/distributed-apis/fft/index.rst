@@ -35,7 +35,7 @@ some key differences:
   processes). There are two types of distribution natively supported by FFT:
   :ref:`distribution-slab` and custom :ref:`distribution-box`.
 
-* GPU operands need to be allocated on **symmetric memory**. Refer to
+* GPU operands need to be allocated on NVSHMEM **symmetric memory**. Refer to
   :doc:`Distributed API Utilities <../utils>` for examples and details of how to
   manage symmetric memory GPU operands. The :func:`nvmath.distributed.fft.allocate_operand`
   helper described below can also be used to allocate on symmetric memory.
@@ -80,8 +80,8 @@ Here is an example of a distributed FFT using Slab distribution:
 
     from nvmath.distributed.distribution import Slab
 
-    # Get number of processes from mpi4py communicator.
-    nranks = communicator.Get_size()
+    # Get number of processes.
+    nranks = nvmath.distributed.get_context().process_group.nranks
 
     # The global 3-D FFT size is (64, 256, 128).
     # Here, the input data is distributed across processes according to the
@@ -162,8 +162,8 @@ Here is an example of a distributed FFT across 4 GPUs using a custom pencil dist
 
     from nvmath.distributed.distribution import Box
 
-    # Get process rank from mpi4py communicator.
-    rank = communicator.Get_rank()
+    # Get my process rank.
+    rank = nvmath.distributed.get_context().process_group.rank
 
     # The global 3-D FFT size is (64, 256, 128).
     # The input data is distributed across 4 processes using a custom pencil
@@ -193,7 +193,7 @@ Operand allocation helper
 The :func:`~nvmath.distributed.fft.allocate_operand` helper can be used to allocate an
 operand that meets the requirements (in terms of buffer size, padding and strides) for
 the specified FFT operation . For GPU operands, the allocation will be done on the
-symmetric heap.
+NVSHMEM symmetric heap.
 
 .. important::
     Any memory on the symmetric heap that is owned by the user (including memory
@@ -208,8 +208,8 @@ package, dtype, distribution and FFT type. For example:
 
     import cupy as cp
 
-    # Get number of processes from mpi4py communicator.
-    nranks = communicator.Get_size()
+    # Get number of processes.
+    nranks = nvmath.distributed.get_context().process_group.nranks
 
     from nvmath.distributed.fft import Slab
 
@@ -275,7 +275,9 @@ FFT support (:mod:`nvmath.distributed.fft`)
    irfft
    FFT
 
-   :template: dataclass.rst
+.. autosummary::
+   :toctree: generated/
+   :template: dataclass
 
    FFTOptions
    FFTDirection

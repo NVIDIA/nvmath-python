@@ -7,9 +7,10 @@
 #
 
 import numpy as np
-from numba import cuda
-from nvmath.device import FFT, Dim3
 from common import random_complex
+from numba import cuda
+
+from nvmath.device import FFT, Dim3
 
 
 def main():

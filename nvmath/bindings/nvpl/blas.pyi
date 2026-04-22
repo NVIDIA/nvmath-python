@@ -1,62 +1,64 @@
-# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import _cython_3_2_3
+import _cython_3_2_4
 import enum
 from typing import Callable, ClassVar
 
 __pyx_capi__: dict
 __test__: dict
-cgemm: _cython_3_2_3.cython_function_or_method
-cgemm_batch: _cython_3_2_3.cython_function_or_method
-cgemm_batch_strided: _cython_3_2_3.cython_function_or_method
-chemm: _cython_3_2_3.cython_function_or_method
-cher2k: _cython_3_2_3.cython_function_or_method
-cherk: _cython_3_2_3.cython_function_or_method
-csymm: _cython_3_2_3.cython_function_or_method
-csyr2k: _cython_3_2_3.cython_function_or_method
-csyrk: _cython_3_2_3.cython_function_or_method
-ctrmm: _cython_3_2_3.cython_function_or_method
-ctrsm: _cython_3_2_3.cython_function_or_method
-dgemm: _cython_3_2_3.cython_function_or_method
-dgemm_batch: _cython_3_2_3.cython_function_or_method
-dgemm_batch_strided: _cython_3_2_3.cython_function_or_method
-dsymm: _cython_3_2_3.cython_function_or_method
-dsyr2k: _cython_3_2_3.cython_function_or_method
-dsyrk: _cython_3_2_3.cython_function_or_method
-dtrmm: _cython_3_2_3.cython_function_or_method
-dtrsm: _cython_3_2_3.cython_function_or_method
-get_max_threads: _cython_3_2_3.cython_function_or_method
-get_version: _cython_3_2_3.cython_function_or_method
-mkl_set_num_threads: _cython_3_2_3.cython_function_or_method
-mkl_set_num_threads_local: _cython_3_2_3.cython_function_or_method
-openblas_set_num_threads: _cython_3_2_3.cython_function_or_method
-openblas_set_num_threads_local: _cython_3_2_3.cython_function_or_method
-set_num_threads: _cython_3_2_3.cython_function_or_method
-set_num_threads_local: _cython_3_2_3.cython_function_or_method
-sgemm: _cython_3_2_3.cython_function_or_method
-sgemm_batch: _cython_3_2_3.cython_function_or_method
-sgemm_batch_strided: _cython_3_2_3.cython_function_or_method
-ssymm: _cython_3_2_3.cython_function_or_method
-ssyr2k: _cython_3_2_3.cython_function_or_method
-ssyrk: _cython_3_2_3.cython_function_or_method
-strmm: _cython_3_2_3.cython_function_or_method
-strsm: _cython_3_2_3.cython_function_or_method
-zgemm: _cython_3_2_3.cython_function_or_method
-zgemm_batch: _cython_3_2_3.cython_function_or_method
-zgemm_batch_strided: _cython_3_2_3.cython_function_or_method
-zhemm: _cython_3_2_3.cython_function_or_method
-zher2k: _cython_3_2_3.cython_function_or_method
-zherk: _cython_3_2_3.cython_function_or_method
-zsymm: _cython_3_2_3.cython_function_or_method
-zsyr2k: _cython_3_2_3.cython_function_or_method
-zsyrk: _cython_3_2_3.cython_function_or_method
-ztrmm: _cython_3_2_3.cython_function_or_method
-ztrsm: _cython_3_2_3.cython_function_or_method
+cgemm: _cython_3_2_4.cython_function_or_method
+cgemm_batch: _cython_3_2_4.cython_function_or_method
+cgemm_batch_strided: _cython_3_2_4.cython_function_or_method
+chemm: _cython_3_2_4.cython_function_or_method
+cher2k: _cython_3_2_4.cython_function_or_method
+cherk: _cython_3_2_4.cython_function_or_method
+csymm: _cython_3_2_4.cython_function_or_method
+csyr2k: _cython_3_2_4.cython_function_or_method
+csyrk: _cython_3_2_4.cython_function_or_method
+ctrmm: _cython_3_2_4.cython_function_or_method
+ctrsm: _cython_3_2_4.cython_function_or_method
+dgemm: _cython_3_2_4.cython_function_or_method
+dgemm_batch: _cython_3_2_4.cython_function_or_method
+dgemm_batch_strided: _cython_3_2_4.cython_function_or_method
+dsymm: _cython_3_2_4.cython_function_or_method
+dsyr2k: _cython_3_2_4.cython_function_or_method
+dsyrk: _cython_3_2_4.cython_function_or_method
+dtrmm: _cython_3_2_4.cython_function_or_method
+dtrsm: _cython_3_2_4.cython_function_or_method
+get_max_threads: _cython_3_2_4.cython_function_or_method
+get_version: _cython_3_2_4.cython_function_or_method
+mkl_set_num_threads: _cython_3_2_4.cython_function_or_method
+mkl_set_num_threads_local: _cython_3_2_4.cython_function_or_method
+openblas_set_num_threads: _cython_3_2_4.cython_function_or_method
+openblas_set_num_threads_local: _cython_3_2_4.cython_function_or_method
+set_num_threads: _cython_3_2_4.cython_function_or_method
+set_num_threads_local: _cython_3_2_4.cython_function_or_method
+sgemm: _cython_3_2_4.cython_function_or_method
+sgemm_batch: _cython_3_2_4.cython_function_or_method
+sgemm_batch_strided: _cython_3_2_4.cython_function_or_method
+ssymm: _cython_3_2_4.cython_function_or_method
+ssyr2k: _cython_3_2_4.cython_function_or_method
+ssyrk: _cython_3_2_4.cython_function_or_method
+strmm: _cython_3_2_4.cython_function_or_method
+strsm: _cython_3_2_4.cython_function_or_method
+zgemm: _cython_3_2_4.cython_function_or_method
+zgemm_batch: _cython_3_2_4.cython_function_or_method
+zgemm_batch_strided: _cython_3_2_4.cython_function_or_method
+zhemm: _cython_3_2_4.cython_function_or_method
+zher2k: _cython_3_2_4.cython_function_or_method
+zherk: _cython_3_2_4.cython_function_or_method
+zsymm: _cython_3_2_4.cython_function_or_method
+zsyr2k: _cython_3_2_4.cython_function_or_method
+zsyrk: _cython_3_2_4.cython_function_or_method
+ztrmm: _cython_3_2_4.cython_function_or_method
+ztrsm: _cython_3_2_4.cython_function_or_method
 
 class DIAG(enum.IntEnum):
-    """See `CBLAS_DIAG`."""
+    """
+    See `CBLAS_DIAG`.
+    """
     __new__: ClassVar[Callable] = ...
     NonUnit: ClassVar[DIAG] = ...
     Unit: ClassVar[DIAG] = ...
@@ -67,7 +69,9 @@ class DIAG(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class ORDER(enum.IntEnum):
-    """See `CBLAS_ORDER`."""
+    """
+    See `CBLAS_ORDER`.
+    """
     __new__: ClassVar[Callable] = ...
     ColMajor: ClassVar[ORDER] = ...
     RowMajor: ClassVar[ORDER] = ...
@@ -78,7 +82,9 @@ class ORDER(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class SIDE(enum.IntEnum):
-    """See `CBLAS_SIDE`."""
+    """
+    See `CBLAS_SIDE`.
+    """
     __new__: ClassVar[Callable] = ...
     Left: ClassVar[SIDE] = ...
     Right: ClassVar[SIDE] = ...
@@ -89,7 +95,9 @@ class SIDE(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class TRANSPOSE(enum.IntEnum):
-    """See `CBLAS_TRANSPOSE`."""
+    """
+    See `CBLAS_TRANSPOSE`.
+    """
     __new__: ClassVar[Callable] = ...
     ConjTrans: ClassVar[TRANSPOSE] = ...
     NoTrans: ClassVar[TRANSPOSE] = ...
@@ -101,7 +109,9 @@ class TRANSPOSE(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class UPLO(enum.IntEnum):
-    """See `CBLAS_UPLO`."""
+    """
+    See `CBLAS_UPLO`.
+    """
     __new__: ClassVar[Callable] = ...
     Lower: ClassVar[UPLO] = ...
     Upper: ClassVar[UPLO] = ...

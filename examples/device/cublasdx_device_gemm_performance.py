@@ -8,13 +8,12 @@
 
 import cupy
 import numpy as np
-from numba import cuda
+from common import random_real
 from common_cupy import time_cupy
 from common_numba import time_numba
+from numba import cuda
+
 from nvmath.device import Matmul
-from nvmath.device.cublasdx import MAX_ALIGNMENT, SharedStorageCalc
-from nvmath.linalg.advanced import Matmul as CublasltMatmul
-from common import random_real
 from nvmath.device.common import (
     axpby,
     clear,
@@ -24,6 +23,8 @@ from nvmath.device.common import (
     make_tensor,
 )
 from nvmath.device.common_cuda import Dim3
+from nvmath.device.cublasdx import MAX_ALIGNMENT, SharedStorageCalc
+from nvmath.linalg.advanced import Matmul as CublasltMatmul
 
 
 def main():

@@ -1,63 +1,69 @@
-# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import _cython_3_1_4
+import _cython_3_2_4
 import enum
 from typing import Any, Callable, ClassVar
 
 __pyx_capi__: dict
 __test__: dict
-block_sparse_contract: _cython_3_1_4.cython_function_or_method
-check_status: _cython_3_1_4.cython_function_or_method
-contract: _cython_3_1_4.cython_function_or_method
-contract_trinary: _cython_3_1_4.cython_function_or_method
-create: _cython_3_1_4.cython_function_or_method
-create_block_sparse_contraction: _cython_3_1_4.cython_function_or_method
-create_block_sparse_tensor_descriptor: _cython_3_1_4.cython_function_or_method
-create_contraction: _cython_3_1_4.cython_function_or_method
-create_contraction_trinary: _cython_3_1_4.cython_function_or_method
-create_elementwise_binary: _cython_3_1_4.cython_function_or_method
-create_elementwise_trinary: _cython_3_1_4.cython_function_or_method
-create_permutation: _cython_3_1_4.cython_function_or_method
-create_plan: _cython_3_1_4.cython_function_or_method
-create_plan_preference: _cython_3_1_4.cython_function_or_method
-create_reduction: _cython_3_1_4.cython_function_or_method
-create_tensor_descriptor: _cython_3_1_4.cython_function_or_method
-destroy: _cython_3_1_4.cython_function_or_method
-destroy_block_sparse_tensor_descriptor: _cython_3_1_4.cython_function_or_method
-destroy_operation_descriptor: _cython_3_1_4.cython_function_or_method
-destroy_plan: _cython_3_1_4.cython_function_or_method
-destroy_plan_preference: _cython_3_1_4.cython_function_or_method
-destroy_tensor_descriptor: _cython_3_1_4.cython_function_or_method
-elementwise_binary_execute: _cython_3_1_4.cython_function_or_method
-elementwise_trinary_execute: _cython_3_1_4.cython_function_or_method
-estimate_workspace_size: _cython_3_1_4.cython_function_or_method
-get_cudart_version: _cython_3_1_4.cython_function_or_method
-get_error_string: _cython_3_1_4.cython_function_or_method
-get_operation_descriptor_attribute_dtype: _cython_3_1_4.cython_function_or_method
-get_plan_attribute_dtype: _cython_3_1_4.cython_function_or_method
-get_plan_preference_attribute_dtype: _cython_3_1_4.cython_function_or_method
-get_version: _cython_3_1_4.cython_function_or_method
-handle_read_plan_cache_from_file: _cython_3_1_4.cython_function_or_method
-handle_resize_plan_cache: _cython_3_1_4.cython_function_or_method
-handle_write_plan_cache_to_file: _cython_3_1_4.cython_function_or_method
-logger_force_disable: _cython_3_1_4.cython_function_or_method
-logger_open_file: _cython_3_1_4.cython_function_or_method
-logger_set_file: _cython_3_1_4.cython_function_or_method
-logger_set_level: _cython_3_1_4.cython_function_or_method
-logger_set_mask: _cython_3_1_4.cython_function_or_method
-operation_descriptor_get_attribute: _cython_3_1_4.cython_function_or_method
-operation_descriptor_set_attribute: _cython_3_1_4.cython_function_or_method
-permute: _cython_3_1_4.cython_function_or_method
-plan_get_attribute: _cython_3_1_4.cython_function_or_method
-plan_preference_set_attribute: _cython_3_1_4.cython_function_or_method
-read_kernel_cache_from_file: _cython_3_1_4.cython_function_or_method
-reduce: _cython_3_1_4.cython_function_or_method
-write_kernel_cache_to_file: _cython_3_1_4.cython_function_or_method
+block_sparse_contract: _cython_3_2_4.cython_function_or_method
+check_status: _cython_3_2_4.cython_function_or_method
+contract: _cython_3_2_4.cython_function_or_method
+contract_trinary: _cython_3_2_4.cython_function_or_method
+create: _cython_3_2_4.cython_function_or_method
+create_block_sparse_contraction: _cython_3_2_4.cython_function_or_method
+create_block_sparse_tensor_descriptor: _cython_3_2_4.cython_function_or_method
+create_contraction: _cython_3_2_4.cython_function_or_method
+create_contraction_trinary: _cython_3_2_4.cython_function_or_method
+create_elementwise_binary: _cython_3_2_4.cython_function_or_method
+create_elementwise_trinary: _cython_3_2_4.cython_function_or_method
+create_permutation: _cython_3_2_4.cython_function_or_method
+create_plan: _cython_3_2_4.cython_function_or_method
+create_plan_preference: _cython_3_2_4.cython_function_or_method
+create_reduction: _cython_3_2_4.cython_function_or_method
+create_tensor_descriptor: _cython_3_2_4.cython_function_or_method
+destroy: _cython_3_2_4.cython_function_or_method
+destroy_block_sparse_tensor_descriptor: _cython_3_2_4.cython_function_or_method
+destroy_operation_descriptor: _cython_3_2_4.cython_function_or_method
+destroy_plan: _cython_3_2_4.cython_function_or_method
+destroy_plan_preference: _cython_3_2_4.cython_function_or_method
+destroy_tensor_descriptor: _cython_3_2_4.cython_function_or_method
+elementwise_binary_execute: _cython_3_2_4.cython_function_or_method
+elementwise_trinary_execute: _cython_3_2_4.cython_function_or_method
+estimate_workspace_size: _cython_3_2_4.cython_function_or_method
+get_cudart_version: _cython_3_2_4.cython_function_or_method
+get_error_string: _cython_3_2_4.cython_function_or_method
+get_operation_descriptor_attribute_dtype: _cython_3_2_4.cython_function_or_method
+get_plan_attribute_dtype: _cython_3_2_4.cython_function_or_method
+get_plan_preference_attribute_dtype: _cython_3_2_4.cython_function_or_method
+get_version: _cython_3_2_4.cython_function_or_method
+handle_read_plan_cache_from_file: _cython_3_2_4.cython_function_or_method
+handle_resize_plan_cache: _cython_3_2_4.cython_function_or_method
+handle_write_plan_cache_to_file: _cython_3_2_4.cython_function_or_method
+logger_force_disable: _cython_3_2_4.cython_function_or_method
+logger_open_file: _cython_3_2_4.cython_function_or_method
+logger_set_file: _cython_3_2_4.cython_function_or_method
+logger_set_level: _cython_3_2_4.cython_function_or_method
+logger_set_mask: _cython_3_2_4.cython_function_or_method
+operation_descriptor_get_attribute: _cython_3_2_4.cython_function_or_method
+operation_descriptor_set_attribute: _cython_3_2_4.cython_function_or_method
+permute: _cython_3_2_4.cython_function_or_method
+plan_get_attribute: _cython_3_2_4.cython_function_or_method
+plan_preference_get_attribute: _cython_3_2_4.cython_function_or_method
+plan_preference_set_attribute: _cython_3_2_4.cython_function_or_method
+read_kernel_cache_from_file: _cython_3_2_4.cython_function_or_method
+reduce: _cython_3_2_4.cython_function_or_method
+write_kernel_cache_to_file: _cython_3_2_4.cython_function_or_method
 
 class Algo(enum.IntEnum):
-    """See `cutensorAlgo_t`."""
+    """
+    Allows users to specify the algorithm to be used for performing the
+    desired tensor operation.
+
+    See `cutensorAlgo_t`.
+    """
     __new__: ClassVar[Callable] = ...
     DEFAULT: ClassVar[Algo] = ...
     DEFAULT_PATIENT: ClassVar[Algo] = ...
@@ -71,7 +77,11 @@ class Algo(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class AutotuneMode(enum.IntEnum):
-    """See `cutensorAutotuneMode_t`."""
+    """
+    This enum determines the mode w.r.t. cuTENSOR's auto-tuning capability.
+
+    See `cutensorAutotuneMode_t`.
+    """
     __new__: ClassVar[Callable] = ...
     INCREMENTAL: ClassVar[AutotuneMode] = ...
     NONE: ClassVar[AutotuneMode] = ...
@@ -82,7 +92,11 @@ class AutotuneMode(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class CacheMode(enum.IntEnum):
-    """See `cutensorCacheMode_t`."""
+    """
+    This enum defines what is considered a cache hit.
+
+    See `cutensorCacheMode_t`.
+    """
     __new__: ClassVar[Callable] = ...
     NONE: ClassVar[CacheMode] = ...
     PEDANTIC: ClassVar[CacheMode] = ...
@@ -98,11 +112,19 @@ class ComputeDesc:
     COMPUTE_16F: ClassVar[method] = ...
     COMPUTE_32F: ClassVar[method] = ...
     COMPUTE_3XTF32: ClassVar[method] = ...
+    COMPUTE_4X16F: ClassVar[method] = ...
     COMPUTE_64F: ClassVar[method] = ...
+    COMPUTE_8XINT8: ClassVar[method] = ...
+    COMPUTE_9X16BF: ClassVar[method] = ...
     COMPUTE_TF32: ClassVar[method] = ...
 
 class JitMode(enum.IntEnum):
-    """See `cutensorJitMode_t`."""
+    """
+    This enum determines the mode w.r.t. cuTENSOR's just-in-time
+    compilation capability.
+
+    See `cutensorJitMode_t`.
+    """
     __new__: ClassVar[Callable] = ...
     DEFAULT: ClassVar[JitMode] = ...
     NONE: ClassVar[JitMode] = ...
@@ -113,7 +135,13 @@ class JitMode(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class OperationDescriptorAttribute(enum.IntEnum):
-    """See `cutensorOperationDescriptorAttribute_t`."""
+    """
+    This enum lists all attributes of a `cutensorOperationDescriptor_t`
+    that can be modified (see `cutensorOperationDescriptorSetAttribute` and
+    `cutensorOperationDescriptorGetAttribute`).
+
+    See `cutensorOperationDescriptorAttribute_t`.
+    """
     __new__: ClassVar[Callable] = ...
     FLOPS: ClassVar[OperationDescriptorAttribute] = ...
     MOVED_BYTES: ClassVar[OperationDescriptorAttribute] = ...
@@ -129,7 +157,12 @@ class OperationDescriptorAttribute(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Operator(enum.IntEnum):
-    """See `cutensorOperator_t`."""
+    """
+    This enum captures all unary and binary element-wise operations
+    supported by the cuTENSOR library.
+
+    See `cutensorOperator_t`.
+    """
     __new__: ClassVar[Callable] = ...
     OP_ABS: ClassVar[Operator] = ...
     OP_ACOS: ClassVar[Operator] = ...
@@ -171,7 +204,12 @@ class Operator(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class PlanAttribute(enum.IntEnum):
-    """See `cutensorPlanAttribute_t`."""
+    """
+    This enum lists all attributes of a `cutensorPlan_t` object that can be
+    retrieved via `cutensorPlanGetAttribute`.
+
+    See `cutensorPlanAttribute_t`.
+    """
     __new__: ClassVar[Callable] = ...
     REQUIRED_WORKSPACE: ClassVar[PlanAttribute] = ...
     _generate_next_value_: ClassVar[Callable] = ...
@@ -181,7 +219,12 @@ class PlanAttribute(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class PlanPreferenceAttribute(enum.IntEnum):
-    """See `cutensorPlanPreferenceAttribute_t`."""
+    """
+    This enum lists all attributes of a `cutensorPlanPreference_t` object
+    that can be modified.
+
+    See `cutensorPlanPreferenceAttribute_t`.
+    """
     __new__: ClassVar[Callable] = ...
     ALGO: ClassVar[PlanPreferenceAttribute] = ...
     AUTOTUNE_MODE: ClassVar[PlanPreferenceAttribute] = ...
@@ -196,7 +239,13 @@ class PlanPreferenceAttribute(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Status(enum.IntEnum):
-    """See `cutensorStatus_t`."""
+    """
+    cuTENSOR status type returnsThe type is used for function status
+    returns. All cuTENSOR library functions return their status, which can
+    have the following values.
+
+    See `cutensorStatus_t`.
+    """
     __new__: ClassVar[Callable] = ...
     ALLOC_FAILED: ClassVar[Status] = ...
     ARCH_MISMATCH: ClassVar[Status] = ...
@@ -220,7 +269,13 @@ class Status(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class WorksizePreference(enum.IntEnum):
-    """See `cutensorWorksizePreference_t`."""
+    """
+    This enum gives users finer control over the suggested workspace.This
+    enum gives users finer control over the amount of workspace that is
+    suggested by `cutensorEstimateWorkspaceSize`
+
+    See `cutensorWorksizePreference_t`.
+    """
     __new__: ClassVar[Callable] = ...
     WORKSPACE_DEFAULT: ClassVar[WorksizePreference] = ...
     WORKSPACE_MAX: ClassVar[WorksizePreference] = ...

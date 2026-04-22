@@ -4,11 +4,11 @@
 
 from contextlib import nullcontext
 
-from .axes_utils import is_complex
-from .common_axes import MemBackend
+from nvmath.tensor import BinaryContraction, ContractionOptions, TernaryContraction, binary_contraction, ternary_contraction
 
-from nvmath.tensor import binary_contraction, ternary_contraction, ContractionOptions, BinaryContraction, TernaryContraction
+from .axes_utils import is_complex
 from .check_helpers import assert_all_close, get_contraction_ref, get_contraction_tolerance
+from .common_axes import MemBackend
 
 
 def _parse_options(options):

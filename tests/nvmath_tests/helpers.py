@@ -1,11 +1,13 @@
 # Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
-import os
 import contextlib
-from typing import Union
+import gc
+import os
+import weakref
 from collections.abc import Callable
 from enum import Enum
+from typing import Union
 
 try:
     import cupy
@@ -17,9 +19,32 @@ try:
 except ImportError:
     torch = None
 
-import numpy as np
+try:
+    from nvmath.bindings import cusparseLt as _cusparseLt
+    from nvmath.bindings._internal.utils import FunctionNotFoundError, NotSupportedError
+
+    try:
+        handle = _cusparseLt.init()
+        _cusparseLt.get_version(handle)
+        _cusparseLt.destroy(handle)
+        _HAS_CUSPARSELT = True
+    except (NotSupportedError, FunctionNotFoundError, RuntimeError):
+        _HAS_CUSPARSELT = False
+    except _cusparseLt.cuSPARSELtError as e:
+        from nvmath.bindings import cusparse as _cusparse
+
+        if e.status == _cusparse.Status.ARCH_MISMATCH:
+            _HAS_CUSPARSELT = False
+        else:
+            raise
+except ImportError:
+    _HAS_CUSPARSELT = False
+
 import math
+
 import hypothesis
+import numpy as np
+import pytest
 
 try:
     from cuda.core import Device, Stream
@@ -39,6 +64,112 @@ def nvmath_seed():
         return x
 
     return do_nothing
+
+
+def requires_host_memory(min_memory: int | Callable[[...], int]):
+    """
+    Decorator that skips a test at runtime if host memory is insufficient.
+
+    The memory check happens when the test runs, not during collection,
+    since available memory may change between those times.
+
+    Args:
+        min_memory: Minimum required host memory in bytes.
+                    Can be an int or a callable that takes test parameters
+                    and returns the required bytes.
+
+    Examples:
+        ```python
+        # Fixed memory requirement:
+        @requires_host_memory(16 * 1024**3)  # 16 GB
+        def test_large_operation(): ...
+
+
+        # Dynamic memory based on parameters:
+        @pytest.mark.parametrize("size", [1024, 2048, 4096])
+        @requires_host_memory(lambda size: size * 1024 * 1024)
+        def test_with_size(size): ...
+
+
+        # Multiple parameters:
+        @pytest.mark.parametrize("batch_size,dim", [(100, 1024), (1000, 2048)])
+        @requires_host_memory(lambda batch_size, dim: batch_size * dim * 8)
+        def test_with_params(batch_size, dim): ...
+        ```
+    """
+    import functools
+    import inspect
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Compute required memory at runtime
+            if callable(min_memory):
+                # Bind arguments to pass to the memory calculation function
+                sig = inspect.signature(func)
+                try:
+                    bound = sig.bind(*args, **kwargs)
+                    bound.apply_defaults()
+                    required_memory = min_memory(**bound.arguments)
+                except Exception as e:
+                    # If binding fails, try with just kwargs
+                    try:
+                        required_memory = min_memory(**kwargs)
+                    except Exception:
+                        raise RuntimeError(
+                            f"Could not compute memory requirement: {e}. "
+                            f"Make sure the callable signature matches test parameters."
+                        ) from e
+            else:
+                required_memory = min_memory
+
+            skip_if_insufficient_host_memory(required_memory)
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+requires_cusparselt = pytest.mark.skipif(not _HAS_CUSPARSELT, reason="cuSPARSELt is not available")
+
+
+def skip_if_insufficient_host_memory(required_memory_bytes: int):
+    """
+    Skips the current test if available host memory is less than required.
+
+    Call this function at the beginning of your test to check memory availability.
+    This is an alternative to the @requires_host_memory decorator for cases
+    where you want explicit control or need to compute memory requirements
+    dynamically within the test.
+
+    Args:
+        required_memory_bytes: Minimum required host memory in bytes.
+
+    Example:
+        ```python
+        def test_large_operation():
+            skip_if_insufficient_host_memory(16 * 1024**3)  # Require 16 GB
+            # ... rest of test
+
+
+        @pytest.mark.parametrize("size", [1024, 2048, 4096])
+        def test_with_size(size):
+            skip_if_insufficient_host_memory(size * 1024 * 1024)  # size MB -> bytes
+            # ... rest of test
+        ```
+    """
+
+    import psutil
+
+    available_memory = psutil.virtual_memory().available
+    if available_memory < required_memory_bytes:
+        pytest.skip(
+            f"Test requires at least {required_memory_bytes:.3e} bytes host memory, "
+            f"but only {available_memory:.3e} bytes available."
+        )
+    gc.collect()
 
 
 def numpy_type_to_str(np_dtype):
@@ -487,3 +618,61 @@ def order_streams(
     if stream0 is not None and stream1 is not None:
         event = record_event(stream0)
         wait_event(stream1, event)
+
+
+class OutOfMemoryError(Exception):
+    pass
+
+
+@contextlib.contextmanager
+def consistent_out_of_memory_error():
+    """
+    To simplify the test logic, check if the error looks like OOM
+    and raise single exception type OutOfMemoryError.
+    """
+    try:
+        yield
+    except Exception as e:
+        if (cupy is not None and isinstance(e, cupy.cuda.memory.OutOfMemoryError)) or ("CUDA_ERROR_OUT_OF_MEMORY" in str(e)):
+            raise OutOfMemoryError() from e
+        raise
+
+
+@contextlib.contextmanager
+def check_freed_after(obj, msg=""):
+    """
+    Assert that *obj* is destroyed once the caller drops its reference.
+
+    Typical usage::
+
+        with check_freed_after(result, "result should be solely owned"):
+            del result
+
+    The context manager creates a weak reference to *obj*, then drops
+    its own strong reference.  Inside the ``with`` block the caller
+    must ``del`` its variable.  On block exit the weak reference is
+    checked — if the object is still alive, someone else is holding a
+    reference (or it is trapped in a reference cycle, which is itself a
+    bug that should be fixed rather than hidden by ``gc.collect()``).
+
+    Note: this helper relies on CPython's deterministic reference-counting
+    semantics, where an object is deallocated immediately when its
+    reference count drops to zero.
+
+    Args:
+        obj: The object to check.
+        msg: Optional message shown on assertion failure.
+
+    Raises:
+        TypeError: If *obj* does not support weak references.
+        AssertionError: If the object is still alive after the block.
+    """
+    try:
+        ref = weakref.ref(obj)
+    except TypeError:
+        raise TypeError(
+            f"{type(obj).__name__!r} objects do not support weak references; check_freed_after cannot be used with this type"
+        ) from None
+    del obj
+    yield
+    assert ref() is None, msg or "Object was not destroyed; extra references likely exist"

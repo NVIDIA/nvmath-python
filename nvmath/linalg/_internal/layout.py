@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import itertools
 import logging
+import typing
 from collections.abc import Sequence
 from dataclasses import dataclass
-import typing
 
-import nvmath.bindings.cublasLt as cublaslt
 import nvmath.bindings.cublas as cublas
+import nvmath.bindings.cublasLt as cublaslt
 from nvmath.internal import typemaps
 
 

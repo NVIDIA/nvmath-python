@@ -1,73 +1,75 @@
-# Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import _cython_3_1_4
+import _cython_3_2_4
 import enum
 from typing import Any, Callable, ClassVar
 
 __pyx_capi__: dict
 __test__: dict
-check_status: _cython_3_1_4.cython_function_or_method
-create: _cython_3_1_4.cython_function_or_method
-destroy: _cython_3_1_4.cython_function_or_method
-estimate1d: _cython_3_1_4.cython_function_or_method
-estimate2d: _cython_3_1_4.cython_function_or_method
-estimate3d: _cython_3_1_4.cython_function_or_method
-estimate_many: _cython_3_1_4.cython_function_or_method
-exec_c2c: _cython_3_1_4.cython_function_or_method
-exec_c2r: _cython_3_1_4.cython_function_or_method
-exec_d2z: _cython_3_1_4.cython_function_or_method
-exec_r2c: _cython_3_1_4.cython_function_or_method
-exec_z2d: _cython_3_1_4.cython_function_or_method
-exec_z2z: _cython_3_1_4.cython_function_or_method
-get_plan_property_int64: _cython_3_1_4.cython_function_or_method
-get_property: _cython_3_1_4.cython_function_or_method
-get_size: _cython_3_1_4.cython_function_or_method
-get_size1d: _cython_3_1_4.cython_function_or_method
-get_size2d: _cython_3_1_4.cython_function_or_method
-get_size3d: _cython_3_1_4.cython_function_or_method
-get_size_many: _cython_3_1_4.cython_function_or_method
-get_size_many64: _cython_3_1_4.cython_function_or_method
-get_version: _cython_3_1_4.cython_function_or_method
-make_plan1d: _cython_3_1_4.cython_function_or_method
-make_plan2d: _cython_3_1_4.cython_function_or_method
-make_plan3d: _cython_3_1_4.cython_function_or_method
-make_plan_many: _cython_3_1_4.cython_function_or_method
-make_plan_many64: _cython_3_1_4.cython_function_or_method
-plan1d: _cython_3_1_4.cython_function_or_method
-plan2d: _cython_3_1_4.cython_function_or_method
-plan3d: _cython_3_1_4.cython_function_or_method
-plan_many: _cython_3_1_4.cython_function_or_method
-reset_plan_property: _cython_3_1_4.cython_function_or_method
-set_auto_allocation: _cython_3_1_4.cython_function_or_method
-set_plan_property_int64: _cython_3_1_4.cython_function_or_method
-set_stream: _cython_3_1_4.cython_function_or_method
-set_work_area: _cython_3_1_4.cython_function_or_method
-xt_clear_callback: _cython_3_1_4.cython_function_or_method
-xt_exec: _cython_3_1_4.cython_function_or_method
-xt_exec_descriptor: _cython_3_1_4.cython_function_or_method
-xt_exec_descriptor_c2c: _cython_3_1_4.cython_function_or_method
-xt_exec_descriptor_c2r: _cython_3_1_4.cython_function_or_method
-xt_exec_descriptor_d2z: _cython_3_1_4.cython_function_or_method
-xt_exec_descriptor_r2c: _cython_3_1_4.cython_function_or_method
-xt_exec_descriptor_z2d: _cython_3_1_4.cython_function_or_method
-xt_exec_descriptor_z2z: _cython_3_1_4.cython_function_or_method
-xt_free: _cython_3_1_4.cython_function_or_method
-xt_get_size_many: _cython_3_1_4.cython_function_or_method
-xt_make_plan_many: _cython_3_1_4.cython_function_or_method
-xt_malloc: _cython_3_1_4.cython_function_or_method
-xt_memcpy: _cython_3_1_4.cython_function_or_method
-xt_query_plan: _cython_3_1_4.cython_function_or_method
-xt_set_callback_shared_size: _cython_3_1_4.cython_function_or_method
-xt_set_gpus: _cython_3_1_4.cython_function_or_method
-xt_set_jit_callback: _cython_3_1_4.cython_function_or_method
-xt_set_subformat_default: _cython_3_1_4.cython_function_or_method
-xt_set_work_area: _cython_3_1_4.cython_function_or_method
-xt_set_work_area_policy: _cython_3_1_4.cython_function_or_method
+check_status: _cython_3_2_4.cython_function_or_method
+create: _cython_3_2_4.cython_function_or_method
+destroy: _cython_3_2_4.cython_function_or_method
+estimate1d: _cython_3_2_4.cython_function_or_method
+estimate2d: _cython_3_2_4.cython_function_or_method
+estimate3d: _cython_3_2_4.cython_function_or_method
+estimate_many: _cython_3_2_4.cython_function_or_method
+exec_c2c: _cython_3_2_4.cython_function_or_method
+exec_c2r: _cython_3_2_4.cython_function_or_method
+exec_d2z: _cython_3_2_4.cython_function_or_method
+exec_r2c: _cython_3_2_4.cython_function_or_method
+exec_z2d: _cython_3_2_4.cython_function_or_method
+exec_z2z: _cython_3_2_4.cython_function_or_method
+get_plan_property_int64: _cython_3_2_4.cython_function_or_method
+get_property: _cython_3_2_4.cython_function_or_method
+get_size: _cython_3_2_4.cython_function_or_method
+get_size1d: _cython_3_2_4.cython_function_or_method
+get_size2d: _cython_3_2_4.cython_function_or_method
+get_size3d: _cython_3_2_4.cython_function_or_method
+get_size_many: _cython_3_2_4.cython_function_or_method
+get_size_many64: _cython_3_2_4.cython_function_or_method
+get_version: _cython_3_2_4.cython_function_or_method
+make_plan1d: _cython_3_2_4.cython_function_or_method
+make_plan2d: _cython_3_2_4.cython_function_or_method
+make_plan3d: _cython_3_2_4.cython_function_or_method
+make_plan_many: _cython_3_2_4.cython_function_or_method
+make_plan_many64: _cython_3_2_4.cython_function_or_method
+plan1d: _cython_3_2_4.cython_function_or_method
+plan2d: _cython_3_2_4.cython_function_or_method
+plan3d: _cython_3_2_4.cython_function_or_method
+plan_many: _cython_3_2_4.cython_function_or_method
+reset_plan_property: _cython_3_2_4.cython_function_or_method
+set_auto_allocation: _cython_3_2_4.cython_function_or_method
+set_plan_property_int64: _cython_3_2_4.cython_function_or_method
+set_stream: _cython_3_2_4.cython_function_or_method
+set_work_area: _cython_3_2_4.cython_function_or_method
+xt_clear_callback: _cython_3_2_4.cython_function_or_method
+xt_exec: _cython_3_2_4.cython_function_or_method
+xt_exec_descriptor: _cython_3_2_4.cython_function_or_method
+xt_exec_descriptor_c2c: _cython_3_2_4.cython_function_or_method
+xt_exec_descriptor_c2r: _cython_3_2_4.cython_function_or_method
+xt_exec_descriptor_d2z: _cython_3_2_4.cython_function_or_method
+xt_exec_descriptor_r2c: _cython_3_2_4.cython_function_or_method
+xt_exec_descriptor_z2d: _cython_3_2_4.cython_function_or_method
+xt_exec_descriptor_z2z: _cython_3_2_4.cython_function_or_method
+xt_free: _cython_3_2_4.cython_function_or_method
+xt_get_size_many: _cython_3_2_4.cython_function_or_method
+xt_make_plan_many: _cython_3_2_4.cython_function_or_method
+xt_malloc: _cython_3_2_4.cython_function_or_method
+xt_memcpy: _cython_3_2_4.cython_function_or_method
+xt_query_plan: _cython_3_2_4.cython_function_or_method
+xt_set_callback_shared_size: _cython_3_2_4.cython_function_or_method
+xt_set_gpus: _cython_3_2_4.cython_function_or_method
+xt_set_jit_callback: _cython_3_2_4.cython_function_or_method
+xt_set_subformat_default: _cython_3_2_4.cython_function_or_method
+xt_set_work_area: _cython_3_2_4.cython_function_or_method
+xt_set_work_area_policy: _cython_3_2_4.cython_function_or_method
 
 class Compatibility(enum.IntEnum):
-    """See `cufftCompatibility`."""
+    """
+    See `cufftCompatibility`.
+    """
     __new__: ClassVar[Callable] = ...
     FFTW_PADDING: ClassVar[Compatibility] = ...
     _generate_next_value_: ClassVar[Callable] = ...
@@ -77,7 +79,9 @@ class Compatibility(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class LibFormat(enum.IntEnum):
-    """See `libFormat_t`."""
+    """
+    See `libFormat_t`.
+    """
     __new__: ClassVar[Callable] = ...
     CUFFT: ClassVar[LibFormat] = ...
     UNDEFINED: ClassVar[LibFormat] = ...
@@ -88,7 +92,9 @@ class LibFormat(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Property(enum.IntEnum):
-    """See `cufftProperty`."""
+    """
+    See `cufftProperty`.
+    """
     __new__: ClassVar[Callable] = ...
     MAX_NUM_HOST_THREADS: ClassVar[Property] = ...
     PATIENT_JIT: ClassVar[Property] = ...
@@ -99,7 +105,9 @@ class Property(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Result(enum.IntEnum):
-    """See `cufftResult`."""
+    """
+    See `cufftResult`.
+    """
     __new__: ClassVar[Callable] = ...
     ALLOC_FAILED: ClassVar[Result] = ...
     EXEC_FAILED: ClassVar[Result] = ...
@@ -129,7 +137,9 @@ class Result(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class Type(enum.IntEnum):
-    """See `cufftType`."""
+    """
+    See `cufftType`.
+    """
     __new__: ClassVar[Callable] = ...
     C2C: ClassVar[Type] = ...
     C2R: ClassVar[Type] = ...
@@ -144,7 +154,9 @@ class Type(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class XtCallbackType(enum.IntEnum):
-    """See `cufftXtCallbackType`."""
+    """
+    See `cufftXtCallbackType`.
+    """
     __new__: ClassVar[Callable] = ...
     LD_COMPLEX: ClassVar[XtCallbackType] = ...
     LD_COMPLEX_DOUBLE: ClassVar[XtCallbackType] = ...
@@ -162,7 +174,9 @@ class XtCallbackType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class XtCopyType(enum.IntEnum):
-    """See `cufftXtCopyType`."""
+    """
+    See `cufftXtCopyType`.
+    """
     __new__: ClassVar[Callable] = ...
     DEVICE_TO_DEVICE: ClassVar[XtCopyType] = ...
     DEVICE_TO_HOST: ClassVar[XtCopyType] = ...
@@ -175,7 +189,9 @@ class XtCopyType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class XtQueryType(enum.IntEnum):
-    """See `cufftXtQueryType`."""
+    """
+    See `cufftXtQueryType`.
+    """
     __new__: ClassVar[Callable] = ...
     QUERY_1D_FACTORS: ClassVar[XtQueryType] = ...
     QUERY_UNDEFINED: ClassVar[XtQueryType] = ...
@@ -186,16 +202,18 @@ class XtQueryType(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class XtSubFormat(enum.IntEnum):
-    """See `cufftXtSubFormat`."""
+    """
+    See `cufftXtSubFormat`.
+    """
     __new__: ClassVar[Callable] = ...
     FORMAT_1D_INPUT_SHUFFLED: ClassVar[XtSubFormat] = ...
     FORMAT_DISTRIBUTED_INPUT: ClassVar[XtSubFormat] = ...
     FORMAT_DISTRIBUTED_OUTPUT: ClassVar[XtSubFormat] = ...
-    FORMAT_FORMAT_UNDEFINED: ClassVar[XtSubFormat] = ...
     FORMAT_INPLACE: ClassVar[XtSubFormat] = ...
     FORMAT_INPLACE_SHUFFLED: ClassVar[XtSubFormat] = ...
     FORMAT_INPUT: ClassVar[XtSubFormat] = ...
     FORMAT_OUTPUT: ClassVar[XtSubFormat] = ...
+    FORMAT_UNDEFINED: ClassVar[XtSubFormat] = ...
     _generate_next_value_: ClassVar[Callable] = ...
     _member_map_: ClassVar[dict] = ...
     _member_names_: ClassVar[list] = ...
@@ -203,7 +221,9 @@ class XtSubFormat(enum.IntEnum):
     _value2member_map_: ClassVar[dict] = ...
 
 class XtWorkAreaPolicy(enum.IntEnum):
-    """See `cufftXtWorkAreaPolicy`."""
+    """
+    See `cufftXtWorkAreaPolicy`.
+    """
     __new__: ClassVar[Callable] = ...
     MINIMAL: ClassVar[XtWorkAreaPolicy] = ...
     PERFORMANCE: ClassVar[XtWorkAreaPolicy] = ...

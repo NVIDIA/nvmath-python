@@ -8,10 +8,10 @@ used when the L and U factors don't fit into device memory, as in the case of la
 systems of equations.
 """
 
-import nvmath
-
 import cupy as cp
 import cupyx.scipy.sparse as sp
+
+import nvmath
 
 # The number of equations.
 n = 8

@@ -23,16 +23,15 @@ import cupy as cp
 from mpi4py import MPI
 
 import nvmath.distributed
-
-from nvmath.distributed.distribution import ProcessGrid, BlockNonCyclic
+from nvmath.distributed.distribution import BlockNonCyclic, ProcessGrid
 
 # Initialize nvmath.distributed.
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % cp.cuda.runtime.getDeviceCount()
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
-nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
+# cuBLASMp requires NCCL communication backend.
+nvmath.distributed.initialize(device_id, comm, backends=["nccl"])
 
 # Turn on logging to see what's happening.
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
@@ -47,12 +46,10 @@ row_wise_distribution = BlockNonCyclic(ProcessGrid(shape=(nranks, 1)))  # partit
 col_wise_distribution = BlockNonCyclic(ProcessGrid(shape=(1, nranks)))  # partitioning on columns
 
 with cp.cuda.Device(device_id):
-    # See example01_cupy_symmetric_memory.py for an example of allocating on symmetric
-    # memory, which may further improve performance.
     a = cp.random.rand(*row_wise_distribution.shape(rank, (k, m)))
     b = cp.random.rand(*col_wise_distribution.shape(rank, (n, k)))
 
-# Get a transposed view to obtain column-major Fortran memory layout. Note that this
+# Get a transposed view to obtain column-major memory layout. Note that this
 # also changes the distribution of a and b (see example01 for more information).
 a = a.T  # a is now (m, k) with col_wise_distribution
 b = b.T  # b is now (k, n) with row_wise_distribution

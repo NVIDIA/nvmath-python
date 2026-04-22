@@ -16,10 +16,12 @@ Enums and constants
    cuSOLVERError
    DeterministicMode
    DirectMode
+   EigComp
    EigMode
    EigRange
    EigType
    IRSRefinement
+   MathMode
    Norm
    PrecType
    Status

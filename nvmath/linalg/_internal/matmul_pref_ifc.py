@@ -9,57 +9,19 @@ attributes.
 
 __all__ = ["MatmulPreferenceInterface"]
 
-import logging
-
-import numpy as np
-
+from nvmath._internal.attribute_ifc_factory import make_cublas_attribute_interface
 from nvmath.bindings import cublasLt as cublaslt
 
-
-logger = logging.getLogger()
-
-PreferenceEnum = cublaslt.MatmulPreferenceAttribute
-
-
-def scalar_attributes():
-    return [e.name for e in PreferenceEnum]
-
-
-PREF_ENUM_SCALAR_ATTR = scalar_attributes()
-
-
-class MatmulPreferenceInterface:
-    def __init__(self, matmul_pref):
-        """ """
-        self.matmul_pref = matmul_pref
-
-    def __getattr__(self, name):
-        _name = name.upper()
-        logging.debug("Getting Matmul Preference attribute %s.", _name)
-        if _name not in PREF_ENUM_SCALAR_ATTR:
-            return super().__getattr__(name)
-        name = _name
-        get_dtype = cublaslt.get_matmul_preference_attribute_dtype
-        attribute_buffer = np.zeros((1,), dtype=get_dtype(PreferenceEnum[name]))
-        size_written = np.zeros((1,), dtype=np.uint64)
-        cublaslt.matmul_preference_get_attribute(
-            self.matmul_pref,
-            PreferenceEnum[name].value,
-            attribute_buffer.ctypes.data,
-            attribute_buffer.itemsize,
-            size_written.ctypes.data,
-        )
-        return attribute_buffer[0]
-
-    def __setattr__(self, name, value):
-        _name = name.upper()
-        logging.debug("Setting Matmul Preference attribute %s to %s.", _name, value)
-        if _name not in PREF_ENUM_SCALAR_ATTR:
-            return super().__setattr__(name, value)
-        name = _name
-        get_dtype = cublaslt.get_matmul_preference_attribute_dtype
-        attribute_buffer = np.zeros((1,), dtype=get_dtype(PreferenceEnum[name]))
-        attribute_buffer[0] = value
-        cublaslt.matmul_preference_set_attribute(
-            self.matmul_pref, PreferenceEnum[name].value, attribute_buffer.ctypes.data, attribute_buffer.itemsize
-        )
+# Create a class, MatmulPreferenceInterface, such that each enum member in
+# MatmulPreferenceAttribute is exposed as a lowercase property (getter + setter).
+# For example, if the class instance is stored as ``pref_ifc``,
+# then the enum member ``POINTER_MODE_MASK`` becomes the property
+# ``pref_ifc.pointer_mode_mask``.
+MatmulPreferenceInterface = make_cublas_attribute_interface(
+    class_module=__name__,
+    class_name="MatmulPreferenceInterface",
+    attribute_enum=cublaslt.MatmulPreferenceAttribute,
+    get_attribute_dtype_fn=cublaslt.get_matmul_preference_attribute_dtype,
+    get_attribute_fn=cublaslt.matmul_preference_get_attribute,
+    set_attribute_fn=cublaslt.matmul_preference_set_attribute,
+)

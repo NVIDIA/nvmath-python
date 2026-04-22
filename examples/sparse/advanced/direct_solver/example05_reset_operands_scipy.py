@@ -13,7 +13,6 @@ The LHS is a SciPy CSR matrix while the RHS and solution are NumPy ndarrays on t
 import numpy as np
 import scipy.sparse as sp
 
-
 import nvmath
 
 # The number of equations.

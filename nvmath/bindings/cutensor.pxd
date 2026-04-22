@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 2.3.1. Do not modify it directly.
+# This code was automatically generated with version 2.5.0, generator version 0.3.1.dev1393+g0a20dc9d7. Do not modify it directly.
 
 cimport cython
 
@@ -72,6 +72,7 @@ cpdef operation_descriptor_get_attribute(intptr_t handle, intptr_t desc, int att
 cpdef intptr_t create_plan_preference(intptr_t handle, int algo, int jit_mode) except? 0
 cpdef destroy_plan_preference(intptr_t pref)
 cpdef get_plan_preference_attribute_dtype(int attr)
+cpdef plan_preference_get_attribute(intptr_t handle, intptr_t pref, int attr, intptr_t buf, size_t size_in_bytes)
 cpdef plan_preference_set_attribute(intptr_t handle, intptr_t pref, int attr, intptr_t buf, size_t size_in_bytes)
 cpdef get_plan_attribute_dtype(int attr)
 cpdef plan_get_attribute(intptr_t handle, intptr_t plan, int attr, intptr_t buf, size_t size_in_bytes)

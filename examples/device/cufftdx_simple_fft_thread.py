@@ -8,6 +8,7 @@
 
 import numpy as np
 from numba import cuda
+
 from nvmath.device import FFT
 
 

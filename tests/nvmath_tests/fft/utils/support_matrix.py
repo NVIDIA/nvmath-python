@@ -5,14 +5,15 @@
 import functools
 
 import nvmath
+
 from .common_axes import (
-    Framework,
-    ExecBackend,
-    MemBackend,
-    DType,
-    ShapeKind,
     Direction,
+    DType,
+    ExecBackend,
+    Framework,
+    MemBackend,
     OptFftType,
+    ShapeKind,
 )
 
 try:
@@ -153,17 +154,20 @@ class _BackendSupport:
     def backends(self) -> tuple[list[ExecBackend], list[MemBackend]]:
         import platform
         import sys
+
         from nvmath.fft._exec_utils import _check_init_fftw
 
         machine = platform.machine()
-        x86 = "x86_64"
         aarch = "aarch64"
         exec_backends, memory_backends = [], [MemBackend.cpu]
 
         if machine == aarch and sys.platform.startswith("linux"):
+            # on aarch linux the tests require having nvpl installed
+            # to make sure we test fft nvpl integration
             exec_backends.append(ExecBackend.fftw)
         else:
-            assert not sys.platform.startswith("linux") or machine == x86
+            # otherwise, we opportunistically check if mkl is available
+            # and enable the requirement conditionally
             try:
                 _check_init_fftw()
             except RuntimeError as e:

@@ -3,23 +3,28 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-from .common_axes import (
-    Framework,
-    DType,
+import math
+
+from ...utils.common_axes import (
     DenseRHS,
+    DType,
+    Framework,
+    OperandPlacement,
+    RHSBatch,
     RHSMatrix,
     RHSVector,
-    RHSBatch,
     SparseArrayType,
-    OperandPlacement,
+    cp,
+    csp,
+    device_id_from_array,
     framework2dtype,
     framework2operand_placement,
-    device_id_from_array,
     framework_from_array,
     is_complex,
+    np,
+    sp,
+    torch,
 )
-from .common_axes import sp, cp, torch, csp, np
-import math
 
 
 def create_random_sparse_matrix(
@@ -141,6 +146,24 @@ def create_np_random_matrix(
                 a = a @ a_h
             else:
                 assert alg_matrix_type == "symmetric"
+    return a
+
+
+def create_random_dense_matrix(
+    framework: Framework,
+    operand_placement: OperandPlacement,
+    n: int,
+    m: int,
+    dtype: DType,
+    seed: int,
+    lo: float = -0.5,
+    hi: float = 0.5,
+    density: None | float = None,
+    batch_dims=(),
+    ones=False,
+    alg_matrix_type=None,
+):
+    a = create_np_random_matrix(n, m, dtype, seed, lo, hi, density, batch_dims, ones, alg_matrix_type)
     return a
 
 

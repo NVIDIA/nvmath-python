@@ -20,11 +20,10 @@ except ImportError:
 from collections.abc import Sequence
 
 import nvmath.distributed
-
+from nvmath.distributed._internal.nvshmem import nvshmem_empty_dlpack
 from nvmath.internal.package_ifc import StreamHolder
 from nvmath.internal.tensor_ifc_torch import TorchTensor
 from nvmath.internal.utils import device_ctx
-from nvmath.distributed._internal.nvshmem import nvshmem_empty_dlpack
 
 from .tensor_ifc import DistributedTensor
 
@@ -50,9 +49,9 @@ class TorchDistributedTensor(TorchTensor, DistributedTensor):
         (possibly permuted) tensor and MUST NOT overlap.
         Otherwise, the behaviour is not defined.
         """
-        symmetric_memory = context.get("symmetric_memory", False)
-        make_symmetric = context.get("make_symmetric", False)
-        skip_symmetric_check = context.get("skip_symmetric_check", False)
+        symmetric_memory = context.pop("symmetric_memory", False)
+        make_symmetric = context.pop("make_symmetric", False)
+        skip_symmetric_check = context.pop("skip_symmetric_check", False)
 
         if device_id == "cpu":
             if symmetric_memory or make_symmetric or skip_symmetric_check:
@@ -80,7 +79,7 @@ class TorchDistributedTensor(TorchTensor, DistributedTensor):
             dlpack_buf = nvshmem_empty_dlpack(
                 size,
                 device_id,
-                ctx.communicator,
+                ctx.process_group,
                 make_symmetric=make_symmetric,
                 skip_symmetric_check=skip_symmetric_check,
                 logger=logger,
@@ -106,10 +105,12 @@ class TorchDistributedTensor(TorchTensor, DistributedTensor):
         if not (device_id == "cpu" or isinstance(device_id, int)):
             raise ValueError(f"The device must be specified as an integer or 'cpu', not '{device_id}'.")
 
+        blocking = (device_id == "cpu") or (self.device_id == "cpu")
+
         # To CPU or same device
         if device_id == "cpu" or self.device_id == device_id:
             with stream_holder.ctx:
-                tensor = self.tensor.to(device=device_id, non_blocking=(device_id != "cpu"))
+                tensor = self.tensor.to(device=device_id, non_blocking=not blocking)
             result = TorchDistributedTensor(tensor)
             assert result.is_symmetric_memory == symmetric_memory
             return result
@@ -130,7 +131,7 @@ class TorchDistributedTensor(TorchTensor, DistributedTensor):
                 make_symmetric=symmetric_memory,
                 symmetric_memory=symmetric_memory,
             )
-            tensor_device.tensor.copy_(self.tensor, non_blocking=True)
+            tensor_device.tensor.copy_(self.tensor, non_blocking=not blocking)
             assert tensor_device.is_symmetric_memory == symmetric_memory
             return tensor_device
 

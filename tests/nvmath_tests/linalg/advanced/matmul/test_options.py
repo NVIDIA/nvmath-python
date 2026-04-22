@@ -2,14 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from nvmath.bindings import cublas
-from nvmath.linalg.advanced import matmul, Matmul, MatmulOptions
-from nvmath.internal.tensor_wrapper import maybe_register_package
 import logging
-import nvmath
+
 import pytest
 
-from ...utils import assert_tensors_equal, sample_matrix, is_torch_available
+import nvmath
+from nvmath.bindings import cublas
+from nvmath.internal.tensor_wrapper import maybe_register_package
+from nvmath.linalg.advanced import Matmul, MatmulOptions, matmul
+
+from ...utils import assert_tensors_equal, is_torch_available, sample_matrix
 
 try:
     import cupy_backends.cuda

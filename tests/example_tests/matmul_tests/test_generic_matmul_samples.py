@@ -9,8 +9,8 @@ import re
 import pytest
 
 from nvmath import bindings
-from ..test_utils import run_sample, cc
 
+from ..test_utils import cc, run_sample
 
 samples_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples", "linalg", "generic", "matmul")
 sample_files = glob.glob(samples_path + "**/*.py", recursive=True)
@@ -33,8 +33,8 @@ except:
     cublas_version = 0
 
 try:
-    from nvmath.bindings.nvpl.blas import get_version
     from nvmath.bindings._internal.utils import FunctionNotFoundError
+    from nvmath.bindings.nvpl.blas import get_version
 
     get_version()
     del get_version

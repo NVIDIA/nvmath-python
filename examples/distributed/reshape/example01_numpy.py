@@ -35,11 +35,11 @@ try:
     from cuda.core import system
 except ImportError:
     from cuda.core.experimental import system
-import nvmath.distributed
-from nvmath.distributed.distribution import Box
-
 # Initialize nvmath.distributed.
 from mpi4py import MPI
+
+import nvmath.distributed
+from nvmath.distributed.distribution import Box
 
 try:
     num_devices = system.get_num_devices()

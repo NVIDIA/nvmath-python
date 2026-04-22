@@ -2,18 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from nvmath.bindings import mathdx
-from nvmath.device import matmul
-
 import numpy as np
+import pytest
 from numba import cuda
 
+from nvmath.bindings import mathdx
+from nvmath.device import matmul
 from nvmath.device.common_cuda import get_default_code_type
-from nvmath.device.types import REAL_NP_TYPES
 from nvmath.device.common_numba import NP_TYPES_TO_NUMBA_FE_TYPES
-
-
-import pytest
+from nvmath.device.types import REAL_NP_TYPES
 
 from ..device.helpers import skip_nvbug_5218000
 
@@ -190,3 +187,24 @@ def test_cublasdx_call(precision, data_type):
 
     error = np.linalg.norm(data_test - data_ref) / np.linalg.norm(data_ref)
     assert error < 1e-2
+
+
+def test_mathdx_error_message():
+    code = mathdx.commondx_create_code()
+    mathdx.commondx_set_code_option_int64s(code, mathdx.CommondxOption.TARGET_SM, 1, [800])
+    mathdx.commondx_set_code_option_str(code, mathdx.CommondxOption.EXTRA_NVRTC_ARGS, "--invalid-arg")
+
+    desc = mathdx.cufftdx_create_descriptor()
+    mathdx.cufftdx_set_operator_int64(desc, mathdx.CufftdxOperatorType.API, mathdx.CufftdxApi.SMEM)
+    mathdx.cufftdx_set_operator_int64(desc, mathdx.CufftdxOperatorType.SM, 800)
+    mathdx.cufftdx_set_operator_int64(desc, mathdx.CufftdxOperatorType.SIZE, 256)
+    mathdx.cufftdx_set_operator_int64(desc, mathdx.CufftdxOperatorType.PRECISION, mathdx.CommondxPrecision.F32)
+    mathdx.cufftdx_set_operator_int64(desc, mathdx.CufftdxOperatorType.TYPE, mathdx.CufftdxType.C2C)
+    mathdx.cufftdx_set_operator_int64(desc, mathdx.CufftdxOperatorType.DIRECTION, mathdx.CufftdxDirection.FORWARD)
+    mathdx.cufftdx_set_operator_int64(desc, mathdx.CufftdxOperatorType.EXECUTION, mathdx.CommondxExecution.BLOCK)
+
+    with pytest.raises(mathdx.LibMathDxError) as exc_info:
+        mathdx.cufftdx_finalize_code(code, desc)
+
+    assert exc_info.value.status == mathdx.CommondxStatusType.COMPILATION_ERROR
+    assert "unrecognized option --invalid-arg found" in str(exc_info.value)

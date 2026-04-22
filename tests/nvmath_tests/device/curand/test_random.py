@@ -3,14 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
-import scipy.stats as stats
 import pytest
+import scipy.stats as stats
 
 from nvmath.device.random import Compile
-from ..helpers import AssertFilesClosed
 
-from . import distributions
-from . import generators
+from ..helpers import AssertFilesClosed
+from . import distributions, generators
 from .utils import (
     all_supported_configs,
     generate_random_numbers,

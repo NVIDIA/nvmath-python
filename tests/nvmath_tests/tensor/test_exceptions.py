@@ -2,22 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import re
+
+import numpy as np
+import pytest
+
 import nvmath
-
+from nvmath.tensor._internal.cutensor_config_ifc import ContractionPlanPreference
 from nvmath.tensor._internal.typemaps import get_supported_compute_types
-
 from nvmath.tensor.contract import (
     ComputeDesc,
     ContractionOptions,
     binary_contraction,
 )
-
-from nvmath.tensor._internal.cutensor_config_ifc import ContractionPlanPreference
-
-import re
-
-import numpy as np
-import pytest
 
 try:
     import torch
@@ -174,40 +171,44 @@ def test_binary_contraction_out_requires_same_device():
         nvmath.tensor.binary_contraction(expr, a, b, out=out)
 
 
-def test_binary_contraction_execute_requires_operands_after_reset():
+def test_binary_contraction_execute_requires_operands_after_release():
     expr = "ij,jk->ik"
 
     with nvmath.tensor.BinaryContraction(expr, a, b) as contraction:
         contraction.plan()
-        contraction.reset_operands()
+        contraction.release_operands()
 
-        message = "Execution cannot be performed if a or b have been set to None"
+        message = "cannot be performed after the operands have been released"
         with pytest.raises(RuntimeError, match=message):
             contraction.execute()
 
 
-def test_ternary_contraction_execute_requires_operands_after_reset():
+def test_ternary_contraction_execute_requires_operands_after_release():
     expr = "ij,jk,kl->il"
 
     with nvmath.tensor.TernaryContraction(expr, a, b, c) as contraction:
         contraction.plan()
-        contraction.reset_operands()
+        contraction.release_operands()
 
-        message = "Execution cannot be performed if a, b, or c have been set to None"
+        message = "cannot be performed after the operands have been released"
         with pytest.raises(RuntimeError, match=message):
             contraction.execute()
 
 
-def test_binary_contraction_execute_requires_out_after_reset():
+def test_binary_contraction_reset_operands_requires_all_args_after_reset():
     expr = "ij,jk->ik"
 
     with nvmath.tensor.BinaryContraction(expr, a, b, out=d) as contraction:
         contraction.plan()
-        contraction.reset_operands(a=a, b=b, out=None)
+        contraction.release_operands()
 
-        message = "Execution cannot be performed if out has been set to None"
-        with pytest.raises(RuntimeError, match=message):
-            contraction.execute()
+        message = "all operands must be provided"
+        # only provide a subset but not all of the operands that were provided
+        # during initialization, so that the error should always be raised
+        # with the same message
+        for kwargs in [{"a": a, "b": b}, {"a": a}, {"b": b}]:
+            with pytest.raises(ValueError, match=message):
+                contraction.reset_operands(**kwargs)
 
 
 def test_binary_contraction_execute_requires_plan():
@@ -248,14 +249,13 @@ def test_binary_contraction_allocator_invalid_alloc_interface():
             contraction.execute()
 
 
-def test_binary_contraction_reset_operands_clears_provided_out():
+def test_binary_contraction_release_operands_clears_provided_out():
     expr = "ij,jk->ik"
     out = d
 
     with nvmath.tensor.BinaryContraction(expr, a, b, out=out) as contraction:
-        contraction.reset_operands(a=a, b=b, out=None)
-        assert contraction.out is None
-        assert contraction.out_return is None
+        contraction.release_operands()
+        assert contraction.out_return.tensor is None
 
 
 def test_binary_contraction_reset_operands_rejects_unspecified_c():
@@ -312,7 +312,7 @@ def test_binary_contraction_reset_operands_requires_same_dtype():
 
 
 @torch_required
-def test_binary_contraction_reset_operands_requires_same_pointer_alignment():
+def test_binary_contraction_reset_operands_requires_compatible_pointer_alignment():
     expr = "ij,jk->ik"
 
     base_tensor = torch.empty(4, device="cuda", dtype=torch.float32)
@@ -329,8 +329,34 @@ def test_binary_contraction_reset_operands_requires_same_pointer_alignment():
 
     with nvmath.tensor.BinaryContraction(expr, aligned, b) as contraction:
         message = (
-            "The operand a must have the same pointer alignment as the one specified during the "
-            "initialization of the ElementaryContraction object."
+            "The pointer alignment of the operand a must be the same or a multiple of the corresponding "
+            "pointer alignment specified during the initialization of the BinaryContraction object."
+        )
+        with pytest.raises(ValueError, match=message):
+            contraction.reset_operands(a=misaligned)
+
+
+@torch_required
+def test_ternary_contraction_reset_operands_requires_compatible_pointer_alignment():
+    expr = "ij,jk,kl->il"
+
+    base_tensor = torch.empty(4, device="cuda", dtype=torch.float32)
+    base_storage = base_tensor.untyped_storage()
+    aligned = torch.empty((0,), device="cuda", dtype=torch.float32)
+    aligned.set_(base_storage, 0, (2, 2), (2, 1))
+
+    misaligned_tensor = torch.empty(5, device="cuda", dtype=torch.float32)
+    misaligned_storage = misaligned_tensor.untyped_storage()
+    misaligned = torch.empty((0,), device="cuda", dtype=torch.float32)
+    misaligned.set_(misaligned_storage, 1, (2, 2), (2, 1))
+
+    b = b_torch_cuda
+    c = c_torch_cuda
+
+    with nvmath.tensor.TernaryContraction(expr, aligned, b, c) as contraction:
+        message = (
+            "The pointer alignment of the operand a must be the same or a multiple of the corresponding "
+            "pointer alignment specified during the initialization of the TernaryContraction object."
         )
         with pytest.raises(ValueError, match=message):
             contraction.reset_operands(a=misaligned)

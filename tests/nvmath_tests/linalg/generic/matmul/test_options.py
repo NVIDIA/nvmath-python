@@ -2,15 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from nvmath.bindings import cublas
-from nvmath.linalg.generic import matmul, Matmul, MatmulOptions
-from nvmath.internal.tensor_wrapper import maybe_register_package
 import logging
-import nvmath
+
 import pytest
 
-from ...utils import assert_tensors_equal, sample_matrix, is_torch_available
+import nvmath
+from nvmath.bindings import cublas
+from nvmath.internal.tensor_wrapper import maybe_register_package
+from nvmath.linalg.generic import Matmul, MatmulOptions, matmul
 
+from ...utils import assert_tensors_equal, is_torch_available, sample_matrix
 from . import NVPL_AVAILABLE
 
 try:
@@ -210,9 +211,11 @@ def test_memory_limit_filtering():
     def get_memory_requirements(algos):
         return [alg.algorithm.workspace_size for alg in algos]
 
-    all_memory = get_memory_requirements(Matmul(a, b).plan())
+    with Matmul(a, b) as mm:
+        all_memory = get_memory_requirements(mm.plan())
 
-    filtered = get_memory_requirements(Matmul(a, b, options=MatmulOptions(memory_limit="1 b")).plan())
+    with Matmul(a, b, options=MatmulOptions(memory_limit="1 b")) as mm:
+        filtered = get_memory_requirements(mm.plan())
 
     assert max(filtered) < max(all_memory)
 

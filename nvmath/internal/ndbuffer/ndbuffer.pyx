@@ -21,10 +21,15 @@ from .data_layout cimport (
     parse_py_axis_order, split_strides,
     size_in_bytes as _size_in_bytes,
 )
-from ..memory cimport get_device_current_memory_pool
-from ..bindings cimport memcpy_async, stream_sync
+from ..memory cimport get_device_memory_resource, allocate_from_mr
+from .._bindings cimport memcpy_async, stream_sync
 from .copy_kernel cimport launch_copy_kernel
 import numpy as _numpy
+
+try:
+    from cuda.core import Stream
+except ImportError:
+    from cuda.core.experimental import Stream
 
 
 cdef extern from "nd_consts.h":
@@ -124,23 +129,33 @@ cdef _empty_numpy_data(int64_t size):
     return out
 
 
+cdef inline _get_stream_obj(stream):
+    if stream is None:
+        return None
+    elif type(stream) is Stream:
+        return stream
+    else:
+        return stream.obj
+
+
 cdef _allocate_data(NDBuffer buffer, int64_t size, object host_memory_pool=None, object device_memory_pool=None, object stream=None, object logger=None):
     if size == 0:
         buffer.data = None
         buffer.data_ptr = 0
         return
-    if buffer.data_device_id == NDBUFFER_CPU_DEVICE_ID:
+    cdef int device_id = buffer.data_device_id
+    if device_id == NDBUFFER_CPU_DEVICE_ID:
         if host_memory_pool is None:
             buffer.data = _empty_numpy_data(size)
             buffer.data_ptr = buffer.data.ctypes.data
         else:
-            buffer.data = host_memory_pool.allocate(size, stream, logger)
-            buffer.data_ptr = buffer.data.ptr
+            buffer.data = allocate_from_mr(host_memory_pool, size, _get_stream_obj(stream), device_id, logger)
+            buffer.data_ptr = int(buffer.data.handle)
     else:
         if device_memory_pool is None:
-            device_memory_pool = get_device_current_memory_pool(buffer.data_device_id)
-        buffer.data = device_memory_pool.allocate(size, stream, logger)
-        buffer.data_ptr = buffer.data.ptr
+            device_memory_pool = get_device_memory_resource(device_id)
+        buffer.data = allocate_from_mr(device_memory_pool, size, _get_stream_obj(stream), device_id, logger)
+        buffer.data_ptr = int(buffer.data.handle)
 
 
 cdef NDBuffer _no_data_like(NDBuffer other, bint share_layout):
@@ -265,19 +280,16 @@ cdef inline int _logging_helper(object logger, str msg, fst=None, snd=None, thir
     return 0
 
 
-cdef inline bint _d2d_mem_copy_maybe(Layout dst_normalized, Layout src_normalized, NDBuffer dst, NDBuffer src, intptr_t stream_ptr, object logger) except -1 nogil:
+cdef inline int transpose_squeeze(Layout dst_normalized, Layout src_normalized, NDBuffer dst, NDBuffer src, object logger) except -1 nogil:
     """
-    Returns true iff a copy can be performed disregarding actual strides, i.e.
-    both layouts are dense, possibly permuted with the same permutation.
-    If a copy is needed (i.e. the volume > 0), launches a memcpy.
-    Otherwise, returns false, does not perform any copy and returns pre-processed
-    strides in dst_normalized and src_normalized. The returned layouts are permuted
-    by the same permutation, so that dst strides increase from right to left (as in C order tensors).
-    The returned layouts are squeezed together, i.e. the each fragment of the layouts
-    that is elementwise C-contigious in both src and dst is replaced with a single extent.
+    Returns transformed layouts of dst and src (through dst_normalized, src_normalized args respectively).
+    Both layouts are permuted to dst order, so that dst strides increase from right to left
+    (as in C order tensors). Permuted layouts are then squeezed together, i.e.
+    each consecutive sub-layout that is C-contigious in both src and dst,
+    is replaced with a single extent.
     """
     if dst.layout.volume == 0:
-        return True
+        return 0
     cdef axis_order_t dst_axis_order
     get_axis_order(dst_axis_order, dst.layout)
     # permute dst layout to C-like order of strides and remove all extents equal to 1,
@@ -291,13 +303,7 @@ cdef inline bint _d2d_mem_copy_maybe(Layout dst_normalized, Layout src_normalize
     if logger is not None:
         _logging_log_axis_order(logger, "The dst_order is {fst}", dst_axis_order)
         _logging_helper(logger, "Permuted and squeezed strides: dst {fst}, src {snd}", dst_normalized, src_normalized)
-    # NB. is_c_contiguous_layout(dst_normalized) <==> dst_normalized.ndim == 0 or dst_normalized.ndim == 1 and dst_normalized.strides[0] == 1
-    if is_c_contiguous_layout(dst_normalized) and dst_normalized.strides == src_normalized.strides:
-        if logger is not None:
-            _logging_helper(logger, "The layouts are dense and have same strides order, we can memcpy")
-        memcpy_async(dst.data_ptr, src.data_ptr, _size_in_bytes(dst_normalized), stream_ptr)
-        return True
-    return False
+    return 0
 
 
 cdef int _copy_into_d2d(NDBuffer dst, NDBuffer src, object stream, bint sync=False, object logger=None) except -1:
@@ -307,23 +313,28 @@ cdef int _copy_into_d2d(NDBuffer dst, NDBuffer src, object stream, bint sync=Fal
     # layouts normalized (permuted/squeezed) to be used by the copy kernel
     cdef Layout dst_normalized = empty_layout_with_dtype_like(dst.layout)
     cdef Layout src_normalized = empty_layout_with_dtype_like(src.layout)
+    cdef bint use_memcopy = False
     with cython.nogil:
-        if _d2d_mem_copy_maybe(dst_normalized, src_normalized, dst, src, stream_ptr, logger):
-            if sync:
-                stream_sync(stream_ptr)
-            return 0
-        if is_overlapping_layout(dst_normalized):
-            raise ValueError(f"The destination layout could overlap in memory: {dst.layout}")
-        vectorize_together(dst_normalized, dst_ptr, src_normalized, src_ptr)
-        if logger is not None:
-            if dst_normalized.itemsize == dst.layout.itemsize:
-                _logging_helper(logger, "Could not vectorize the copy, the itemsize remains unchanged")
-            else:
-                _logging_helper(logger, "Copy will use bigger/vectorized itemsize: vectorized_dst: {fst}, vectorized_src: {snd}", dst_normalized, src_normalized)
-        launch_copy_kernel(dst_normalized, src_normalized, dst_ptr, src_ptr, dst.data_device_id, stream_ptr, logger)
-        if sync:
-            stream_sync(stream_ptr)
-        return 0
+        transpose_squeeze(dst_normalized, src_normalized, dst, src, logger)
+        if is_c_contiguous_layout(dst_normalized) and dst_normalized.strides == src_normalized.strides:
+            if logger is not None:
+                _logging_helper(logger, "The layouts are dense and have same strides order, we can memcpy")
+            use_memcopy = True
+        else:
+            if is_overlapping_layout(dst_normalized):
+                raise ValueError(f"The destination layout could overlap in memory: {dst.layout}")
+            vectorize_together(dst_normalized, dst_ptr, src_normalized, src_ptr)
+            if logger is not None:
+                if dst_normalized.itemsize == dst.layout.itemsize:
+                    _logging_helper(logger, "Could not vectorize the copy, the itemsize remains unchanged")
+                else:
+                    _logging_helper(logger, "Copy will use bigger/vectorized itemsize: vectorized_dst: {fst}, vectorized_src: {snd}", dst_normalized, src_normalized)
+            launch_copy_kernel(dst_normalized, src_normalized, dst_ptr, src_ptr, dst.data_device_id, stream_ptr, logger)
+    if use_memcopy:
+        memcpy_async(dst.data_ptr, src.data_ptr, _size_in_bytes(dst_normalized), stream_ptr)
+    if sync:
+        stream_sync(stream_ptr)
+    return 0
 
 
 cdef int _copy_into_d2h(NDBuffer dst, NDBuffer src, object stream, object host_memory_pool=None, object device_memory_pool=None, object logger=None) except -1:
@@ -370,10 +381,9 @@ cdef int _copy_into_d2h(NDBuffer dst, NDBuffer src, object stream, object host_m
                 f"The dst and src layouts match, launching direct D2H memcpy.\n"
                 f"Dst: {dst} <- dev: {dev_tmp}"
             )
-        with cython.nogil:
-            memcpy_async(dst.data_ptr, dev_tmp.data_ptr, size, stream_ptr)
-            stream_sync(stream_ptr)
-            return 0
+        memcpy_async(dst.data_ptr, dev_tmp.data_ptr, size, stream_ptr)
+        stream_sync(stream_ptr)
+        return 0
     else:
         host_tmp = _no_data_like(dev_tmp, True)
         host_tmp.data_device_id = NDBUFFER_CPU_DEVICE_ID
@@ -384,9 +394,8 @@ cdef int _copy_into_d2h(NDBuffer dst, NDBuffer src, object stream, object host_m
                 f"memcpy: host_tmp: {host_tmp} <- dev: {dev_tmp}, followed by\n"
                 f"h2h copy: dst: {dst.layout} <- host: {host_tmp}"
             )
-        with cython.nogil:
-            memcpy_async(host_tmp.data_ptr, dev_tmp.data_ptr, size, stream_ptr)
-            stream_sync(stream_ptr)
+        memcpy_async(host_tmp.data_ptr, dev_tmp.data_ptr, size, stream_ptr)
+        stream_sync(stream_ptr)
         _numpy.copyto(_as_nonowning_numpy_array(dst, readonly=False), _as_nonowning_numpy_array(host_tmp))
         return 0
 
@@ -436,10 +445,9 @@ cdef int _copy_into_h2d(NDBuffer dst, NDBuffer src, object stream, object host_m
                 f"The dst and src layouts match, launching direct H2D memcpy.\n"
                 f"Dst: {dst} <- host: {host_tmp}"
             )
-        with cython.nogil:
-            memcpy_async(dst.data_ptr, host_tmp.data_ptr, size, stream_ptr)
-            stream_sync(stream_ptr)
-            return 0
+        memcpy_async(dst.data_ptr, host_tmp.data_ptr, size, stream_ptr)
+        stream_sync(stream_ptr)
+        return 0
     else:
         dev_tmp = _no_data_like(host_tmp, True)
         dev_tmp.data_device_id = dst.data_device_id

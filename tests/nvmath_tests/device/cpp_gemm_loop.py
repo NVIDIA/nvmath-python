@@ -2,11 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from cuda.bindings import driver as cudadrv
-from .helpers import CHECK_CUDA, _TOLERANCE, l2error, convert_to_cuda_array, free_array, copy_to_cupy
 import numpy as np
-from .helpers_cpp import run_and_time, compile_cpp_kernel
-import cupy
+import pytest
+from cuda.bindings import driver as cudadrv
+
+from .helpers import _TOLERANCE, CHECK_CUDA, convert_to_cuda_array, copy_to_cupy, free_array, l2error
+from .helpers_cpp import compile_cpp_kernel, run_and_time
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 
 
 class MatmulLoopCpp:
@@ -107,6 +113,8 @@ class MatmulLoopCpp:
         print(f"MatmulLoopCpp ncycles {ncycles}")
 
         # Create input
+        if cupy is None:
+            pytest.skip("cupy is not available")
         c = cupy.zeros(reference.shape, dtype=self._precision)
         dA = convert_to_cuda_array(a)
         dB = convert_to_cuda_array(b)

@@ -13,12 +13,11 @@ except ModuleNotFoundError:
 
 
 from .common_axes import (
+    ComputeType,
+    DType,
     Framework,
     MemBackend,
-    DType,
-    ComputeType,
 )
-
 
 framework_backend_support = {
     Framework.cupy: [MemBackend.cuda],
@@ -63,18 +62,26 @@ compute_type_support = {
         ComputeType.three_xtf32,
         ComputeType.float16,
         ComputeType.bfloat16,
+        ComputeType.nine_x16bf,
+        ComputeType.four_x16f,
     ],
     DType.float64: [
         ComputeType.float64,
         ComputeType.float32,
+        ComputeType.eight_xint8,
     ],
     DType.complex64: [
         ComputeType.float32,
         ComputeType.tf32,
         ComputeType.three_xtf32,
+        ComputeType.float16,
+        ComputeType.bfloat16,
+        ComputeType.nine_x16bf,
+        ComputeType.four_x16f,
     ],
     DType.complex128: [
         ComputeType.float64,
         ComputeType.float32,
+        ComputeType.eight_xint8,
     ],
 }

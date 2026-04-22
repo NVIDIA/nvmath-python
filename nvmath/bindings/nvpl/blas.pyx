@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated with version 0.4.1. Do not modify it directly.
+# This code was automatically generated with version 25.5, generator version 0.3.1.dev1303+g031f1197f. Do not modify it directly.
 
 cimport cython  # NOQA
 
@@ -16,28 +16,38 @@ from enum import IntEnum as _IntEnum
 ###############################################################################
 
 class ORDER(_IntEnum):
-    """See `CBLAS_ORDER`."""
+    """
+    See `CBLAS_ORDER`.
+    """
     RowMajor = CblasRowMajor
     ColMajor = CblasColMajor
 
 class TRANSPOSE(_IntEnum):
-    """See `CBLAS_TRANSPOSE`."""
+    """
+    See `CBLAS_TRANSPOSE`.
+    """
     NoTrans = CblasNoTrans
     Trans = CblasTrans
     ConjTrans = CblasConjTrans
 
 class UPLO(_IntEnum):
-    """See `CBLAS_UPLO`."""
+    """
+    See `CBLAS_UPLO`.
+    """
     Upper = CblasUpper
     Lower = CblasLower
 
 class DIAG(_IntEnum):
-    """See `CBLAS_DIAG`."""
+    """
+    See `CBLAS_DIAG`.
+    """
     NonUnit = CblasNonUnit
     Unit = CblasUnit
 
 class SIDE(_IntEnum):
-    """See `CBLAS_SIDE`."""
+    """
+    See `CBLAS_SIDE`.
+    """
     Left = CblasLeft
     Right = CblasRight
 

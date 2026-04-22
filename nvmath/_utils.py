@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from enum import IntEnum
-from functools import cache
 import logging
 import re
 import sys
+from enum import IntEnum
+from functools import cache
+
 from cuda import pathfinder
 
 logger = logging.getLogger()
@@ -67,6 +68,7 @@ class CudaDataType(IntEnum):
     CUDA_C_64U = 27
     CUDA_R_8F_E4M3 = 28
     CUDA_R_8F_E5M2 = 29
+    CUDA_R_4F_E2M1 = 33  # FP4 (supported on SM >= 10.0)
 
 
 class LibraryPropertyType(IntEnum):
@@ -142,6 +144,7 @@ def get_nvrtc_version() -> tuple[int, int, int]:
     err, major, minor = nvrtc.nvrtcVersion()
     if err != nvrtc.nvrtcResult.NVRTC_SUCCESS:
         raise RuntimeError(f"nvrtcVersion error: {err}")
-    # minimal support was added in CUDA 12.0
-    build = get_nvrtc_build_id(minimal=major >= 12)
+    # minimal support was added in CUDA 12.4
+    # https://docs.nvidia.com/cuda/archive/12.4.0/cuda-toolkit-release-notes/index.html#cuda-compilers
+    build = get_nvrtc_build_id(minimal=major >= 12 and minor >= 4)
     return major, minor, build

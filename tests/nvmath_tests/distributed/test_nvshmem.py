@@ -6,23 +6,26 @@
 Test NVSHMEM bindings and nvmath.distributed core functionality relating to NVSHMEM.
 """
 
-import importlib
 import gc
+import importlib
 import re
+
 import numpy as np
 import pytest
 
 import nvmath.distributed
 from nvmath.bindings import nvshmem
-from nvmath.internal.utils import device_ctx, get_or_create_stream
 from nvmath.distributed._internal.tensor_ifc import DistributedTensor
 from nvmath.distributed._internal.tensor_wrapper import maybe_register_package
-from .helpers import is_close
+from nvmath.distributed.process_group import ReductionOp
+from nvmath.internal.utils import device_ctx, get_or_create_stream
+
+from .helpers import assert_close
 
 try:
-    from cuda.core import system, Stream
+    from cuda.core import Stream, system
 except ImportError:
-    from cuda.core.experimental import system, Stream
+    from cuda.core.experimental import Stream, system
 
 SHAPE = (2, 5)
 VALUE = 17
@@ -37,22 +40,19 @@ def torch_installed():
 
 
 @pytest.fixture(scope="module")
-def nvmath_distributed():
-    from mpi4py import MPI
-
+def nvmath_distributed(process_group):
     if cupy_installed():
         maybe_register_package("cupy")
 
     if torch_installed():
         maybe_register_package("torch")
 
-    comm = MPI.COMM_WORLD
     try:
         num_devices = system.get_num_devices()
     except AttributeError:
         num_devices = system.num_devices
-    device_id = comm.Get_rank() % num_devices
-    nvmath.distributed.initialize(device_id, comm, backends=["nvshmem"])
+    device_id = process_group.rank % num_devices
+    nvmath.distributed.initialize(device_id, process_group, backends=["nvshmem"])
 
     yield
 
@@ -63,8 +63,8 @@ def test_nvshmem_bootstrapped(nvmath_distributed):
     ctx = nvmath.distributed.get_context()
     assert ctx is not None
 
-    rank = ctx.communicator.Get_rank()
-    nranks = ctx.communicator.Get_size()
+    rank = ctx.process_group.rank
+    nranks = ctx.process_group.nranks
     try:
         num_devices = system.get_num_devices()
     except AttributeError:
@@ -94,9 +94,11 @@ def test_nvshmem_malloc(nvmath_distributed):
 def test_allocate_symmetric(package, nvmath_distributed, check_symmetric_memory_leaks):
     if package == "torch":
         import torch as package
+
         from nvmath.distributed._internal.tensor_ifc_torch import TorchDistributedTensor as Tensor
     elif package == "cupy":
         import cupy as package
+
         from nvmath.distributed._internal.tensor_ifc_cupy import CupyDistributedTensor as Tensor
     dtype = package.int32
 
@@ -110,7 +112,7 @@ def test_allocate_symmetric(package, nvmath_distributed, check_symmetric_memory_
         tensor_sheap = nvmath.distributed.allocate_symmetric_memory(SHAPE, package, dtype=dtype)
         assert Tensor(tensor_sheap).is_symmetric_memory
         tensor_sheap[:] = VALUE
-        assert is_close(Tensor(tensor_sheap), Tensor(expected))
+        assert_close(Tensor(tensor_sheap), Tensor(expected))
 
     mype = nvshmem.my_pe()
     assert nvshmem.ptr(Tensor(expected).data_ptr, pe=mype) == 0
@@ -176,11 +178,15 @@ def test_tensor_to(package, symmetric_memory, nvmath_distributed, check_symmetri
     elif package == "cupy":
         from nvmath.distributed._internal.tensor_ifc_cupy import (
             CupyDistributedTensor as CudaTensor,
+        )
+        from nvmath.distributed._internal.tensor_ifc_cupy import (
             HostDistributedTensor as HostTensor,
         )
     elif package == "numpy":
         from nvmath.distributed._internal.tensor_ifc_numpy import (
             CudaDistributedTensor as CudaTensor,
+        )
+        from nvmath.distributed._internal.tensor_ifc_numpy import (
             NumpyDistributedTensor as HostTensor,
         )
 
@@ -205,7 +211,7 @@ def test_tensor_to(package, symmetric_memory, nvmath_distributed, check_symmetri
     assert isinstance(tensor_cpu_again, DistributedTensor)
     assert not tensor_cpu_again.is_symmetric_memory
     assert tensor_cpu.data_ptr != tensor_cpu_again.data_ptr
-    assert is_close(tensor_cpu, tensor_cpu_again, allow_ndbuffer=package == "cupy")
+    assert_close(tensor_cpu, tensor_cpu_again, allow_ndbuffer=package == "cupy")
 
 
 @pytest.mark.skipif(not cupy_installed(), reason="cupy not found")
@@ -213,10 +219,8 @@ def test_nvshmem_communication(nvmath_distributed, check_symmetric_memory_leaks)
     import cupy
 
     ctx = nvmath.distributed.get_context()
-    rank = ctx.communicator.Get_rank()
-    nranks = ctx.communicator.Get_size()
-
-    from mpi4py import MPI
+    rank = ctx.process_group.rank
+    nranks = ctx.process_group.nranks
 
     a = nvmath.distributed.allocate_symmetric_memory(1, cupy, dtype=cupy.int32)
     try:
@@ -235,8 +239,9 @@ def test_nvshmem_communication(nvmath_distributed, check_symmetric_memory_leaks)
             stream.synchronize()
 
             peer = (rank - 1) % nranks
-            good = ctx.communicator.allreduce(a[0] == peer, op=MPI.LAND)
-            assert good
+            good = np.array([int(a[0] == peer)])
+            ctx.process_group.allreduce_buffer(good, op=ReductionOp.SUM)
+            assert good[0] == nranks
     finally:
         nvmath.distributed.free_symmetric_memory(a)
 

@@ -14,16 +14,17 @@ __all__ = [
 
 import atexit
 import logging
+
 import numpy as np
 
 try:
-    from cuda.core import Device, Buffer, MemoryResource
+    from cuda.core import Buffer, Device, MemoryResource
 except ImportError:
-    from cuda.core.experimental import Device, Buffer, MemoryResource
+    from cuda.core.experimental import Buffer, Device, MemoryResource
 
 from nvmath import memory
 from nvmath.bindings import nvshmem  # type: ignore
-from nvmath.internal.memory import MemoryPointer as _MemoryPointer
+from nvmath.distributed.process_group import ProcessGroup, ReductionOp
 from nvmath.internal.utils import device_ctx
 
 # Indicates if this module has initialized NVSHMEM
@@ -33,54 +34,48 @@ _atexit_registered = False
 _exiting = False
 
 
-def initialize(device_id: int, mpi_comm) -> None:
-    """Initialize NVSHMEM runtime if not initialized, otherwise do nothing."""
+def initialize(device_id: int, process_group: ProcessGroup) -> None:
+    """Initialize NVSHMEM runtime if not initialized, otherwise do nothing.
+    NOTE: device_id must be set as the current device, and a CUDA context must have
+    been created for this device.
+    """
 
     global _nvshmem_initialized_here
 
-    rank = mpi_comm.Get_rank()
-    nranks = mpi_comm.Get_size()
+    rank = process_group.rank
+    nranks = process_group.nranks
 
-    # Here we set the device for NVSHMEM initialization, but we also need to make sure that
-    # a CUDA context has been created before initializing NVSHMEM. We can't rely on
-    # `device_ctx` to do it since it's not guaranteed to make a runtime API call.
-    old_device = Device()
-    Device(device_id).set_current()
-
-    try:
-        status = nvshmem.init_status()
-        if status > nvshmem.STATUS_IS_BOOTSTRAPPED:
-            # NVSHMEM is already initialized
-            # NOTE: We assume that the user has passed the same communicator and device_id
-            # on which NVSHMEM was initialized (we have no way of checking here).
-            assert nvshmem.n_pes() == nranks
-            return
-        elif status == nvshmem.STATUS_IS_BOOTSTRAPPED:
-            # A value of 0 indicates an initialization that is similar to when nvshmem_init
-            # is used.
-            nvshmem.hostlib_init_attr(0, 0)
-            assert nvshmem.n_pes() == nranks
-            # Sanity check, can eventually remove
-            assert nvshmem.init_status() > nvshmem.STATUS_IS_BOOTSTRAPPED
-            _nvshmem_initialized_here = True
-            return
-
-        attr = nvshmem.InitAttr()
-        unique_id = nvshmem.UniqueId()
-        # PE 0 queries the unique ID
-        if rank == 0:
-            nvshmem.get_uniqueid(unique_id.ptr)
-        # PE 0 broadcasts the unique ID
-        mpi_comm.Bcast(unique_id._data.view(np.int8), root=0)  # type: ignore[attr-defined]
-        nvshmem.set_attr_uniqueid_args(rank, nranks, unique_id.ptr, attr.ptr)
-        nvshmem.hostlib_init_attr(nvshmem.Flags.INIT_WITH_UNIQUEID, attr.ptr)
-
-        # sanity check
+    status = nvshmem.init_status()
+    if status > nvshmem.STATUS_IS_BOOTSTRAPPED:
+        # NVSHMEM is already initialized
+        # NOTE: We assume that the user has passed the same communicator and device_id
+        # on which NVSHMEM was initialized (we have no way of checking here).
+        assert nvshmem.n_pes() == nranks
+        return
+    elif status == nvshmem.STATUS_IS_BOOTSTRAPPED:
+        # A value of 0 indicates an initialization that is similar to when nvshmem_init
+        # is used.
+        nvshmem.hostlib_init_attr(0, 0)
+        assert nvshmem.n_pes() == nranks
+        # Sanity check, can eventually remove
         assert nvshmem.init_status() > nvshmem.STATUS_IS_BOOTSTRAPPED
         _nvshmem_initialized_here = True
-        _register_atexit_maybe()
-    finally:
-        old_device.set_current()
+        return
+
+    attr = nvshmem.InitAttr()
+    unique_id = nvshmem.UniqueId()
+    # PE 0 queries the unique ID
+    if rank == 0:
+        nvshmem.get_uniqueid(unique_id.ptr)
+    # PE 0 broadcasts the unique ID
+    process_group.broadcast_buffer(unique_id._data.view(np.int8), root=0)  # type: ignore[attr-defined]
+    nvshmem.set_attr_uniqueid_args(rank, nranks, unique_id.ptr, attr.ptr)
+    nvshmem.hostlib_init_attr(nvshmem.Flags.INIT_WITH_UNIQUEID, attr.ptr)
+
+    # sanity check
+    assert nvshmem.init_status() > nvshmem.STATUS_IS_BOOTSTRAPPED
+    _nvshmem_initialized_here = True
+    _register_atexit_maybe()
 
 
 def _register_atexit_maybe() -> None:
@@ -112,7 +107,7 @@ def is_initialized() -> bool:
 
 def _check_initialized():
     if nvshmem.init_status() < nvshmem.STATUS_IS_INITIALIZED:
-        raise RuntimeError("NVSHMEM is not initialized. Please initialize nvmath.distributed")
+        raise RuntimeError("NVSHMEM is not initialized. Please initialize nvmath.distributed with NVSHMEM backend")
     _register_atexit_maybe()
 
 
@@ -172,7 +167,7 @@ class _NvshmemResource(MemoryResource):
         return self.device.device_id
 
 
-def nvshmem_empty_dlpack(size, device_id, comm, make_symmetric=False, skip_symmetric_check=False, logger=None):
+def nvshmem_empty_dlpack(size, device_id, process_group, make_symmetric=False, skip_symmetric_check=False, logger=None):
     """Return uninitialized DLPack buffer of given size in bytes, allocated using
     nvshmem_malloc (which makes this a *collective* call). Note that the DLPack
     buffer currently does not include any shape, dtype, or stride information.
@@ -187,14 +182,12 @@ def nvshmem_empty_dlpack(size, device_id, comm, make_symmetric=False, skip_symme
 
     logger = logger if logger is not None else logging.getLogger()
 
-    from mpi4py import MPI
-
     if make_symmetric and skip_symmetric_check:
         raise ValueError("skip_symmetric_check is incompatible with make_symmetric=True")
 
     if not skip_symmetric_check:
         max_size = np.array([-size, size], dtype=np.int64)
-        comm.Allreduce(MPI.IN_PLACE, max_size, MPI.MAX)
+        process_group.allreduce_buffer(max_size, op=ReductionOp.MAX)
         if -max_size[0] != max_size[1]:
             # The buffer size is not the same on all processes.
             if make_symmetric:
@@ -231,7 +224,7 @@ def free(pointer):
 
     try:
         resource, size = _resource_registry.pop(pointer)
-    except KeyError:
+    except KeyError as e:
         raise RuntimeError(
             "Unknown pointer to free. Possible causes:\n"
             " - This memory was not allocated with nvmath.distributed helpers.\n"
@@ -240,7 +233,7 @@ def free(pointer):
             "     - You have multiple tensors sharing the same symmetric memory buffer,\n"
             "       e.g. as a result of inplace operations, or tensor operations that\n"
             "       result in views such as slicing."
-        )
+        ) from e
     resource.deallocate(pointer, size, manual=True)
 
 
@@ -289,15 +282,14 @@ class NvshmemNDBufferAllocator:
         self.skip_symmetric_check = skip_symmetric_check
 
     def allocate(self, size, stream, logger=None):
-        data = nvshmem_empty_dlpack(
+        return nvshmem_empty_dlpack(
             size,
             self.ctx.device_id,
-            self.ctx.communicator,
+            self.ctx.process_group,
             make_symmetric=self.make_symmetric,
             skip_symmetric_check=self.skip_symmetric_check,
             logger=logger,
         )
-        return _MemoryPointer(int(data.handle), data)
 
 
 class SymmetricMemoryPointer(memory.MemoryPointer):

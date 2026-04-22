@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.0, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -192,6 +192,8 @@ ctypedef void* cusparseSpSVDescr_t 'cusparseSpSVDescr_t'
 ctypedef void* cusparseSpSMDescr_t 'cusparseSpSMDescr_t'
 ctypedef void* cusparseSpGEMMDescr_t 'cusparseSpGEMMDescr_t'
 ctypedef void* cusparseSpMMOpPlan_t 'cusparseSpMMOpPlan_t'
+ctypedef void* cusparseSpMVOpDescr_t 'cusparseSpMVOpDescr_t'
+ctypedef void* cusparseSpMVOpPlan_t 'cusparseSpMVOpPlan_t'
 ctypedef void (*cusparseLoggerCallback_t 'cusparseLoggerCallback_t')(
     int logLevel,
     const char* functionName,
@@ -459,3 +461,10 @@ cdef cusparseStatus_t cusparseCreateConstSlicedEll(cusparseConstSpMatDescr_t* sp
 cdef cusparseStatus_t cusparseSpSV_updateMatrix(cusparseHandle_t handle, cusparseSpSVDescr_t spsvDescr, void* newValues, cusparseSpSVUpdate_t updatePart) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusparseStatus_t cusparseSpMV_preprocess(cusparseHandle_t handle, cusparseOperation_t opA, const void* alpha, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, const void* beta, cusparseDnVecDescr_t vecY, cudaDataType computeType, cusparseSpMVAlg_t alg, void* externalBuffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
 cdef cusparseStatus_t cusparseSpSM_updateMatrix(cusparseHandle_t handle, cusparseSpSMDescr_t spsmDescr, void* newValues, cusparseSpSMUpdate_t updatePart) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusparseStatus_t cusparseSpMVOp_createDescr(cusparseHandle_t handle, cusparseSpMVOpDescr_t* desc, cusparseOperation_t opA, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ, cudaDataType computeType, void* buffer) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusparseStatus_t cusparseSpMVOp_destroyDescr(cusparseSpMVOpDescr_t desc) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusparseStatus_t cusparseSpMVOp_createPlan(cusparseHandle_t handle, cusparseSpMVOpDescr_t desc, cusparseSpMVOpPlan_t* plan, const void* code, size_t codeSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusparseStatus_t cusparseSpMVOp_destroyPlan(cusparseSpMVOpPlan_t plan) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusparseStatus_t cusparseSpMVOp_setGlobalUserData(cusparseHandle_t handle, cusparseSpMVOpPlan_t plan, const char* global_data_name, void* input_data, size_t data_size) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusparseStatus_t cusparseSpMVOp(cusparseHandle_t handle, cusparseSpMVOpPlan_t plan, const void* alpha, const void* beta, cusparseConstDnVecDescr_t vecX, cusparseConstDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil
+cdef cusparseStatus_t cusparseSpMVOp_bufferSize(cusparseHandle_t handle, cusparseOperation_t opA, cusparseConstSpMatDescr_t matA, cusparseConstDnVecDescr_t vecX, cusparseDnVecDescr_t vecY, cusparseDnVecDescr_t vecZ, cudaDataType computeType, size_t* bufferSize) except?_CUSPARSESTATUS_T_INTERNAL_LOADING_ERROR nogil

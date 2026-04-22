@@ -1,4 +1,4 @@
-# Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,11 +12,13 @@ __all__ = ["CSRTensorHolder"]
 
 from typing import Literal, TypeVar
 
-from .sparse_tensor_ifc import SparseTensorHolder
+from nvmath._internal.layout import check_monotonic_strides, is_contiguous_and_dense
 from nvmath.internal import tensor_wrapper
 from nvmath.internal.package_ifc import StreamHolder
 from nvmath.internal.tensor_ifc import TensorHolder
+from nvmath.internal.utils import infer_object_package
 
+from .sparse_tensor_ifc import SparseTensorHolder
 
 """
 A generic type for the third-party CSRTensor which a CSRTensorHolder implementation wraps
@@ -75,11 +77,19 @@ class CSRTensorHolder(SparseTensorHolder):
 
         self._device = self._values.device
 
+        # Capture the native tensor package for use in reset_unchecked().
+        self.tensor_package = infer_object_package(self.tensor)
+
+        # The tensor holder type for the dense constituent tensors (take from values, since
+        # all constituent tensors have the same type).
+        self._dense_tensorholder_type = values.__class__
+
     @classmethod
     def create_from_tensor(cls, tensor, *, attr_name_map=None):
         assert attr_name_map is not None, "Internal error."
 
         # tensor is the native tensor.
+        # For UST, the buffers will be CuPy ndarrays.
         crow_indices = attr_name_map["crow_indices"](tensor)
         col_indices = attr_name_map["col_indices"](tensor)
         values = attr_name_map["values"](tensor)
@@ -152,3 +162,105 @@ class CSRTensorHolder(SparseTensorHolder):
         self.crow_indices.copy_(src=src.crow_indices, stream_holder=stream_holder)
         self.col_indices.copy_(src=src.col_indices, stream_holder=stream_holder)
         self.values.copy_(src=src.values, stream_holder=stream_holder)
+
+    def to_ust(self, *, stream):
+        from nvmath.sparse.ust.tensor import Tensor
+        from nvmath.sparse.ust.tensor_format import NamedFormats
+
+        wrapped = self
+        tensor = wrapped.tensor
+        if not (wrapped.attr_name_map["is_coalesced"](tensor) and wrapped.attr_name_map["has_sorted_indices"](tensor)):
+            raise ValueError(
+                "The CSR tensor is not coalesced (metadata sorted with duplicates removed). \
+To coalesce, use the operation provided by your sparse tensor library: `coalesce()`, `sum_duplicates()`, ..."
+            )
+
+        if not (
+            is_contiguous_and_dense(wrapped.crow_indices.shape, wrapped.crow_indices.strides)
+            and is_contiguous_and_dense(wrapped.col_indices.shape, wrapped.col_indices.strides)
+            and is_contiguous_and_dense(wrapped.values.shape, wrapped.values.strides)
+        ):
+            raise ValueError(
+                "The sparse tensor representation (crow_indices(), col_indices(), and values() tensors) must be \
+dense and contiguous."
+            )
+
+        values = wrapped.values.memory_buffer()  # Typed memory viewed as a 1-D tensor.
+
+        num_dim = self.num_dimensions
+        num_sparse_dim = self.attr_name_map["num_sparse_dim"](tensor)
+        num_dense_dim = self.attr_name_map["num_dense_dim"](tensor)
+        num_batch_dim = num_dim - num_sparse_dim - num_dense_dim
+        tensor_format = NamedFormats.CSRd(num_batch_dim, num_dense_dim)
+
+        # Check if the batch axes are in C-order for all component dense arrays.
+        if not (
+            check_monotonic_strides(wrapped.crow_indices.strides[:num_batch_dim], reverse=True)
+            and check_monotonic_strides(wrapped.col_indices.strides[:num_batch_dim], reverse=True)
+            and check_monotonic_strides(wrapped.values.strides[:num_batch_dim], reverse=True)
+        ):
+            raise ValueError(
+                "The batch dimensions in the sparse tensor representation (crow_indices(), col_indices(), \
+and values() tensors) must use the C-layout."
+            )
+
+        # Create the UST.
+        ust = Tensor(tensor.shape, tensor_format=tensor_format, index_type=wrapped.index_type, dtype=wrapped.dtype)
+
+        ust._pos[num_batch_dim + 1] = wrapped.crow_indices
+        ust._crd[num_batch_dim + 1] = wrapped.col_indices
+        ust._val = values
+
+        return ust
+
+    def to_package(self):
+        """
+        This will create a sparse tensor for the original package from which this
+        interface was created.
+        """
+        create_csr = self.attr_name_map["sparse_format_helper"].create_csr
+        return create_csr(self.shape, self.crow_indices, self.col_indices, self.values)
+
+    def release(self):
+        """
+        This method will release the wrapped tensor and any format-specific data
+        by setting them to None.
+        """
+        # The tensor reference.
+        self.tensor = None
+
+        # Format-specific data.
+        self._crow_indices = None
+        self._col_indices = None
+        self._values = None
+
+    def reset_unchecked(self, tensor):
+        """
+        This method will reset the wrapped tensor to the specified one, and update
+        any format-specific data accordingly. It assumes that all attributes
+        like the device, shape, etc are consistent between the existing and new tensor.
+
+        Args:
+            tensor: The native tensor to wrap.
+        """
+        # Update the tensor reference.
+        self.tensor = tensor
+
+        # Format-specific data.
+
+        if self.tensor_package == "nvmath":
+            # The data arrays are already wrapped.
+            self._crow_indices = self._attr_name_map["crow_indices"](tensor)
+            self._col_indices = self._attr_name_map["col_indices"](tensor)
+            self._values = self._attr_name_map["values"](tensor)
+        else:
+            wrapper = self._dense_tensorholder_type
+
+            crow_indices = self._attr_name_map["crow_indices"](tensor)
+            self._crow_indices = wrapper(crow_indices)
+
+            col_indices = self._attr_name_map["col_indices"](tensor)
+            self._col_indices = wrapper(col_indices)
+
+            values = self._attr_name_map["values"](tensor)
+            self._values = wrapper(values)

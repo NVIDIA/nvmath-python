@@ -1,4 +1,4 @@
-# This code was automatically generated across versions from 0.2.3 to 0.3.0. Do not modify it directly.
+# This code was automatically generated across versions from 0.3.1 to 0.3.2, generator version 0.3.1.dev1418+g63712a33a.d20260318. Do not modify it directly.
 # This layer exposes the C header to Cython as-is.
 
 from libc.stdint cimport int64_t
@@ -68,12 +68,18 @@ ctypedef enum commondxPrecision "commondxPrecision":
     COMMONDX_PRECISION_UI32 "COMMONDX_PRECISION_UI32" = 13
     COMMONDX_PRECISION_UI64 "COMMONDX_PRECISION_UI64" = 14
 
+ctypedef enum commondxArchModifier "commondxArchModifier":
+    COMMONDX_ARCH_MODIFIER_GENERIC "COMMONDX_ARCH_MODIFIER_GENERIC" = 0
+    COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC "COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC" = 1
+    COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC "COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC" = 2
+
 ctypedef enum commondxOption "commondxOption":
     COMMONDX_OPTION_SYMBOL_NAME "COMMONDX_OPTION_SYMBOL_NAME" = 0
     COMMONDX_OPTION_TARGET_SM "COMMONDX_OPTION_TARGET_SM" = 1
     COMMONDX_OPTION_CODE_CONTAINER "COMMONDX_OPTION_CODE_CONTAINER" = 2
     COMMONDX_OPTION_CODE_ISA "COMMONDX_OPTION_CODE_ISA" = 3
-    COMMONDX_OPTION_EXTRA_NVTRC_ARGS "COMMONDX_OPTION_EXTRA_NVTRC_ARGS" = 4
+    COMMONDX_OPTION_EXTRA_NVRTC_ARGS "COMMONDX_OPTION_EXTRA_NVRTC_ARGS" = 4
+    COMMONDX_OPTION_TARGET_CODE "COMMONDX_OPTION_TARGET_CODE" = 5
 
 ctypedef enum commondxExecution "commondxExecution":
     COMMONDX_EXECUTION_THREAD "COMMONDX_EXECUTION_THREAD" = 0
@@ -82,15 +88,32 @@ ctypedef enum commondxExecution "commondxExecution":
 ctypedef enum commondxCodeContainer "commondxCodeContainer":
     COMMONDX_CODE_CONTAINER_LTOIR "COMMONDX_CODE_CONTAINER_LTOIR" = 0
     COMMONDX_CODE_CONTAINER_FATBIN "COMMONDX_CODE_CONTAINER_FATBIN" = 1
+    COMMONDX_CODE_CONTAINER_PTX "COMMONDX_CODE_CONTAINER_PTX" = 2
 
 ctypedef enum cublasdxApi "cublasdxApi":
     CUBLASDX_API_SMEM "CUBLASDX_API_SMEM" = 0
     CUBLASDX_API_SMEM_DYNAMIC_LD "CUBLASDX_API_SMEM_DYNAMIC_LD" = 1
     CUBLASDX_API_TENSORS "CUBLASDX_API_TENSORS" = 2
 
+ctypedef enum cublasdxDevicePipelineType "cublasdxDevicePipelineType":
+    CUBLASDX_DEVICE_PIPELINE_SUGGESTED "CUBLASDX_DEVICE_PIPELINE_SUGGESTED" = 0
+
+ctypedef enum cublasdxTilePipelineType "cublasdxTilePipelineType":
+    CUBLASDX_TILE_PIPELINE_DEFAULT "CUBLASDX_TILE_PIPELINE_DEFAULT" = 0
+
+ctypedef enum cublasdxBlockSizeStrategy "cublasdxBlockSizeStrategy":
+    CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC "CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC" = 0
+    CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED "CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED" = 1
+
 ctypedef enum cublasdxType "cublasdxType":
     CUBLASDX_TYPE_REAL "CUBLASDX_TYPE_REAL" = 0
     CUBLASDX_TYPE_COMPLEX "CUBLASDX_TYPE_COMPLEX" = 1
+
+ctypedef enum cublasdxMemorySpace "cublasdxMemorySpace":
+    CUBLASDX_MEMORY_SPACE_RMEM "CUBLASDX_MEMORY_SPACE_RMEM" = 0
+    CUBLASDX_MEMORY_SPACE_SMEM "CUBLASDX_MEMORY_SPACE_SMEM" = 1
+    CUBLASDX_MEMORY_SPACE_GMEM "CUBLASDX_MEMORY_SPACE_GMEM" = 2
+    CUBLASDX_MEMORY_SPACE_ANY "CUBLASDX_MEMORY_SPACE_ANY" = 3
 
 ctypedef enum cublasdxTransposeMode "cublasdxTransposeMode":
     CUBLASDX_TRANSPOSE_MODE_NON_TRANSPOSED "CUBLASDX_TRANSPOSE_MODE_NON_TRANSPOSED" = 0
@@ -160,6 +183,14 @@ ctypedef enum cublasdxTensorTrait "cublasdxTensorTrait":
     CUBLASDX_TENSOR_TRAIT_LOGICAL_SIZE "CUBLASDX_TENSOR_TRAIT_LOGICAL_SIZE" = 5
     CUBLASDX_TENSOR_TRAIT_MEMORY_SPACE "CUBLASDX_TENSOR_TRAIT_MEMORY_SPACE" = 6
 
+ctypedef enum cublasdxPipelineTrait "cublasdxPipelineTrait":
+    CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES "CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES" = 0
+    CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES "CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES" = 1
+    CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE "CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE" = 2
+    CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES "CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES" = 3
+    CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME "CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME" = 4
+    CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM "CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM" = 5
+
 ctypedef enum cublasdxDeviceFunctionTrait "cublasdxDeviceFunctionTrait":
     CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL "CUBLASDX_DEVICE_FUNCTION_TRAIT_SYMBOL" = 1
 
@@ -167,6 +198,7 @@ ctypedef enum cublasdxDeviceFunctionOption "cublasdxDeviceFunctionOption":
     CUBLASDX_DEVICE_FUNCTION_OPTION_SYMBOL_NAME "CUBLASDX_DEVICE_FUNCTION_OPTION_SYMBOL_NAME" = 0
     CUBLASDX_DEVICE_FUNCTION_OPTION_COPY_ALIGNMENT "CUBLASDX_DEVICE_FUNCTION_OPTION_COPY_ALIGNMENT" = 1
     CUBLASDX_DEVICE_FUNCTION_OPTION_CALLBACK "CUBLASDX_DEVICE_FUNCTION_OPTION_CALLBACK" = 2
+    CUBLASDX_DEVICE_FUNCTION_OPTION_NUM_THREADS "CUBLASDX_DEVICE_FUNCTION_OPTION_NUM_THREADS" = 3
 
 ctypedef enum cublasdxDeviceFunctionType "cublasdxDeviceFunctionType":
     CUBLASDX_DEVICE_FUNCTION_EXECUTE "CUBLASDX_DEVICE_FUNCTION_EXECUTE" = 0
@@ -267,10 +299,24 @@ ctypedef enum cusolverdxFunction "cusolverdxFunction":
     CUSOLVERDX_FUNCTION_UNMQR "CUSOLVERDX_FUNCTION_UNMQR" = 8
     CUSOLVERDX_FUNCTION_GELQF "CUSOLVERDX_FUNCTION_GELQF" = 9
     CUSOLVERDX_FUNCTION_UNMLQ "CUSOLVERDX_FUNCTION_UNMLQ" = 10
+    CUSOLVERDX_FUNCTION_POSV "CUSOLVERDX_FUNCTION_POSV" = 11
+    CUSOLVERDX_FUNCTION_GESV_NO_PIVOT "CUSOLVERDX_FUNCTION_GESV_NO_PIVOT" = 12
+    CUSOLVERDX_FUNCTION_GESV_PARTIAL_PIVOT "CUSOLVERDX_FUNCTION_GESV_PARTIAL_PIVOT" = 13
+    CUSOLVERDX_FUNCTION_GELS "CUSOLVERDX_FUNCTION_GELS" = 14
+    CUSOLVERDX_FUNCTION_UNGQR "CUSOLVERDX_FUNCTION_UNGQR" = 15
+    CUSOLVERDX_FUNCTION_UNGLQ "CUSOLVERDX_FUNCTION_UNGLQ" = 16
+    CUSOLVERDX_FUNCTION_GTSV_NO_PIVOT "CUSOLVERDX_FUNCTION_GTSV_NO_PIVOT" = 17
+    CUSOLVERDX_FUNCTION_HTEV "CUSOLVERDX_FUNCTION_HTEV" = 18
+    CUSOLVERDX_FUNCTION_HEEV "CUSOLVERDX_FUNCTION_HEEV" = 19
 
 ctypedef enum cusolverdxArrangement "cusolverdxArrangement":
     CUSOLVERDX_ARRANGEMENT_COL_MAJOR "CUSOLVERDX_ARRANGEMENT_COL_MAJOR" = 0
     CUSOLVERDX_ARRANGEMENT_ROW_MAJOR "CUSOLVERDX_ARRANGEMENT_ROW_MAJOR" = 1
+
+ctypedef enum cusolverdxTransposeMode "cusolverdxTransposeMode":
+    CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED" = 0
+    CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED" = 1
+    CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED" = 2
 
 ctypedef enum cusolverdxFillMode "cusolverdxFillMode":
     CUSOLVERDX_FILL_MODE_UPPER "CUSOLVERDX_FILL_MODE_UPPER" = 0
@@ -300,57 +346,97 @@ ctypedef enum cusolverdxOperatorType "cusolverdxOperatorType":
     CUSOLVERDX_OPERATOR_TRANSPOSE_MODE "CUSOLVERDX_OPERATOR_TRANSPOSE_MODE" = 12
     CUSOLVERDX_OPERATOR_LEADING_DIMENSION "CUSOLVERDX_OPERATOR_LEADING_DIMENSION" = 13
     CUSOLVERDX_OPERATOR_BATCHES_PER_BLOCK "CUSOLVERDX_OPERATOR_BATCHES_PER_BLOCK" = 14
+    CUSOLVERDX_OPERATOR_JOB "CUSOLVERDX_OPERATOR_JOB" = 15
 
 ctypedef enum cusolverdxTraitType "cusolverdxTraitType":
     CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE "CUSOLVERDX_TRAIT_SHARED_MEMORY_SIZE" = 1
     CUSOLVERDX_TRAIT_SYMBOL_NAME "CUSOLVERDX_TRAIT_SYMBOL_NAME" = 2
     CUSOLVERDX_TRAIT_BLOCK_DIM "CUSOLVERDX_TRAIT_BLOCK_DIM" = 3
-    CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION "CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION" = 4
     CUSOLVERDX_TRAIT_SUGGESTED_BLOCK_DIM "CUSOLVERDX_TRAIT_SUGGESTED_BLOCK_DIM" = 5
     CUSOLVERDX_TRAIT_SUGGESTED_BATCHES_PER_BLOCK "CUSOLVERDX_TRAIT_SUGGESTED_BATCHES_PER_BLOCK" = 6
+    CUSOLVERDX_TRAIT_ARRANGEMENT "CUSOLVERDX_TRAIT_ARRANGEMENT" = 7
+    CUSOLVERDX_TRAIT_BATCHES_PER_BLOCK "CUSOLVERDX_TRAIT_BATCHES_PER_BLOCK" = 8
+    CUSOLVERDX_TRAIT_TYPE "CUSOLVERDX_TRAIT_TYPE" = 9
+    CUSOLVERDX_TRAIT_LEADING_DIMENSION "CUSOLVERDX_TRAIT_LEADING_DIMENSION" = 10
+    CUSOLVERDX_TRAIT_VALUE_TYPE "CUSOLVERDX_TRAIT_VALUE_TYPE" = 11
+    CUSOLVERDX_TRAIT_WORKSPACE_SIZE "CUSOLVERDX_TRAIT_WORKSPACE_SIZE" = 12
+    CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION "CUSOLVERDX_TRAIT_SUGGESTED_LEADING_DIMENSION" = 4
 
-ctypedef enum commondxArchModifier "commondxArchModifier":
-    COMMONDX_ARCH_MODIFIER_GENERIC "COMMONDX_ARCH_MODIFIER_GENERIC" = 0
-    COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC "COMMONDX_ARCH_MODIFIER_ARCH_SPECIFIC" = 1
-    COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC "COMMONDX_ARCH_MODIFIER_FAMILY_SPECIFIC" = 2
+ctypedef enum curanddxDistribution "curanddxDistribution":
+    CURANDDX_DISTRIBUTION_UNIFORM_BITS "CURANDDX_DISTRIBUTION_UNIFORM_BITS" = 0
+    CURANDDX_DISTRIBUTION_UNIFORM "CURANDDX_DISTRIBUTION_UNIFORM" = 1
+    CURANDDX_DISTRIBUTION_NORMAL "CURANDDX_DISTRIBUTION_NORMAL" = 2
+    CURANDDX_DISTRIBUTION_LOG_NORMAL "CURANDDX_DISTRIBUTION_LOG_NORMAL" = 3
+    CURANDDX_DISTRIBUTION_POISSON "CURANDDX_DISTRIBUTION_POISSON" = 4
 
-ctypedef enum cublasdxDevicePipelineType "cublasdxDevicePipelineType":
-    CUBLASDX_DEVICE_PIPELINE_SUGGESTED "CUBLASDX_DEVICE_PIPELINE_SUGGESTED" = 0
+ctypedef enum curanddxNormalMethod "curanddxNormalMethod":
+    CURANDDX_NORMAL_METHOD_ICDF "CURANDDX_NORMAL_METHOD_ICDF" = 0
+    CURANDDX_NORMAL_METHOD_BOX_MULLER "CURANDDX_NORMAL_METHOD_BOX_MULLER" = 1
 
-ctypedef enum cublasdxTilePipelineType "cublasdxTilePipelineType":
-    CUBLASDX_TILE_PIPELINE_DEFAULT "CUBLASDX_TILE_PIPELINE_DEFAULT" = 0
+ctypedef enum curanddxGenerateMethod "curanddxGenerateMethod":
+    CURANDDX_GENERATE_METHOD_SINGLE "CURANDDX_GENERATE_METHOD_SINGLE" = 0
+    CURANDDX_GENERATE_METHOD_PAIR "CURANDDX_GENERATE_METHOD_PAIR" = 1
+    CURANDDX_GENERATE_METHOD_QUAD "CURANDDX_GENERATE_METHOD_QUAD" = 2
 
-ctypedef enum cublasdxBlockSizeStrategy "cublasdxBlockSizeStrategy":
-    CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC "CUBLASDX_BLOCK_SIZE_STRATEGY_HEURISTIC" = 0
-    CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED "CUBLASDX_BLOCK_SIZE_STRATEGY_FIXED" = 1
+ctypedef enum curanddxGenerator "curanddxGenerator":
+    CURANDDX_GENERATOR_XORWOW "CURANDDX_GENERATOR_XORWOW" = 0
+    CURANDDX_GENERATOR_MRG32K3A "CURANDDX_GENERATOR_MRG32K3A" = 1
+    CURANDDX_GENERATOR_PHILOX4_32 "CURANDDX_GENERATOR_PHILOX4_32" = 2
+    CURANDDX_GENERATOR_PCG "CURANDDX_GENERATOR_PCG" = 3
+    CURANDDX_GENERATOR_SOBOL32 "CURANDDX_GENERATOR_SOBOL32" = 4
+    CURANDDX_GENERATOR_SCRAMBLED_SOBOL32 "CURANDDX_GENERATOR_SCRAMBLED_SOBOL32" = 5
+    CURANDDX_GENERATOR_SOBOL64 "CURANDDX_GENERATOR_SOBOL64" = 6
+    CURANDDX_GENERATOR_SCRAMBLED_SOBOL64 "CURANDDX_GENERATOR_SCRAMBLED_SOBOL64" = 7
 
-ctypedef enum cublasdxMemorySpace "cublasdxMemorySpace":
-    CUBLASDX_MEMORY_SPACE_RMEM "CUBLASDX_MEMORY_SPACE_RMEM" = 0
-    CUBLASDX_MEMORY_SPACE_SMEM "CUBLASDX_MEMORY_SPACE_SMEM" = 1
-    CUBLASDX_MEMORY_SPACE_GMEM "CUBLASDX_MEMORY_SPACE_GMEM" = 2
-    CUBLASDX_MEMORY_SPACE_ANY "CUBLASDX_MEMORY_SPACE_ANY" = 3
+ctypedef enum curanddxOperatorType "curanddxOperatorType":
+    CURANDDX_OPERATOR_GENERATOR "CURANDDX_OPERATOR_GENERATOR" = 0
+    CURANDDX_OPERATOR_PHILOX_ROUNDS "CURANDDX_OPERATOR_PHILOX_ROUNDS" = 1
+    CURANDDX_OPERATOR_SM "CURANDDX_OPERATOR_SM" = 2
+    CURANDDX_OPERATOR_EXECUTION "CURANDDX_OPERATOR_EXECUTION" = 3
+    CURANDDX_OPERATOR_DISTRIBUTION "CURANDDX_OPERATOR_DISTRIBUTION" = 4
+    CURANDDX_OPERATOR_OUTPUT_TYPE "CURANDDX_OPERATOR_OUTPUT_TYPE" = 5
+    CURANDDX_OPERATOR_GENERATE_METHOD "CURANDDX_OPERATOR_GENERATE_METHOD" = 6
+    CURANDDX_OPERATOR_NORMAL_METHOD "CURANDDX_OPERATOR_NORMAL_METHOD" = 7
+    CURANDDX_OPERATOR_DEVICE_FUNCTIONS "CURANDDX_OPERATOR_DEVICE_FUNCTIONS" = 8
+    CURANDDX_OPERATOR_DISTRIBUTION_PARAMETERS "CURANDDX_OPERATOR_DISTRIBUTION_PARAMETERS" = 9
 
-ctypedef enum cublasdxPipelineTrait "cublasdxPipelineTrait":
-    CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES "CUBLASDX_PIPELINE_TRAIT_STORAGE_BYTES" = 0
-    CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES "CUBLASDX_PIPELINE_TRAIT_STORAGE_ALIGNMENT_BYTES" = 1
-    CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE "CUBLASDX_PIPELINE_TRAIT_BUFFER_SIZE" = 2
-    CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES "CUBLASDX_PIPELINE_TRAIT_BUFFER_ALIGNMENT_BYTES" = 3
-    CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME "CUBLASDX_PIPELINE_TRAIT_OPAQUE_NAME" = 4
-    CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM "CUBLASDX_PIPELINE_TRAIT_BLOCK_DIM" = 5
+ctypedef enum curanddxDeviceFunctionType "curanddxDeviceFunctionType":
+    CURANDDX_DEVICE_FUNCTION_GENERATE "CURANDDX_DEVICE_FUNCTION_GENERATE" = (1 << 1)
+    CURANDDX_DEVICE_FUNCTION_INIT_STATE "CURANDDX_DEVICE_FUNCTION_INIT_STATE" = (1 << 2)
+    CURANDDX_DEVICE_FUNCTION_DESTROY_STATE "CURANDDX_DEVICE_FUNCTION_DESTROY_STATE" = (1 << 3)
+    CURANDDX_DEVICE_FUNCTION_SKIP_OFFSET "CURANDDX_DEVICE_FUNCTION_SKIP_OFFSET" = (1 << 4)
+    CURANDDX_DEVICE_FUNCTION_SKIP_SUBSEQUENCE "CURANDDX_DEVICE_FUNCTION_SKIP_SUBSEQUENCE" = (1 << 5)
+    CURANDDX_DEVICE_FUNCTION_SKIP_SEQUENCE "CURANDDX_DEVICE_FUNCTION_SKIP_SEQUENCE" = (1 << 6)
 
-ctypedef enum cusolverdxTransposeMode "cusolverdxTransposeMode":
-    CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_NON_TRANSPOSED" = 0
-    CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_TRANSPOSED" = 1
-    CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED "CUSOLVERDX_TRANSPOSE_MODE_CONJ_TRANSPOSED" = 2
+ctypedef enum curanddxTraitType "curanddxTraitType":
+    CURANDDX_TRAIT_SYMBOL_GENERATE_NAME "CURANDDX_TRAIT_SYMBOL_GENERATE_NAME" = 0
+    CURANDDX_TRAIT_SYMBOL_INIT_STATE_NAME "CURANDDX_TRAIT_SYMBOL_INIT_STATE_NAME" = 1
+    CURANDDX_TRAIT_SYMBOL_DESTROY_STATE_NAME "CURANDDX_TRAIT_SYMBOL_DESTROY_STATE_NAME" = 2
+    CURANDDX_TRAIT_SYMBOL_SKIP_OFFSET_NAME "CURANDDX_TRAIT_SYMBOL_SKIP_OFFSET_NAME" = 3
+    CURANDDX_TRAIT_SYMBOL_SKIP_SUBSEQUENCE_NAME "CURANDDX_TRAIT_SYMBOL_SKIP_SUBSEQUENCE_NAME" = 4
+    CURANDDX_TRAIT_SYMBOL_SKIP_SEQUENCE_NAME "CURANDDX_TRAIT_SYMBOL_SKIP_SEQUENCE_NAME" = 5
+    CURANDDX_TRAIT_STATE_SIZE "CURANDDX_TRAIT_STATE_SIZE" = 6
+    CURANDDX_TRAIT_STATE_ALIGNMENT "CURANDDX_TRAIT_STATE_ALIGNMENT" = 7
+
+ctypedef enum commondxCodeType "commondxCodeType":
+    COMMONDX_CODE_TYPE_LTO "COMMONDX_CODE_TYPE_LTO" = 0
+    COMMONDX_CODE_TYPE_PTX "COMMONDX_CODE_TYPE_PTX" = 1
+
+ctypedef enum cusolverdxJob "cusolverdxJob":
+    CUSOLVERDX_JOB_NO_VECTORS "CUSOLVERDX_JOB_NO_VECTORS" = 0
+    CUSOLVERDX_JOB_ALL_VECTORS "CUSOLVERDX_JOB_ALL_VECTORS" = 1
+    CUSOLVERDX_JOB_MULTIPLY_VECTORS "CUSOLVERDX_JOB_MULTIPLY_VECTORS" = 2
+    CUSOLVERDX_JOB_OVERWRITE_VECTORS "CUSOLVERDX_JOB_OVERWRITE_VECTORS" = 3
 
 # types
 ctypedef long long int commondxCode 'commondxCode'
 ctypedef long long int cublasdxDescriptor 'cublasdxDescriptor'
 ctypedef long long int cublasdxTensor 'cublasdxTensor'
 ctypedef long long int cublasdxDeviceFunction 'cublasdxDeviceFunction'
+ctypedef long long int cublasdxPipeline 'cublasdxPipeline'
 ctypedef long long int cufftdxDescriptor 'cufftdxDescriptor'
 ctypedef long long int cusolverdxDescriptor 'cusolverdxDescriptor'
-ctypedef long long int cublasdxPipeline 'cublasdxPipeline'
+ctypedef long long int curanddxDescriptor 'curanddxDescriptor'
 
 
 ###############################################################################
@@ -359,6 +445,7 @@ ctypedef long long int cublasdxPipeline 'cublasdxPipeline'
 
 cdef commondxStatusType commondxCreateCode(commondxCode* code) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxSetCodeOptionInt64(commondxCode code, commondxOption option, long long int value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType commondxSetCodeOptionInt64s(commondxCode code, commondxOption option, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxSetCodeOptionStr(commondxCode code, commondxOption option, const char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxGetCodeOptionInt64(commondxCode code, commondxOption option, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxGetCodeOptionsInt64s(commondxCode code, commondxOption option, size_t size, long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
@@ -369,19 +456,35 @@ cdef commondxStatusType commondxGetCodeLTOIRSizes(commondxCode code, size_t size
 cdef commondxStatusType commondxGetCodeLTOIRs(commondxCode code, size_t size, void** out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType commondxDestroyCode(commondxCode code) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef const char* commondxStatusToStr(commondxStatusType status) except?NULL nogil
+cdef commondxStatusType commondxGetLastErrorStrSize(size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType commondxGetLastErrorStr(commondxStatusType* code, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType mathdxGetVersion(int* version) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType mathdxGetVersionEx(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxCreateDescriptor(cublasdxDescriptor* handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxSetOptionStr(cublasdxDescriptor handle, commondxOption option, const char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxSetOperatorInt64(cublasdxDescriptor handle, cublasdxOperatorType op, long long int value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxSetOperatorInt64s(cublasdxDescriptor handle, cublasdxOperatorType op, size_t count, const long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxBindTensor(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateTensor(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateTensorStrided(cublasdxMemorySpace memory_space, commondxValueType value_type, void* ptr, long long int rank, long long int* shape, long long int* stride, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxDestroyTensor(cublasdxTensor tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxDestroyPipeline(cublasdxPipeline pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateDevicePipeline(cublasdxDescriptor handle, cublasdxDevicePipelineType device_pipeline_type, long long int pipeline_depth, cublasdxBlockSizeStrategy block_size_strategy, cublasdxTensor tensor_a, cublasdxTensor tensor_b, cublasdxPipeline* device_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateTilePipeline(cublasdxDescriptor handle, cublasdxTilePipelineType tile_pipeline_type, cublasdxPipeline device_pipeline, cublasdxPipeline* tile_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxSetTensorOptionInt64(cublasdxTensor tensor, cublasdxTensorOption option, long long int value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxFinalizeTensorsNew(size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxFinalizeTensors(size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxFinalizePipelines(size_t count, const cublasdxPipeline* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxFinalize(size_t countTensors, const cublasdxTensor* tensors, size_t countPipelines, const cublasdxPipeline* pipelines) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetTensorTraitInt64(cublasdxTensor tensor, cublasdxTensorTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitInt64(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitInt64s(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t count, long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetTensorTraitStrSize(cublasdxTensor tensor, cublasdxTensorTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitStrSize(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetTensorTraitStr(cublasdxTensor tensor, cublasdxTensorTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxCreateDeviceFunctionOld(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxGetPipelineTraitStr(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateDeviceFunction(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxDestroyDeviceFunction(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cublasdxCreateDeviceFunctionWithPipelines(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t tensor_count, const cublasdxTensor* tensors, size_t pipeline_count, const cublasdxPipeline* pipelines, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxFinalizeDeviceFunctions(commondxCode code, size_t count, const cublasdxDeviceFunction* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetDeviceFunctionTraitStrSize(cublasdxDeviceFunction device_function, cublasdxDeviceFunctionTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cublasdxGetDeviceFunctionTraitStr(cublasdxDeviceFunction device_function, cublasdxDeviceFunctionTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
@@ -423,27 +526,27 @@ cdef commondxStatusType cusolverdxGetUniversalFATBIN(cusolverdxDescriptor handle
 cdef commondxStatusType cusolverdxGetTraitStrSize(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cusolverdxGetTraitStr(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cusolverdxGetTraitInt64(cusolverdxDescriptor handle, cusolverdxTraitType trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cusolverdxGetTraitInt64s(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cusolverdxFinalizeCode(commondxCode code, cusolverdxDescriptor handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef commondxStatusType cusolverdxDestroyDescriptor(cusolverdxDescriptor handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
 cdef const char* cusolverdxOperatorTypeToStr(cusolverdxOperatorType op) except?NULL nogil
 cdef const char* cusolverdxTraitTypeToStr(cusolverdxTraitType trait) except?NULL nogil
-cdef commondxStatusType commondxSetCodeOptionInt64s(commondxCode code, commondxOption option, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxCreateTensorNew(cublasdxDescriptor handle, cublasdxTensorType tensor_type, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxCreateTensorStrided(cublasdxMemorySpace memory_space, commondxValueType value_type, void* ptr, long long int rank, long long int* shape, long long int* stride, cublasdxTensor* tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxMakeTensorLike(cublasdxTensor input, commondxValueType value_type, cublasdxTensor* output) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxDestroyTensorNew(cublasdxTensor tensor) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxDestroyPipeline(cublasdxPipeline pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxCreateDevicePipeline(cublasdxDescriptor handle, cublasdxDevicePipelineType device_pipeline_type, long long int pipeline_depth, cublasdxBlockSizeStrategy block_size_strategy, cublasdxTensor tensor_a, cublasdxTensor tensor_b, cublasdxPipeline* device_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxCreateTilePipeline(cublasdxDescriptor handle, cublasdxTilePipelineType tile_pipeline_type, cublasdxPipeline device_pipeline, cublasdxPipeline* tile_pipeline) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxFinalizePipelines(size_t count, const cublasdxPipeline* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxFinalize(size_t countTensors, const cublasdxTensor* tensors, size_t countPipelines, const cublasdxPipeline* pipelines) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxGetPipelineTraitInt64(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxGetPipelineTraitInt64s(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t count, long long int* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxGetPipelineTraitStrSize(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxGetPipelineTraitStr(cublasdxPipeline pipeline, cublasdxPipelineTrait trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxCreateDeviceFunctionNew(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t count, const cublasdxTensor* array, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxDestroyDeviceFunctionNew(cublasdxDeviceFunction device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cublasdxCreateDeviceFunctionWithPipelines(cublasdxDescriptor handle, cublasdxDeviceFunctionType device_function_type, size_t tensor_count, const cublasdxTensor* tensors, size_t pipeline_count, const cublasdxPipeline* pipelines, cublasdxDeviceFunction* device_function) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-cdef commondxStatusType cusolverdxGetTraitInt64s(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t count, long long int* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
-
-cdef commondxStatusType cublasdxFinalizeTensors203(cublasdxDescriptor handle, size_t count, const cublasdxTensor* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxGetVersion(int* major, int* minor, int* patch) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxCreateDescriptor(curanddxDescriptor* handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxSetOptionStr(curanddxDescriptor handle, commondxOption opt, const char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxSetOperatorInt64(curanddxDescriptor handle, curanddxOperatorType op, long long int value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxSetOperatorDoubles(curanddxDescriptor handle, curanddxOperatorType op, size_t count, double* values) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxGetTraitStrSize(curanddxDescriptor handle, curanddxTraitType trait, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxGetTraitStr(curanddxDescriptor handle, curanddxTraitType trait, size_t size, char* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxGetTraitInt64(curanddxDescriptor handle, curanddxTraitType trait, long long int* value) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxFinalizeCode(commondxCode code, curanddxDescriptor handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType curanddxDestroyDescriptor(curanddxDescriptor handle) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef const char* curanddxOperatorTypeToStr(curanddxOperatorType op) except?NULL nogil
+cdef const char* curanddxDistributionToStr(curanddxDistribution dist) except?NULL nogil
+cdef const char* curanddxGeneratorToStr(curanddxGenerator generator) except?NULL nogil
+cdef const char* curanddxGenerateMethodToStr(curanddxGenerateMethod generate_method) except?NULL nogil
+cdef const char* curanddxNormalMethodToStr(curanddxNormalMethod normal_method) except?NULL nogil
+cdef const char* curanddxTraitTypeToStr(curanddxTraitType trait) except?NULL nogil
+cdef commondxStatusType commondxGetCodePTXSize(commondxCode code, size_t* size) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType commondxGetCodePTX(commondxCode code, size_t size, void* out) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil
+cdef commondxStatusType cusolverdxGetTraitCommondxDataTypes(cusolverdxDescriptor handle, cusolverdxTraitType trait, size_t count, commondxValueType* array) except?_COMMONDXSTATUSTYPE_INTERNAL_LOADING_ERROR nogil

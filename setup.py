@@ -11,7 +11,7 @@ else:
     import tomli as tomllib
 
 from Cython.Build import cythonize
-from setuptools import setup, Extension
+from setuptools import Extension, setup
 
 
 def calculate_ext(module_: str, prefix: str = "", pre_module: str = "", source_suffix: str = "") -> Extension:

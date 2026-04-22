@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# This code was automatically generated across versions from 12.0.1 to 13.1.0. Do not modify it directly.
+# This code was automatically generated across versions from 12.0.1 to 13.2.1, generator version 0.3.1.dev1380+g2c74a7741. Do not modify it directly.
 
 from libc.stdint cimport intptr_t
 
@@ -408,7 +408,23 @@ cpdef tuple xsyev_batched_buffer_size(intptr_t handle, intptr_t params, int jobz
 cpdef xsyev_batched(intptr_t handle, intptr_t params, int jobz, int uplo, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info, int64_t batch_size)
 cpdef tuple xgeev_buffer_size(intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int data_type_vl, intptr_t vl, int64_t ldvl, int data_type_vr, intptr_t vr, int64_t ldvr, int compute_type)
 cpdef xgeev(intptr_t handle, intptr_t params, int jobvl, int jobvr, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_w, intptr_t w, int data_type_vl, intptr_t vl, int64_t ldvl, int data_type_vr, intptr_t vr, int64_t ldvr, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info)
-cpdef set_math_mode(intptr_t handle, cusolverMathMode_t mode)
-cpdef get_math_mode(intptr_t handle, intptr_t mode)
-cpdef set_emulation_strategy(intptr_t handle, cudaEmulationStrategy_t strategy)
-cpdef get_emulation_strategy(intptr_t handle, intptr_t strategy)
+cpdef set_math_mode(intptr_t handle, int mode)
+cpdef int get_math_mode(intptr_t handle) except? -1
+cpdef set_emulation_strategy(intptr_t handle, int strategy)
+cpdef int get_emulation_strategy(intptr_t handle) except? -1
+cpdef set_fixed_point_emulation_mantissa_control(intptr_t handle, int control)
+cpdef int get_fixed_point_emulation_mantissa_control(intptr_t handle) except? -1
+cpdef set_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle, int mantissa_bit_count)
+cpdef int get_fixed_point_emulation_max_mantissa_bit_count(intptr_t handle) except? -1
+cpdef set_fixed_point_emulation_mantissa_bit_offset(intptr_t handle, int mantissa_bit_offset)
+cpdef int get_fixed_point_emulation_mantissa_bit_offset(intptr_t handle) except? -1
+cpdef set_emulation_special_values_support(intptr_t handle, int mask)
+cpdef int get_emulation_special_values_support(intptr_t handle) except? -1
+cpdef tuple xsygvd_buffer_size(intptr_t handle, intptr_t params, int itype, int jobz, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, int data_type_w, intptr_t d_w, int compute_type)
+cpdef xsygvd(intptr_t handle, intptr_t params, int itype, int jobz, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, int data_type_w, intptr_t d_w, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_info)
+cpdef tuple xsygvdx_buffer_size(intptr_t handle, intptr_t params, int itype, int jobz, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, intptr_t vl, intptr_t vu, int64_t il, int64_t iu, intptr_t meig, int data_type_w, intptr_t d_w, int compute_type)
+cpdef xsygvdx(intptr_t handle, intptr_t params, int itype, int jobz, int range, int uplo, int64_t n, int data_type_a, intptr_t d_a, int64_t lda, int data_type_b, intptr_t d_b, int64_t ldb, intptr_t vl, intptr_t vu, int64_t il, int64_t iu, intptr_t meig, int data_type_w, intptr_t d_w, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_info)
+cpdef tuple xstedc_buffer_size(intptr_t handle, intptr_t params, int compz, int64_t n, int data_type_de, intptr_t d, intptr_t e, int data_type_z, intptr_t z, int64_t ldz, int compute_type)
+cpdef xstedc(intptr_t handle, intptr_t params, int compz, int64_t n, int data_type_de, intptr_t d, intptr_t e, int data_type_z, intptr_t z, int64_t ldz, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t info)
+cpdef tuple xpolar_buffer_size(intptr_t handle, intptr_t params, int uplo, int64_t m, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_h, intptr_t h, int64_t ldh, int compute_type)
+cpdef xpolar(intptr_t handle, intptr_t params, int uplo, int64_t m, int64_t n, int data_type_a, intptr_t a, int64_t lda, int data_type_h, intptr_t h, int64_t ldh, int compute_type, intptr_t buffer_on_device, size_t workspace_in_bytes_on_device, intptr_t buffer_on_host, size_t workspace_in_bytes_on_host, intptr_t d_res_nrm, intptr_t d_a_nrm_f, intptr_t d_rcond, intptr_t d_info)

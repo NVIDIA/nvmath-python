@@ -60,3 +60,11 @@ def is_overlapping_layout(shape: Sequence[int], strides: Sequence[int]) -> bool:
         if cur_max_offset >= sorted_strides[s]:
             return True
     return False
+
+
+def check_monotonic_strides(strides, reverse: bool):
+    """
+    Check if the strides are monotonically increasing (reverse=False) or
+    decreasing (reverse=True).
+    """
+    return sorted(strides, reverse=reverse) == list(strides)

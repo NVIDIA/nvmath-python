@@ -6,14 +6,14 @@
 This example demonstrates how to turn on logging using the global logger.
 """
 
+# Turn on logging. Here we use the global logger, set the level to "debug", and use a custom
+# format for the log.
+import logging
+
 import cupy as cp
 import cupyx.scipy.sparse as sp
 
 import nvmath
-
-# Turn on logging. Here we use the global logger, set the level to "debug", and use a custom
-# format for the log.
-import logging
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%m-%d %H:%M:%S")
 

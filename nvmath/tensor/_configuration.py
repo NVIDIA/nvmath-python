@@ -19,7 +19,6 @@ from typing import ClassVar, Literal
 from nvmath.bindings import cutensor
 from nvmath.memory import BaseCUDAMemoryManager
 
-
 ContractionAlgo = cutensor.Algo
 ContractionAutotuneMode = cutensor.AutotuneMode
 ContractionJitMode = cutensor.JitMode
@@ -58,6 +57,12 @@ class ContractionOptions:
         memory_limit: Maximum memory available to the contraction operation.
             It can be specified as a value (with optional suffix like K[iB], M[iB],
             G[iB]) or as a percentage. The default is 80% of the device memory.
+
+    .. seealso::
+        For supported compute types by data type, refer to the cuTENSOR documentation:
+
+        * `Binary contraction <https://docs.nvidia.com/cuda/cutensor/latest/api/cutensor.html#cutensorcreatecontraction>`_
+        * `Ternary contraction <https://docs.nvidia.com/cuda/cutensor/latest/api/cutensor.html#cutensorcreatecontractiontrinary>`_
 
     """
 

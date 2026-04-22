@@ -12,8 +12,8 @@ except:
     CUBLAS_AVAILABLE = False
 
 try:
-    from nvmath.bindings.nvpl.blas import get_version
     from nvmath.bindings._internal.utils import FunctionNotFoundError
+    from nvmath.bindings.nvpl.blas import get_version
 
     get_version()
     del get_version

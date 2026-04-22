@@ -17,10 +17,8 @@ import numpy as np
 import numpy.typing as npt
 
 import nvmath.bindings.cublas as cublas
-
 from nvmath._internal.templates import StatefulAPIOptions
 from nvmath.internal import utils
-
 
 FillMode: typing.TypeAlias = cublas.FillMode
 DiagType: typing.TypeAlias = cublas.DiagType

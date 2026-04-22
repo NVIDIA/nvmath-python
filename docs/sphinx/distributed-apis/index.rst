@@ -4,17 +4,18 @@ Distributed APIs
 
 The following modules of nvmath-python offer integration with NVIDIA's
 high-performance distributed computing libraries such as cuBLASMp and cuFFTMp.
-Distributed APIs are called from host code but execute on a multi-node multi-GPU system.
+Distributed APIs are called from host code and execute on a multi-node multi-GPU system.
 
 ========
 Overview
 ========
 
-The distributed APIs look and feel similar to their single-process CPU
-and GPU counterparts, with a few key differences:
+The distributed APIs look and feel similar to their single-process host API counterparts,
+with a few key differences:
 
-* To use the APIs, the application is launched with multiple processes,
-  currently using MPI (e.g. ``mpirun``).
+* To use the APIs, the application is launched with multiple processes
+  (e.g. using MPI or
+  `torch.distributed <https://docs.pytorch.org/docs/stable/distributed.html>`_).
 
 * There is one process per GPU.
 
@@ -25,8 +26,7 @@ and GPU counterparts, with a few key differences:
   distributed APIs.
 
 * Some distributed operations like FFT and Reshape require GPU operands
-  to be in **symmetric memory**, and others like distributed matrix multiplication
-  may perform better with symmetric memory operands. We offer optional helpers
+  to be in NVSHMEM **symmetric memory**. We offer optional helpers
   to allocate CuPy ndarrays and PyTorch tensors in symmetric memory
   (refer to :doc:`Distributed API Utilities <utils>` for details).
 

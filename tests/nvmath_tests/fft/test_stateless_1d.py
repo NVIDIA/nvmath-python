@@ -2,20 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import random
 import math
+import random
 import re
 from ast import literal_eval
 
-import pytest
 import numpy as np
+import pytest
 
-
-try:
-    from cuda.core import Event, _device
-except ImportError:
-    from cuda.core.experimental import Event, _device
 from nvmath.memory import BaseCUDAMemoryManager, MemoryPointer  # noqa: E402
+
+from .. import helpers
 
 try:
     import cupy as cp
@@ -26,59 +23,62 @@ try:
 except ImportError:
     torch = None
 
-import nvmath  # noqa: E402
+import contextlib
 
-from .utils.common_axes import (  # noqa: E402
-    ExecBackend,
-    MemBackend,
-    Framework,
-    DType,
-    ShapeKind,
-    OptFftBlocking,
-    OptFftType,
-    OptFftLayout,
-    Direction,
-)
+import nvmath  # noqa: E402
+from nvmath.internal import utils
+
 from .utils.axes_utils import (  # noqa: E402
+    framework_dtype,
+    get_fft_dtype,
     get_framework_dtype,
+    get_ifft_dtype,
     is_complex,
     is_half,
-    get_fft_dtype,
-    get_ifft_dtype,
-    framework_dtype,
     r2c_dtype,
 )
-from .utils.support_matrix import (  # noqa: E402
-    type_shape_support,
-    opt_fft_type_direction_support,
-    opt_fft_type_input_type_support,
-    inplace_opt_ftt_type_support,
-    framework_exec_type_support,
-    supported_backends,
-    multi_gpu_only,
+from .utils.check_helpers import (  # noqa: E402
+    assert_array_type,
+    assert_eq,
+    assert_norm_close,
+    copy_array,
+    get_array_device_id,
+    get_cufft_version,
+    get_fft_ref,
+    get_ifft_c2r_options,
+    get_scaled,
+    intercept_device_id,
+    unfold,
+    use_stream,
+)
+from .utils.common_axes import (  # noqa: E402
+    Direction,
+    DType,
+    ExecBackend,
+    Framework,
+    MemBackend,
+    OptFftBlocking,
+    OptFftLayout,
+    OptFftType,
+    ShapeKind,
 )
 from .utils.input_fixtures import (  # noqa: E402
     get_1d_shape_cases,
+    get_custom_stream,
+    get_framework_device_ctx,
     get_random_1d_shape,
     get_random_input_data,
-    get_custom_stream,
     get_stream_pointer,
-    get_framework_device_ctx,
     init_assert_exec_backend_specified,
 )
-from .utils.check_helpers import (  # noqa: E402
-    assert_eq,
-    copy_array,
-    use_stream,
-    get_array_device_id,
-    intercept_device_id,
-    get_fft_ref,
-    get_scaled,
-    get_ifft_c2r_options,
-    get_cufft_version,
-    unfold,
-    assert_norm_close,
-    assert_array_type,
+from .utils.support_matrix import (  # noqa: E402
+    framework_exec_type_support,
+    inplace_opt_ftt_type_support,
+    multi_gpu_only,
+    opt_fft_type_direction_support,
+    opt_fft_type_input_type_support,
+    supported_backends,
+    type_shape_support,
 )
 
 rng = random.Random(101)
@@ -412,13 +412,19 @@ def test_fft_ifft_overlap(
 def test_ifft_fft_blocking(seeder, monkeypatch, framework, exec_backend, mem_backend, dtype, blocking, shape_kind, shape):
     synchronization_num = 0
 
-    class LoggedSyncEvent(Event):
-        def sync(self):
-            nonlocal synchronization_num
-            synchronization_num += 1
-            super().sync()
+    original_cuda_call_ctx = utils.cuda_call_ctx
 
-    monkeypatch.setattr(_device, "Event", LoggedSyncEvent)
+    @contextlib.contextmanager
+    def mock_cuda_call_ctx(stream_holder, blocking=True, timing=True):
+        nonlocal synchronization_num
+
+        with original_cuda_call_ctx(stream_holder, blocking, timing) as (end, time):
+            yield end, time
+
+        if blocking:
+            synchronization_num += 1
+
+    monkeypatch.setattr(utils, "cuda_call_ctx", mock_cuda_call_ctx)
 
     sample = get_random_input_data(framework, (shape,), dtype, mem_backend)
     sample_fft_ref = get_fft_ref(sample)
@@ -1283,6 +1289,8 @@ def test_conflicting_device_id_option(framework, exec_backend, mem_backend, dtyp
         for dtype in [DType.float32, DType.complex64]
     ],
 )
+@pytest.mark.skip(reason="FIXME: Nodes don't consistently have enough RAM to allocate the required host memory.")
+@helpers.requires_host_memory(lambda dtype, **kwargs: (8 if dtype == DType.complex64 else 4) * 2**31 * 2)
 def test_stride_overflow_error(framework, exec_backend, mem_backend, dtype):
     sample = get_random_input_data(framework, (2**31,), dtype, mem_backend)
     fn = nvmath.fft.fft if is_complex(dtype) else nvmath.fft.rfft
@@ -1351,7 +1359,7 @@ def test_fft_wrong_device_stream(framework, exec_backend, mem_backend, dtype):
         device_id=1,
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         nvmath.fft.fft(signal, stream=stream, execution=exec_backend.nvname)
 
 

@@ -14,17 +14,10 @@ multiplications on multi-node multi-GPU systems at scale. Both stateless
 function-form APIs and stateful class-form APIs are provided.
 
 The distributed matrix multiplication APIs are similar to their non-distributed host
-API counterparts, with some key differences:
-
-* The operands to the API on each process are the **local partition** of the
-  global operands and the user specifies the **distribution** (how the data
-  is partitioned across processes). The APIs natively support the block-cyclic
-  distribution (see :ref:`distribution-block`).
-
-* The APIs optionally support GPU operands on **symmetric memory**. Refer to
-  :doc:`Distributed API Utilities <../utils>` for examples and details of how to
-  manage symmetric memory GPU operands.
-
+API counterparts, with the key difference that the operands to the API on each process
+are the **local partition** of the global operands, and the user specifies the
+**distribution** (how the data is partitioned across processes). The APIs natively
+support the block-cyclic distribution (see :ref:`distribution-block`).
 
 Operand distribution
 --------------------
@@ -33,7 +26,7 @@ To perform a distributed operation, first you have to specify how the operand is
 distributed across processes. Distributed matrix multiply natively supports the
 block-cyclic distribution (see :ref:`distribution-block`), therefore you must
 provide a distribution compatible with block-cyclic. Compatible distributions
-include :ref:`distribution-block-cyclic`, :ref:`distribution-block-non-cyclic`
+include :ref:`distribution-block-cyclic`, :ref:`distribution-block-non-cyclic`,
 and :ref:`distribution-slab` (with uniform partition sizes).
 
 Memory layout
@@ -78,34 +71,29 @@ Algorithms include AllGather+GEMM and GEMM+ReduceScatter.
 These algorithms have special requirements in terms of how each of the operands
 is distributed and their transpose qualifiers.
 
-Currently, to be able to use these algorithms the matrices must be distributed using a
-1D partitioning scheme without the cyclic distribution and the partition sizes must
-be uniform (:ref:`distribution-block-non-cyclic` and :ref:`distribution-slab`
-are valid distributions for this use case).
+Currently, to be able to use these algorithms, cuBLASMp requires: the matrices to be
+distributed using a 1D partitioning scheme without the cyclic distribution and
+the partition sizes to be uniform (:ref:`distribution-block-non-cyclic`
+and :ref:`distribution-slab` are valid distributions for this use case).
 
 Please refer to
 `cuBLASMp documentation <https://docs.nvidia.com/cuda/cublasmp/usage/tp.html>`_
 for full details.
 
-Symmetric memory
-----------------
+Epilogue input and output distribution
+--------------------------------------
 
-Operands may be allocated on the symmetric heap. If so, the result will also be
-allocated on the symmetric heap.
+Generally, the distribution of an epilogue input or output is the same as the distribution
+of the matrix associated with that input/output. For example, the bias vector is applied
+to the matmul result and has the same distribution: if the result matrix is partitioned on
+the M dimension, the bias is similarly partitioned; if the result is partitioned on the N
+dimension (but not M) the bias is replicated on every process.
 
-.. tip::
-    Certain distributed matrix multiplication algorithms may perform better when the
-    operands are on symmetric memory.
+For bias gradient epilogues, the epilogue output distribution is as follows:
 
-.. important::
-    Any memory on the symmetric heap that is owned by the user (including the
-    distributed Matmul result) must be deleted explicitly using
-    :func:`~nvmath.distributed.free_symmetric_memory`. Refer to
-    :doc:`Distributed API Utilities <../utils>` for more information.
+- For BGRAD and BGRADA it follows how matrix A is partitioned on M.
 
-See `example
-<https://github.com/NVIDIA/nvmath-python/tree/main/examples/distributed/linalg/advanced/
-matmul/example01_cupy_symmetric_memory.py>`_.
+- For BGRADB the epilogue output is always replicated.
 
 Example
 -------
@@ -116,7 +104,7 @@ according to a :ref:`distribution-slab` distribution (partitioning on a single d
 .. note::
     To use the distributed Matmul APIs you need to
     :ref:`initialize the distributed runtime <distributed-api-initialize>`
-    with the NVSHMEM and NCCL communication backends.
+    with the NCCL communication backend.
 
 .. code-block:: python
 
@@ -124,8 +112,8 @@ according to a :ref:`distribution-slab` distribution (partitioning on a single d
     from nvmath.distributed.distribution import Slab
     from nvmath.distributed.linalg.advanced import matrix_qualifiers_dtype
 
-    # Get my process rank from mpi4py communicator.
-    rank = communicator.Get_rank()
+    # Get my process rank.
+    rank = nvmath.distributed.get_context().process_group.rank
 
     # The global problem size m, n, k
     m, n, k = 128, 512, 1024
@@ -193,6 +181,18 @@ Distributed Linear Algebra APIs (:mod:`nvmath.distributed.linalg.advanced`)
    MatmulEpilog
    MatmulAlgoType
 
-   :template: dataclass.rst
+.. autosummary::
+   :toctree: generated/
+   :template: dataclass
 
+   MatmulEpilogPreferences
    MatmulOptions
+   MatmulPlanPreferences
+   MatmulQuantizationScales
+
+Helpers
+^^^^^^^
+
+The module :mod:`nvmath.linalg.advanced.helpers.matmul` provides helper
+functions that facilitate working with the narrow-precision features of
+:mod:`nvmath.distributed.linalg.advanced` module.

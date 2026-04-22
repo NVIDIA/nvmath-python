@@ -6,13 +6,14 @@
 # Mirrors https://github.com/NVIDIA/CUDALibrarySamples/blob/master/MathDx/cuBLASDx/gemm_fft_performance.cu
 #
 
-import numpy as np
 import cupy as cp
-from numba import cuda
-from nvmath.device import Matmul, FFT
+import numpy as np
 from common import random_complex
-from common_numba import load_to_shared, time_numba
 from common_cupy import time_cupy
+from common_numba import load_to_shared, time_numba
+from numba import cuda
+
+from nvmath.device import FFT, Matmul
 
 
 @cuda.jit(device=True, forceinline=True)

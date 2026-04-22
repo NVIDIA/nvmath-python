@@ -2,14 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .common_cuda import *  # noqa: E402, F403
-from .cufftdx import *  # noqa: E402, F403
-from .cublasdx import *  # noqa: E402, F403
-from .cublasdx_backend import *  # noqa: E402, F403
-from .types import *  # noqa: E402, F403
-from .vector_types_numba import *  # noqa: E402, F403
-from .common import *  # noqa: E402, F403
+from .common import *  # noqa: F403
+from .common_cuda import *  # noqa: F403
+from .cublasdx import *  # noqa: F403
+from .cublasdx_backend import *  # noqa: F403
+from .cufftdx import *  # noqa: F403
+from .cusolverdx import *  # noqa: F403
+from .types import *  # noqa: F403
+from .vector_types_numba import *  # noqa: F403
 
-# register models in numba
-from . import cublasdx_numba  # noqa: E402, F401
-from . import cufftdx_numba  # noqa: E402, F401
+# isort: split
+
+# register models in numba; must occur after imports above
+from . import (
+    cublasdx_numba,  # noqa: F401
+    cufftdx_numba,  # noqa: F401
+    cusolverdx_numba,  # noqa: F401
+)

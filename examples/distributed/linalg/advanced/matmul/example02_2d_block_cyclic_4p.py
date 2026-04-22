@@ -20,7 +20,7 @@ except ImportError:
 from mpi4py import MPI
 
 import nvmath.distributed
-from nvmath.distributed.distribution import ProcessGrid, BlockCyclic
+from nvmath.distributed.distribution import BlockCyclic, ProcessGrid
 
 # Initialize nvmath.distributed.
 try:
@@ -31,8 +31,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nranks = comm.Get_size()
 device_id = rank % num_devices
-# cuBLASMp requires NVSHMEM and NCCL communication backends.
-nvmath.distributed.initialize(device_id, comm, backends=["nvshmem", "nccl"])
+# cuBLASMp requires NCCL communication backend.
+nvmath.distributed.initialize(device_id, comm, backends=["nccl"])
 
 # The global problem size m, n, k
 m, n, k = 256, 512, 1024
