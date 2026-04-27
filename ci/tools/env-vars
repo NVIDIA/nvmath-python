@@ -10,58 +10,60 @@ set -euo pipefail
 
 # Check if the script was called with exactly 1 argument
 if [[ ${#} -ne 1 ]]; then
-  echo "Error: This script requires exactly 1 argument (the build mode). You provided ${#}"
-  echo "Usage: ${0} build_mode[build or test]"
-  exit 1
+    echo "Error: This script requires exactly 1 argument (the build mode). You provided ${#}"
+    echo "Usage: ${0} build_mode[build or test]"
+    exit 1
 fi
 
 PYTHON_VERSION_FORMATTED=$(echo "${PY_VER}" | tr -d '.')
 
 if [[ "${HOST_PLATFORM}" == linux* ]]; then
-  REPO_DIR=$(pwd)
-  TOOLS_PATH="${REPO_DIR}/ci/tools"
+    REPO_DIR=$(pwd)
+    TOOLS_PATH="${REPO_DIR}/ci/tools"
 elif [[ "${HOST_PLATFORM}" == win* ]]; then
-  PWD=$(pwd)
-  REPO_DIR=$(cygpath -w ${PWD})
-  TOOLS_PATH=$(cygpath -w ${PWD}/ci/tools)
+    PWD=$(pwd)
+    REPO_DIR=$(cygpath -w "${PWD}")
+    TOOLS_PATH=$(cygpath -w "${PWD}"/ci/tools)
 fi
 
-echo "${TOOLS_PATH}" >> $GITHUB_PATH
-echo "NVMATH_PYTHON_PARALLEL_LEVEL=$(nproc)" >> $GITHUB_ENV
+echo "${TOOLS_PATH}" >> "$GITHUB_PATH"
+echo "NVMATH_PYTHON_PARALLEL_LEVEL=$(nproc)" >> "$GITHUB_ENV"
 NVMATH_PYTHON_ARTIFACT_BASENAME="nvmath-python-${PYTHON_VERSION_FORMATTED}-${HOST_PLATFORM}"
 {
-  echo "NVMATH_PYTHON_ARTIFACT_BASENAME=${NVMATH_PYTHON_ARTIFACT_BASENAME}"
-  echo "NVMATH_PYTHON_ARTIFACT_NAME=${NVMATH_PYTHON_ARTIFACT_BASENAME}-${SHA}"
-  echo "NVMATH_PYTHON_ARTIFACTS_DIR=$(realpath "${REPO_DIR}/dist")"
-  echo "PYTHON_VERSION_FORMATTED=${PYTHON_VERSION_FORMATTED}"
-} >> $GITHUB_ENV
+    echo "NVMATH_PYTHON_ARTIFACT_BASENAME=${NVMATH_PYTHON_ARTIFACT_BASENAME}"
+    echo "NVMATH_PYTHON_ARTIFACT_NAME=${NVMATH_PYTHON_ARTIFACT_BASENAME}-${SHA}"
+    echo "NVMATH_PYTHON_ARTIFACTS_DIR=$(realpath "${REPO_DIR}/dist")"
+    echo "PYTHON_VERSION_FORMATTED=${PYTHON_VERSION_FORMATTED}"
+} >> "$GITHUB_ENV"
 
 if [[ "${1}" == "build" ]]; then
-  # Pin to 64-bit archs only — several of our build-system requires
-  # (cuda-bindings, cuda-toolkit) ship no 32-bit wheels, so cibuildwheel's
-  # default of also iterating x86 / i686 would fail to resolve build deps.
-  echo "CIBW_ARCHS=auto64" >> $GITHUB_ENV
-  echo "CIBW_BUILD=cp${PYTHON_VERSION_FORMATTED}-*" >> $GITHUB_ENV
-  # Enforce an explicit cache dir so that we can reuse this path later
-  echo "SCCACHE_DIR=${HOME}/.cache/sccache" >> $GITHUB_ENV
-  echo "SCCACHE_CACHE_SIZE=1G" >> $GITHUB_ENV
+    # Pin to 64-bit archs only — several of our build-system requires
+    # (cuda-bindings, cuda-toolkit) ship no 32-bit wheels, so cibuildwheel's
+    # default of also iterating x86 / i686 would fail to resolve build deps.
+    {
+        echo "CIBW_ARCHS=auto64"
+        echo "CIBW_BUILD=cp${PYTHON_VERSION_FORMATTED}-*"
+        # Enforce an explicit cache dir so that we can reuse this path later
+        echo "SCCACHE_DIR=${HOME}/.cache/sccache"
+        echo "SCCACHE_CACHE_SIZE=1G"
+    } >> "$GITHUB_ENV"
 elif [[ "${1}" == "test" ]]; then
-  TEST_CUDA_MAJOR="$(cut -d '.' -f 1 <<< ${CUDA_VER})"
-  # We don't test compute-sanitizer on CTK<12 because backporting fixes is too much effort
-  # We only test compute-sanitizer on python 3.12 arbitrarily; we don't need to use sanitizer on the entire matrix
-  # Only local ctk installs have compute-sanitizer; there is no wheel for it
-  if [[ "${PY_VER}" == "3.12" && "${CUDA_VER}" != "11.8.0" && "${LOCAL_CTK}" == 1 && "${HOST_PLATFORM}" == linux* ]]; then
-    echo "LATEST_CUDA_VERSION=$(bash ci/tools/guess_latest.sh $TEST_CUDA_MAJOR)" >> $GITHUB_ENV
-    SETUP_SANITIZER=1
-  else
-    SETUP_SANITIZER=0
-    echo "SANITIZER_CMD=" >> $GITHUB_ENV
-  fi
-  {
-    echo "SETUP_SANITIZER=${SETUP_SANITIZER}"
-    echo "SKIP_CUDA_BINDINGS_TEST=${SKIP_CUDA_BINDINGS_TEST}"
-    echo "SKIP_CYTHON_TEST=${SKIP_CYTHON_TEST}"
-    echo "TEST_CUDA_MAJOR=${TEST_CUDA_MAJOR}"
-    echo "USE_BACKPORT_BINDINGS=${USE_BACKPORT_BINDINGS}"
-  } >> $GITHUB_ENV
+    TEST_CUDA_MAJOR="$(cut -d '.' -f 1 <<< "${CUDA_VER}")"
+    # We don't test compute-sanitizer on CTK<12 because backporting fixes is too much effort
+    # We only test compute-sanitizer on python 3.12 arbitrarily; we don't need to use sanitizer on the entire matrix
+    # Only local ctk installs have compute-sanitizer; there is no wheel for it
+    if [[ "${PY_VER}" == "3.12" && "${CUDA_VER}" != "11.8.0" && "${LOCAL_CTK}" == 1 && "${HOST_PLATFORM}" == linux* ]]; then
+        echo "LATEST_CUDA_VERSION=$(bash ci/tools/guess_latest.sh "$TEST_CUDA_MAJOR")" >> "$GITHUB_ENV"
+        SETUP_SANITIZER=1
+    else
+        SETUP_SANITIZER=0
+        echo "SANITIZER_CMD=" >> "$GITHUB_ENV"
+    fi
+    {
+        echo "SETUP_SANITIZER=${SETUP_SANITIZER}"
+        echo "SKIP_CUDA_BINDINGS_TEST=${SKIP_CUDA_BINDINGS_TEST}"
+        echo "SKIP_CYTHON_TEST=${SKIP_CYTHON_TEST}"
+        echo "TEST_CUDA_MAJOR=${TEST_CUDA_MAJOR}"
+        echo "USE_BACKPORT_BINDINGS=${USE_BACKPORT_BINDINGS}"
+    } >> "$GITHUB_ENV"
 fi

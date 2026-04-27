@@ -32,8 +32,7 @@ TAG_PATTERNS = (
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Validate that wheel versions match the release tag. "
-            "This rejects dev/local wheel versions for release uploads."
+            "Validate that wheel versions match the release tag. This rejects dev/local wheel versions for release uploads."
         )
     )
     parser.add_argument("git_tag", help="Release git tag (for example: v13.0.0)")
@@ -48,9 +47,7 @@ def version_from_tag(tag: str) -> str:
         if match:
             return match.group("version")
     raise ValueError(
-        "Unsupported git tag format "
-        f"{tag!r}; expected tags beginning with vX.Y.Z, cuda-core-vX.Y.Z, "
-        "or cuda-pathfinder-vX.Y.Z."
+        f"Unsupported git tag format {tag!r}; expected tags beginning with vX.Y.Z, cuda-core-vX.Y.Z, or cuda-pathfinder-vX.Y.Z."
     )
 
 
@@ -106,9 +103,7 @@ def main() -> int:
 
     for distribution, versions in sorted(seen_versions.items()):
         if len(versions) > 1:
-            errors.append(
-                f"Expected one release version for {distribution}, found multiple: " + ", ".join(sorted(versions))
-            )
+            errors.append(f"Expected one release version for {distribution}, found multiple: " + ", ".join(sorted(versions)))
 
     if errors:
         print("Wheel validation failed:", file=sys.stderr)
@@ -116,10 +111,7 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
-    print(
-        "Validated release wheels for component "
-        f"{args.component} at version {expected_version} from tag {args.git_tag}."
-    )
+    print(f"Validated release wheels for component {args.component} at version {expected_version} from tag {args.git_tag}.")
     return 0
 
 
