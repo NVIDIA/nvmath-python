@@ -8,6 +8,17 @@ on:
       host-platform:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      host-platform:
+        description: "Host platform to build wheels for"
+        required: true
+        type: choice
+        options:
+          - linux-64
+          - linux-aarch64
+          - win-64
+        default: linux-64
 
 defaults:
   run:
