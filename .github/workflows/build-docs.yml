@@ -2,30 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# TODO(nvmath-python CI): Implement the nvmath-python docs build.
-#
-# The previous contents of this file were copied from cuda-python and built
-# separate Sphinx sites for cuda.pathfinder, cuda.bindings, cuda.core, and the
-# cuda-python meta package. It referenced a `cuda-python-docs` conda env at
-# `cuda_python/docs/environment-docs.yml`, neither of which exist in
-# nvmath-python.
-#
-# What this workflow needs to do (follow-up implementation):
-#   1. Check out the repo and set up a Python environment capable of building
-#      the Sphinx site rooted at `docs/sphinx/` (conf.py, index.rst, etc.).
-#      The conda env / docs extra does not yet exist — decide whether to
-#      create `docs/sphinx/environment.yml` or a `docs` extra in pyproject.toml.
-#   2. Install nvmath-python into that environment so autodoc can import it.
-#   3. `sphinx-build` `docs/sphinx/` into a site directory.
-#   4. On PR events, publish to a PR-preview folder via .github/actions/doc_preview.
-#      The PR-preview action has already been updated to reference nvmath-python
-#      (single-package URL, nvmath-python-bot identity).
-#   5. On release tag events (`is-release: true`), publish the site under the
-#      correct version folder (e.g., /latest/ and /v0.8.0/).
-#
-# Until this is implemented, the job below exits successfully with a TODO
-# message so the ci.yml dependency graph remains valid.
-
 name: "CI: Build and update docs"
 
 on:
@@ -36,14 +12,97 @@ on:
         required: false
         default: false
         type: boolean
+  workflow_dispatch:
+    inputs:
+      is-release:
+        description: "Are we building release docs?"
+        required: false
+        default: false
+        type: boolean
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -xeuo pipefail {0}
 
 jobs:
   build:
-    name: Build docs (TODO)
+    name: Build docs
     if: ${{ github.repository_owner == 'NVIDIA' && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - name: TODO — implement nvmath-python docs build
+      - name: Checkout ${{ github.event.repository.name }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      # pandoc for nbsphinx; OpenMPI for the mpi4py wheel's runtime/build link.
+      - name: Install system dependencies
         run: |
-          echo "::warning::build-docs.yml is a stub. Implement the nvmath-python Sphinx build."
-          echo "is-release: ${{ inputs.is-release }}"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pandoc libopenmpi-dev openmpi-bin
+
+      # 3.12 matches build-wheel.yml and the [dependency-groups].docs resolver target.
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Build isolation pulls cuda-toolkit[cudart,nvcc] from PyPI for nvcc;
+      # the [cu13] extra pulls nvidia-cublas-cu13 etc. wheels for runtime imports.
+      # No system CUDA install is required.
+      - name: Install nvmath-python and docs deps
+        run: |
+          pip install --upgrade 'pip>=25.1'
+          pip install -v ".[cu13]" --group pyproject.toml:docs
+
+      # Surface autodoc import failures here, where they're easy to spot in logs.
+      # nvmath.distributed needs nvshmem/nccl which we deliberately don't install,
+      # so its failure is downgraded to a warning.
+      - name: Smoke-test imports
+        run: |
+          python -c "import nvmath; print('nvmath', nvmath.__version__)"
+          python -c "import nvmath.bindings, nvmath.fft, nvmath.linalg, nvmath.sparse, nvmath.tensor"
+          python -c "import nvmath.distributed" || echo "::warning::nvmath.distributed import failed (expected without nvshmem/nccl)"
+
+      # Sets PR_NUMBER (and BUILD_PREVIEW/BUILD_LATEST) in $GITHUB_ENV.
+      - name: Get PR number
+        if: ${{ !inputs.is-release }}
+        uses: ./.github/actions/get_pr_number
+
+      # Override the Makefile's -W default until we know the warning baseline is zero.
+      - name: Build docs
+        run: |
+          mkdir -p docs/_build/empty
+          make -C docs html SPHINXOPTS="-j auto"
+          ls -la docs/_build/html
+
+      # On release tags, drop the moving "latest/" pointer + top-level index/objects
+      # so the deploy only adds the new <ver>/ folder.
+      - name: Strip latest/ for release deploy
+        if: ${{ inputs.is-release }}
+        run: |
+          rm -rf docs/_build/html/latest
+          rm -f  docs/_build/html/index.html docs/_build/html/objects.inv
+
+      # On PR refs, deploy preview to docs/pr-preview/pr-<N>/.
+      # On main/release/*, the doc_preview action expects an empty source folder
+      # so its cleanup branch removes (rather than replaces) the PR preview.
+      - name: Deploy or clean up doc preview
+        if: ${{ !inputs.is-release }}
+        uses: ./.github/actions/doc_preview
+        with:
+          source-folder: ${{ (github.ref_name != 'main' && !startsWith(github.ref_name, 'release/'))
+                              && 'docs/_build/html' || 'docs/_build/empty' }}
+          pr-number: ${{ env.PR_NUMBER }}
+
+      - name: Deploy to GitHub Pages
+        if: ${{ github.ref_name == 'main' || inputs.is-release }}
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f  # v4.8.0
+        with:
+          git-config-name: nvmath-python-bot
+          git-config-email: nvmath-python-bot@users.noreply.github.com
+          folder: docs/_build/html/
+          target-folder: docs/
+          commit-message: "Deploy ${{ (inputs.is-release && 'release') || 'latest' }} docs: ${{ github.sha }}"
+          clean: false
