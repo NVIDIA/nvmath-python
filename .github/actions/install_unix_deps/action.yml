@@ -36,7 +36,7 @@ runs:
           if [[ $EUID == 0 ]]; then
             alias SUDO=""
           else
-            echo "The following oprations require root access."
+            echo "The following operations require root access."
             exit 1
           fi
         else
