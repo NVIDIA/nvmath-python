@@ -59,7 +59,7 @@ jobs:
 
       # xref: https://github.com/orgs/community/discussions/42856#discussioncomment-7678867
       - name: Adding additional GHA cache-related env vars
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
@@ -127,7 +127,7 @@ jobs:
           pip install twine
 
       - name: Build nvmath-python wheel
-        uses: pypa/cibuildwheel@ee02a1537ce3071a004a6b08c41e72f0fdc42d9a  # v3.4.0
+        uses: pypa/cibuildwheel@8d2b08b68458a16aeb24b64e68a09ab1c8e82084  # v3.4.1
         with:
           package-dir: .
           output-dir: ${{ env.NVMATH_PYTHON_ARTIFACTS_DIR }}
@@ -203,7 +203,7 @@ jobs:
           twine check --strict ${{ env.NVMATH_PYTHON_ARTIFACTS_DIR }}/*.whl
 
       - name: Upload nvmath-python build artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ env.NVMATH_PYTHON_ARTIFACT_NAME }}
           path: ${{ env.NVMATH_PYTHON_ARTIFACTS_DIR }}/*.whl
